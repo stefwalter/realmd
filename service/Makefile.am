@@ -4,7 +4,10 @@ servicedir = $(libdir)/identity-config
 service_PROGRAMS = identity-config-service
 
 identity_config_service_SOURCES = \
-	ic-main.c
+	ic-debug.c ic-debug.h \
+	ic-main.c \
+	ic-unix-process.c ic-unix-process.h \
+	$(NULL)
 
 DBUS_XML_DEFINITIONS = \
 	org.freedesktop.IdentityConfig.xml

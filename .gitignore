@@ -23,6 +23,7 @@ Makefile.in.in
 POTFILES
 stamp-h1
 stamp-it
+temp.txt
 
 /build/m4
 

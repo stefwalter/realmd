@@ -30,7 +30,10 @@ G_BEGIN_DECLS
 /* Please keep this enum in sync with #keys in gcr-debug.c */
 typedef enum {
 	IC_DEBUG_PROCESS = 1 << 1,
+	IC_DEBUG_DIAGNOSTICS = 1 << 2,
 } IcDebugFlags;
+
+void               ic_debug_init                     (void);
 
 gboolean           ic_debug_flag_is_set              (IcDebugFlags flag);
 

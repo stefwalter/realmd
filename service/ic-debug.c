@@ -38,6 +38,7 @@ static IcDebugFlags current_flags = 0;
 
 static GDebugKey keys[] = {
 	{ "process", IC_DEBUG_PROCESS },
+	{ "diagnostics", IC_DEBUG_DIAGNOSTICS },
 	{ 0, }
 };
 
@@ -45,6 +46,17 @@ static void
 debug_set_flags (IcDebugFlags new_flags)
 {
 	current_flags |= new_flags;
+}
+
+void
+ic_debug_init (void)
+{
+	static gsize initialized_flags = 0;
+
+	if (g_once_init_enter (&initialized_flags)) {
+		ic_debug_set_flags (g_getenv ("IC_DEBUG"));
+		g_once_init_leave (&initialized_flags, 1);
+	}
 }
 
 void
@@ -67,14 +79,8 @@ ic_debug_flag_is_set (IcDebugFlags flag)
 void
 ic_debug_message (IcDebugFlags flag, const gchar *format, ...)
 {
-	static gsize initialized_flags = 0;
 	gchar *message;
 	va_list args;
-
-	if (g_once_init_enter (&initialized_flags)) {
-		ic_debug_set_flags (g_getenv ("IC_DEBUG"));
-		g_once_init_leave (&initialized_flags, 1);
-	}
 
 	va_start (args, format);
 	message = g_strdup_vprintf (format, args);

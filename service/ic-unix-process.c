@@ -75,6 +75,7 @@ struct _IcUnixProcessPrivate {
 	gboolean running;
 	gboolean complete;
 	GError *error;
+	gint exit_code;
 	guint source_sig;
 
 	GAsyncReadyCallback async_callback;
@@ -683,12 +684,8 @@ on_unix_process_child_exited (GPid pid,
 	process_source->child_sig = 0;
 
 	if (WIFEXITED (status)) {
-		code = WEXITSTATUS (status);
-		if (code != 0) {
-			error = g_error_new (G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED,
-			                     _("%s process exited with code: %d"),
-			                     self->pv->executable, code);
-		}
+		self->pv->exit_code = WEXITSTATUS (status);
+
 	} else if (WIFSIGNALED (status)) {
 		code = WTERMSIG (status);
 		/* Ignore cases where we've signaled the process because we were cancelled */
@@ -770,7 +767,6 @@ ic_unix_process_run_async (IcUnixProcess *self,
 {
 	GError *error = NULL;
 	GPtrArray *args;
-	GPtrArray *envs;
 	int child_fds[NUM_FDS];
 	int output_fd = -1;
 	int error_fd = -1;
@@ -809,14 +805,9 @@ ic_unix_process_run_async (IcUnixProcess *self,
 		g_ptr_array_add (args, g_strdup (argv[i]));
 	g_ptr_array_add (args, NULL);
 
-	envs = g_ptr_array_new ();
-	for (i = 0; envp && envp[i] != NULL; i++)
-		g_ptr_array_add (envs, (gpointer)envp[i]);
-	g_ptr_array_add (envs, NULL);
-
 	if (ic_debugging) {
 		gchar *command = g_strjoinv (" ", (gchar**)args->pdata);
-		gchar *environ = g_strjoinv (", ", (gchar**)envs->pdata);
+		gchar *environ = g_strjoinv (", ", (gchar**)envp);
 		ic_debug ("running command: %s", command);
 		ic_debug ("process environment: %s", environ);
 		g_free (command);
@@ -824,12 +815,11 @@ ic_unix_process_run_async (IcUnixProcess *self,
 	}
 
 	g_spawn_async_with_pipes (self->pv->directory, (gchar**)args->pdata,
-	                          (gchar**)envs->pdata, G_SPAWN_DO_NOT_REAP_CHILD,
+	                          (gchar**)envp, G_SPAWN_DO_NOT_REAP_CHILD,
 	                          on_unix_process_child_setup, child_fds,
 	                          &pid, &input_fd, &output_fd, &error_fd, &error);
 
 	g_ptr_array_free (args, TRUE);
-	g_ptr_array_free (envs, TRUE);
 
 	self->pv->complete = FALSE;
 	self->pv->running = TRUE;
@@ -891,9 +881,10 @@ ic_unix_process_run_async (IcUnixProcess *self,
 	/* source is unreffed in complete_if_source_is_done() */
 }
 
-gboolean
-ic_unix_process_run_finish (IcUnixProcess *self, GAsyncResult *result,
-                               GError **error)
+gint
+ic_unix_process_run_finish (IcUnixProcess *self,
+                            GAsyncResult *result,
+                            GError **error)
 {
 	g_return_val_if_fail (IC_IS_UNIX_PROCESS (self), FALSE);
 	g_return_val_if_fail (!error || !*error, FALSE);
@@ -910,8 +901,8 @@ ic_unix_process_run_finish (IcUnixProcess *self, GAsyncResult *result,
 	if (self->pv->error) {
 		g_propagate_error (error, self->pv->error);
 		self->pv->error = NULL;
-		return FALSE;
+		return -1;
 	}
 
-	return TRUE;
+	return self->pv->exit_code;
 }

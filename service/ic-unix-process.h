@@ -76,7 +76,7 @@ void                ic_unix_process_run_async               (IcUnixProcess *self
                                                              GAsyncReadyCallback callback,
                                                              gpointer user_data);
 
-gboolean            ic_unix_process_run_finish              (IcUnixProcess *self,
+gint                ic_unix_process_run_finish              (IcUnixProcess *self,
                                                              GAsyncResult *result,
                                                              GError **error);
 

@@ -44,6 +44,16 @@ LIBS="$LIBS $GLIB_LIBS"
 CFLAGS="$CFLAGS $GLIB_CFLAGS"
 
 # --------------------------------------------------------------------
+# Paths to various tools
+
+# These are expected to be installed when identity-config is installed, either
+# as dependencies or by virtue of the fact that they're part of the 'base' system.
+
+AC_PATH_PROG(HOST, host, no)
+test "$HOST" != "no" || AC_MSG_ERROR([Couldn't find host binary in path])
+AC_DEFINE_UNQUOTED(HOST_PATH, "$HOST", [Path to host binary])
+
+# --------------------------------------------------------------------
 # Compilation options
 
 if test "$GCC" = "yes"; then

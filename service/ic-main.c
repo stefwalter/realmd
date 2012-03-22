@@ -12,9 +12,44 @@
 
 #include "config.h"
 
+#include "ic-ads-provider.h"
+#include "ic-debug.h"
+#include "ic-diagnostics.h"
+
+#include <glib.h>
+
+static GOptionEntry option_entries[] = {
+	{ NULL }
+};
+
 int
 main (int argc,
       char *argv[])
 {
+	GOptionContext *context;
+	GError *error = NULL;
+	GMainLoop *loop;
+	g_type_init ();
+
+	context = g_option_context_new ("identity-config");
+	g_option_context_add_main_entries (context, option_entries, NULL);
+	if (!g_option_context_parse (context, &argc, &argv, &error)) {
+		g_printerr ("%s", error->message);
+		g_option_context_free (context);
+		g_error_free (error);
+		return 2;
+	}
+
+	ic_debug_init ();
+
+	loop = g_main_loop_new (NULL, FALSE);
+	ic_ads_provider_start ();
+
+	g_main_loop_run (loop);
+
+	ic_ads_provider_stop ();
+	g_main_loop_unref (loop);
+	g_option_context_free (context);
+
 	return 0;
 }

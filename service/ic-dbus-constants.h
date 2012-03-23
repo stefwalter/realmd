@@ -29,8 +29,18 @@ G_BEGIN_DECLS
 
 #define   IC_DBUS_DIAGNOSTICS_SIGNAL            "Diagnostics"
 
+#define   IC_DBUS_ERROR_INTERNAL                "org.freedesktop.IdentityConfig.Error.Internal"
 #define   IC_DBUS_ERROR_DISCOVERY_FAILED        "org.freedesktop.IdentityConfig.Error.DiscoveryFailed"
+#define   IC_DBUS_ERROR_ENROLL_FAILED           "org.freedesktop.IdentityConfig.Error.EnrollFailed"
+#define   IC_DBUS_ERROR_UNENROLL_FAILED         "org.freedesktop.IdentityConfig.Error.UnenrollFailed"
+#define   IC_DBUS_ERROR_SET_LOGINS_FAILED       "org.freedesktop.IdentityConfig.Error.SetLoginsFailed"
+#define   IC_DBUS_ERROR_BUSY                    "org.freedesktop.IdentityConfig.Error.Busy"
+
+#define   IC_DBUS_DISCOVERY_TYPE                "type"
+#define   IC_DBUS_DISCOVERY_DOMAIN              "domain"
+#define   IC_DBUS_DISCOVERY_SERVERS             "kerberos-servers"
+#define   IC_DBUS_DISCOVERY_REALM               "kerberos-realm"
 
 G_END_DECLS
 
-#endif /* __IC_ADS_ENROLL_H__ */
+#endif /* __IC_AD_ENROLL_H__ */

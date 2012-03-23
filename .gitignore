@@ -27,3 +27,4 @@ stamp-it
 temp.txt
 
 /service/identity-config-service
+/tests/frob-install-packages

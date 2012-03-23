@@ -14,27 +14,19 @@
 
 #include "config.h"
 
-#ifndef __IC_ERRORS_H__
-#define __IC_ERRORS_H__
+#ifndef __IC_AD_ENROLL_H__
+#define __IC_AD_ENROLL_H__
 
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
 
-#define       IC_ERROR               (ic_error_quark ())
+gboolean            ic_service_lock_for_action            (GDBusMethodInvocation *invocation);
 
-GQuark        ic_error_quark         (void) G_GNUC_CONST;
+void                ic_service_unlock_for_action          (GDBusMethodInvocation *invocation);
 
-typedef enum {
-	IC_ERROR_INTERNAL,
-	IC_ERROR_DISCOVERY_FAILED,
-	IC_ERROR_ENROLL_FAILED,
-	IC_ERROR_UNENROLL_FAILED,
-	IC_ERROR_SET_LOGINS_FAILED,
-	IC_ERROR_BUSY,
-	_NUM_IC_ERRORS
-} IcErrorCodes;
+const gchar *       ic_service_resolve_file               (const gchar *name);
 
 G_END_DECLS
 
-#endif /* __IC_AD_ENROLL_H__ */
+#endif /* __IC_AD_JOIN_H__ */

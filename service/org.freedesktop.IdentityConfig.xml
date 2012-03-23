@@ -2,42 +2,37 @@
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 
 <node name="/org/freedesktop/IdentityConfig">
-
-	<interface name="org.freedesktop.IdentityConfig.Service">
-		<property name="AvailableProviders" type="as" access="read"/>
-
-<!-- Xxxxx
-		<method name="DiscoverProviders">
-			<arg name="string" type="s" direction="in"/>
-			<arg name="results" type="a{osi}" direction="out"/>
-		</method>
--->
-	</interface>
-
 	<interface name="org.freedesktop.IdentityConfig.Provider">
-<!-- Need to work out how to do localization
-		<property name="DisplayName" type="s" access="read"/>
--->
-		<property name="ProviderInterface" type="s" access="read"/>
-		<method name="DiscoverProvider">
-			<arg name="string" type="s" direction="in"/>
-			<arg name="match" type="i" direction="out"/>
-		</method>
+		<signal name="Status">
+			<arg name="message" type="s"/>
+		</signal>
 		<signal name="Diagnostics">
 			<arg name="data" type="s"/>
 		</signal>
 	</interface>
 
 	<interface name="org.freedesktop.IdentityConfig.Kerberos">
-		<property name="EnrolledRealm" type="s" access="read"/>
-		<property name="EnrollParams" type="as" access="read"/>
-		<property name="UnenrollParams" type="as" access="read"/>
-		<method name="EnrollMachine">
-			<arg name="params" type="a{sv}" direction="in"/>
+		<property name="EnrolledRealms" type="as" access="read"/>
+
+		<method name="DiscoverRealm">
+			<arg name="string" type="s" direction="in"/>
+			<arg name="realm" type="s" direction="out"/>
+			<arg name="discovered" type="a{sv}" direction="out"/>
 		</method>
-		<method name="UnenrollMachine">
-			<arg name="params" type="a{sv}" direction="in"/>
+		<method name="EnrollMachineWithKerberosCache">
+			<arg name="realm" type="s" direction="in"/>
+			<arg name="kerberos_cache" type="ay" direction="in"/>
+		</method>
+		<method name="UnenrollMachineWithKerberosCache">
+			<arg name="realm" type="s" direction="in"/>
+			<arg name="kerberos_cache" type="ay" direction="in"/>
+		</method>
+
+		<property name="LoginsPossible" type="b" access="read"/>
+		<property name="LoginsEnabled" type="b" access="read"/>
+
+		<method name="SetLoginsEnabled">
+			<arg name="enabled" type="b" direction="in"/>
 		</method>
 	</interface>
-
 </node>

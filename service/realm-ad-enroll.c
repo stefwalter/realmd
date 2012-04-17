@@ -1,4 +1,4 @@
-/* identity-config - Identity configuration service
+/* realmd -- Realm configuration service
  *
  * Copyright 2012 Red Hat Inc
  *
@@ -14,10 +14,10 @@
 
 #include "config.h"
 
-#include "ic-ad-enroll.h"
-#include "ic-diagnostics.h"
-#include "ic-errors.h"
-#include "ic-command.h"
+#include "realm-ad-enroll.h"
+#include "realm-diagnostics.h"
+#include "realm-errors.h"
+#include "realm-command.h"
 
 #include <glib/gstdio.h>
 
@@ -73,13 +73,13 @@ prepare_admin_cache (JoinClosure *join,
 	}
 
 	directory = g_get_user_runtime_dir ();
-	filename = g_build_filename ("%s", "ic-ad-kerberos-XXXXXX", NULL);
+	filename = g_build_filename ("%s", "realm-ad-kerberos-XXXXXX", NULL);
 
 	fd = g_mkstemp_full (filename, 0, 0600);
 	if (fd > 0) {
 		g_warning ("couldn't open temporary file in %s directory for kerberos cache: %s",
 		           directory, g_strerror (errno));
-		g_set_error (error, IC_ERROR, IC_ERROR_INTERNAL,
+		g_set_error (error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Problem writing out the kerberos cache data");
 		g_free (filename);
 		return FALSE;
@@ -92,7 +92,7 @@ prepare_admin_cache (JoinClosure *join,
 				continue;
 			g_warning ("couldn't write kerberos cache to file %s: %s",
 			           directory, g_strerror (errno));
-			g_set_error (error, IC_ERROR, IC_ERROR_INTERNAL,
+			g_set_error (error, REALM_ERROR, REALM_ERROR_INTERNAL,
 			             "Problem writing out the kerberos cache data");
 			break;
 		} else  {
@@ -163,10 +163,10 @@ begin_net_process (JoinClosure *join,
 	va_end (va);
 
 	command = g_strjoinv (" ", (gchar **)args->pdata);
-	ic_diagnostics_info (join->invocation, "running command: %s", command);
+	realm_diagnostics_info (join->invocation, "running command: %s", command);
 	g_free (command);
 
-	ic_command_runv_async ((gchar **)args->pdata, join->environ,
+	realm_command_runv_async ((gchar **)args->pdata, join->environ,
 	                       join->invocation, join->cancellable, callback, user_data);
 
 	g_ptr_array_free (args, TRUE);
@@ -180,8 +180,8 @@ complete_net_process (JoinClosure *join,
 	GString *output;
 	gint code;
 
-	code = ic_command_run_finish (result, &output, error);
-	ic_diagnostics_info_data (join->invocation, output->str, output->len);
+	code = realm_command_run_finish (result, &output, error);
+	realm_diagnostics_info_data (join->invocation, output->str, output->len);
 	g_string_free (output, TRUE);
 
 	return code;
@@ -199,7 +199,7 @@ on_net_ads_keytab_create (GObject *source,
 
 	status = complete_net_process (join, result, &error);
 	if (error == NULL && status != 0)
-		g_set_error (&error, IC_ERROR, IC_ERROR_INTERNAL,
+		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Extracting host keytab failed");
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
@@ -220,7 +220,7 @@ on_net_conf_setparm_kerberos_method (GObject *source,
 
 	status = complete_net_process (join, result, &error);
 	if (error == NULL && status != 0)
-		g_set_error (&error, IC_ERROR, IC_ERROR_INTERNAL,
+		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Configuring samba kerberos settings failed");
 	if (error == NULL) {
 		begin_net_process (join, on_net_ads_keytab_create, g_object_ref (res),
@@ -246,7 +246,7 @@ on_net_ads_join (GObject *source,
 
 	status = complete_net_process (join, result, &error);
 	if (error == NULL && status != 0)
-		g_set_error (&error, IC_ERROR, IC_ERROR_INTERNAL,
+		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Joining the domain %s failed", join->domain);
 	if (error == NULL) {
 		begin_net_process (join, on_net_conf_setparm_kerberos_method, g_object_ref (res),
@@ -261,18 +261,18 @@ on_net_ads_join (GObject *source,
 }
 
 void
-ic_ad_enroll_join_async (const gchar *realm,
-                          GBytes *admin_kerberos_cache,
-                          GDBusMethodInvocation *invocation,
-                          GAsyncReadyCallback callback,
-                          gpointer user_data)
+realm_ad_enroll_join_async (const gchar *realm,
+                            GBytes *admin_kerberos_cache,
+                            GDBusMethodInvocation *invocation,
+                            GAsyncReadyCallback callback,
+                            gpointer user_data)
 {
 	GSimpleAsyncResult *res;
 	JoinClosure *join;
 	GError *error = NULL;
 
 	res = g_simple_async_result_new (NULL, callback, user_data,
-	                                 ic_ad_enroll_join_async);
+	                                 realm_ad_enroll_join_async);
 
 	join = join_closure_init (realm, admin_kerberos_cache, invocation, &error);
 	if (join == NULL) {
@@ -288,11 +288,11 @@ ic_ad_enroll_join_async (const gchar *realm,
 }
 
 gboolean
-ic_ad_enroll_join_finish (GAsyncResult *result,
-                           GError **error)
+realm_ad_enroll_join_finish (GAsyncResult *result,
+                             GError **error)
 {
 	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      ic_ad_enroll_join_async), FALSE);
+	                      realm_ad_enroll_join_async), FALSE);
 
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
 		return FALSE;
@@ -311,7 +311,7 @@ on_net_ads_leave (GObject *source,
 
 	status = complete_net_process (join, result, &error);
 	if (error == NULL && status != 0)
-		g_set_error (&error, IC_ERROR, IC_ERROR_INTERNAL,
+		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Leaving the domain %s failed", join->domain);
 	if (error != NULL) {
 		g_simple_async_result_take_error (res, error);
@@ -334,7 +334,7 @@ on_net_ads_flush (GObject *source,
 
 	status = complete_net_process (join, result, &error);
 	if (error != NULL || status != 0)
-		ic_diagnostics_error (join->invocation, error, "Flushing entries from the keytab failed");
+		realm_diagnostics_error (join->invocation, error, "Flushing entries from the keytab failed");
 	g_clear_error (&error);
 
 	begin_net_process (join, on_net_ads_leave, g_object_ref (res),
@@ -343,18 +343,18 @@ on_net_ads_flush (GObject *source,
 }
 
 void
-ic_ad_enroll_leave_async (const gchar *realm,
-                           GBytes *admin_kerberos_cache,
-                           GDBusMethodInvocation *invocation,
-                           GAsyncReadyCallback callback,
-                           gpointer user_data)
+realm_ad_enroll_leave_async (const gchar *realm,
+                             GBytes *admin_kerberos_cache,
+                             GDBusMethodInvocation *invocation,
+                             GAsyncReadyCallback callback,
+                             gpointer user_data)
 {
 	GSimpleAsyncResult *res;
 	JoinClosure *join;
 	GError *error = NULL;
 
 	res = g_simple_async_result_new (NULL, callback, user_data,
-	                                 ic_ad_enroll_leave_async);
+	                                 realm_ad_enroll_leave_async);
 
 	join = join_closure_init (realm, admin_kerberos_cache, invocation, &error);
 	if (error == NULL) {
@@ -371,11 +371,11 @@ ic_ad_enroll_leave_async (const gchar *realm,
 }
 
 gboolean
-ic_ad_enroll_leave_finish (GAsyncResult *result,
-                            GError **error)
+realm_ad_enroll_leave_finish (GAsyncResult *result,
+                              GError **error)
 {
 	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      ic_ad_enroll_leave_async), FALSE);
+	                      realm_ad_enroll_leave_async), FALSE);
 
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
 		return FALSE;

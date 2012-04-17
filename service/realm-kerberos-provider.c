@@ -1,4 +1,4 @@
-/* identity-config - Identity configuration service
+/* realmd -- Realm configuration service
  *
  * Copyright 2012 Red Hat Inc
  *
@@ -14,30 +14,30 @@
 
 #include "config.h"
 
-#include "ic-dbus-constants.h"
-#include "ic-dbus-generated.h"
-#include "ic-diagnostics.h"
-#include "ic-discovery.h"
-#include "ic-errors.h"
-#include "ic-kerberos-provider.h"
-#include "ic-service.h"
+#include "realm-dbus-constants.h"
+#include "realm-dbus-generated.h"
+#include "realm-diagnostics.h"
+#include "realm-discovery.h"
+#include "realm-errors.h"
+#include "realm-kerberos-provider.h"
+#include "realm-service.h"
 
 #include <glib/gi18n.h>
 
-struct _IcKerberosProviderPrivate {
+struct _RealmKerberosProviderPrivate {
 	GHashTable *cached_discovery;
 };
 
-G_DEFINE_TYPE (IcKerberosProvider, ic_kerberos_provider,
-               IC_DBUS_TYPE_KERBEROS_SKELETON);
+G_DEFINE_TYPE (RealmKerberosProvider, realm_kerberos_provider,
+               REALM_DBUS_TYPE_KERBEROS_SKELETON);
 
 typedef struct {
-	IcKerberosProvider *self;
+	RealmKerberosProvider *self;
 	GDBusMethodInvocation *invocation;
 } MethodClosure;
 
 static MethodClosure *
-method_closure_new (IcKerberosProvider *self,
+method_closure_new (RealmKerberosProvider *self,
                     GDBusMethodInvocation *invocation)
 {
 	MethodClosure *closure = g_slice_new (MethodClosure);
@@ -60,16 +60,16 @@ on_discover_complete (GObject *source,
                       gpointer user_data)
 {
 	MethodClosure *closure = user_data;
-	IcKerberosProviderClass *klass;
+	RealmKerberosProviderClass *klass;
 	GHashTable *discovery = NULL;
 	GVariant *variant;
 	GError *error = NULL;
 	gchar *realm;
 
-	klass = IC_KERBEROS_PROVIDER_GET_CLASS (closure->self);
+	klass = REALM_KERBEROS_PROVIDER_GET_CLASS (closure->self);
 	g_return_if_fail (klass->discover_finish != NULL);
 
-	discovery = ic_discovery_new ();
+	discovery = realm_discovery_new ();
 
 	realm = (klass->discover_finish) (closure->self, result, discovery, &error);
 	if (realm != NULL) {
@@ -77,19 +77,19 @@ on_discover_complete (GObject *source,
 		g_hash_table_insert (closure->self->pv->cached_discovery,
 		                     g_strdup (realm), g_hash_table_ref (discovery));
 
-		ic_diagnostics_info (closure->invocation, "Successfully discovered realm: %s", realm);
-		variant = ic_discovery_to_variant (discovery);
+		realm_diagnostics_info (closure->invocation, "Successfully discovered realm: %s", realm);
+		variant = realm_discovery_to_variant (discovery);
 		g_dbus_method_invocation_return_value (closure->invocation, g_variant_new ("(s@a{sv})", realm, variant));
 		g_free (realm);
 
 	} else if (error == NULL) {
-		ic_diagnostics_info (closure->invocation, "The realm was not valid or not discoverable.");
+		realm_diagnostics_info (closure->invocation, "The realm was not valid or not discoverable.");
 		variant = g_variant_new_array (G_VARIANT_TYPE_DICTIONARY, NULL, 0);
 		g_dbus_method_invocation_return_value (closure->invocation, g_variant_new ("(s@a{sv})", "", variant));
 
 	} else {
-		ic_diagnostics_error (closure->invocation, error, "Failed to discover realm.");
-		g_dbus_method_invocation_return_error (closure->invocation, IC_ERROR, IC_ERROR_DISCOVERY_FAILED,
+		realm_diagnostics_error (closure->invocation, error, "Failed to discover realm.");
+		g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_DISCOVERY_FAILED,
 		                                       "Failed to discover realm. See diagnostics.");
 		g_error_free (error);
 	}
@@ -99,14 +99,14 @@ on_discover_complete (GObject *source,
 }
 
 static gboolean
-handle_discover_realm (IcKerberosProvider *self,
+handle_discover_realm (RealmKerberosProvider *self,
                        GDBusMethodInvocation *invocation,
                        const gchar *string,
                        gpointer unused)
 {
-	IcKerberosProviderClass *klass;
+	RealmKerberosProviderClass *klass;
 
-	klass = IC_KERBEROS_PROVIDER_GET_CLASS (self);
+	klass = REALM_KERBEROS_PROVIDER_GET_CLASS (self);
 	g_return_val_if_fail (klass->discover_async != NULL, FALSE);
 	g_return_val_if_fail (klass->discover_finish != NULL, FALSE);
 
@@ -122,47 +122,47 @@ on_enroll_complete (GObject *source,
                     gpointer user_data)
 {
 	MethodClosure *closure = user_data;
-	IcKerberosProviderClass *klass;
+	RealmKerberosProviderClass *klass;
 	GError *error = NULL;
 
-	klass = IC_KERBEROS_PROVIDER_GET_CLASS (closure->self);
+	klass = REALM_KERBEROS_PROVIDER_GET_CLASS (closure->self);
 	g_return_if_fail (klass->enroll_finish != NULL);
 
 	(klass->enroll_finish) (closure->self, result, &error);
 	if (error == NULL) {
-		ic_diagnostics_info (closure->invocation, "Successfully enrolled machine in domain");
+		realm_diagnostics_info (closure->invocation, "Successfully enrolled machine in domain");
 		g_dbus_method_invocation_return_value (closure->invocation, g_variant_new ("()"));
 
 	} else {
-		ic_diagnostics_error (closure->invocation, error, "Failed to enroll machine in domain");
-		g_dbus_method_invocation_return_error (closure->invocation, IC_ERROR, IC_ERROR_ENROLL_FAILED,
+		realm_diagnostics_error (closure->invocation, error, "Failed to enroll machine in domain");
+		g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_ENROLL_FAILED,
 		                                       "Failed to enroll machine in domain. See diagnostics.");
 		g_error_free (error);
 	}
 
-	ic_service_unlock_for_action (closure->invocation);
+	realm_service_unlock_for_action (closure->invocation);
 	method_closure_free (closure);
 }
 
 static gboolean
-handle_enroll_machine_with_kerberos_cache (IcKerberosProvider *self,
+handle_enroll_machine_with_kerberos_cache (RealmKerberosProvider *self,
                                            GDBusMethodInvocation *invocation,
                                            const gchar *realm,
                                            GVariant *admin_cache,
                                            gpointer unused)
 {
 	GBytes *admin_kerberos_cache;
-	IcKerberosProviderClass *klass;
+	RealmKerberosProviderClass *klass;
 	const guchar *data;
 	gsize length;
 
-	if (!ic_service_lock_for_action (invocation)) {
-		g_dbus_method_invocation_return_error (invocation, IC_ERROR, IC_ERROR_BUSY,
+	if (!realm_service_lock_for_action (invocation)) {
+		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
 		                                       "Already running another action");
 		return TRUE;
 	}
 
-	klass = IC_KERBEROS_PROVIDER_GET_CLASS (self);
+	klass = REALM_KERBEROS_PROVIDER_GET_CLASS (self);
 	g_return_val_if_fail (klass->enroll_async != NULL, FALSE);
 	g_return_val_if_fail (klass->enroll_finish != NULL, FALSE);
 
@@ -184,45 +184,45 @@ on_unenroll_complete (GObject *source,
                       gpointer user_data)
 {
 	MethodClosure *closure = user_data;
-	IcKerberosProviderClass *klass;
+	RealmKerberosProviderClass *klass;
 	GError *error = NULL;
 
-	klass = IC_KERBEROS_PROVIDER_GET_CLASS (closure->self);
+	klass = REALM_KERBEROS_PROVIDER_GET_CLASS (closure->self);
 	g_return_if_fail (klass->unenroll_finish != NULL);
 
 	if ((klass->unenroll_finish) (closure->self, result, &error)) {
-		ic_diagnostics_info (closure->invocation, "Successfully unenrolled machine from domain");
+		realm_diagnostics_info (closure->invocation, "Successfully unenrolled machine from domain");
 		g_dbus_method_invocation_return_value (closure->invocation, g_variant_new ("()"));
 	} else {
-		ic_diagnostics_error (closure->invocation, error, "Failed to unenroll machine from domain");
-		g_dbus_method_invocation_return_error (closure->invocation, IC_ERROR, IC_ERROR_UNENROLL_FAILED,
+		realm_diagnostics_error (closure->invocation, error, "Failed to unenroll machine from domain");
+		g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_UNENROLL_FAILED,
 		                                       "Failed to unenroll machine from domain. See diagnostics.");
 		g_error_free (error);
 	}
 
-	ic_service_unlock_for_action (closure->invocation);
+	realm_service_unlock_for_action (closure->invocation);
 	method_closure_free (closure);
 }
 
 static gboolean
-handle_unenroll_machine_with_kerberos_cache (IcKerberosProvider *self,
+handle_unenroll_machine_with_kerberos_cache (RealmKerberosProvider *self,
                                              GDBusMethodInvocation *invocation,
                                              const gchar *realm,
                                              GVariant *admin_cache,
                                              gpointer unused)
 {
-	IcKerberosProviderClass *klass;
+	RealmKerberosProviderClass *klass;
 	GBytes *admin_kerberos_cache;
 	const guchar *data;
 	gsize length;
 
-	if (!ic_service_lock_for_action (invocation)) {
-		g_dbus_method_invocation_return_error (invocation, IC_ERROR, IC_ERROR_BUSY,
+	if (!realm_service_lock_for_action (invocation)) {
+		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
 		                                       "Already running another action");
 		return TRUE;
 	}
 
-	klass = IC_KERBEROS_PROVIDER_GET_CLASS (self);
+	klass = REALM_KERBEROS_PROVIDER_GET_CLASS (self);
 	g_return_val_if_fail (klass->unenroll_async != NULL, FALSE);
 	g_return_val_if_fail (klass->unenroll_finish != NULL, FALSE);
 
@@ -244,41 +244,41 @@ on_set_logins_complete (GObject *source,
                         gpointer user_data)
 {
 	MethodClosure *closure = user_data;
-	IcKerberosProviderClass *klass;
+	RealmKerberosProviderClass *klass;
 	GError *error = NULL;
 
-	klass = IC_KERBEROS_PROVIDER_GET_CLASS (closure->self);
+	klass = REALM_KERBEROS_PROVIDER_GET_CLASS (closure->self);
 	g_return_if_fail (klass->logins_finish != NULL);
 
 	if ((klass->logins_finish) (closure->self, result, &error)) {
-		ic_diagnostics_info (closure->invocation, "Successfully enabled/disabled logins");
+		realm_diagnostics_info (closure->invocation, "Successfully enabled/disabled logins");
 		g_dbus_method_invocation_return_value (closure->invocation, g_variant_new ("()"));
 	} else {
-		ic_diagnostics_error (closure->invocation, error, "Failed to enable/disable logins");
-		g_dbus_method_invocation_return_error (closure->invocation, IC_ERROR, IC_ERROR_SET_LOGINS_FAILED,
+		realm_diagnostics_error (closure->invocation, error, "Failed to enable/disable logins");
+		g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_SET_LOGINS_FAILED,
 		                                       "Failed to configure logins. See diagnostics.");
 		g_error_free (error);
 	}
 
-	ic_service_unlock_for_action (closure->invocation);
+	realm_service_unlock_for_action (closure->invocation);
 	method_closure_free (closure);
 }
 
 static gboolean
-handle_set_logins_enabled (IcKerberosProvider *self,
+handle_set_logins_enabled (RealmKerberosProvider *self,
                            GDBusMethodInvocation *invocation,
                            gboolean enabled,
                            gpointer unused)
 {
-	IcKerberosProviderClass *klass;
+	RealmKerberosProviderClass *klass;
 
-	if (!ic_service_lock_for_action (invocation)) {
-		g_dbus_method_invocation_return_error (invocation, IC_ERROR, IC_ERROR_BUSY,
+	if (!realm_service_lock_for_action (invocation)) {
+		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
 		                                       "Already running another action");
 		return TRUE;
 	}
 
-	klass = IC_KERBEROS_PROVIDER_GET_CLASS (self);
+	klass = REALM_KERBEROS_PROVIDER_GET_CLASS (self);
 	g_return_val_if_fail (klass->logins_async != NULL, FALSE);
 	g_return_val_if_fail (klass->logins_finish != NULL, FALSE);
 
@@ -289,10 +289,10 @@ handle_set_logins_enabled (IcKerberosProvider *self,
 }
 
 static void
-ic_kerberos_provider_init (IcKerberosProvider *self)
+realm_kerberos_provider_init (RealmKerberosProvider *self)
 {
-	self->pv = G_TYPE_INSTANCE_GET_PRIVATE (self, IC_TYPE_KERBEROS_PROVIDER,
-	                                        IcKerberosProviderPrivate);
+	self->pv = G_TYPE_INSTANCE_GET_PRIVATE (self, REALM_TYPE_KERBEROS_PROVIDER,
+	                                        RealmKerberosProviderPrivate);
 
 	self->pv->cached_discovery = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
 	                                                    (GDestroyNotify)g_hash_table_unref);
@@ -308,34 +308,34 @@ ic_kerberos_provider_init (IcKerberosProvider *self)
 }
 
 static void
-ic_kerberos_provider_finalize (GObject *obj)
+realm_kerberos_provider_finalize (GObject *obj)
 {
-	IcKerberosProvider *self = IC_KERBEROS_PROVIDER (obj);
+	RealmKerberosProvider *self = REALM_KERBEROS_PROVIDER (obj);
 
 	g_hash_table_destroy (self->pv->cached_discovery);
 
-	G_OBJECT_CLASS (ic_kerberos_provider_parent_class)->finalize (obj);
+	G_OBJECT_CLASS (realm_kerberos_provider_parent_class)->finalize (obj);
 }
 
 static void
-ic_kerberos_provider_class_init (IcKerberosProviderClass *klass)
+realm_kerberos_provider_class_init (RealmKerberosProviderClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-	object_class->finalize = ic_kerberos_provider_finalize;
+	object_class->finalize = realm_kerberos_provider_finalize;
 
-	g_type_class_add_private (klass, sizeof (IcKerberosProviderPrivate));
+	g_type_class_add_private (klass, sizeof (RealmKerberosProviderPrivate));
 
 
 }
 
 GHashTable *
-ic_kerberos_provider_lookup_discovery (IcKerberosProvider *self,
+realm_kerberos_provider_lookup_discovery (RealmKerberosProvider *self,
                                        const gchar *realm)
 {
 	GHashTable *discovery;
 
-	g_return_val_if_fail (IC_IS_KERBEROS_PROVIDER (self), NULL);
+	g_return_val_if_fail (REALM_IS_KERBEROS_PROVIDER (self), NULL);
 	g_return_val_if_fail (realm != NULL, NULL);
 
 	discovery = g_hash_table_lookup (self->pv->cached_discovery, realm);

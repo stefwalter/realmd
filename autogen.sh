@@ -8,7 +8,7 @@ ORIGDIR=`pwd`
 cd $srcdir
 PROJECT=identity-config
 TEST_TYPE=-f
-FILE=service/ic-main.c
+FILE=service/realm-main.c
 
 DIE=0
 

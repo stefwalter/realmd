@@ -1,4 +1,4 @@
-/* identity-config - Identity configuration service
+/* realmd -- Realm configuration service
  *
  * Copyright 2012 Red Hat Inc
  *
@@ -14,35 +14,35 @@
 
 #include "config.h"
 
-#include "ic-ad-discover.h"
-#include "ic-ad-enroll.h"
-#include "ic-ad-provider.h"
-#include "ic-ad-sssd.h"
-#include "ic-diagnostics.h"
-#include "ic-discovery.h"
-#include "ic-errors.h"
-#include "ic-packages.h"
-#include "ic-command.h"
+#include "realm-ad-discover.h"
+#include "realm-ad-enroll.h"
+#include "realm-ad-provider.h"
+#include "realm-ad-sssd.h"
+#include "realm-diagnostics.h"
+#include "realm-discovery.h"
+#include "realm-errors.h"
+#include "realm-packages.h"
+#include "realm-command.h"
 
 #include <glib/gstdio.h>
 
 #include <errno.h>
 
-struct _IcAdProvider {
-	IcKerberosProvider parent;
+struct _RealmAdProvider {
+	RealmKerberosProvider parent;
 };
 
 typedef struct {
-	IcKerberosProviderClass parent_class;
-} IcAdProviderClass;
+	RealmKerberosProviderClass parent_class;
+} RealmAdProviderClass;
 
-G_DEFINE_TYPE (IcAdProvider, ic_ad_provider, IC_TYPE_KERBEROS_PROVIDER);
+G_DEFINE_TYPE (RealmAdProvider, realm_ad_provider, REALM_TYPE_KERBEROS_PROVIDER);
 
 /*
  * The packages we need to install to get AD working. If a given package
  * doesn't exist on a given distro, then it'll be skipped by PackageKit.
  *
- * Some packages should be dependencies of identity-config itself, rather
+ * Some packages should be dependencies of realmd itself, rather
  * than listed here. Here are the packages specific to AD kerberos support.
  */
 static const gchar *AD_PACKAGES[] = {
@@ -90,7 +90,7 @@ static const gchar *AD_FILES[] = {
 #define   PYTHON_PATH          "/bin/python"
 
 static void
-ic_ad_provider_init (IcAdProvider *self)
+realm_ad_provider_init (RealmAdProvider *self)
 {
 
 }
@@ -121,7 +121,7 @@ on_sssd_done (GObject *source,
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
 
-	ic_ad_sssd_configure_finish (result, &error);
+	realm_ad_sssd_configure_finish (result, &error);
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 	g_simple_async_result_complete (res);
@@ -139,9 +139,9 @@ on_join_do_sssd (GObject *source,
 	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
 	GError *error = NULL;
 
-	ic_ad_enroll_join_finish (result, &error);
+	realm_ad_enroll_join_finish (result, &error);
 	if (error == NULL) {
-		ic_ad_sssd_configure_async (IC_AD_SSSD_ADD_REALM,
+		realm_ad_sssd_configure_async (REALM_AD_SSSD_ADD_REALM,
 		                             enroll->realm, enroll->invocation,
 		                             on_sssd_done, g_object_ref (res));
 	} else {
@@ -161,9 +161,9 @@ on_install_do_join (GObject *source,
 	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
 	GError *error = NULL;
 
-	ic_packages_install_finish (result, &error);
+	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
-		ic_ad_enroll_join_async (enroll->realm, enroll->admin_kerberos_cache,
+		realm_ad_enroll_join_async (enroll->realm, enroll->admin_kerberos_cache,
 		                          enroll->invocation, on_join_do_sssd, g_object_ref (res));
 
 	} else {
@@ -184,13 +184,13 @@ on_discover_do_install (GObject *source,
 	GError *error = NULL;
 	GHashTable *discovery;
 
-	discovery = ic_discovery_new ();
-	if (ic_ad_discover_finish (IC_KERBEROS_PROVIDER (source), result, discovery, &error)) {
+	discovery = realm_discovery_new ();
+	if (realm_ad_discover_finish (REALM_KERBEROS_PROVIDER (source), result, discovery, &error)) {
 		enroll->discovery = discovery;
 		discovery = NULL;
 
 #ifdef TODO
-		ic_packages_install_async ("active-directory", enroll->invocation,
+		realm_packages_install_async ("active-directory", enroll->invocation,
 		                           on_install_do_join, g_object_ref (res));
 #endif
 
@@ -212,33 +212,33 @@ on_discover_do_install (GObject *source,
 }
 
 static void
-ic_ad_provider_enroll_async (IcKerberosProvider *provider,
-                              const gchar *realm,
-                              GBytes *admin_kerberos_cache,
-                              GDBusMethodInvocation *invocation,
-                              GAsyncReadyCallback callback,
-                              gpointer user_data)
+realm_ad_provider_enroll_async (RealmKerberosProvider *provider,
+                                const gchar *realm,
+                                GBytes *admin_kerberos_cache,
+                                GDBusMethodInvocation *invocation,
+                                GAsyncReadyCallback callback,
+                                gpointer user_data)
 {
 	GSimpleAsyncResult *res;
 	EnrollClosure *enroll;
 
 	res = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
-	                                 ic_ad_provider_enroll_async);
+	                                 realm_ad_provider_enroll_async);
 	enroll = g_slice_new0 (EnrollClosure);
 	enroll->realm = g_strdup (realm);
 	enroll->invocation = g_object_ref (invocation);
 	g_simple_async_result_set_op_res_gpointer (res, enroll, enroll_closure_free);
 
-	enroll->discovery = ic_kerberos_provider_lookup_discovery (provider, realm);
+	enroll->discovery = realm_kerberos_provider_lookup_discovery (provider, realm);
 
 	/* Caller didn't discover first time around, so do that now */
 	if (enroll->discovery == NULL) {
-		ic_ad_discover_async (provider, realm, invocation,
+		realm_ad_discover_async (provider, realm, invocation,
 		                      on_discover_do_install, g_object_ref (res));
 
 	/* Already have discovery info, so go straight to install */
 	} else {
-		ic_packages_install_async (AD_FILES, AD_PACKAGES, invocation,
+		realm_packages_install_async (AD_FILES, AD_PACKAGES, invocation,
 		                           on_install_do_join, g_object_ref (res));
 	}
 
@@ -267,7 +267,7 @@ on_remove_sssd_done (GObject *source,
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
 
-	ic_ad_sssd_configure_finish (result, &error);
+	realm_ad_sssd_configure_finish (result, &error);
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 	g_simple_async_result_complete (res);
@@ -284,9 +284,9 @@ on_leave_do_sssd (GObject *source,
 	UnenrollClosure *unenroll = g_simple_async_result_get_op_res_gpointer (res);
 	GError *error = NULL;
 
-	ic_ad_enroll_leave_finish (result, &error);
+	realm_ad_enroll_leave_finish (result, &error);
 	if (error == NULL) {
-		ic_ad_sssd_configure_async (IC_AD_SSSD_REMOVE_REALM, unenroll->realm,
+		realm_ad_sssd_configure_async (REALM_AD_SSSD_REMOVE_REALM, unenroll->realm,
 		                             unenroll->invocation, on_remove_sssd_done,
 		                             g_object_ref (res));
 
@@ -299,18 +299,18 @@ on_leave_do_sssd (GObject *source,
 }
 
 static void
-ic_ad_provider_unenroll_async (IcKerberosProvider *provider,
-                                const gchar *realm,
-                                GBytes *admin_kerberos_cache,
-                                GDBusMethodInvocation *invocation,
-                                GAsyncReadyCallback callback,
-                                gpointer user_data)
+realm_ad_provider_unenroll_async (RealmKerberosProvider *provider,
+                                  const gchar *realm,
+                                  GBytes *admin_kerberos_cache,
+                                  GDBusMethodInvocation *invocation,
+                                  GAsyncReadyCallback callback,
+                                  gpointer user_data)
 {
 	GSimpleAsyncResult *res;
 	UnenrollClosure *unenroll;
 
 	res = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
-	                                 ic_ad_provider_unenroll_async);
+	                                 realm_ad_provider_unenroll_async);
 	unenroll = g_slice_new0 (UnenrollClosure);
 	unenroll->realm = g_strdup (realm);
 	unenroll->invocation = g_object_ref (invocation);
@@ -318,15 +318,15 @@ ic_ad_provider_unenroll_async (IcKerberosProvider *provider,
 
 	/* TODO: Check that we're enrolled as this realm */
 
-	ic_ad_enroll_leave_async (realm, admin_kerberos_cache, invocation,
+	realm_ad_enroll_leave_async (realm, admin_kerberos_cache, invocation,
 	                           on_leave_do_sssd, g_object_ref (res));
 
 	g_object_unref (res);
 }
 static gboolean
-ic_ad_provider_generic_finish (IcKerberosProvider *provider,
-                                GAsyncResult *result,
-                                GError **error)
+realm_ad_provider_generic_finish (RealmKerberosProvider *provider,
+                                     GAsyncResult *result,
+                                     GError **error)
 {
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
 		return FALSE;
@@ -335,14 +335,14 @@ ic_ad_provider_generic_finish (IcKerberosProvider *provider,
 }
 
 void
-ic_ad_provider_class_init (IcAdProviderClass *klass)
+realm_ad_provider_class_init (RealmAdProviderClass *klass)
 {
-	IcKerberosProviderClass *kerberos_class = IC_KERBEROS_PROVIDER_CLASS (klass);
+	RealmKerberosProviderClass *kerberos_class = REALM_KERBEROS_PROVIDER_CLASS (klass);
 
-	kerberos_class->discover_async = ic_ad_discover_async;
-	kerberos_class->discover_finish = ic_ad_discover_finish;
-	kerberos_class->enroll_async = ic_ad_provider_enroll_async;
-	kerberos_class->enroll_finish = ic_ad_provider_generic_finish;
-	kerberos_class->unenroll_async = ic_ad_provider_unenroll_async;
-	kerberos_class->unenroll_finish = ic_ad_provider_generic_finish;
+	kerberos_class->discover_async = realm_ad_discover_async;
+	kerberos_class->discover_finish = realm_ad_discover_finish;
+	kerberos_class->enroll_async = realm_ad_provider_enroll_async;
+	kerberos_class->enroll_finish = realm_ad_provider_generic_finish;
+	kerberos_class->unenroll_async = realm_ad_provider_unenroll_async;
+	kerberos_class->unenroll_finish = realm_ad_provider_generic_finish;
 }

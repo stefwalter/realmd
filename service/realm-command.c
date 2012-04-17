@@ -22,9 +22,9 @@
 
 #include "config.h"
 
-#define DEBUG_FLAG IC_DEBUG_PROCESS
-#include "ic-debug.h"
-#include "ic-command.h"
+#define DEBUG_FLAG REALM_DEBUG_PROCESS
+#include "realm-debug.h"
+#include "realm-command.h"
 
 #include <glib/gi18n-lib.h>
 
@@ -75,7 +75,7 @@ command_closure_free (gpointer data)
 static void
 complete_source_is_done (ProcessSource *process_source)
 {
-	ic_debug ("all fds closed and process exited, completing");
+	realm_debug ("all fds closed and process exited, completing");
 
 	g_assert (process_source->child_sig == 0);
 
@@ -96,7 +96,7 @@ close_fd (int *fd)
 {
 	g_assert (fd);
 	if (*fd >= 0) {
-		ic_debug ("closing fd: %d", *fd);
+		realm_debug ("closing fd: %d", *fd);
 		close (*fd);
 	}
 	*fd = -1;
@@ -321,7 +321,7 @@ on_unix_process_child_exited (GPid pid,
 	gint code;
 	guint i;
 
-	ic_debug ("process exited: %d", (int)pid);
+	realm_debug ("process exited: %d", (int)pid);
 
 	g_spawn_close_pid (process_source->child_pid);
 	process_source->child_pid = 0;
@@ -372,7 +372,7 @@ on_cancellable_cancelled (GCancellable *cancellable,
 {
 	ProcessSource *process_source = user_data;
 
-	ic_debug ("process cancelled");
+	realm_debug ("process cancelled");
 
 	/* Set an error, which is respected when this actually completes. */
 	g_simple_async_result_set_error (process_source->res, G_IO_ERROR, G_IO_ERROR_CANCELLED,
@@ -381,20 +381,20 @@ on_cancellable_cancelled (GCancellable *cancellable,
 
 	/* Try and kill the child process */
 	if (process_source->child_pid) {
-		ic_debug ("sending term signal to process: %d",
+		realm_debug ("sending term signal to process: %d",
 		            (int)process_source->child_pid);
 		kill (process_source->child_pid, SIGTERM);
 	}
 }
 
 void
-ic_command_run_async (gchar **environ,
-                      GDBusMethodInvocation *invocation,
-                      GCancellable *cancellable,
-                      GAsyncReadyCallback callback,
-                      gpointer user_data,
-                      const gchar *name_or_path,
-                      ...)
+realm_command_run_async (gchar **environ,
+                         GDBusMethodInvocation *invocation,
+                         GCancellable *cancellable,
+                         GAsyncReadyCallback callback,
+                         gpointer user_data,
+                         const gchar *name_or_path,
+                         ...)
 {
 	GPtrArray *array;
 	va_list va;
@@ -414,17 +414,17 @@ ic_command_run_async (gchar **environ,
 	} while (arg != NULL);
 	va_end (va);
 
-	ic_command_runv_async ((gchar **)array->pdata, environ, invocation,
+	realm_command_runv_async ((gchar **)array->pdata, environ, invocation,
 	                       cancellable, callback, user_data);
 }
 
 void
-ic_command_runv_async (gchar **name_or_path_and_arguments,
-                       gchar **environ,
-                       GDBusMethodInvocation *invocation,
-                       GCancellable *cancellable,
-                       GAsyncReadyCallback callback,
-                       gpointer user_data)
+realm_command_runv_async (gchar **name_or_path_and_arguments,
+                          gchar **environ,
+                          GDBusMethodInvocation *invocation,
+                          GCancellable *cancellable,
+                          GAsyncReadyCallback callback,
+                          gpointer user_data)
 {
 	GSimpleAsyncResult *res;
 	CommandClosure *command;
@@ -452,11 +452,11 @@ ic_command_runv_async (gchar **name_or_path_and_arguments,
 	child_fds[FD_OUTPUT] = 1;
 	child_fds[FD_ERROR] = 2;
 
-	if (ic_debugging) {
+	if (realm_debugging) {
 		gchar *command = g_strjoinv (" ", name_or_path_and_arguments);
 		gchar *environment = g_strjoinv (", ", (gchar**)environ);
-		ic_debug ("running command: %s", command);
-		ic_debug ("process environment: %s", environment);
+		realm_debug ("running command: %s", command);
+		realm_debug ("process environment: %s", environment);
 		g_free (command);
 		g_free (environment);
 	}
@@ -466,7 +466,7 @@ ic_command_runv_async (gchar **name_or_path_and_arguments,
 	                          on_unix_process_child_setup, child_fds,
 	                          &pid, &input_fd, &output_fd, &error_fd, &error);
 
-	res = g_simple_async_result_new (NULL, callback, user_data, ic_command_runv_async);
+	res = g_simple_async_result_new (NULL, callback, user_data, realm_command_runv_async);
 	command = g_slice_new0 (CommandClosure);
 	command->input = NULL;
 	command->output = g_string_sized_new (128);
@@ -479,7 +479,7 @@ ic_command_runv_async (gchar **name_or_path_and_arguments,
 		return;
 	}
 
-	ic_debug ("process started: %d", (int)pid);
+	realm_debug ("process started: %d", (int)pid);
 
 	source = g_source_new (&process_source_funcs, sizeof (ProcessSource));
 
@@ -530,16 +530,16 @@ ic_command_runv_async (gchar **name_or_path_and_arguments,
 }
 
 gint
-ic_command_run_finish (GAsyncResult *result,
-                       GString **output,
-                       GError **error)
+realm_command_run_finish (GAsyncResult *result,
+                          GString **output,
+                          GError **error)
 {
 	GSimpleAsyncResult *res;
 	CommandClosure *command;
 
 	g_return_val_if_fail (error == NULL || *error == NULL, -1);
 	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      ic_command_runv_async), -1);
+	                      realm_command_runv_async), -1);
 
 	res = G_SIMPLE_ASYNC_RESULT (result);
 

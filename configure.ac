@@ -1,8 +1,8 @@
 AC_PREREQ(2.63)
 
-AC_INIT([identity-config],[0.1],
-        [http://bugs.freedesktop.org/enter_bug.cgi?product=identity-config],
-        [identity-config])
+AC_INIT([realmd], [0.1],
+        [http://bugs.freedesktop.org/enter_bug.cgi?product=realmd],
+        [realmd])
 
 # -----------------------------------------------------------------------------
 
@@ -10,7 +10,7 @@ AC_CONFIG_MACRO_DIR([build/m4])
 AM_INIT_AUTOMAKE([1.11 tar-ustar foreign -Wno-portability])
 AM_SANITY_CHECK
 AM_CONFIG_HEADER(config.h)
-AC_CONFIG_SRCDIR([service/ic-main.c])
+AC_CONFIG_SRCDIR([service/realm-main.c])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AM_MAINTAINER_MODE([enable])
 
@@ -28,7 +28,7 @@ AC_PROG_MAKE_SET
 IT_PROG_INTLTOOL([0.35.0])
 AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
 
-GETTEXT_PACKAGE=identity-config
+GETTEXT_PACKAGE=realmd
 AC_SUBST([GETTEXT_PACKAGE])
 AC_DEFINE_UNQUOTED([GETTEXT_PACKAGE],["$GETTEXT_PACKAGE"],[The gettext domain name])
 AM_GLIB_GNU_GETTEXT

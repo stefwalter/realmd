@@ -1,4 +1,4 @@
-/* identity-config - Identity configuration service
+/* realmd -- Realm configuration service
  *
  * Copyright 2012 Red Hat Inc
  *
@@ -12,9 +12,9 @@
 
 #include "config.h"
 
-#include "ic-ad-provider.h"
-#include "ic-debug.h"
-#include "ic-diagnostics.h"
+#include "realm-ad-provider.h"
+#include "realm-debug.h"
+#include "realm-diagnostics.h"
 
 #include <glib.h>
 
@@ -31,7 +31,7 @@ main (int argc,
 	GMainLoop *loop;
 	g_type_init ();
 
-	context = g_option_context_new ("identity-config");
+	context = g_option_context_new ("realmd");
 	g_option_context_add_main_entries (context, option_entries, NULL);
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
 		g_printerr ("%s", error->message);
@@ -40,14 +40,14 @@ main (int argc,
 		return 2;
 	}
 
-	ic_debug_init ();
+	realm_debug_init ();
 
 	loop = g_main_loop_new (NULL, FALSE);
-	// ic_ad_provider_start ();
+	// realm_ad_provider_start ();
 
 	g_main_loop_run (loop);
 
-	// ic_ad_provider_stop ();
+	// realm_ad_provider_stop ();
 	g_main_loop_unref (loop);
 	g_option_context_free (context);
 

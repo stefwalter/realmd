@@ -28,3 +28,6 @@ temp.txt
 
 /service/identity-config-service
 /tests/frob-install-packages
+/service/realm-dbus-generated.c
+/service/realm-dbus-generated.h
+/service/realmd

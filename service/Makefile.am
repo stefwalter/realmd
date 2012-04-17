@@ -1,55 +1,55 @@
 include $(top_srcdir)/Makefile.decl
 
-servicedir = $(libdir)/identity-config
+servicedir = $(libdir)/realmd
 
 service_PROGRAMS = \
-	identity-config-service
+	realmd
 
 service_DATA = \
 	ad-provider-smb.conf
 
 BUILT_SOURCES = \
-	ic-dbus-generated.c ic-dbus-generated.h
+	realm-dbus-generated.c realm-dbus-generated.h
 
-identity_config_service_SOURCES = \
-	ic-ad-discover.c ic-ad-discover.h \
-	ic-ad-enroll.c ic-ad-enroll.h \
-	ic-ad-provider.c ic-ad-provider.h \
-	ic-ad-sssd.c ic-ad-sssd.h \
-	ic-command.c ic-command.h \
-	ic-debug.c ic-debug.h \
-	ic-diagnostics.c ic-diagnostics.h \
-	ic-discovery.c ic-discovery.h \
-	ic-errors.c ic-errors.h \
-	ic-main.c \
-	ic-packages.c ic-packages.h \
-	ic-kerberos-provider.c ic-kerberos-provider.h \
-	ic-service.c ic-service.h \
+realmd_SOURCES = \
+	realm-ad-discover.c realm-ad-discover.h \
+	realm-ad-enroll.c realm-ad-enroll.h \
+	realm-ad-provider.c realm-ad-provider.h \
+	realm-ad-sssd.c realm-ad-sssd.h \
+	realm-command.c realm-command.h \
+	realm-debug.c realm-debug.h \
+	realm-diagnostics.c realm-diagnostics.h \
+	realm-discovery.c realm-discovery.h \
+	realm-errors.c realm-errors.h \
+	realm-main.c \
+	realm-packages.c realm-packages.h \
+	realm-kerberos-provider.c realm-kerberos-provider.h \
+	realm-service.c realm-service.h \
 	$(BUILT_SOURCES) \
 	$(NULL)
 
-identity_config_service_CFLAGS = \
+realmd_CFLAGS = \
 	-DSERVICE_DIR=\""$(servicedir)"\" \
 	$(PACKAGEKIT_CFLAGS) \
 	$(NULL)
 
-identity_config_service_LDADD = \
+realmd_LDADD = \
 	$(PACKAGEKIT_LIBS) \
 	$(NULL)
 
 DBUS_XML_DEFINITIONS = \
-	org.freedesktop.IdentityConfig.xml
+	org.freedesktop.realmd.xml
 
-ic-dbus-generated.c: $(DBUS_XML_DEFINITIONS) Makefile.am
-	$(AM_V_GEN) gdbus-codegen --interface-prefix org.freedesktop.IdentityConfig. \
-		--generate-c-code ic-dbus-generated --c-namespace IcDbus \
+realm-dbus-generated.c: $(DBUS_XML_DEFINITIONS) Makefile.am
+	$(AM_V_GEN) gdbus-codegen --interface-prefix org.freedesktop.realmd. \
+		--generate-c-code realm-dbus-generated --c-namespace RealmDbus \
 		$(DBUS_XML_DEFINITIONS)
-ic-dbus-generated.h: ic-dbus-generated.c
+realm-dbus-generated.h: realm-dbus-generated.c
 
 # ------------------------------------------------------------------
 
 EXTRA_DIST = \
-	org.freedesktop.IdentityConfig.xml \
+	org.freedesktop.realmd.xml \
 	$(NULL)
 
 CLEANFILES = \

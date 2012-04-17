@@ -1,4 +1,4 @@
-/* identity-config - Identity configuration service
+/* realmd -- Realm configuration service
  *
  * Copyright 2012 Red Hat Inc
  *
@@ -14,29 +14,26 @@
 
 #include "config.h"
 
-#ifndef __IC_AD_SSSD_H__
-#define __IC_AD_SSSD_H__
+#ifndef __REALM_AD_DISCOVER_H__
+#define __REALM_AD_DISCOVER_H__
 
 #include <gio/gio.h>
 
-#include "ic-kerberos-provider.h"
+#include "realm-kerberos-provider.h"
 
 G_BEGIN_DECLS
 
-typedef enum {
-	IC_AD_SSSD_REMOVE_REALM,
-	IC_AD_SSSD_ADD_REALM
-} IcAdSssdAction;
-
-void       ic_ad_sssd_configure_async         (IcAdSssdAction action,
-                                                const gchar *realm,
+void           realm_ad_discover_async         (RealmKerberosProvider *provider,
+                                                const gchar *string,
                                                 GDBusMethodInvocation *invocation,
                                                 GAsyncReadyCallback callback,
                                                 gpointer user_data);
 
-gboolean   ic_ad_sssd_configure_finish        (GAsyncResult *result,
+gchar *        realm_ad_discover_finish        (RealmKerberosProvider *provider,
+                                                GAsyncResult *result,
+                                                GHashTable *discovery,
                                                 GError **error);
 
 G_END_DECLS
 
-#endif /* __IC_AD_SSSD_H__ */
+#endif /* __REALM_AD_DISCOVER_H__ */

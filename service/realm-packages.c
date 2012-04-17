@@ -1,4 +1,4 @@
-/* identity-config - Identity configuration service
+/* realmd -- Realm configuration service
  *
  * Copyright 2012 Red Hat Inc
  *
@@ -14,8 +14,8 @@
 
 #include "config.h"
 
-#include "ic-diagnostics.h"
-#include "ic-packages.h"
+#include "realm-diagnostics.h"
+#include "realm-packages.h"
 
 #define I_KNOW_THE_PACKAGEKIT_GLIB2_API_IS_SUBJECT_TO_CHANGE
 #include <packagekit-glib2/packagekit.h>
@@ -52,7 +52,7 @@ on_install_progress (PkProgress *progress,
 		g_object_get (progress, "status", &status, NULL);
 		switch (status) {
 		case PK_STATUS_WAIT:
-			ic_status (install->invocation, _("Waiting for package system"));
+			realm_status (install->invocation, _("Waiting for package system"));
 			break;
 		case PK_STATUS_ENUM_WAITING_FOR_AUTH:
 			pk_status_enum_to_localised_text ();
@@ -63,38 +63,38 @@ on_install_progress (PkProgress *progress,
 	switch (type) {
 	case PK_PROGRESS_TYPE_PACKAGE_ID:
 		g_object_get (progress, "package-id", &string, NULL);
-		ic_diagnostics_info (install->invocation, "package-id: %s\n", string);
+		realm_diagnostics_info (install->invocation, "package-id: %s\n", string);
 		g_free (string);
 		break;
 	case PK_PROGRESS_TYPE_TRANSACTION_ID:
 		g_object_get (progress, "transaction-id", &string, NULL);
-		ic_diagnostics_info (install->invocation, "transaction-id: %s\n", string);
+		realm_diagnostics_info (install->invocation, "transaction-id: %s\n", string);
 		g_free (string);
 		break;
 	case PK_PROGRESS_TYPE_PERCENTAGE:
 		g_object_get (progress, "percentage", &number, NULL);
-		ic_diagnostics_info (install->invocation, "percentage: %d\n", number);
+		realm_diagnostics_info (install->invocation, "percentage: %d\n", number);
 		break;
 	case PK_PROGRESS_TYPE_SUBPERCENTAGE:
 		g_object_get (progress, "subpercentage", &number, NULL);
-		ic_diagnostics_info (install->invocation, "subpercentage: %d\n", number);
+		realm_diagnostics_info (install->invocation, "subpercentage: %d\n", number);
 		break;
 	case PK_PROGRESS_TYPE_STATUS:
 		g_object_get (progress, "status", &unumber, NULL);
-		ic_diagnostics_info (install->invocation, "status: %s\n",
+		realm_diagnostics_info (install->invocation, "status: %s\n",
 		                     pk_status_enum_to_string (unumber));
 		break;
 	case PK_PROGRESS_TYPE_ELAPSED_TIME:
 		g_object_get (progress, "elapsed-time", &unumber, NULL);
-		ic_diagnostics_info (install->invocation, "elapsed-time: %u\n", unumber);
+		realm_diagnostics_info (install->invocation, "elapsed-time: %u\n", unumber);
 		break;
 	case PK_PROGRESS_TYPE_REMAINING_TIME:
 		g_object_get (progress, "remaining-time", &unumber, NULL);
-		ic_diagnostics_info (install->invocation, "remaining-time: %u\n", unumber);
+		realm_diagnostics_info (install->invocation, "remaining-time: %u\n", unumber);
 		break;
 	case PK_PROGRESS_TYPE_SPEED:
 		g_object_get (progress, "speed", &unumber, NULL);
-		ic_diagnostics_info (install->invocation, "speed: %u\n", unumber);
+		realm_diagnostics_info (install->invocation, "speed: %u\n", unumber);
 		break;
 	case PK_PROGRESS_TYPE_INVALID:
 	case PK_PROGRESS_TYPE_ALLOW_CANCEL:
@@ -204,11 +204,11 @@ on_install_refresh (GObject *source,
 }
 
 void
-ic_packages_install_async (const gchar **required_files,
-                           const gchar **package_names,
-                           GDBusMethodInvocation *invocation,
-                           GAsyncReadyCallback callback,
-                           gpointer user_data)
+realm_packages_install_async (const gchar **required_files,
+                              const gchar **package_names,
+                              GDBusMethodInvocation *invocation,
+                              GAsyncReadyCallback callback,
+                              gpointer user_data)
 {
 	GSimpleAsyncResult *res;
 	InstallClosure *install;
@@ -216,7 +216,7 @@ ic_packages_install_async (const gchar **required_files,
 	g_return_if_fail (package_names != NULL);
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
-	res = g_simple_async_result_new (NULL, callback, user_data, ic_packages_install_async);
+	res = g_simple_async_result_new (NULL, callback, user_data, realm_packages_install_async);
 	install = g_slice_new (InstallClosure);
 	install->packages = g_strdupv ((gchar **)package_names);
 	install->task = pk_task_new ();
@@ -225,14 +225,14 @@ ic_packages_install_async (const gchar **required_files,
 	g_simple_async_result_set_op_res_gpointer (res, install, install_closure_free);
 
 	if (required_files) {
-		if (ic_packages_check_paths (required_files, invocation)) {
+		if (realm_packages_check_paths (required_files, invocation)) {
 			g_simple_async_result_complete_in_idle (res);
 			g_object_unref (res);
 			return;
 		}
 	}
 
-	ic_diagnostics_info (invocation, "Refreshing package cache");
+	realm_diagnostics_info (invocation, "Refreshing package cache");
 
 	pk_task_refresh_cache_async (install->task, FALSE, NULL, on_install_progress, install,
 	                             on_install_refresh, g_object_ref (res));
@@ -241,11 +241,11 @@ ic_packages_install_async (const gchar **required_files,
 }
 
 gboolean
-ic_packages_install_finish (GAsyncResult *result,
-                            GError **error)
+realm_packages_install_finish (GAsyncResult *result,
+                               GError **error)
 {
 	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      ic_packages_install_async), FALSE);
+	                      realm_packages_install_async), FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
@@ -255,8 +255,8 @@ ic_packages_install_finish (GAsyncResult *result,
 }
 
 gboolean
-ic_packages_check_paths (const gchar **paths,
-                         GDBusMethodInvocation *invocation)
+realm_packages_check_paths (const gchar **paths,
+                            GDBusMethodInvocation *invocation)
 {
 	gint i;
 
@@ -265,7 +265,7 @@ ic_packages_check_paths (const gchar **paths,
 
 	for (i = 0; paths[i] != NULL; i++) {
 		if (!g_file_test (paths[i], G_FILE_TEST_EXISTS)) {
-			ic_diagnostics_info (invocation, "Couldn't find file: %s", paths[i]);
+			realm_diagnostics_info (invocation, "Couldn't find file: %s", paths[i]);
 			return FALSE;
 		}
 	}

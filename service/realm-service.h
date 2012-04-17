@@ -1,4 +1,4 @@
-/* identity-config - Identity configuration service
+/* realmd -- Realm configuration service
  *
  * Copyright 2012 Red Hat Inc
  *
@@ -14,19 +14,19 @@
 
 #include "config.h"
 
-#ifndef __IC_AD_ENROLL_H__
-#define __IC_AD_ENROLL_H__
+#ifndef __REALM_AD_ENROLL_H__
+#define __REALM_AD_ENROLL_H__
 
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
 
-gboolean            ic_service_lock_for_action            (GDBusMethodInvocation *invocation);
+gboolean            realm_service_lock_for_action            (GDBusMethodInvocation *invocation);
 
-void                ic_service_unlock_for_action          (GDBusMethodInvocation *invocation);
+void                realm_service_unlock_for_action          (GDBusMethodInvocation *invocation);
 
-const gchar *       ic_service_resolve_file               (const gchar *name);
+const gchar *       realm_service_resolve_file               (const gchar *name);
 
 G_END_DECLS
 
-#endif /* __IC_AD_JOIN_H__ */
+#endif /* __REALM_AD_JOIN_H__ */

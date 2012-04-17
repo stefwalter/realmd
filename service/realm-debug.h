@@ -18,8 +18,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef IC_DEBUG_H
-#define IC_DEBUG_H
+#ifndef REALM_DEBUG_H
+#define REALM_DEBUG_H
 
 #include "config.h"
 
@@ -29,35 +29,35 @@ G_BEGIN_DECLS
 
 /* Please keep this enum in sync with #keys in gcr-debug.c */
 typedef enum {
-	IC_DEBUG_PROCESS = 1 << 1,
-	IC_DEBUG_DIAGNOSTICS = 1 << 2,
-} IcDebugFlags;
+	REALM_DEBUG_PROCESS = 1 << 1,
+	REALM_DEBUG_DIAGNOSTICS = 1 << 2,
+} RealmDebugFlags;
 
-void               ic_debug_init                     (void);
+void               realm_debug_init                     (void);
 
-gboolean           ic_debug_flag_is_set              (IcDebugFlags flag);
+gboolean           realm_debug_flag_is_set              (RealmDebugFlags flag);
 
-void               ic_debug_set_flags                (const gchar *flags_string);
+void               realm_debug_set_flags                (const gchar *flags_string);
 
-void               ic_debug_message                  (IcDebugFlags flag,
-                                                      const gchar *format,
-                                                      ...) G_GNUC_PRINTF (2, 3);
+void               realm_debug_message                  (RealmDebugFlags flag,
+                                                         const gchar *format,
+                                                         ...) G_GNUC_PRINTF (2, 3);
 
 G_END_DECLS
 
-#endif /* IC_DEBUG_H */
+#endif /* REALM_DEBUG_H */
 
 /* -----------------------------------------------------------------------------
- * Below this point is outside the IC_DEBUG_H guard - so it can take effect
+ * Below this point is outside the REALM_DEBUG_H guard - so it can take effect
  * more than once. So you can do:
  *
- * #define DEBUG_FLAG IC_DEBUG_ONE_THING
+ * #define DEBUG_FLAG REALM_DEBUG_ONE_THING
  * #include "gcr-debug.h"
  * ...
  * DEBUG ("if we're debugging one thing");
  * ...
  * #undef DEBUG_FLAG
- * #define DEBUG_FLAG IC_DEBUG_OTHER_THING
+ * #define DEBUG_FLAG REALM_DEBUG_OTHER_THING
  * #include "gcr-debug.h"
  * ...
  * DEBUG ("if we're debugging the other thing");
@@ -67,22 +67,22 @@ G_END_DECLS
 #ifdef DEBUG_FLAG
 #ifdef WITH_DEBUG
 
-#undef ic_debug
-#define ic_debug(format, ...) \
-	ic_debug_message (DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__)
+#undef realm_debug
+#define realm_debug(format, ...) \
+	realm_debug_message (DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__)
 
-#undef ic_debugging
-#define ic_debugging \
-	ic_debug_flag_is_set (DEBUG_FLAG)
+#undef realm_debugging
+#define realm_debugging \
+	realm_debug_flag_is_set (DEBUG_FLAG)
 
 #else /* !defined (WITH_DEBUG) */
 
-#undef ic_debug
-#define ic_debug(format, ...) \
+#undef realm_debug
+#define realm_debug(format, ...) \
 	do {} while (0)
 
-#undef ic_debugging
-#define ic_debugging 0
+#undef realm_debugging
+#define realm_debugging 0
 
 #endif /* !defined (WITH_DEBUG) */
 

@@ -1,8 +1,8 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 
-<node name="/org/freedesktop/IdentityConfig">
-	<interface name="org.freedesktop.IdentityConfig.Provider">
+<node name="/org/freedesktop/realmd">
+	<interface name="org.freedesktop.realmd.Provider">
 		<signal name="Status">
 			<arg name="message" type="s"/>
 		</signal>
@@ -11,7 +11,7 @@
 		</signal>
 	</interface>
 
-	<interface name="org.freedesktop.IdentityConfig.Kerberos">
+	<interface name="org.freedesktop.realmd.Kerberos">
 		<property name="EnrolledRealms" type="as" access="read"/>
 
 		<method name="DiscoverRealm">

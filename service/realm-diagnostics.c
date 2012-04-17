@@ -1,4 +1,4 @@
-/* identity-config - Identity configuration service
+/* realmd -- Realm configuration service
  *
  * Copyright 2012 Red Hat Inc
  *
@@ -14,10 +14,10 @@
 
 #include "config.h"
 
-#define DEBUG_FLAG IC_DEBUG_DIAGNOSTICS
-#include "ic-debug.h"
-#include "ic-dbus-constants.h"
-#include "ic-diagnostics.h"
+#define DEBUG_FLAG REALM_DEBUG_DIAGNOSTICS
+#include "realm-debug.h"
+#include "realm-dbus-constants.h"
+#include "realm-diagnostics.h"
 
 #include <string.h>
 #include <syslog.h>
@@ -26,7 +26,7 @@ static GDBusConnection *the_connection = NULL;
 static GString *line_buffer = NULL;
 
 void
-ic_diagnostics_initialize (GDBusConnection *connection)
+realm_diagnostics_initialize (GDBusConnection *connection)
 {
 	g_return_if_fail (G_IS_DBUS_CONNECTION (connection));
 
@@ -51,12 +51,12 @@ log_syslog_and_debug (int log_level,
 		*ptr = '\0';
 		if (line_buffer && line_buffer->len > 0) {
 			syslog (log_level, "%s%s", line_buffer->str, at);
-			if (ic_debugging)
+			if (realm_debugging)
 				g_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s%s", line_buffer->str, at);
 			g_string_set_size (line_buffer, 0);
 		} else {
 			syslog (log_level, "%s", at);
-			if (ic_debugging)
+			if (realm_debugging)
 				g_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s", at);
 		}
 
@@ -83,7 +83,7 @@ log_take_diagnostic (GDBusMethodInvocation *invocation,
 	GError *error = NULL;
 
 	if (!syslog_initialized) {
-		openlog ("identity-config", 0, LOG_AUTH);
+		openlog ("realmd", 0, LOG_AUTH);
 		syslog_initialized = TRUE;
 	}
 
@@ -96,7 +96,7 @@ log_take_diagnostic (GDBusMethodInvocation *invocation,
 
 	g_dbus_connection_emit_signal (the_connection, g_dbus_method_invocation_get_sender (invocation),
 	                               g_dbus_method_invocation_get_object_path (invocation),
-	                               IC_DBUS_PROVIDER_INTERFACE, IC_DBUS_DIAGNOSTICS_SIGNAL,
+	                               REALM_DBUS_PROVIDER_INTERFACE, REALM_DBUS_DIAGNOSTICS_SIGNAL,
 	                               g_variant_new ("(s)", string), &error);
 
 	if (error != NULL)
@@ -106,9 +106,9 @@ log_take_diagnostic (GDBusMethodInvocation *invocation,
 }
 
 void
-ic_diagnostics_info (GDBusMethodInvocation *invocation,
-                     const gchar *format,
-                     ...)
+realm_diagnostics_info (GDBusMethodInvocation *invocation,
+                        const gchar *format,
+                        ...)
 {
 	GString *message;
 	va_list va;
@@ -128,10 +128,10 @@ ic_diagnostics_info (GDBusMethodInvocation *invocation,
 }
 
 void
-ic_diagnostics_error (GDBusMethodInvocation *invocation,
-                      GError *error,
-                      const gchar *format,
-                      ...)
+realm_diagnostics_error (GDBusMethodInvocation *invocation,
+                         GError *error,
+                         const gchar *format,
+                         ...)
 {
 	GString *message;
 	va_list va;
@@ -155,9 +155,9 @@ ic_diagnostics_error (GDBusMethodInvocation *invocation,
 }
 
 void
-ic_diagnostics_info_data (GDBusMethodInvocation *invocation,
-                          const gchar *data,
-                          gssize n_data)
+realm_diagnostics_info_data (GDBusMethodInvocation *invocation,
+                             const gchar *data,
+                             gssize n_data)
 {
 	gchar *info;
 	gsize length;

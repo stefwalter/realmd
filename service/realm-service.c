@@ -1,4 +1,4 @@
-/* identity-config - Identity configuration service
+/* realmd -- Realm configuration service
  *
  * Copyright 2012 Red Hat Inc
  *
@@ -14,7 +14,7 @@
 
 #include "config.h"
 
-#include "ic-service.h"
+#include "realm-service.h"
 
 static GObject *current_invocation = NULL;
 
@@ -24,13 +24,13 @@ on_invocation_gone (gpointer unused,
                     GObject *where_the_object_was)
 {
 	g_warning ("a GDBusMethodInvocation was released but the invocation was "
-	           "registered as part of a ic_service_lock_for_action()");
+	           "registered as part of a realm_service_lock_for_action()");
 	g_assert (where_the_object_was == current_invocation);
 	current_invocation = NULL;
 }
 
 gboolean
-ic_service_lock_for_action (GDBusMethodInvocation *invocation)
+realm_service_lock_for_action (GDBusMethodInvocation *invocation)
 {
 	g_return_val_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation), FALSE);
 
@@ -43,12 +43,12 @@ ic_service_lock_for_action (GDBusMethodInvocation *invocation)
 }
 
 void
-ic_service_unlock_for_action (GDBusMethodInvocation *invocation)
+realm_service_unlock_for_action (GDBusMethodInvocation *invocation)
 {
 	g_return_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation));
 
 	if (current_invocation != G_OBJECT (invocation)) {
-		g_warning ("trying to ic_service_unlock_for_action() with an invocation "
+		g_warning ("trying to realm_service_unlock_for_action() with an invocation "
 		           "that is not registered as the current locked action.");
 		return;
 	}

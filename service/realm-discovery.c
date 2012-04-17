@@ -1,4 +1,4 @@
-/* identity-config - Identity configuration service
+/* realmd -- Realm configuration service
  *
  * Copyright 2012 Red Hat Inc
  *
@@ -14,31 +14,31 @@
 
 #include "config.h"
 
-#include "ic-discovery.h"
+#include "realm-discovery.h"
 
 GHashTable *
-ic_discovery_new (void)
+realm_discovery_new (void)
 {
 	return g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
 	                              (GDestroyNotify)g_variant_unref);
 }
 
 void
-ic_discovery_add_string (GHashTable *discovery,
-                         const gchar *type,
-                         const gchar *value)
+realm_discovery_add_string (GHashTable *discovery,
+                            const gchar *type,
+                            const gchar *value)
 {
 	g_return_if_fail (type != NULL);
 	g_return_if_fail (value != NULL);
 
 	if (discovery != NULL)
-		ic_discovery_add_variant (discovery, type, g_variant_new_string (value));
+		realm_discovery_add_variant (discovery, type, g_variant_new_string (value));
 }
 
 void
-ic_discovery_add_variant (GHashTable *discovery,
-                          const gchar *type,
-                          GVariant *value)
+realm_discovery_add_variant (GHashTable *discovery,
+                             const gchar *type,
+                             GVariant *value)
 {
 	g_return_if_fail (type != NULL);
 	g_return_if_fail (value != NULL);
@@ -48,7 +48,7 @@ ic_discovery_add_variant (GHashTable *discovery,
 }
 
 GVariant *
-ic_discovery_to_variant (GHashTable *discovery)
+realm_discovery_to_variant (GHashTable *discovery)
 {
 	GPtrArray *entries;
 	GHashTableIter iter;

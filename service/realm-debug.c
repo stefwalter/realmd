@@ -1,4 +1,4 @@
-/* -*- Mode: C; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2; -*- */
+/* -*- Mode: C; tab-width: 2; indent-tabs-mode: nil; c-basrealm-offset: 2; -*- */
 /*
  * Copyright (C) 2007 Collabora Ltd.
  * Copyright (C) 2007 Nokia Corporation
@@ -21,7 +21,7 @@
 
 #include "config.h"
 
-#include "ic-debug.h"
+#include "realm-debug.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -34,33 +34,33 @@
 
 #ifdef WITH_DEBUG
 
-static IcDebugFlags current_flags = 0;
+static RealmDebugFlags current_flags = 0;
 
 static GDebugKey keys[] = {
-	{ "process", IC_DEBUG_PROCESS },
-	{ "diagnostics", IC_DEBUG_DIAGNOSTICS },
+	{ "process", REALM_DEBUG_PROCESS },
+	{ "diagnostics", REALM_DEBUG_DIAGNOSTICS },
 	{ 0, }
 };
 
 static void
-debug_set_flags (IcDebugFlags new_flags)
+debug_set_flags (RealmDebugFlags new_flags)
 {
 	current_flags |= new_flags;
 }
 
 void
-ic_debug_init (void)
+realm_debug_init (void)
 {
 	static gsize initialized_flags = 0;
 
 	if (g_once_init_enter (&initialized_flags)) {
-		ic_debug_set_flags (g_getenv ("IC_DEBUG"));
+		realm_debug_set_flags (g_getenv ("REALM_DEBUG"));
 		g_once_init_leave (&initialized_flags, 1);
 	}
 }
 
 void
-ic_debug_set_flags (const gchar *flags_string)
+realm_debug_set_flags (const gchar *flags_string)
 {
 	guint nkeys;
 
@@ -71,13 +71,15 @@ ic_debug_set_flags (const gchar *flags_string)
 }
 
 gboolean
-ic_debug_flag_is_set (IcDebugFlags flag)
+realm_debug_flag_is_set (RealmDebugFlags flag)
 {
 	return (flag & current_flags) != 0;
 }
 
 void
-ic_debug_message (IcDebugFlags flag, const gchar *format, ...)
+realm_debug_message (RealmDebugFlags flag,
+                     const gchar *format,
+                     ...)
 {
 	gchar *message;
 	va_list args;
@@ -95,18 +97,20 @@ ic_debug_message (IcDebugFlags flag, const gchar *format, ...)
 #else /* !WITH_DEBUG */
 
 gboolean
-ic_debug_flag_is_set (IcDebugFlags flag)
+realm_debug_flag_is_set (RealmDebugFlags flag)
 {
 	return FALSE;
 }
 
 void
-ic_debug_message (IcDebugFlags flag, const gchar *format, ...)
+realm_debug_message (RealmDebugFlags flag,
+                     const gchar *format,
+                     ...)
 {
 }
 
 void
-ic_debug_set_flags (const gchar *flags_string)
+realm_debug_set_flags (const gchar *flags_string)
 {
 }
 

@@ -1,4 +1,4 @@
-/* identity-config - Identity configuration service
+/* realmd -- Realm configuration service
  *
  * Copyright 2012 Red Hat Inc
  *
@@ -14,27 +14,27 @@
 
 #include "config.h"
 
-#ifndef __IC_ERRORS_H__
-#define __IC_ERRORS_H__
+#ifndef __REALM_ERRORS_H__
+#define __REALM_ERRORS_H__
 
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
 
-#define       IC_ERROR               (ic_error_quark ())
+#define       REALM_ERROR               (realm_error_quark ())
 
-GQuark        ic_error_quark         (void) G_GNUC_CONST;
+GQuark        realm_error_quark         (void) G_GNUC_CONST;
 
 typedef enum {
-	IC_ERROR_INTERNAL,
-	IC_ERROR_DISCOVERY_FAILED,
-	IC_ERROR_ENROLL_FAILED,
-	IC_ERROR_UNENROLL_FAILED,
-	IC_ERROR_SET_LOGINS_FAILED,
-	IC_ERROR_BUSY,
-	_NUM_IC_ERRORS
-} IcErrorCodes;
+	REALM_ERROR_INTERNAL,
+	REALM_ERROR_DISCOVERY_FAILED,
+	REALM_ERROR_ENROLL_FAILED,
+	REALM_ERROR_UNENROLL_FAILED,
+	REALM_ERROR_SET_LOGINS_FAILED,
+	REALM_ERROR_BUSY,
+	_NUM_REALM_ERRORS
+} RealmErrorCodes;
 
 G_END_DECLS
 
-#endif /* __IC_AD_ENROLL_H__ */
+#endif /* __REALM_AD_ENROLL_H__ */

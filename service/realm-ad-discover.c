@@ -102,11 +102,11 @@ on_resolve_kerberos_srv (GObject *source,
 		if (discover->found_kerberos_srv)
 			realm_diagnostics_info (discover->invocation, "%s", info->str);
 		else
-			realm_diagnostics_info (discover->invocation, "no kerberos SRV records");
+			realm_diagnostics_info (discover->invocation, "No kerberos SRV records");
 
 		g_string_free (info, TRUE);
 
-		discover->servers = g_variant_new_array (G_VARIANT_TYPE_STRING_ARRAY,
+		discover->servers = g_variant_new_array (G_VARIANT_TYPE_STRING,
 		                                         (GVariant * const*)servers->pdata,
 		                                         servers->len);
 
@@ -179,13 +179,13 @@ realm_ad_discover_async (RealmKerberosProvider *provider,
 	discover->domain = domain;
 	g_simple_async_result_set_op_res_gpointer (res, discover, discover_closure_free);
 
-	realm_diagnostics_info (invocation, "searching for kerberos SRV records on %s domain", domain);
+	realm_diagnostics_info (invocation, "Searching for kerberos SRV records on %s domain", domain);
 
 	resolver = g_resolver_get_default ();
 	g_resolver_lookup_service_async (resolver, "kerberos", "udp", domain, NULL,
 	                                 on_resolve_kerberos_srv, g_object_ref (res));
 
-	realm_diagnostics_info (invocation, "searching for _msdcs zone on %s domain", domain);
+	realm_diagnostics_info (invocation, "Searching for _msdcs zone on %s domain", domain);
 
 	/* Active Directory DNS zones have this subzone */
 	msdcs = g_strdup_printf ("_msdcs.%s", domain);
@@ -231,7 +231,7 @@ realm_ad_discover_finish (RealmKerberosProvider *provider,
 	realm_discovery_add_string (discovery, REALM_DBUS_DISCOVERY_REALM, realm);
 
 	/* The servers */
-	realm_discovery_add_variant (discovery, REALM_DBUS_DISCOVERY_SERVERS, discover->servers);
+	realm_discovery_add_variant (discovery, REALM_DBUS_DISCOVERY_KDCS, discover->servers);
 
 	/* The type */
 	realm_discovery_add_string (discovery, REALM_DBUS_DISCOVERY_TYPE, "kerberos-ad");

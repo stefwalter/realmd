@@ -117,8 +117,8 @@ realm_diagnostics_info (GDBusMethodInvocation *invocation,
 	g_return_if_fail (format != NULL);
 
 	va_start (va, format);
-	message = g_string_new ("");
-	g_string_vprintf (message, format, va);
+	message = g_string_new (" * ");
+	g_string_append_vprintf (message, format, va);
 	va_end (va);
 
 	if (!g_str_has_suffix (message->str, "\n"))
@@ -140,8 +140,8 @@ realm_diagnostics_error (GDBusMethodInvocation *invocation,
 	g_return_if_fail (format != NULL);
 
 	va_start (va, format);
-	message = g_string_new ("");
-	g_string_vprintf (message, format, va);
+	message = g_string_new (" ! ");
+	g_string_append_vprintf (message, format, va);
 	va_end (va);
 
 	if (error != NULL) {

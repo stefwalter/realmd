@@ -163,7 +163,7 @@ begin_net_process (JoinClosure *join,
 	va_end (va);
 
 	command = g_strjoinv (" ", (gchar **)args->pdata);
-	realm_diagnostics_info (join->invocation, "running command: %s", command);
+	realm_diagnostics_info (join->invocation, "Running command: %s", command);
 	g_free (command);
 
 	realm_command_runv_async ((gchar **)args->pdata, join->environ,

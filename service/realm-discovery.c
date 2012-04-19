@@ -61,12 +61,13 @@ realm_discovery_to_variant (GHashTable *discovery)
 	if (discovery != NULL) {
 		g_hash_table_iter_init (&iter, discovery);
 		while (g_hash_table_iter_next (&iter, &key, &value)) {
-			entry = g_variant_new_dict_entry (g_variant_new_string (key), value);
+			entry = g_variant_new_dict_entry (g_variant_new_string (key),
+			                                  g_variant_new_variant (value));
 			g_ptr_array_add (entries, entry);
 		}
 	}
 
-	result = g_variant_new_array (G_VARIANT_TYPE ("a{sv}"),
+	result = g_variant_new_array (G_VARIANT_TYPE ("{sv}"),
 	                              (GVariant * const *)entries->pdata,
 	                              entries->len);
 

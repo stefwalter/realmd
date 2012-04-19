@@ -38,7 +38,7 @@ G_BEGIN_DECLS
 
 #define   REALM_DBUS_DISCOVERY_TYPE                "type"
 #define   REALM_DBUS_DISCOVERY_DOMAIN              "domain"
-#define   REALM_DBUS_DISCOVERY_SERVERS             "kerberos-servers"
+#define   REALM_DBUS_DISCOVERY_KDCS                "kerberos-kdcs"
 #define   REALM_DBUS_DISCOVERY_REALM               "kerberos-realm"
 
 G_END_DECLS

@@ -84,7 +84,7 @@ on_discover_complete (GObject *source,
 
 	} else if (error == NULL) {
 		realm_diagnostics_info (closure->invocation, "The realm was not valid or not discoverable.");
-		variant = g_variant_new_array (G_VARIANT_TYPE_DICTIONARY, NULL, 0);
+		variant = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
 		g_dbus_method_invocation_return_value (closure->invocation, g_variant_new ("(s@a{sv})", "", variant));
 
 	} else {

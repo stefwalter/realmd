@@ -21,7 +21,6 @@ realmd_SOURCES = \
 	realm-diagnostics.c realm-diagnostics.h \
 	realm-discovery.c realm-discovery.h \
 	realm-errors.c realm-errors.h \
-	realm-main.c \
 	realm-packages.c realm-packages.h \
 	realm-kerberos-provider.c realm-kerberos-provider.h \
 	realm-service.c realm-service.h \

@@ -31,6 +31,10 @@ typedef struct _RealmAdProvider RealmAdProvider;
 
 GType               realm_ad_provider_get_type                 (void) G_GNUC_CONST;
 
+void                realm_ad_provider_start                    (GDBusConnection *connection);
+
+void                realm_ad_provider_stop                     (void);
+
 G_END_DECLS
 
 #endif /* __REALM_AD_PROVIDER_H__ */

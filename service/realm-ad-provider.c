@@ -18,11 +18,13 @@
 #include "realm-ad-enroll.h"
 #include "realm-ad-provider.h"
 #include "realm-ad-sssd.h"
+#include "realm-command.h"
+#include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-packages.h"
-#include "realm-command.h"
+#include "realm-service.h"
 
 #include <glib/gstdio.h>
 
@@ -35,6 +37,8 @@ struct _RealmAdProvider {
 typedef struct {
 	RealmKerberosProviderClass parent_class;
 } RealmAdProviderClass;
+
+static guint ad_provider_owner_id = 0;
 
 G_DEFINE_TYPE (RealmAdProvider, realm_ad_provider, REALM_TYPE_KERBEROS_PROVIDER);
 
@@ -76,12 +80,6 @@ static const gchar *AD_FILES[] = {
 	SSSD_PATH,
 	NULL,
 };
-
-/*
- * TODO: Hopefully this will go away once we have support in glib for SOA
- * But if not, should be autodetected in configure
- */
-#define   HOST_PATH            "/bin/host"
 
 /*
  * TODO: This is needed by SSSDConfig. Not sure if we can just use GKeyFile
@@ -345,4 +343,55 @@ realm_ad_provider_class_init (RealmAdProviderClass *klass)
 	kerberos_class->enroll_finish = realm_ad_provider_generic_finish;
 	kerberos_class->unenroll_async = realm_ad_provider_unenroll_async;
 	kerberos_class->unenroll_finish = realm_ad_provider_generic_finish;
+}
+
+static void
+on_name_acquired (GDBusConnection *connection,
+                  const gchar     *name,
+                  gpointer         user_data)
+{
+	realm_service_poke ();
+}
+
+static void
+on_name_lost (GDBusConnection *connection,
+              const gchar     *name,
+              gpointer         user_data)
+{
+
+}
+
+void
+realm_ad_provider_start (GDBusConnection *connection)
+{
+	RealmAdProvider *provider;
+	GError *error = NULL;
+
+	g_return_if_fail (ad_provider_owner_id == 0);
+
+	provider = g_object_new (REALM_TYPE_AD_PROVIDER, NULL);
+
+	ad_provider_owner_id = g_bus_own_name_on_connection (connection,
+	                                                     REALM_DBUS_ACTIVE_DIRECTORY_NAME,
+	                                                     G_BUS_NAME_OWNER_FLAGS_NONE,
+	                                                     on_name_acquired,
+	                                                     on_name_lost,
+	                                                     provider, g_object_unref);
+
+	g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (provider),
+	                                  connection, REALM_DBUS_ACTIVE_DIRECTORY_PATH,
+	                                  &error);
+
+	if (error != NULL) {
+		g_warning ("couldn't export RealmAdsProvider on dbus connection: %s",
+		           error->message);
+		g_error_free (error);
+	}
+}
+
+void
+realm_ad_provider_stop (void)
+{
+	g_return_if_fail (ad_provider_owner_id != 0);
+	g_bus_unown_name (ad_provider_owner_id);
 }

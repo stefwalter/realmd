@@ -40,7 +40,7 @@ static RealmDebugFlags current_flags = 0;
 static GDebugKey keys[] = {
 	{ "process", REALM_DEBUG_PROCESS },
 	{ "diagnostics", REALM_DEBUG_DIAGNOSTICS },
-	{ "daemon", REALM_DEBUG_DAEMON },
+	{ "daemon", REALM_DEBUG_SERVICE },
 	{ 0, }
 };
 
@@ -73,9 +73,9 @@ on_realm_log_debug (const gchar *log_domain,
 	gstring = g_string_new (NULL);
 
 	progname = g_get_prgname ();
-	g_string_append_printf (gstring, "(%s:%lu): %s-DEBUG: %s\n",
-	                        progname ? progname : "process",
-	                        (gulong)getpid (), log_domain,
+	g_string_append_printf (gstring, "(%s:%lu): %s%sDEBUG: %s\n",
+	                        progname ? progname : "process", (gulong)getpid (),
+	                        log_domain ? log_domain : "", log_domain ? "-" : "",
 	                        message ? message : "(NULL) message");
 
 	write (1, gstring->str, gstring->len);

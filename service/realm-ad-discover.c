@@ -23,9 +23,6 @@
 
 #include <glib/gi18n.h>
 
-/* TODO: Move this elsewhere */
-#define HOST_PATH "/usr/bin/host"
-
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	GHashTable *discovery;
@@ -133,15 +130,17 @@ on_resolve_msdcs_soa (GObject *source,
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	DiscoverClosure *discover = g_simple_async_result_get_op_res_gpointer (res);
+	GResolver *resolver = G_RESOLVER (source);
 	GError *error = NULL;
-	gint exit_code;
+	GList *records;
 
-	exit_code = realm_command_run_finish (result, NULL, &error);
-	if (error == NULL) {
-		discover->found_msdcs_soa = (exit_code == 0);
+	records = g_resolver_lookup_records_finish (resolver, result, &error);
+	if (error == NULL || g_error_matches (error, G_RESOLVER_ERROR, G_RESOLVER_ERROR_NOT_FOUND)) {
+		discover->found_msdcs_soa = (records != NULL);
+		g_list_free_full (records, (GDestroyNotify)g_variant_unref);
 
 	} else {
-		realm_diagnostics_error (discover->invocation, error, "Couldn't use the host command to find domain SOA record");
+		realm_diagnostics_error (discover->invocation, error, "Failure to lookup domain SOA record");
 		g_simple_async_result_take_error (res, error);
 	}
 
@@ -185,17 +184,18 @@ realm_ad_discover_async (RealmKerberosProvider *provider,
 	resolver = g_resolver_get_default ();
 	g_resolver_lookup_service_async (resolver, "kerberos", "udp", domain, NULL,
 	                                 on_resolve_kerberos_srv, g_object_ref (res));
-	g_object_unref (resolver);
 
 	realm_diagnostics_info (invocation, "searching for _msdcs zone on %s domain", domain);
 
 	/* Active Directory DNS zones have this subzone */
 	msdcs = g_strdup_printf ("_msdcs.%s", domain);
 
-	realm_command_run_async (NULL, invocation, NULL, on_resolve_msdcs_soa, g_object_ref (res),
-	                      HOST_PATH, "-t", "SOA", msdcs, NULL);
+	g_resolver_lookup_records_async (resolver, msdcs, G_RESOLVER_RECORD_SOA, NULL,
+	                                 on_resolve_msdcs_soa, g_object_ref (res));
 
 	g_free (msdcs);
+
+	g_object_unref (resolver);
 }
 
 gchar *

@@ -14,8 +14,8 @@
 
 #include "config.h"
 
-#ifndef __REALM_AD_ENROLL_H__
-#define __REALM_AD_ENROLL_H__
+#ifndef __REALM_SERVICE_H__
+#define __REALM_SERVICE_H__
 
 #include <gio/gio.h>
 
@@ -27,6 +27,12 @@ void                realm_service_unlock_for_action          (GDBusMethodInvocat
 
 const gchar *       realm_service_resolve_file               (const gchar *name);
 
+void                realm_service_hold                       (void);
+
+void                realm_service_release                    (void);
+
+void                realm_service_poke                       (void);
+
 G_END_DECLS
 
-#endif /* __REALM_AD_JOIN_H__ */
+#endif /* __REALM_SERVICE_H__ */

@@ -13,6 +13,7 @@
 #include "config.h"
 
 #include "realm-ad-provider.h"
+#define DEBUG_FLAG REALM_DEBUG_DAEMON
 #include "realm-debug.h"
 #include "realm-diagnostics.h"
 
@@ -41,6 +42,7 @@ main (int argc,
 	}
 
 	realm_debug_init ();
+	realm_debug ("starting service");
 
 	loop = g_main_loop_new (NULL, FALSE);
 	// realm_ad_provider_start ();
@@ -51,5 +53,6 @@ main (int argc,
 	g_main_loop_unref (loop);
 	g_option_context_free (context);
 
+	realm_debug ("stopping service");
 	return 0;
 }

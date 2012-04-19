@@ -34,11 +34,13 @@
 
 #ifdef WITH_DEBUG
 
+static gsize initialized_flags = 0;
 static RealmDebugFlags current_flags = 0;
 
 static GDebugKey keys[] = {
 	{ "process", REALM_DEBUG_PROCESS },
 	{ "diagnostics", REALM_DEBUG_DIAGNOSTICS },
+	{ "daemon", REALM_DEBUG_DAEMON },
 	{ 0, }
 };
 
@@ -46,17 +48,6 @@ static void
 debug_set_flags (RealmDebugFlags new_flags)
 {
 	current_flags |= new_flags;
-}
-
-void
-realm_debug_init (void)
-{
-	static gsize initialized_flags = 0;
-
-	if (g_once_init_enter (&initialized_flags)) {
-		realm_debug_set_flags (g_getenv ("REALM_DEBUG"));
-		g_once_init_leave (&initialized_flags, 1);
-	}
 }
 
 void
@@ -70,9 +61,69 @@ realm_debug_set_flags (const gchar *flags_string)
 		debug_set_flags (g_parse_debug_string (flags_string, keys, nkeys));
 }
 
+static void
+on_realm_log_debug (const gchar *log_domain,
+                    GLogLevelFlags log_level,
+                    const gchar *message,
+                    gpointer user_data)
+{
+	GString *gstring;
+	const gchar *progname;
+
+	gstring = g_string_new (NULL);
+
+	progname = g_get_prgname ();
+	g_string_append_printf (gstring, "(%s:%lu): %s-DEBUG: %s\n",
+	                        progname ? progname : "process",
+	                        (gulong)getpid (), log_domain,
+	                        message ? message : "(NULL) message");
+
+	write (1, gstring->str, gstring->len);
+	g_string_free (gstring, TRUE);
+}
+
+void
+realm_debug_init (void)
+{
+	const gchar *messages_env;
+	const gchar *debug_env;
+
+	if (g_once_init_enter (&initialized_flags)) {
+		messages_env = g_getenv ("G_MESSAGES_DEBUG");
+		debug_env = g_getenv ("REALM_DEBUG");
+#ifdef REALM_DEBUG
+		if (debug_env == NULL)
+			debug_env = G_STRINGIFY (REALM_DEBUG);
+#endif
+
+		/*
+		 * If the caller is selectively asking for certain debug
+		 * messages with the REALM_DEBUG environment variable, then
+		 * we install our own output handler and only print those
+		 * messages. This happens irrespective of G_MESSAGES_DEBUG
+		 */
+		if (messages_env == NULL && debug_env != NULL)
+			g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,
+			                   on_realm_log_debug, NULL);
+
+		/*
+		 * If the caller is using G_MESSAGES_DEBUG then we enable
+		 * all our debug messages, and let Glib filter which ones
+		 * to display.
+		 */
+		if (messages_env != NULL && debug_env == NULL)
+			debug_env = "all";
+
+		realm_debug_set_flags (debug_env);
+		g_once_init_leave (&initialized_flags, 1);
+	}
+}
+
 gboolean
 realm_debug_flag_is_set (RealmDebugFlags flag)
 {
+	if G_UNLIKELY (!initialized_flags)
+		realm_debug_init ();
 	return (flag & current_flags) != 0;
 }
 
@@ -84,6 +135,9 @@ realm_debug_message (RealmDebugFlags flag,
 	gchar *message;
 	va_list args;
 
+	if G_UNLIKELY (!initialized_flags)
+		realm_debug_init ();
+
 	va_start (args, format);
 	message = g_strdup_vprintf (format, args);
 	va_end (args);
@@ -94,7 +148,14 @@ realm_debug_message (RealmDebugFlags flag,
 	g_free (message);
 }
 
+
 #else /* !WITH_DEBUG */
+
+void
+realm_debug_init (void)
+{
+
+}
 
 gboolean
 realm_debug_flag_is_set (RealmDebugFlags flag)

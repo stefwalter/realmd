@@ -297,7 +297,7 @@ realm_kerberos_provider_init (RealmKerberosProvider *self)
 	self->pv->cached_discovery = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
 	                                                    (GDestroyNotify)g_hash_table_unref);
 
-	g_signal_connect (self, "discover-realm",
+	g_signal_connect (self, "handle-discover-realm",
 	                  G_CALLBACK (handle_discover_realm), NULL);
 	g_signal_connect (self, "handle-enroll-machine-with-kerberos-cache",
 	                  G_CALLBACK (handle_enroll_machine_with_kerberos_cache), NULL);

@@ -197,7 +197,7 @@ main (int argc,
 	realm_service_hold ();
 
 	realm_debug ("starting service");
-	g_bus_get (G_BUS_TYPE_SESSION, NULL, on_bus_get_connection, &connection);
+	g_bus_get (G_BUS_TYPE_SYSTEM, NULL, on_bus_get_connection, &connection);
 
 	main_loop = g_main_loop_new (NULL, FALSE);
 

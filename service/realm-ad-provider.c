@@ -358,7 +358,8 @@ on_name_lost (GDBusConnection *connection,
               const gchar     *name,
               gpointer         user_data)
 {
-
+	g_warning ("couldn't claim provider name on DBus bus: %s",
+	           REALM_DBUS_ACTIVE_DIRECTORY_NAME);
 }
 
 void

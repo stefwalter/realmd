@@ -1,12 +1,16 @@
 include $(top_srcdir)/Makefile.decl
 
 servicedir = $(libdir)/realmd
+dbusservicedir=$(DBUS_SYS_DIR)
 
 service_PROGRAMS = \
 	realmd
 
 service_DATA = \
 	ad-provider-smb.conf
+
+dbusservice_DATA = \
+	realmd-dbus.conf
 
 BUILT_SOURCES = \
 	realm-dbus-generated.c realm-dbus-generated.h
@@ -49,6 +53,8 @@ realm-dbus-generated.h: realm-dbus-generated.c
 
 EXTRA_DIST = \
 	org.freedesktop.realmd.xml \
+	$(dbusservice_DATA) \
+	$(service_DATA) \
 	$(NULL)
 
 CLEANFILES = \

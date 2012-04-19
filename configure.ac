@@ -50,18 +50,11 @@ PKG_CHECK_MODULES(PACKAGEKIT, packagekit-glib2)
 AC_SUBST(PACKAGEKIT_CFLAGS)
 AC_SUBST(PACKAGEKIT_LIBS)
 
-# --------------------------------------------------------------------
-# Paths to various tools
+# -------------------------------------------------------------------
+# DBus
 
-# TODO: Configureable
-FILE=config.redhat
-
-while read variable value; do
-	if test -n "$variable"; then
-		AC_MSG_NOTICE([$variable: $value])
-		AC_DEFINE_UNQUOTED($variable, $value, [System specific])
-	fi
-done < $FILE
+DBUS_SYS_DIR="${sysconfdir}/dbus-1/system.d"
+AC_SUBST(DBUS_SYS_DIR)
 
 # --------------------------------------------------------------------
 # Compilation options
@@ -100,7 +93,7 @@ if test "$enable_strict" = "yes"; then
 else
 	CFLAGS="$CFLAGS -Wno-error"
 	TEST_MODE="quick"
-	$enable_strict="no"
+	enable_strict="no"
 fi
 
 AC_MSG_RESULT($enable_strict)

@@ -21,20 +21,20 @@
 
 G_BEGIN_DECLS
 
-#define   REALM_DBUS_ACTIVE_DIRECTORY_NAME         "org.freedesktop.IdentityConfig.ActiveDirectory"
-#define   REALM_DBUS_ACTIVE_DIRECTORY_PATH         "/org/freedesktop/IdentityConfig/ActiveDirectory"
+#define   REALM_DBUS_ACTIVE_DIRECTORY_NAME         "org.freedesktop.realmd.ActiveDirectory"
+#define   REALM_DBUS_ACTIVE_DIRECTORY_PATH         "/org/freedesktop/realmd/ActiveDirectory"
 
-#define   REALM_DBUS_PROVIDER_INTERFACE            "org.freedesktop.IdentityConfig.Provider"
-#define   REALM_DBUS_KERBEROS_INTERFACE            "org.freedesktop.IdentityConfig.Kerberos"
+#define   REALM_DBUS_PROVIDER_INTERFACE            "org.freedesktop.realmd.Provider"
+#define   REALM_DBUS_KERBEROS_INTERFACE            "org.freedesktop.realmd.Kerberos"
 
 #define   REALM_DBUS_DIAGNOSTICS_SIGNAL            "Diagnostics"
 
-#define   REALM_DBUS_ERROR_INTERNAL                "org.freedesktop.IdentityConfig.Error.Internal"
-#define   REALM_DBUS_ERROR_DISCOVERY_FAILED        "org.freedesktop.IdentityConfig.Error.DiscoveryFailed"
-#define   REALM_DBUS_ERROR_ENROLL_FAILED           "org.freedesktop.IdentityConfig.Error.EnrollFailed"
-#define   REALM_DBUS_ERROR_UNENROLL_FAILED         "org.freedesktop.IdentityConfig.Error.UnenrollFailed"
-#define   REALM_DBUS_ERROR_SET_LOGINS_FAILED       "org.freedesktop.IdentityConfig.Error.SetLoginsFailed"
-#define   REALM_DBUS_ERROR_BUSY                    "org.freedesktop.IdentityConfig.Error.Busy"
+#define   REALM_DBUS_ERROR_INTERNAL                "org.freedesktop.realmd.Error.Internal"
+#define   REALM_DBUS_ERROR_DISCOVERY_FAILED        "org.freedesktop.realmd.Error.DiscoveryFailed"
+#define   REALM_DBUS_ERROR_ENROLL_FAILED           "org.freedesktop.realmd.Error.EnrollFailed"
+#define   REALM_DBUS_ERROR_UNENROLL_FAILED         "org.freedesktop.realmd.Error.UnenrollFailed"
+#define   REALM_DBUS_ERROR_SET_LOGINS_FAILED       "org.freedesktop.realmd.Error.SetLoginsFailed"
+#define   REALM_DBUS_ERROR_BUSY                    "org.freedesktop.realmd.Error.Busy"
 
 #define   REALM_DBUS_DISCOVERY_TYPE                "type"
 #define   REALM_DBUS_DISCOVERY_DOMAIN              "domain"

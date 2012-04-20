@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+                       "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+                       "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
+<policyconfig>
+	<vendor>realmd</vendor>
+	<!--
+		<vendor_url>http://example.com/fill-this-in/</vendor_url>
+		<icon_name>application-vnd.iccprofile</icon_name>
+	-->
+
+	<!-- Any user can discover realms -->
+	<action id="org.freedesktop.realmd.discover-realm">
+		<_description>Discover realm</_description>
+		<_message>Authentication is required to discover a kerberos realm</_message>
+		<defaults>
+			<allow_any>yes</allow_any>
+			<allow_inactive>yes</allow_inactive>
+			<allow_active>yes</allow_active>
+		</defaults>
+	</action>
+
+	<action id="org.freedesktop.realmd.enroll-machine">
+		<_description>Join machine to realm</_description>
+		<_message>Authentication is required to join this machine to a realm or domain</_message>
+		<defaults>
+			<allow_any>no</allow_any>
+			<allow_inactive>auth_admin</allow_inactive>
+			<allow_active>auth_admin_keep</allow_active>
+		</defaults>
+		<annotate key="org.freedesktop.policykit.imply">
+			org.freedesktop.realmd.discover-realm
+			org.freedesktop.realmd.unenroll-machine
+		</annotate>
+	</action>
+
+	<action id="org.freedesktop.realmd.unenroll-machine">
+		<_description>Remove machine from realm</_description>
+		<_message>Authentication is required to remove this computer from a realm or domain.</_message>
+		<defaults>
+			<allow_any>no</allow_any>
+			<allow_inactive>auth_admin</allow_inactive>
+			<allow_active>auth_admin_keep</allow_active>
+		</defaults>
+	</action>
+
+	<action id="org.freedesktop.realmd.set-logins">
+		<_description>Configure logins on the system</_description>
+		<_message>Authentication is required to configure realm or domain logins for this computer.</_message>
+		<defaults>
+			<allow_any>no</allow_any>
+			<allow_inactive>auth_admin</allow_inactive>
+			<allow_active>auth_admin_keep</allow_active>
+		</defaults>
+	</action>
+
+</policyconfig>

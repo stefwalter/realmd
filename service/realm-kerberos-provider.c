@@ -14,6 +14,8 @@
 
 #include "config.h"
 
+#define DEBUG_FLAG REALM_DEBUG_SERVICE
+#include "realm-debug.h"
 #include "realm-dbus-constants.h"
 #include "realm-dbus-generated.h"
 #include "realm-diagnostics.h"
@@ -288,6 +290,57 @@ handle_set_logins_enabled (RealmKerberosProvider *self,
 	return TRUE;
 }
 
+static gboolean
+on_authorize_method (GDBusInterfaceSkeleton *skeleton,
+                     GDBusMethodInvocation  *invocation,
+                     gpointer user_data)
+{
+	const gchar *interface = g_dbus_method_invocation_get_interface_name (invocation);
+	const gchar *method = g_dbus_method_invocation_get_method_name (invocation);
+	const gchar *action_id = NULL;
+	gboolean ret;
+
+	/* Reading properties is authorized */
+	if (g_str_equal (interface, DBUS_PROPERTIES_INTERFACE)) {
+		if (g_str_equal (method, "Get") ||
+		    g_str_equal (method, "GetAll"))
+			ret = TRUE;
+		else
+			ret = FALSE; /* we have no setters */
+
+	/* Each method has its own polkit authorization */
+	} else if (g_str_equal (interface, REALM_DBUS_KERBEROS_INTERFACE)) {
+		if (g_str_equal (method, "DiscoverRealm")) {
+			action_id = "org.freedesktop.realmd.discover-realm";
+		} else if (g_str_equal (method, "EnrollMachineWithKerberosCache")) {
+			action_id = "org.freedesktop.realmd.enroll-machine";
+		} else if (g_str_equal (method, "UnenrollMachineWithKerberosCache")) {
+			action_id = "org.freedesktop.realmd.unenroll-machine";
+		} else if (g_str_equal (method, "SetLoginsEnabled")) {
+			action_id = "org.freedesktop.realmd.set-logins";
+		} else {
+			g_warning ("encountered unknown method during auth checks: %s.%s",
+			           interface, method);
+			action_id = NULL;
+		}
+
+		if (action_id != NULL)
+			ret = realm_service_check_dbus_action (g_dbus_method_invocation_get_sender (invocation),
+			                                       action_id);
+		else
+			ret = FALSE;
+	}
+
+	if (ret == FALSE) {
+		realm_debug ("rejecting access to: %s.%s method on %s",
+		             interface, method, g_dbus_method_invocation_get_object_path (invocation));
+		g_dbus_method_invocation_return_dbus_error (invocation, REALM_DBUS_ERROR_NOT_AUTHORIZED,
+		                                            "Not authorized to perform this action");
+	}
+
+	return ret;
+}
+
 static void
 realm_kerberos_provider_init (RealmKerberosProvider *self)
 {
@@ -297,6 +350,8 @@ realm_kerberos_provider_init (RealmKerberosProvider *self)
 	self->pv->cached_discovery = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
 	                                                    (GDestroyNotify)g_hash_table_unref);
 
+	g_signal_connect (self, "g-authorize-method",
+	                  G_CALLBACK (on_authorize_method), NULL);
 	g_signal_connect (self, "handle-discover-realm",
 	                  G_CALLBACK (handle_discover_realm), NULL);
 	g_signal_connect (self, "handle-enroll-machine-with-kerberos-cache",

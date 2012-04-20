@@ -1,16 +1,20 @@
 include $(top_srcdir)/Makefile.decl
 
-servicedir = $(libdir)/realmd
-dbusservicedir=$(DBUS_SYS_DIR)
-
 service_PROGRAMS = \
 	realmd
 
+servicedir = $(libdir)/realmd
 service_DATA = \
 	ad-provider-smb.conf
 
+dbusservicedir = $(DBUS_POLICY_DIR)
 dbusservice_DATA = \
 	realmd-dbus.conf
+
+polkit_policydir = $(POLKIT_ACTION_DIR)
+polkit_policy_in_files = org.freedesktop.realmd.policy.in
+polkit_policy_DATA = $(polkit_policy_in_files:.policy.in=.policy)
+@INTLTOOL_POLICY_RULE@
 
 BUILT_SOURCES = \
 	realm-dbus-generated.c realm-dbus-generated.h
@@ -34,10 +38,12 @@ realmd_SOURCES = \
 realmd_CFLAGS = \
 	-DSERVICE_DIR=\""$(servicedir)"\" \
 	$(PACKAGEKIT_CFLAGS) \
+	$(POLKIT_CFLAGS) \
 	$(NULL)
 
 realmd_LDADD = \
 	$(PACKAGEKIT_LIBS) \
+	$(POLKIT_LIBS) \
 	$(NULL)
 
 DBUS_XML_DEFINITIONS = \

@@ -21,6 +21,10 @@
 
 G_BEGIN_DECLS
 
+#define   DBUS_PEER_INTERFACE                      "org.freedesktop.DBus.Peer"
+#define   DBUS_PROPERTIES_INTERFACE                "org.freedesktop.DBus.Properties"
+#define   DBUS_INTROSPECTABLE_INTERFACE            "org.freedesktop.DBus.Introspectable"
+
 #define   REALM_DBUS_ACTIVE_DIRECTORY_NAME         "org.freedesktop.realmd.ActiveDirectory"
 #define   REALM_DBUS_ACTIVE_DIRECTORY_PATH         "/org/freedesktop/realmd/ActiveDirectory"
 
@@ -35,6 +39,7 @@ G_BEGIN_DECLS
 #define   REALM_DBUS_ERROR_UNENROLL_FAILED         "org.freedesktop.realmd.Error.UnenrollFailed"
 #define   REALM_DBUS_ERROR_SET_LOGINS_FAILED       "org.freedesktop.realmd.Error.SetLoginsFailed"
 #define   REALM_DBUS_ERROR_BUSY                    "org.freedesktop.realmd.Error.Busy"
+#define   REALM_DBUS_ERROR_NOT_AUTHORIZED          "org.freedesktop.realmd.Error.NotAuthorized"
 
 #define   REALM_DBUS_DISCOVERY_TYPE                "type"
 #define   REALM_DBUS_DISCOVERY_DOMAIN              "domain"

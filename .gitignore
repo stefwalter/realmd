@@ -3,6 +3,7 @@
 
 .cproject
 .deps
+.intltool-merge-cache
 .project
 .pydevproject
 aclocal.m4
@@ -27,7 +28,9 @@ stamp-it
 temp.txt
 
 /service/identity-config-service
-/tests/frob-install-packages
+/service/org.freedesktop.realmd.policy
 /service/realm-dbus-generated.c
 /service/realm-dbus-generated.h
 /service/realmd
+
+/tests/frob-install-packages

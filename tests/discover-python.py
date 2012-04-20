@@ -66,7 +66,7 @@ if __name__ == '__main__':
 		else:
 			assert False, "unhandled option"
 
-	if len(args) > 1:
+	if len(args) != 1:
 		usage()
 
 	discover_realm(args[0], verbose)

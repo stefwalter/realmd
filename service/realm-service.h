@@ -33,6 +33,9 @@ void                realm_service_release                    (void);
 
 void                realm_service_poke                       (void);
 
+gboolean            realm_service_check_dbus_action          (const gchar *sender,
+                                                              const gchar *action_id);
+
 G_END_DECLS
 
 #endif /* __REALM_SERVICE_H__ */

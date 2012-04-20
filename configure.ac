@@ -50,11 +50,21 @@ PKG_CHECK_MODULES(PACKAGEKIT, packagekit-glib2)
 AC_SUBST(PACKAGEKIT_CFLAGS)
 AC_SUBST(PACKAGEKIT_LIBS)
 
-# -------------------------------------------------------------------
-# DBus
+# --------------------------------------------------------------------
+# PolicyKit
 
-DBUS_SYS_DIR="${sysconfdir}/dbus-1/system.d"
-AC_SUBST(DBUS_SYS_DIR)
+PKG_CHECK_MODULES(POLKIT, polkit-gobject-1)
+AC_SUBST(POLKIT_CFLAGS)
+AC_SUBST(POLKIT_LIBS)
+
+# -------------------------------------------------------------------
+# Directories
+
+DBUS_POLICY_DIR="${sysconfdir}/dbus-1/system.d"
+AC_SUBST(DBUS_POLICY_DIR)
+
+POLKIT_ACTION_DIR="${datadir}/polkit-1/actions"
+AC_SUBST(POLKIT_ACTION_DIR)
 
 # --------------------------------------------------------------------
 # Compilation options

@@ -22,6 +22,8 @@
 
 #include <glib.h>
 
+#include <polkit/polkit.h>
+
 #define TIMEOUT   5 * 60
 
 static GObject *current_invocation = NULL;
@@ -31,6 +33,9 @@ static gboolean service_persist = FALSE;
 static gint service_holds = 0;
 static gint64 service_quit_at = 0;
 static guint service_timeout_id = 0;
+
+G_LOCK_DEFINE(polkit_authority);
+static PolkitAuthority *polkit_authority = NULL;
 
 static void
 on_invocation_gone (gpointer unused,
@@ -68,6 +73,67 @@ realm_service_unlock_for_action (GDBusMethodInvocation *invocation)
 
 	g_object_weak_unref (current_invocation, on_invocation_gone, NULL);
 	current_invocation = NULL;
+}
+
+gboolean
+realm_service_check_dbus_action (const gchar *sender,
+                                 const gchar *action_id)
+{
+	PolkitAuthorizationResult *result;
+	PolkitAuthority *authority;
+	PolkitSubject *subject;
+	GError *error = NULL;
+	gboolean ret;
+
+	g_return_val_if_fail (sender != NULL, FALSE);
+	g_return_val_if_fail (action_id != NULL, FALSE);
+
+	G_LOCK (polkit_authority);
+
+	authority = polkit_authority ? g_object_ref (polkit_authority) : NULL;
+
+	G_UNLOCK (polkit_authority);
+
+	if (!authority) {
+		authority = polkit_authority_get_sync (NULL, &error);
+		if (authority == NULL) {
+			g_warning ("failure to get polkit authority: %s", error->message);
+			g_error_free (error);
+			return FALSE;
+		}
+
+		G_LOCK (polkit_authority);
+
+		if (polkit_authority == NULL) {
+			polkit_authority = g_object_ref (authority);
+
+		} else {
+			g_object_unref (authority);
+			authority = g_object_ref (polkit_authority);
+		}
+
+		G_UNLOCK (polkit_authority);
+	}
+
+	/* do authorization async */
+	subject = polkit_system_bus_name_new (sender);
+	result = polkit_authority_check_authorization_sync (authority, subject, action_id, NULL,
+			POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION, NULL, &error);
+
+	g_object_unref (authority);
+	g_object_unref (subject);
+
+	/* failed */
+	if (result == NULL) {
+		g_warning ("couldn't check polkit authorization: %s", error->message);
+		g_error_free (error);
+		return FALSE;
+	}
+
+	ret = polkit_authorization_result_get_is_authorized (result);
+	g_object_unref (result);
+
+	return ret;
 }
 
 void
@@ -207,6 +273,10 @@ main (int argc,
 		realm_ad_provider_stop ();
 		g_object_unref (connection);
 	}
+
+	G_LOCK (polkit_authority);
+	g_clear_object (&polkit_authority);
+	G_UNLOCK (polkit_authority);
 
 	g_main_loop_unref (main_loop);
 	g_option_context_free (context);

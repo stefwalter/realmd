@@ -58,23 +58,6 @@ static const gchar *AD_PACKAGES[] = {
 	NULL
 };
 
-/*
- * Various files that we need to get AD working. The packages above supply
- * these files. Unlike the list above, *all of the files below must exist*
- * in order to proceed.
- *
- * If a distro has a different path for a given file, then add a configure.ac
- * --with-xxx and AC_DEFINE for it, replacing the constant here.
- */
-
-#ifndef NET_PATH
-#define NET_PATH             "/usr/bin/net"
-#endif
-
-#ifndef SSSD_PATH
-#define SSSD_PATH            "/usr/sbin/sssd"
-#endif
-
 static const gchar *AD_FILES[] = {
 	NET_PATH,
 	SSSD_PATH,
@@ -111,6 +94,7 @@ enroll_closure_free (gpointer data)
 	g_slice_free (EnrollClosure, enroll);
 }
 
+#if 0
 static void
 on_sssd_done (GObject *source,
               GAsyncResult *result,
@@ -126,7 +110,6 @@ on_sssd_done (GObject *source,
 
 	g_object_unref (res);
 }
-
 
 static void
 on_join_do_sssd (GObject *source,
@@ -149,6 +132,23 @@ on_join_do_sssd (GObject *source,
 
 	g_object_unref (res);
 }
+#endif
+
+static void
+on_join_done (GObject *source,
+              GAsyncResult *result,
+              gpointer user_data)
+{
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	GError *error = NULL;
+
+	realm_ad_enroll_join_finish (result, &error);
+	if (error != NULL)
+		g_simple_async_result_take_error (res, error);
+	g_simple_async_result_complete (res);
+
+	g_object_unref (res);
+}
 
 static void
 on_install_do_join (GObject *source,
@@ -162,7 +162,7 @@ on_install_do_join (GObject *source,
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
 		realm_ad_enroll_join_async (enroll->realm, enroll->admin_kerberos_cache,
-		                          enroll->invocation, on_join_do_sssd, g_object_ref (res));
+		                            enroll->invocation, on_join_done, g_object_ref (res));
 
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -187,10 +187,8 @@ on_discover_do_install (GObject *source,
 		enroll->discovery = discovery;
 		discovery = NULL;
 
-#ifdef TODO
-		realm_packages_install_async ("active-directory", enroll->invocation,
-		                           on_install_do_join, g_object_ref (res));
-#endif
+		realm_packages_install_async (AD_FILES, AD_PACKAGES, enroll->invocation,
+		                              on_install_do_join, g_object_ref (res));
 
 	} else if (error == NULL) {
 		/* TODO: a better error code/message here */
@@ -225,6 +223,7 @@ realm_ad_provider_enroll_async (RealmKerberosProvider *provider,
 	enroll = g_slice_new0 (EnrollClosure);
 	enroll->realm = g_strdup (realm);
 	enroll->invocation = g_object_ref (invocation);
+	enroll->admin_kerberos_cache = g_bytes_ref (admin_kerberos_cache);
 	g_simple_async_result_set_op_res_gpointer (res, enroll, enroll_closure_free);
 
 	enroll->discovery = realm_kerberos_provider_lookup_discovery (provider, realm);
@@ -232,12 +231,12 @@ realm_ad_provider_enroll_async (RealmKerberosProvider *provider,
 	/* Caller didn't discover first time around, so do that now */
 	if (enroll->discovery == NULL) {
 		realm_ad_discover_async (provider, realm, invocation,
-		                      on_discover_do_install, g_object_ref (res));
+		                         on_discover_do_install, g_object_ref (res));
 
 	/* Already have discovery info, so go straight to install */
 	} else {
 		realm_packages_install_async (AD_FILES, AD_PACKAGES, invocation,
-		                           on_install_do_join, g_object_ref (res));
+		                              on_install_do_join, g_object_ref (res));
 	}
 
 	g_object_unref (res);
@@ -285,8 +284,8 @@ on_leave_do_sssd (GObject *source,
 	realm_ad_enroll_leave_finish (result, &error);
 	if (error == NULL) {
 		realm_ad_sssd_configure_async (REALM_AD_SSSD_REMOVE_REALM, unenroll->realm,
-		                             unenroll->invocation, on_remove_sssd_done,
-		                             g_object_ref (res));
+		                               unenroll->invocation, on_remove_sssd_done,
+		                               g_object_ref (res));
 
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -317,7 +316,7 @@ realm_ad_provider_unenroll_async (RealmKerberosProvider *provider,
 	/* TODO: Check that we're enrolled as this realm */
 
 	realm_ad_enroll_leave_async (realm, admin_kerberos_cache, invocation,
-	                           on_leave_do_sssd, g_object_ref (res));
+	                             on_leave_do_sssd, g_object_ref (res));
 
 	g_object_unref (res);
 }

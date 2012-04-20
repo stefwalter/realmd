@@ -21,11 +21,15 @@
 		</method>
 		<method name="EnrollMachineWithKerberosCache">
 			<arg name="realm" type="s" direction="in"/>
-			<arg name="kerberos_cache" type="ay" direction="in"/>
+			<arg name="kerberos_cache" type="ay" direction="in">
+				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="yup"/>
+			</arg>
 		</method>
 		<method name="UnenrollMachineWithKerberosCache">
 			<arg name="realm" type="s" direction="in"/>
-			<arg name="kerberos_cache" type="ay" direction="in"/>
+			<arg name="kerberos_cache" type="ay" direction="in">
+				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="yup"/>
+			</arg>
 		</method>
 
 		<property name="LoginsPossible" type="b" access="read"/>

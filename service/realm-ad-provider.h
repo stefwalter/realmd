@@ -23,6 +23,23 @@
 
 G_BEGIN_DECLS
 
+/*
+ * Various files that we need to get AD working. The packages above supply
+ * these files. Unlike the list above, *all of the files below must exist*
+ * in order to proceed.
+ *
+ * If a distro has a different path for a given file, then add a configure.ac
+ * --with-xxx and AC_DEFINE for it, replacing the constant here.
+ */
+
+#ifndef NET_PATH
+#define NET_PATH             "/usr/bin/net"
+#endif
+
+#ifndef SSSD_PATH
+#define SSSD_PATH            "/usr/sbin/sssd"
+#endif
+
 #define REALM_TYPE_AD_PROVIDER            (realm_ad_provider_get_type ())
 #define REALM_AD_PROVIDER(inst)           (G_TYPE_CHECK_INSTANCE_CAST ((inst), REALM_TYPE_AD_PROVIDER, RealmAdProvider))
 #define REALM_IS_AD_PROVIDER(inst)        (G_TYPE_CHECK_INSTANCE_TYPE ((inst), REALM_TYPE_AD_PROVIDER))

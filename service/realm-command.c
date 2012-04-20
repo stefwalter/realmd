@@ -454,11 +454,14 @@ realm_command_runv_async (gchar **name_or_path_and_arguments,
 
 	if (realm_debugging) {
 		gchar *command = g_strjoinv (" ", name_or_path_and_arguments);
-		gchar *environment = g_strjoinv (", ", (gchar**)environ);
 		realm_debug ("running command: %s", command);
-		realm_debug ("process environment: %s", environment);
 		g_free (command);
-		g_free (environment);
+
+		if (environ) {
+			gchar *environment = g_strjoinv (", ", (gchar**)environ);
+			realm_debug ("process environment: %s", environment);
+			g_free (environment);
+		}
 	}
 
 	g_spawn_async_with_pipes (NULL, name_or_path_and_arguments, environ,

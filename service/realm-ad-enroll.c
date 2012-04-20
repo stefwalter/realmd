@@ -15,6 +15,7 @@
 #include "config.h"
 
 #include "realm-ad-enroll.h"
+#include "realm-ad-provider.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
 #include "realm-command.h"
@@ -22,6 +23,7 @@
 #include <glib/gstdio.h>
 
 #include <errno.h>
+#include <fcntl.h>
 
 typedef struct {
 	GCancellable *cancellable;
@@ -39,7 +41,7 @@ join_closure_free (gpointer data)
 	g_clear_object (&join->cancellable);
 
 	if (join->kerberos_cache_filename) {
-		if (!g_unlink (join->kerberos_cache_filename)) {
+		if (g_unlink (join->kerberos_cache_filename) < 0) {
 			g_warning ("couldn't remove kerberos cache file: %s: %s",
 			           join->kerberos_cache_filename, g_strerror (errno));
 		}
@@ -72,11 +74,11 @@ prepare_admin_cache (JoinClosure *join,
 		return FALSE;
 	}
 
-	directory = g_get_user_runtime_dir ();
-	filename = g_build_filename ("%s", "realm-ad-kerberos-XXXXXX", NULL);
+	directory = g_get_tmp_dir ();
+	filename = g_build_filename (directory, "realm-ad-kerberos-XXXXXX", NULL);
 
-	fd = g_mkstemp_full (filename, 0, 0600);
-	if (fd > 0) {
+	fd = g_mkstemp_full (filename, O_WRONLY, 0600);
+	if (fd < 0) {
 		g_warning ("couldn't open temporary file in %s directory for kerberos cache: %s",
 		           directory, g_strerror (errno));
 		g_set_error (error, REALM_ERROR, REALM_ERROR_INTERNAL,
@@ -153,13 +155,15 @@ begin_net_process (JoinClosure *join,
 	args = g_ptr_array_new ();
 
 	/* Use our custom smb.conf */
-	g_ptr_array_add (args, "net");
+	g_ptr_array_add (args, NET_PATH);
 	g_ptr_array_add (args, "-s");
 	g_ptr_array_add (args, SERVICE_DIR "/ad-provider-smb.conf");
 
 	va_start (va, user_data);
-	while ((arg = va_arg (va, gchar *)) != NULL)
+	do {
+		arg = va_arg (va, gchar *);
 		g_ptr_array_add (args, arg);
+	} while (arg != NULL);
 	va_end (va);
 
 	command = g_strjoinv (" ", (gchar **)args->pdata);
@@ -167,7 +171,7 @@ begin_net_process (JoinClosure *join,
 	g_free (command);
 
 	realm_command_runv_async ((gchar **)args->pdata, join->environ,
-	                       join->invocation, join->cancellable, callback, user_data);
+	                          join->invocation, join->cancellable, callback, user_data);
 
 	g_ptr_array_free (args, TRUE);
 }
@@ -177,12 +181,14 @@ complete_net_process (JoinClosure *join,
                       GAsyncResult *result,
                       GError **error)
 {
-	GString *output;
+	GString *output = NULL;
 	gint code;
 
 	code = realm_command_run_finish (result, &output, error);
-	realm_diagnostics_info_data (join->invocation, output->str, output->len);
-	g_string_free (output, TRUE);
+	if (output != NULL) {
+		realm_diagnostics_info_data (join->invocation, output->str, output->len);
+		g_string_free (output, TRUE);
+	}
 
 	return code;
 }
@@ -270,6 +276,9 @@ realm_ad_enroll_join_async (const gchar *realm,
 	GSimpleAsyncResult *res;
 	JoinClosure *join;
 	GError *error = NULL;
+
+	g_return_if_fail (realm != NULL);
+	g_return_if_fail (admin_kerberos_cache != NULL);
 
 	res = g_simple_async_result_new (NULL, callback, user_data,
 	                                 realm_ad_enroll_join_async);

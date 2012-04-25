@@ -58,7 +58,7 @@ def enroll_machine(realm, user, verbose):
 	assert False, "not reached"
 
 def usage():
-	print >> sys.stderr, "usage: enroll-machine.py [-v] [-U username] string"
+	print >> sys.stderr, "usage: enroll-machine.py [-v] [-U username] realm"
 	sys.exit(2)
 
 if __name__ == '__main__':
@@ -81,7 +81,7 @@ if __name__ == '__main__':
 		else:
 			assert False, "unhandled option"
 
-	if len(args) > 1:
+	if len(args) != 1:
 		usage()
 
 	enroll_machine(args[0], user, verbose)

@@ -25,6 +25,7 @@
 #define DEBUG_FLAG REALM_DEBUG_PROCESS
 #include "realm-debug.h"
 #include "realm-command.h"
+#include "realm-diagnostics.h"
 
 #include <glib/gi18n-lib.h>
 
@@ -47,6 +48,7 @@ typedef struct {
 	guint source_sig;
 	gint exit_code;
 	gboolean cancelled;
+	GDBusMethodInvocation *invocation;
 } CommandClosure;
 
 typedef struct {
@@ -455,6 +457,7 @@ realm_command_runv_async (gchar **name_or_path_and_arguments,
 	if (realm_debugging) {
 		gchar *command = g_strjoinv (" ", name_or_path_and_arguments);
 		realm_debug ("running command: %s", command);
+		realm_diagnostics_info (invocation, "%s", command);
 		g_free (command);
 
 		if (environ) {
@@ -473,6 +476,7 @@ realm_command_runv_async (gchar **name_or_path_and_arguments,
 	command = g_slice_new0 (CommandClosure);
 	command->input = NULL;
 	command->output = g_string_sized_new (128);
+	command->invocation = invocation ? g_object_ref (invocation) : NULL;
 	g_simple_async_result_set_op_res_gpointer (res, command, command_closure_free);
 
 	if (error) {
@@ -550,6 +554,10 @@ realm_command_run_finish (GAsyncResult *result,
 		return -1;
 
 	command = g_simple_async_result_get_op_res_gpointer (res);
+	if (command->output->len)
+		realm_diagnostics_info_data (command->invocation,
+		                             command->output->str,
+		                             command->output->len);
 	if (output) {
 		*output = command->output;
 		command->output = NULL;

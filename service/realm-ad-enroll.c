@@ -16,9 +16,11 @@
 
 #include "realm-ad-enroll.h"
 #include "realm-ad-provider.h"
+#include "realm-command.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
-#include "realm-command.h"
+#include "realm-paths.h"
+#include "realm-samba-config.h"
 
 #include <glib/gstdio.h>
 
@@ -155,7 +157,7 @@ begin_net_process (JoinClosure *join,
 	args = g_ptr_array_new ();
 
 	/* Use our custom smb.conf */
-	g_ptr_array_add (args, NET_PATH);
+	g_ptr_array_add (args, REALM_NET_PATH);
 	g_ptr_array_add (args, "-s");
 	g_ptr_array_add (args, SERVICE_DIR "/ad-provider-smb.conf");
 
@@ -167,7 +169,6 @@ begin_net_process (JoinClosure *join,
 	va_end (va);
 
 	command = g_strjoinv (" ", (gchar **)args->pdata);
-	realm_diagnostics_info (join->invocation, "Running command: %s", command);
 	g_free (command);
 
 	realm_command_runv_async ((gchar **)args->pdata, join->environ,
@@ -176,34 +177,16 @@ begin_net_process (JoinClosure *join,
 	g_ptr_array_free (args, TRUE);
 }
 
-static gint
-complete_net_process (JoinClosure *join,
-                      GAsyncResult *result,
-                      GError **error)
-{
-	GString *output = NULL;
-	gint code;
-
-	code = realm_command_run_finish (result, &output, error);
-	if (output != NULL) {
-		realm_diagnostics_info_data (join->invocation, output->str, output->len);
-		g_string_free (output, TRUE);
-	}
-
-	return code;
-}
-
 static void
 on_net_ads_keytab_create (GObject *source,
                           GAsyncResult *result,
                           gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
 	GError *error = NULL;
 	gint status;
 
-	status = complete_net_process (join, result, &error);
+	status = realm_command_run_finish (result, NULL, &error);
 	if (error == NULL && status != 0)
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Extracting host keytab failed");
@@ -215,19 +198,15 @@ on_net_ads_keytab_create (GObject *source,
 }
 
 static void
-on_net_conf_setparm_kerberos_method (GObject *source,
-                                     GAsyncResult *result,
-                                     gpointer user_data)
+on_config_kerberos_method (GObject *source,
+                           GAsyncResult *result,
+                           gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
 	GError *error = NULL;
-	gint status;
 
-	status = complete_net_process (join, result, &error);
-	if (error == NULL && status != 0)
-		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Configuring samba kerberos settings failed");
+	realm_samba_config_set_finish (result, &error);
 	if (error == NULL) {
 		begin_net_process (join, on_net_ads_keytab_create, g_object_ref (res),
 		                   "ads", "keytab", "create", NULL);
@@ -250,13 +229,14 @@ on_net_ads_join (GObject *source,
 	GError *error = NULL;
 	gint status;
 
-	status = complete_net_process (join, result, &error);
+	status = realm_command_run_finish (result, NULL, &error);
 	if (error == NULL && status != 0)
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Joining the domain %s failed", join->domain);
 	if (error == NULL) {
-		begin_net_process (join, on_net_conf_setparm_kerberos_method, g_object_ref (res),
-		                   "conf", "setparm", "global", "kerberos method", "secrets and keytab", NULL);
+		realm_samba_config_set_async ("global", join->invocation,
+		                              on_config_kerberos_method, g_object_ref (res),
+		                              "kerberos method", "secrets and keytab", NULL);
 
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -318,7 +298,7 @@ on_net_ads_leave (GObject *source,
 	GError *error = NULL;
 	gint status;
 
-	status = complete_net_process (join, result, &error);
+	status = realm_command_run_finish (result, NULL, &error);
 	if (error == NULL && status != 0)
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Leaving the domain %s failed", join->domain);
@@ -341,7 +321,7 @@ on_net_ads_flush (GObject *source,
 	GError *error = NULL;
 	gint status;
 
-	status = complete_net_process (join, result, &error);
+	status = realm_command_run_finish (result, NULL, &error);
 	if (error != NULL || status != 0)
 		realm_diagnostics_error (join->invocation, error, "Flushing entries from the keytab failed");
 	g_clear_error (&error);

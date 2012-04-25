@@ -31,6 +31,7 @@ realmd_SOURCES = \
 	realm-errors.c realm-errors.h \
 	realm-packages.c realm-packages.h \
 	realm-kerberos-provider.c realm-kerberos-provider.h \
+	realm-samba-config.c realm-samba-config.h \
 	realm-service.c realm-service.h \
 	$(BUILT_SOURCES) \
 	$(NULL)

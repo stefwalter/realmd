@@ -24,6 +24,7 @@
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-packages.h"
+#include "realm-paths.h"
 #include "realm-service.h"
 
 #include <glib/gstdio.h>
@@ -50,17 +51,17 @@ G_DEFINE_TYPE (RealmAdProvider, realm_ad_provider, REALM_TYPE_KERBEROS_PROVIDER)
  * than listed here. Here are the packages specific to AD kerberos support.
  */
 static const gchar *AD_PACKAGES[] = {
-	"sssd",
-	"libpam-sss", /* Needed on debian */
-	"libnss-sss", /* Needed on debian */
+	"samba-winbind",
+	"libpam-winbind", /* Needed on debian */
+	"libnss-winbind", /* Needed on debian */
 	"samba-common",
 	"samba-common-bin", /* Needed on debian */
 	NULL
 };
 
 static const gchar *AD_FILES[] = {
-	NET_PATH,
-	SSSD_PATH,
+	REALM_NET_PATH,
+	REALM_WINBINDD_PATH,
 	NULL,
 };
 

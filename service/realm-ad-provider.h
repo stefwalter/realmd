@@ -32,14 +32,6 @@ G_BEGIN_DECLS
  * --with-xxx and AC_DEFINE for it, replacing the constant here.
  */
 
-#ifndef NET_PATH
-#define NET_PATH             "/usr/bin/net"
-#endif
-
-#ifndef SSSD_PATH
-#define SSSD_PATH            "/usr/sbin/sssd"
-#endif
-
 #define REALM_TYPE_AD_PROVIDER            (realm_ad_provider_get_type ())
 #define REALM_AD_PROVIDER(inst)           (G_TYPE_CHECK_INSTANCE_CAST ((inst), REALM_TYPE_AD_PROVIDER, RealmAdProvider))
 #define REALM_IS_AD_PROVIDER(inst)        (G_TYPE_CHECK_INSTANCE_TYPE ((inst), REALM_TYPE_AD_PROVIDER))

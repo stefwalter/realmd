@@ -14,272 +14,260 @@
 
 #include "config.h"
 
-#include "realm-ad-provider.h"
-#define DEBUG_FLAG REALM_DEBUG_SERVICE
-#include "realm-debug.h"
+#include "realm-dbus-systemd.h"
 #include "realm-diagnostics.h"
 #include "realm-service.h"
 
-#include <glib.h>
+typedef struct _ServiceClosure ServiceClosure;
 
-#include <polkit/polkit.h>
+typedef void (* PerformFunc) (RealmDbusSystemdManager *systemd,
+                              GSimpleAsyncResult *res,
+                              ServiceClosure *service);
 
-#define TIMEOUT   5 * 60
-
-static GObject *current_invocation = NULL;
-static GMainLoop *main_loop = NULL;
-
-static gboolean service_persist = FALSE;
-static gint service_holds = 0;
-static gint64 service_quit_at = 0;
-static guint service_timeout_id = 0;
-
-G_LOCK_DEFINE(polkit_authority);
-static PolkitAuthority *polkit_authority = NULL;
+struct _ServiceClosure {
+	GDBusMethodInvocation *invocation;
+	gchar *unit_name;
+	PerformFunc perform;
+};
 
 static void
-on_invocation_gone (gpointer unused,
-                    GObject *where_the_object_was)
+service_closure_free (gpointer data)
 {
-	g_warning ("a GDBusMethodInvocation was released but the invocation was "
-	           "registered as part of a realm_service_lock_for_action()");
-	g_assert (where_the_object_was == current_invocation);
-	current_invocation = NULL;
+	ServiceClosure *service = data;
+	if (service->invocation)
+		g_object_unref (service->invocation);
+	g_free (service->unit_name);
+	g_slice_free (ServiceClosure, service);
+}
+
+static void
+on_systemd_start (GObject *object,
+                  GAsyncResult *result,
+                  gpointer user_data)
+{
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	RealmDbusSystemdManager *systemd = REALM_DBUS_SYSTEMD_MANAGER (object);
+	GError *error = NULL;
+
+	realm_dbus_systemd_manager_call_start_unit_finish (systemd, NULL,
+	                                                   result, &error);
+	if (error != NULL)
+		g_simple_async_result_take_error (res, error);
+	g_simple_async_result_complete (res);
+
+	g_object_unref (res);
+}
+
+static void
+on_systemd_enable (GObject *object,
+                   GAsyncResult *result,
+                   gpointer user_data)
+{
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	RealmDbusSystemdManager *systemd = REALM_DBUS_SYSTEMD_MANAGER (object);
+	ServiceClosure *service = g_simple_async_result_get_op_res_gpointer (res);
+	GError *error = NULL;
+
+	realm_dbus_systemd_manager_call_enable_unit_files_finish (systemd, NULL, NULL,
+	                                                          result, &error);
+	if (error == NULL) {
+		realm_diagnostics_info (service->invocation, "Starting service via systemd: %s",
+		                        service->unit_name);
+		realm_dbus_systemd_manager_call_start_unit (systemd, service->unit_name,
+		                                            "fail", NULL, on_systemd_start,
+		                                            g_object_ref (res));
+	} else {
+		g_simple_async_result_take_error (res, error);
+		g_simple_async_result_complete (res);
+	}
+
+	g_object_unref (res);
+}
+
+static void
+perform_enable_and_restart (RealmDbusSystemdManager *systemd,
+                            GSimpleAsyncResult *res,
+                            ServiceClosure *service)
+{
+	const gchar *unit_files[] = {
+		service->unit_name,
+		NULL,
+	};
+
+	realm_diagnostics_info (service->invocation, "Enabling service via systemd: %s",
+	                        service->unit_name);
+	realm_dbus_systemd_manager_call_enable_unit_files (systemd,
+	                                                   unit_files,
+	                                                   FALSE, /* runtime */
+	                                                   FALSE, /* force */
+	                                                   NULL,
+	                                                   on_systemd_enable,
+	                                                   g_object_ref (res));
+}
+
+static void
+on_systemd_stop (GObject *object,
+                 GAsyncResult *result,
+                 gpointer user_data)
+{
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	RealmDbusSystemdManager *systemd = REALM_DBUS_SYSTEMD_MANAGER (object);
+	GError *error = NULL;
+
+	realm_dbus_systemd_manager_call_stop_unit_finish (systemd, NULL,
+	                                                  result, &error);
+	if (error != NULL)
+		g_simple_async_result_take_error (res, error);
+	g_simple_async_result_complete (res);
+
+	g_object_unref (res);
+}
+
+static void
+on_systemd_disable (GObject *object,
+                    GAsyncResult *result,
+                    gpointer user_data)
+{
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	RealmDbusSystemdManager *systemd = REALM_DBUS_SYSTEMD_MANAGER (object);
+	ServiceClosure *service = g_simple_async_result_get_op_res_gpointer (res);
+	GError *error = NULL;
+
+	realm_dbus_systemd_manager_call_disable_unit_files_finish (systemd, NULL,
+	                                                           result, &error);
+	if (error == NULL) {
+		realm_diagnostics_info (service->invocation, "Stopping service via systemd: %s",
+		                        service->unit_name);
+		realm_dbus_systemd_manager_call_stop_unit (systemd, service->unit_name,
+		                                           "fail", NULL, on_systemd_stop,
+		                                           g_object_ref (res));
+	} else {
+		g_simple_async_result_take_error (res, error);
+		g_simple_async_result_complete (res);
+	}
+
+	g_object_unref (res);
+}
+
+static void
+perform_disable_and_stop (RealmDbusSystemdManager *systemd,
+                          GSimpleAsyncResult *res,
+                          ServiceClosure *service)
+{
+	const gchar *unit_files[] = {
+		service->unit_name,
+		NULL,
+	};
+
+	realm_diagnostics_info (service->invocation, "Disabling service via systemd: %s",
+	                        service->unit_name);
+	realm_dbus_systemd_manager_call_disable_unit_files (systemd,
+	                                                    unit_files,
+	                                                    FALSE, /* runtime */
+	                                                    NULL,
+	                                                    on_systemd_disable,
+	                                                    g_object_ref (res));
+}
+
+static void
+on_systemd_proxy (GObject *object,
+                  GAsyncResult *result,
+                  gpointer user_data)
+{
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	ServiceClosure *service = g_simple_async_result_get_op_res_gpointer (res);
+	RealmDbusSystemdManager *systemd;
+	GError *error = NULL;
+
+	systemd = realm_dbus_systemd_manager_proxy_new_finish (result, &error);
+	if (error == NULL) {
+		g_assert (service->perform != NULL);
+		(service->perform) (systemd, res, service);
+		g_object_unref (systemd);
+
+	} else {
+		g_simple_async_result_take_error (res, error);
+		g_simple_async_result_complete (res);
+	}
+
+	g_object_unref (res);
+}
+
+static void
+begin_service_action (const gchar *service_name,
+                      GDBusMethodInvocation *invocation,
+                      PerformFunc perform,
+                      GAsyncReadyCallback callback,
+                      gpointer user_data)
+{
+	GSimpleAsyncResult *res;
+	ServiceClosure *service;
+
+	res = g_simple_async_result_new (NULL, callback, user_data,
+	                                 begin_service_action);
+	service = g_slice_new (ServiceClosure);
+	service->unit_name = g_strdup_printf ("%s.service", service_name);
+	service->invocation = invocation ? g_object_ref (invocation) : NULL;
+	service->perform = perform;
+	g_simple_async_result_set_op_res_gpointer (res, service, service_closure_free);
+
+	realm_dbus_systemd_manager_proxy_new_for_bus (G_BUS_TYPE_SYSTEM,
+	                                              G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START,
+	                                              "org.freedesktop.systemd1",
+	                                              "/org/freedesktop/systemd1",
+	                                              NULL,
+	                                              on_systemd_proxy,
+	                                              g_object_ref (res));
+
+	g_object_unref (res);
+}
+
+void
+realm_service_enable_and_restart (const gchar *service_name,
+                                  GDBusMethodInvocation *invocation,
+                                  GAsyncReadyCallback callback,
+                                  gpointer user_data)
+{
+	g_return_if_fail (service_name != NULL);
+	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
+
+	begin_service_action (service_name, invocation,
+	                      perform_enable_and_restart,
+	                      callback, user_data);
 }
 
 gboolean
-realm_service_lock_for_action (GDBusMethodInvocation *invocation)
+realm_service_enable_finish (GAsyncResult *result,
+                             GError **error)
 {
-	g_return_val_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation), FALSE);
-
-	if (current_invocation)
+	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
+	                      begin_service_action), FALSE);
+	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
 		return FALSE;
-
-	current_invocation = G_OBJECT (invocation);
-	g_object_weak_ref (current_invocation, on_invocation_gone, NULL);
 	return TRUE;
 }
 
 void
-realm_service_unlock_for_action (GDBusMethodInvocation *invocation)
+realm_service_disable_and_stop (const gchar *service_name,
+                                GDBusMethodInvocation *invocation,
+                                GAsyncReadyCallback callback,
+                                gpointer user_data)
 {
-	g_return_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation));
+	g_return_if_fail (service_name != NULL);
+	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
-	if (current_invocation != G_OBJECT (invocation)) {
-		g_warning ("trying to realm_service_unlock_for_action() with an invocation "
-		           "that is not registered as the current locked action.");
-		return;
-	}
-
-	g_object_weak_unref (current_invocation, on_invocation_gone, NULL);
-	current_invocation = NULL;
+	begin_service_action (service_name, invocation,
+	                      perform_disable_and_stop,
+	                      callback, user_data);
 }
 
 gboolean
-realm_service_check_dbus_action (const gchar *sender,
-                                 const gchar *action_id)
+realm_service_disable_finish (GAsyncResult *result,
+                              GError **error)
 {
-	PolkitAuthorizationResult *result;
-	PolkitAuthority *authority;
-	PolkitSubject *subject;
-	GError *error = NULL;
-	gboolean ret;
-
-	g_return_val_if_fail (sender != NULL, FALSE);
-	g_return_val_if_fail (action_id != NULL, FALSE);
-
-	G_LOCK (polkit_authority);
-
-	authority = polkit_authority ? g_object_ref (polkit_authority) : NULL;
-
-	G_UNLOCK (polkit_authority);
-
-	if (!authority) {
-		authority = polkit_authority_get_sync (NULL, &error);
-		if (authority == NULL) {
-			g_warning ("failure to get polkit authority: %s", error->message);
-			g_error_free (error);
-			return FALSE;
-		}
-
-		G_LOCK (polkit_authority);
-
-		if (polkit_authority == NULL) {
-			polkit_authority = g_object_ref (authority);
-
-		} else {
-			g_object_unref (authority);
-			authority = g_object_ref (polkit_authority);
-		}
-
-		G_UNLOCK (polkit_authority);
-	}
-
-	/* do authorization async */
-	subject = polkit_system_bus_name_new (sender);
-	result = polkit_authority_check_authorization_sync (authority, subject, action_id, NULL,
-			POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION, NULL, &error);
-
-	g_object_unref (authority);
-	g_object_unref (subject);
-
-	/* failed */
-	if (result == NULL) {
-		g_warning ("couldn't check polkit authorization: %s", error->message);
-		g_error_free (error);
+	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
+	                      begin_service_action), FALSE);
+	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
 		return FALSE;
-	}
-
-	ret = polkit_authorization_result_get_is_authorized (result);
-	g_object_unref (result);
-
-	return ret;
-}
-
-void
-realm_service_hold (void)
-{
-	g_return_if_fail (service_holds >= 0);
-
-	service_holds++;
-}
-
-void
-realm_service_release (void)
-{
-	g_return_if_fail (service_holds > 0);
-
-	if ((--service_holds) > 0)
-		return;
-
-	realm_service_poke ();
-}
-
-static gboolean
-on_service_timeout (gpointer data)
-{
-	gint seconds;
-	gint64 now;
-
-	service_timeout_id = 0;
-
-	if (service_holds > 0)
-		return FALSE;
-
-	now = g_get_monotonic_time ();
-	if (now >= service_quit_at) {
-		realm_debug ("quitting realmd service after timeout");
-		g_main_loop_quit (main_loop);
-
-	} else {
-		seconds = (service_quit_at - now) / G_TIME_SPAN_SECOND;
-		service_timeout_id = g_timeout_add_seconds (seconds + 1, on_service_timeout, NULL);
-	}
-
-	return FALSE;
-}
-
-void
-realm_service_poke (void)
-{
-	if (service_persist)
-		return;
-
-	service_quit_at = g_get_monotonic_time () + (TIMEOUT * G_TIME_SPAN_SECOND);
-	if (service_timeout_id == 0)
-		on_service_timeout (NULL);
-}
-
-static GDBusMessage *
-on_connection_filter (GDBusConnection *connection,
-                      GDBusMessage *message,
-                      gboolean incoming,
-                      gpointer user_data)
-{
-	GDBusMessageType type;
-
-	/* Each time we see an incoming function call, keep the service alive */
-	if (incoming) {
-		type = g_dbus_message_get_message_type (message);
-		if (type == G_DBUS_MESSAGE_TYPE_METHOD_CALL)
-			realm_service_poke();
-	}
-
-	return message;
-}
-
-static void
-on_bus_get_connection (GObject *source,
-                       GAsyncResult *result,
-                       gpointer user_data)
-{
-	GError *error = NULL;
-	GDBusConnection **connection = (GDBusConnection **)user_data;
-
-	*connection = g_bus_get_finish (result, &error);
-	if (error != NULL) {
-		g_warning ("couldn't connect to bus: %s", error->message);
-		g_main_loop_quit (main_loop);
-		g_error_free (error);
-	} else {
-		realm_debug ("connected to bus");
-
-		/* Add a filter which keeps service alive */
-		g_dbus_connection_add_filter (*connection, on_connection_filter, NULL, NULL);
-
-		realm_diagnostics_initialize (*connection);
-		realm_ad_provider_start (*connection);
-	}
-
-	realm_service_release ();
-}
-
-static GOptionEntry option_entries[] = {
-	{ NULL }
-};
-
-int
-main (int argc,
-      char *argv[])
-{
-	GDBusConnection *connection = NULL;
-	GOptionContext *context;
-	GError *error = NULL;
-	g_type_init ();
-
-	context = g_option_context_new ("realmd");
-	g_option_context_add_main_entries (context, option_entries, NULL);
-	if (!g_option_context_parse (context, &argc, &argv, &error)) {
-		g_printerr ("%s", error->message);
-		g_option_context_free (context);
-		g_error_free (error);
-		return 2;
-	}
-
-	if (g_getenv ("REALM_PERSIST"))
-		service_persist = 1;
-
-	realm_debug_init ();
-	realm_service_hold ();
-
-	realm_debug ("starting service");
-	g_bus_get (G_BUS_TYPE_SYSTEM, NULL, on_bus_get_connection, &connection);
-
-	main_loop = g_main_loop_new (NULL, FALSE);
-
-	g_main_loop_run (main_loop);
-
-	if (connection != NULL) {
-		realm_ad_provider_stop ();
-		g_object_unref (connection);
-	}
-
-	G_LOCK (polkit_authority);
-	g_clear_object (&polkit_authority);
-	G_UNLOCK (polkit_authority);
-
-	g_main_loop_unref (main_loop);
-	g_option_context_free (context);
-	realm_debug ("stopping service");
-	return 0;
+	return TRUE;
 }

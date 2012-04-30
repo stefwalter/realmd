@@ -17,9 +17,10 @@
 #include "realm-ad-enroll.h"
 #include "realm-ad-provider.h"
 #include "realm-command.h"
+#include "realm-constants.h"
+#include "realm-daemon.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
-#include "realm-paths.h"
 #include "realm-samba-config.h"
 
 #include <glib/gstdio.h>

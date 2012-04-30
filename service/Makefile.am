@@ -17,7 +17,8 @@ polkit_policy_DATA = $(polkit_policy_in_files:.policy.in=.policy)
 @INTLTOOL_POLICY_RULE@
 
 BUILT_SOURCES = \
-	realm-dbus-generated.c realm-dbus-generated.h
+	realm-dbus-generated.c realm-dbus-generated.h \
+	realm-dbus-systemd.c realm-dbus-systemd.h
 
 realmd_SOURCES = \
 	realm-ad-discover.c realm-ad-discover.h \
@@ -25,6 +26,7 @@ realmd_SOURCES = \
 	realm-ad-provider.c realm-ad-provider.h \
 	realm-ad-sssd.c realm-ad-sssd.h \
 	realm-command.c realm-command.h \
+	realm-daemon.c realm-daemon.h \
 	realm-debug.c realm-debug.h \
 	realm-diagnostics.c realm-diagnostics.h \
 	realm-discovery.c realm-discovery.h \
@@ -33,6 +35,7 @@ realmd_SOURCES = \
 	realm-kerberos-provider.c realm-kerberos-provider.h \
 	realm-samba-config.c realm-samba-config.h \
 	realm-service.c realm-service.h \
+	realm-winbind.c realm-winbind.h \
 	$(BUILT_SOURCES) \
 	$(NULL)
 
@@ -48,13 +51,18 @@ realmd_LDADD = \
 	$(NULL)
 
 DBUS_XML_DEFINITIONS = \
-	org.freedesktop.realmd.xml
+	org.freedesktop.realmd.xml \
+	org.freedesktop.systemd1.xml
 
-realm-dbus-generated.c: $(DBUS_XML_DEFINITIONS) Makefile.am
+realm-dbus-generated.c: org.freedesktop.realmd.xml
 	$(AM_V_GEN) gdbus-codegen --interface-prefix org.freedesktop.realmd. \
-		--generate-c-code realm-dbus-generated --c-namespace RealmDbus \
-		$(DBUS_XML_DEFINITIONS)
+		--generate-c-code realm-dbus-generated --c-namespace RealmDbus $<
 realm-dbus-generated.h: realm-dbus-generated.c
+
+realm-dbus-systemd.c: org.freedesktop.systemd1.xml
+	$(AM_V_GEN) gdbus-codegen --interface-prefix org.freedesktop.systemd1. \
+		--generate-c-code realm-dbus-systemd --c-namespace RealmDbusSystemd $<
+realm-dbus-systemd.h: realm-dbus-systemd.c
 
 # ------------------------------------------------------------------
 

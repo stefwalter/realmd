@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "realm-daemon.h"
 #define DEBUG_FLAG REALM_DEBUG_SERVICE
 #include "realm-debug.h"
 #include "realm-dbus-constants.h"
@@ -22,7 +23,6 @@
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-kerberos-provider.h"
-#include "realm-service.h"
 
 #include <glib/gi18n.h>
 
@@ -142,7 +142,7 @@ on_enroll_complete (GObject *source,
 		g_error_free (error);
 	}
 
-	realm_service_unlock_for_action (closure->invocation);
+	realm_daemon_unlock_for_action (closure->invocation);
 	method_closure_free (closure);
 }
 
@@ -158,7 +158,7 @@ handle_enroll_machine_with_kerberos_cache (RealmKerberosProvider *self,
 	const guchar *data;
 	gsize length;
 
-	if (!realm_service_lock_for_action (invocation)) {
+	if (!realm_daemon_lock_for_action (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
 		                                       "Already running another action");
 		return TRUE;
@@ -202,7 +202,7 @@ on_unenroll_complete (GObject *source,
 		g_error_free (error);
 	}
 
-	realm_service_unlock_for_action (closure->invocation);
+	realm_daemon_unlock_for_action (closure->invocation);
 	method_closure_free (closure);
 }
 
@@ -218,7 +218,7 @@ handle_unenroll_machine_with_kerberos_cache (RealmKerberosProvider *self,
 	const guchar *data;
 	gsize length;
 
-	if (!realm_service_lock_for_action (invocation)) {
+	if (!realm_daemon_lock_for_action (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
 		                                       "Already running another action");
 		return TRUE;
@@ -262,7 +262,7 @@ on_set_logins_complete (GObject *source,
 		g_error_free (error);
 	}
 
-	realm_service_unlock_for_action (closure->invocation);
+	realm_daemon_unlock_for_action (closure->invocation);
 	method_closure_free (closure);
 }
 
@@ -274,7 +274,7 @@ handle_set_logins_enabled (RealmKerberosProvider *self,
 {
 	RealmKerberosProviderClass *klass;
 
-	if (!realm_service_lock_for_action (invocation)) {
+	if (!realm_daemon_lock_for_action (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
 		                                       "Already running another action");
 		return TRUE;
@@ -325,7 +325,7 @@ on_authorize_method (GDBusInterfaceSkeleton *skeleton,
 		}
 
 		if (action_id != NULL)
-			ret = realm_service_check_dbus_action (g_dbus_method_invocation_get_sender (invocation),
+			ret = realm_daemon_check_dbus_action (g_dbus_method_invocation_get_sender (invocation),
 			                                       action_id);
 		else
 			ret = FALSE;

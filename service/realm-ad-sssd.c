@@ -16,9 +16,9 @@
 
 #include "realm-ad-sssd.h"
 #include "realm-command.h"
+#include "realm-daemon.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
-#include "realm-service.h"
 
 #include <glib/gstdio.h>
 
@@ -141,7 +141,7 @@ realm_ad_sssd_configure_async (RealmAdSssdAction action,
 	                                 realm_ad_sssd_configure_async);
 
 #ifdef TODO
-	sssd_conf = realm_service_resolve_file ("sssd.conf");
+	sssd_conf = realm_daemon_resolve_file ("sssd.conf");
 #else
 	sssd_conf = "/etc/sssd/sssd.conf";
 #endif

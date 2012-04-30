@@ -16,10 +16,10 @@
 
 #include "realm-samba-config.h"
 #include "realm-command.h"
+#include "realm-constants.h"
+#include "realm-daemon.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
-#include "realm-paths.h"
-#include "realm-service.h"
 
 #include <gio/gio.h>
 #include <glib/gstdio.h>

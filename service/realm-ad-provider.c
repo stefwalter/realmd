@@ -17,15 +17,15 @@
 #include "realm-ad-discover.h"
 #include "realm-ad-enroll.h"
 #include "realm-ad-provider.h"
-#include "realm-ad-sssd.h"
+#include "realm-constants.h"
 #include "realm-command.h"
+#include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-packages.h"
-#include "realm-paths.h"
-#include "realm-service.h"
+#include "realm-winbind.h"
 
 #include <glib/gstdio.h>
 
@@ -95,16 +95,15 @@ enroll_closure_free (gpointer data)
 	g_slice_free (EnrollClosure, enroll);
 }
 
-#if 0
 static void
-on_sssd_done (GObject *source,
+on_winbind_done (GObject *source,
               GAsyncResult *result,
               gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
 
-	realm_ad_sssd_configure_finish (result, &error);
+	realm_winbind_configure_finish (result, &error);
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 	g_simple_async_result_complete (res);
@@ -113,9 +112,9 @@ on_sssd_done (GObject *source,
 }
 
 static void
-on_join_do_sssd (GObject *source,
-                 GAsyncResult *result,
-                 gpointer user_data)
+on_join_do_winbind (GObject *source,
+                    GAsyncResult *result,
+                    gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
@@ -123,30 +122,12 @@ on_join_do_sssd (GObject *source,
 
 	realm_ad_enroll_join_finish (result, &error);
 	if (error == NULL) {
-		realm_ad_sssd_configure_async (REALM_AD_SSSD_ADD_REALM,
-		                             enroll->realm, enroll->invocation,
-		                             on_sssd_done, g_object_ref (res));
+		realm_winbind_configure_async (enroll->invocation,
+		                               on_winbind_done, g_object_ref (res));
 	} else {
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete (res);
 	}
-
-	g_object_unref (res);
-}
-#endif
-
-static void
-on_join_done (GObject *source,
-              GAsyncResult *result,
-              gpointer user_data)
-{
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	GError *error = NULL;
-
-	realm_ad_enroll_join_finish (result, &error);
-	if (error != NULL)
-		g_simple_async_result_take_error (res, error);
-	g_simple_async_result_complete (res);
 
 	g_object_unref (res);
 }
@@ -163,7 +144,7 @@ on_install_do_join (GObject *source,
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
 		realm_ad_enroll_join_async (enroll->realm, enroll->admin_kerberos_cache,
-		                            enroll->invocation, on_join_done, g_object_ref (res));
+		                            enroll->invocation, on_join_do_winbind, g_object_ref (res));
 
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -258,14 +239,14 @@ unenroll_closure_free (gpointer data)
 }
 
 static void
-on_remove_sssd_done (GObject *source,
-                     GAsyncResult *result,
-                     gpointer user_data)
+on_remove_winbind_done (GObject *source,
+                        GAsyncResult *result,
+                        gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
 
-	realm_ad_sssd_configure_finish (result, &error);
+	realm_winbind_deconfigure_finish (result, &error);
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 	g_simple_async_result_complete (res);
@@ -284,9 +265,9 @@ on_leave_do_sssd (GObject *source,
 
 	realm_ad_enroll_leave_finish (result, &error);
 	if (error == NULL) {
-		realm_ad_sssd_configure_async (REALM_AD_SSSD_REMOVE_REALM, unenroll->realm,
-		                               unenroll->invocation, on_remove_sssd_done,
-		                               g_object_ref (res));
+		realm_winbind_deconfigure_async (unenroll->invocation,
+		                                 on_remove_winbind_done,
+		                                 g_object_ref (res));
 
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -350,7 +331,7 @@ on_name_acquired (GDBusConnection *connection,
                   const gchar     *name,
                   gpointer         user_data)
 {
-	realm_service_poke ();
+	realm_daemon_poke ();
 }
 
 static void

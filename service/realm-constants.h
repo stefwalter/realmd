@@ -24,7 +24,15 @@ G_BEGIN_DECLS
 #endif
 
 #ifndef REALM_WINBINDD_PATH
-#define REALM_WINBINDD_PATH         "/usr/sbin/winbindd"
+#define REALM_WINBINDD_PATH        "/usr/sbin/winbindd"
+#endif
+
+#ifndef REALM_BASH_PATH
+#define REALM_BASH_PATH            "/bin/bash"
+#endif
+
+#ifndef REALM_WINBIND_SERVICE
+#define REALM_WINBIND_SERVICE     "winbind"
 #endif
 
 G_END_DECLS

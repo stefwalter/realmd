@@ -21,20 +21,21 @@
 
 G_BEGIN_DECLS
 
-gboolean            realm_service_lock_for_action            (GDBusMethodInvocation *invocation);
+void        realm_service_enable_and_restart     (const gchar *service,
+                                                  GDBusMethodInvocation *invocation,
+                                                  GAsyncReadyCallback callback,
+                                                  gpointer user_data);
 
-void                realm_service_unlock_for_action          (GDBusMethodInvocation *invocation);
+gboolean    realm_service_enable_finish          (GAsyncResult *result,
+                                                  GError **error);
 
-const gchar *       realm_service_resolve_file               (const gchar *name);
+void        realm_service_disable_and_stop       (const gchar *service,
+                                                  GDBusMethodInvocation *invocation,
+                                                  GAsyncReadyCallback callback,
+                                                  gpointer user_data);
 
-void                realm_service_hold                       (void);
-
-void                realm_service_release                    (void);
-
-void                realm_service_poke                       (void);
-
-gboolean            realm_service_check_dbus_action          (const gchar *sender,
-                                                              const gchar *action_id);
+gboolean    realm_service_disable_finish         (GAsyncResult *result,
+                                                  GError **error);
 
 G_END_DECLS
 

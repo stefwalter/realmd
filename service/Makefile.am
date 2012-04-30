@@ -29,7 +29,6 @@ realmd_SOURCES = \
 	realm-ad-discover.c realm-ad-discover.h \
 	realm-ad-enroll.c realm-ad-enroll.h \
 	realm-ad-provider.c realm-ad-provider.h \
-	realm-ad-sssd.c realm-ad-sssd.h \
 	realm-command.c realm-command.h \
 	realm-daemon.c realm-daemon.h \
 	realm-debug.c realm-debug.h \

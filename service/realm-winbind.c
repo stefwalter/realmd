@@ -16,7 +16,6 @@
 
 #include "realm-winbind.h"
 #include "realm-command.h"
-#include "realm-constants.h"
 #include "realm-daemon.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
@@ -54,7 +53,7 @@ on_samba_config_done (GObject *source,
 
 	realm_samba_config_set_finish (result, &error);
 	if (error == NULL) {
-		realm_service_enable_and_restart (REALM_WINBIND_SERVICE,
+		realm_service_enable_and_restart (realm_daemon_conf_string ("services", "winbind"),
 		                                  invocation,
 		                                  on_winbind_enabled,
 		                                  g_object_ref (res));
@@ -89,7 +88,7 @@ realm_winbind_configure_async (GDBusMethodInvocation *invocation,
 	                              "idmap gid", "10000-20000",
 	                              "winbind enum users", "no",
 	                              "winbind enum groups", "no",
-	                              "template shell", REALM_BASH_PATH,
+	                              "template shell", realm_daemon_conf_string ("user", "shell"),
 	                              NULL);
 
 	g_object_unref (res);
@@ -135,7 +134,7 @@ realm_winbind_deconfigure_async (GDBusMethodInvocation *invocation,
 	res = g_simple_async_result_new (NULL, callback, user_data,
 	                                 realm_winbind_deconfigure_async);
 
-	realm_service_disable_and_stop (REALM_WINBIND_SERVICE,
+	realm_service_disable_and_stop (realm_daemon_conf_string ("services", "winbind"),
 	                                invocation,
 	                                on_winbind_disabled,
 	                                g_object_ref (res));

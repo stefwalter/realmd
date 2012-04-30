@@ -15,6 +15,32 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AM_MAINTAINER_MODE([enable])
 
 # -----------------------------------------------------------------------------
+# Distro Detection
+
+AC_ARG_WITH([distro],
+            [AS_HELP_STRING([--with-distro],
+                            [Configure for a specific distribution (eg: redhat)]
+                           )],
+            [DISTRO=$withval])
+
+if test -z $DISTRO; then
+	AC_CHECK_FILE(/etc/redhat-release, [DISTRO="redhat"])
+
+	# Not customized for these yet
+	dnl AC_CHECK_FILE(/etc/gentoo-release, [DISTRO="gentoo"])
+	dnl AC_CHECK_FILE(/etc/slackware-version, [DISTRO="slackware"])
+	dnl AC_CHECK_FILE(/etc/debian_version, [DISTRO="debian"])
+	dnl AC_CHECK_FILE(/etc/SuSE-release, [DISTRO="suse"])
+
+fi
+
+if test -z $DISTRO; then
+	AC_MSG_ERROR([Couldn't detect the distro to configure for. Specify one with --with-distro])
+fi
+
+AC_SUBST(DISTRO)
+
+# -----------------------------------------------------------------------------
 # Basic tools
 
 AC_GNU_SOURCE

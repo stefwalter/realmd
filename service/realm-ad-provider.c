@@ -17,7 +17,6 @@
 #include "realm-ad-discover.h"
 #include "realm-ad-enroll.h"
 #include "realm-ad-provider.h"
-#include "realm-constants.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
@@ -42,34 +41,6 @@ typedef struct {
 static guint ad_provider_owner_id = 0;
 
 G_DEFINE_TYPE (RealmAdProvider, realm_ad_provider, REALM_TYPE_KERBEROS_PROVIDER);
-
-/*
- * The packages we need to install to get AD working. If a given package
- * doesn't exist on a given distro, then it'll be skipped by PackageKit.
- *
- * Some packages should be dependencies of realmd itself, rather
- * than listed here. Here are the packages specific to AD kerberos support.
- */
-static const gchar *AD_PACKAGES[] = {
-	"samba-winbind",
-	"libpam-winbind", /* Needed on debian */
-	"libnss-winbind", /* Needed on debian */
-	"samba-common",
-	"samba-common-bin", /* Needed on debian */
-	NULL
-};
-
-static const gchar *AD_FILES[] = {
-	REALM_NET_PATH,
-	REALM_WINBINDD_PATH,
-	NULL,
-};
-
-/*
- * TODO: This is needed by SSSDConfig. Not sure if we can just use GKeyFile
- * But if not, should be autodetected in configure
- */
-#define   PYTHON_PATH          "/bin/python"
 
 static void
 realm_ad_provider_init (RealmAdProvider *self)
@@ -169,7 +140,7 @@ on_discover_do_install (GObject *source,
 		enroll->discovery = discovery;
 		discovery = NULL;
 
-		realm_packages_install_async (AD_FILES, AD_PACKAGES, enroll->invocation,
+		realm_packages_install_async ("active-directory-packages", enroll->invocation,
 		                              on_install_do_join, g_object_ref (res));
 
 	} else if (error == NULL) {
@@ -217,7 +188,7 @@ realm_ad_provider_enroll_async (RealmKerberosProvider *provider,
 
 	/* Already have discovery info, so go straight to install */
 	} else {
-		realm_packages_install_async (AD_FILES, AD_PACKAGES, invocation,
+		realm_packages_install_async ("active-directory-packages", invocation,
 		                              on_install_do_join, g_object_ref (res));
 	}
 
@@ -255,9 +226,9 @@ on_remove_winbind_done (GObject *source,
 }
 
 static void
-on_leave_do_sssd (GObject *source,
-                  GAsyncResult *result,
-                  gpointer user_data)
+on_leave_do_winbind (GObject *source,
+                     GAsyncResult *result,
+                     gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	UnenrollClosure *unenroll = g_simple_async_result_get_op_res_gpointer (res);
@@ -298,10 +269,11 @@ realm_ad_provider_unenroll_async (RealmKerberosProvider *provider,
 	/* TODO: Check that we're enrolled as this realm */
 
 	realm_ad_enroll_leave_async (realm, admin_kerberos_cache, invocation,
-	                             on_leave_do_sssd, g_object_ref (res));
+	                             on_leave_do_winbind, g_object_ref (res));
 
 	g_object_unref (res);
 }
+
 static gboolean
 realm_ad_provider_generic_finish (RealmKerberosProvider *provider,
                                      GAsyncResult *result,

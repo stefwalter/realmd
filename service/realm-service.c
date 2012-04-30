@@ -206,7 +206,7 @@ begin_service_action (const gchar *service_name,
 	res = g_simple_async_result_new (NULL, callback, user_data,
 	                                 begin_service_action);
 	service = g_slice_new (ServiceClosure);
-	service->unit_name = g_strdup_printf ("%s.service", service_name);
+	service->unit_name = g_strdup (service_name);
 	service->invocation = invocation ? g_object_ref (invocation) : NULL;
 	service->perform = perform;
 	g_simple_async_result_set_op_res_gpointer (res, service, service_closure_free);

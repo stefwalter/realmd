@@ -24,8 +24,7 @@ G_BEGIN_DECLS
 gboolean          realm_packages_check_paths             (const gchar **paths,
                                                           GDBusMethodInvocation *invocation);
 
-void              realm_packages_install_async           (const gchar **required_files,
-                                                          const gchar **package_names,
+void              realm_packages_install_async           (const gchar *package_set,
                                                           GDBusMethodInvocation *invocation,
                                                           GAsyncReadyCallback callback,
                                                           gpointer user_data);

@@ -16,7 +16,6 @@
 
 #include "realm-samba-config.h"
 #include "realm-command.h"
-#include "realm-constants.h"
 #include "realm-daemon.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
@@ -53,7 +52,7 @@ run_net_conf_setparm (const gchar *section,
 {
 	/* Use our custom smb.conf */
 	const gchar *args[] = {
-		REALM_NET_PATH, "-s", SERVICE_DIR "/ad-provider-smb.conf",
+		realm_daemon_conf_path ("net"), "-s", SERVICE_DIR "/ad-provider-smb.conf",
 		"conf", "setparm", section, name, value,
 		NULL,
 	};

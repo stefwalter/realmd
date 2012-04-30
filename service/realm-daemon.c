@@ -34,8 +34,143 @@ static gint service_holds = 0;
 static gint64 service_quit_at = 0;
 static guint service_timeout_id = 0;
 
+/* We use a lock here because it's called from dbus threads */
 G_LOCK_DEFINE(polkit_authority);
 static PolkitAuthority *polkit_authority = NULL;
+
+static GHashTable *realm_conf = NULL;
+
+static void
+load_conf_file (const gchar *file_path,
+                GError **error)
+{
+	GKeyFile *key_file = NULL;
+	GHashTable *section;
+	GError *err = NULL;
+	gchar **groups;
+	gchar **keys;
+	gchar *value;
+	gint i;
+	gint j;
+
+	key_file = g_key_file_new ();
+
+	if (!g_key_file_load_from_file (key_file, file_path, G_KEY_FILE_NONE, error)) {
+		g_key_file_free (key_file);
+		return;
+	}
+
+	/* Build into a table of strings, simplifies memory handling */
+	groups = g_key_file_get_groups (key_file, NULL);
+	for (i = 0; groups[i] != NULL; i++) {
+		section = g_hash_table_lookup (realm_conf, groups[i]);
+		if (section == NULL) {
+			section = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+			g_hash_table_insert (realm_conf, g_strdup (groups[i]), section);
+		}
+
+		keys = g_key_file_get_keys (key_file, groups[i], NULL, &err);
+		g_return_if_fail (err == NULL);
+
+		for (j = 0; keys[j] != NULL; j++) {
+			value = g_key_file_get_value (key_file, groups[i], keys[j], &err);
+			g_return_if_fail (err == NULL);
+			g_hash_table_insert (section, g_strdup (keys[j]), value);
+		}
+		g_strfreev (keys);
+	}
+	g_strfreev (groups);
+
+	g_key_file_free (key_file);
+}
+
+static void
+load_conf_data (void)
+{
+	const gchar *default_conf = SERVICE_DIR "/realmd-defaults.conf";
+	const gchar *distro_conf = SERVICE_DIR "/realmd-distro.conf";
+	const gchar *admin_conf = SYSCONF_DIR "/realmd.conf";
+	GError *error = NULL;
+
+	realm_conf = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+	                                    (GDestroyNotify)g_hash_table_unref);
+
+
+	/*
+	 * These are treated like 'linker error' in that we cannot proceed without
+	 * this data. The reason it is not compiled into the daemon itself, is
+	 * for easier modification by packagers and distros
+	 */
+	load_conf_file (default_conf, &error);
+	if (error != NULL) {
+		g_error ("couldn't load package configuration file: %s: %s",
+		         default_conf, error->message);
+		g_clear_error (&error);
+	}
+
+	load_conf_file (distro_conf, &error);
+	if (error != NULL) {
+		g_error ("couldn't load distro configuration file: %s: %s",
+		         distro_conf, error->message);
+		g_clear_error (&error);
+	}
+
+	/* We allow failure of loading or parsing this data, it's only overrides */
+	load_conf_file (admin_conf, &error);
+	if (error != NULL) {
+		if (!g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
+			g_message ("couldn't load admin configuration file: %s: %s",
+			           admin_conf, error->message);
+		g_clear_error (&error);
+	}
+}
+
+const gchar *
+realm_daemon_conf_path (const gchar *name)
+{
+	const gchar *path;
+
+	path = realm_daemon_conf_value ("paths", name);
+	if (path == NULL) {
+		g_warning ("no path found for '%s' in realmd config", name);
+		return "/invalid/or/misconfigured";
+	}
+
+	return path;
+}
+
+GHashTable *
+realm_daemon_conf_settings (const gchar *section)
+{
+	return g_hash_table_lookup (realm_conf, section);
+}
+
+const gchar *
+realm_daemon_conf_value (const gchar *section,
+                         const gchar *key)
+{
+	GHashTable *settings;
+
+	settings = realm_daemon_conf_settings (section);
+	if (settings == NULL)
+		return NULL;
+	return g_hash_table_lookup (settings, key);
+}
+
+const gchar *
+realm_daemon_conf_string (const gchar *section,
+                          const gchar *key)
+{
+	const gchar *string;
+
+	string = realm_daemon_conf_value (section, key);
+	if (string == NULL) {
+		g_warning ("no value found for '%s/%s' in realmd config", section, key);
+		return "";
+	}
+
+	return string;
+}
 
 static void
 on_invocation_gone (gpointer unused,
@@ -238,6 +373,7 @@ on_bus_get_connection (GObject *source,
 		realm_ad_provider_start (*connection);
 	}
 
+	/* Matches the hold() in main() */
 	realm_daemon_release ();
 }
 
@@ -269,6 +405,9 @@ main (int argc,
 	realm_debug_init ();
 	realm_daemon_hold ();
 
+	/* Load the platform specific data */
+	load_conf_data ();
+
 	realm_debug ("starting service");
 	g_bus_get (G_BUS_TYPE_SYSTEM, NULL, on_bus_get_connection, &connection);
 
@@ -284,6 +423,8 @@ main (int argc,
 	G_LOCK (polkit_authority);
 	g_clear_object (&polkit_authority);
 	G_UNLOCK (polkit_authority);
+
+	g_hash_table_unref (realm_conf);
 
 	g_main_loop_unref (main_loop);
 	g_option_context_free (context);

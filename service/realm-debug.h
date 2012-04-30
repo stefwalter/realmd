@@ -32,6 +32,7 @@ typedef enum {
 	REALM_DEBUG_PROCESS = 1 << 1,
 	REALM_DEBUG_DIAGNOSTICS = 1 << 2,
 	REALM_DEBUG_SERVICE = 1 << 3,
+	REALM_DEBUG_PACKAGES = 1 << 4
 } RealmDebugFlags;
 
 void               realm_debug_init                     (void);

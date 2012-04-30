@@ -3,13 +3,18 @@ include $(top_srcdir)/Makefile.decl
 service_PROGRAMS = \
 	realmd
 
+REALMD_CONFIGS = \
+	realmd-defaults.conf \
+	realmd-redhat.conf
+
 servicedir = $(libdir)/realmd
 service_DATA = \
-	ad-provider-smb.conf
+	ad-provider-smb.conf \
+	realmd-defaults.conf
 
 dbusservicedir = $(DBUS_POLICY_DIR)
 dbusservice_DATA = \
-	realmd-dbus.conf
+	org.freedesktop.realmd.ActiveDirectory.conf
 
 polkit_policydir = $(POLKIT_ACTION_DIR)
 polkit_policy_in_files = org.freedesktop.realmd.policy.in
@@ -41,6 +46,7 @@ realmd_SOURCES = \
 
 realmd_CFLAGS = \
 	-DSERVICE_DIR=\""$(servicedir)"\" \
+	-DSYSCONF_DIR=\""$(sysconfdir)"\" \
 	$(PACKAGEKIT_CFLAGS) \
 	$(POLKIT_CFLAGS) \
 	$(NULL)
@@ -64,10 +70,17 @@ realm-dbus-systemd.c: org.freedesktop.systemd1.xml
 		--generate-c-code realm-dbus-systemd --c-namespace RealmDbusSystemd $<
 realm-dbus-systemd.h: realm-dbus-systemd.c
 
+# Install and uninstall the config for this distro
+install-data-local:
+	$(INSTALL_DATA) $(srcdir)/realmd-$(DISTRO).conf $(servicedir)/realmd-distro.conf
+uninstall-local:
+	rm -f $(servicedir)/realmd-distro.conf
+
 # ------------------------------------------------------------------
 
 EXTRA_DIST = \
 	org.freedesktop.realmd.xml \
+	$(REALMD_CONFIGS) \
 	$(dbusservice_DATA) \
 	$(service_DATA) \
 	$(NULL)

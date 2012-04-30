@@ -25,8 +25,6 @@ gboolean             realm_daemon_lock_for_action            (GDBusMethodInvocat
 
 void                 realm_daemon_unlock_for_action          (GDBusMethodInvocation *invocation);
 
-const gchar *        realm_daemon_resolve_file               (const gchar *name);
-
 void                 realm_daemon_hold                       (void);
 
 void                 realm_daemon_release                    (void);
@@ -35,6 +33,16 @@ void                 realm_daemon_poke                       (void);
 
 gboolean             realm_daemon_check_dbus_action          (const gchar *sender,
                                                               const gchar *action_id);
+
+const gchar *        realm_daemon_conf_path                  (const gchar *name);
+
+GHashTable *         realm_daemon_conf_settings              (const gchar *section);
+
+const gchar *        realm_daemon_conf_value                 (const gchar *section,
+                                                              const gchar *key);
+
+const gchar *        realm_daemon_conf_string                (const gchar *section,
+                                                              const gchar *key);
 
 G_END_DECLS
 

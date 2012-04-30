@@ -41,6 +41,7 @@ static GDebugKey keys[] = {
 	{ "process", REALM_DEBUG_PROCESS },
 	{ "diagnostics", REALM_DEBUG_DIAGNOSTICS },
 	{ "daemon", REALM_DEBUG_SERVICE },
+	{ "packages", REALM_DEBUG_PACKAGES },
 	{ 0, }
 };
 

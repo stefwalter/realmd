@@ -17,7 +17,6 @@
 #include "realm-ad-enroll.h"
 #include "realm-ad-provider.h"
 #include "realm-command.h"
-#include "realm-constants.h"
 #include "realm-daemon.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
@@ -158,7 +157,7 @@ begin_net_process (JoinClosure *join,
 	args = g_ptr_array_new ();
 
 	/* Use our custom smb.conf */
-	g_ptr_array_add (args, REALM_NET_PATH);
+	g_ptr_array_add (args, (gpointer)realm_daemon_conf_path ("net"));
 	g_ptr_array_add (args, "-s");
 	g_ptr_array_add (args, SERVICE_DIR "/ad-provider-smb.conf");
 

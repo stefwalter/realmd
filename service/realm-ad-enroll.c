@@ -303,10 +303,8 @@ on_net_ads_leave (GObject *source,
 	if (error == NULL && status != 0)
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Leaving the domain %s failed", join->domain);
-	if (error != NULL) {
+	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
-	}
 
 	g_simple_async_result_complete (res);
 	g_object_unref (res);

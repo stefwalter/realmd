@@ -9,7 +9,7 @@ import sys
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
 
-def enroll_machine(realm, user, verbose):
+def enroll_machine(realm, user, enroll, verbose):
 	loop = gobject.MainLoop()
 
 	bus = dbus.SystemBus()
@@ -42,38 +42,49 @@ def enroll_machine(realm, user, verbose):
 	kerberos_cache = open(ccache, 'rb').read()
 
 	def on_enroll_machine():
-		print >> sys.stderr, "Enrolled in domain: %s" % realm
+		action = enroll and "Enrolled in" or "Unenrolled from"
+		print >> sys.stderr, "%s domain: %s" % (action, realm)
 		sys.exit(0)
 
 	def on_enroll_error(exc):
-		print >> sys.stderr, "enroll-machine: %s" % str(exc)
+		print >> sys.stderr, "enroll-machine.py: %s" % str(exc)
 		sys.exit(1)
 
-	kerberos.EnrollMachineWithKerberosCache(realm, kerberos_cache,
-	                                        reply_handler=on_enroll_machine,
-	                                        error_handler=on_enroll_error,
-	                                        timeout=300)
+	if enroll:
+		kerberos.EnrollMachineWithKerberosCache(realm, kerberos_cache,
+		                                        reply_handler=on_enroll_machine,
+		                                        error_handler=on_enroll_error,
+		                                        timeout=300)
+	else:
+		kerberos.UnenrollMachineWithKerberosCache(realm, kerberos_cache,
+		                                          reply_handler=on_enroll_machine,
+		                                          error_handler=on_enroll_error,
+		                                          timeout=300)
 
 	loop.run()
 	assert False, "not reached"
 
 def usage():
 	print >> sys.stderr, "usage: enroll-machine.py [-v] [-U username] realm"
+	print >> sys.stderr, "       enroll-machine.py -u [-v] [-U username] realm"
 	sys.exit(2)
 
 if __name__ == '__main__':
 	try:
-		opts, args = getopt.getopt(sys.argv[1:], "U:v", ["verbose", "user="])
+		opts, args = getopt.getopt(sys.argv[1:], "uU:v", ["user=", "unenroll", "verbose"])
 	except getopt.GetoptError, err:
 		print str(err)
 		usage()
 		sys.exit(2)
 
 	user = None
+	enroll = True
 	verbose = False
 	for o, a in opts:
 		if o in ("-h", "--help"):
 			usage()
+		elif o in ("-u", "--unenroll"):
+			enroll = False
 		elif o in ("-U", "--user"):
 			user = a
 		elif o in ("-v", "--verbose"):
@@ -84,4 +95,4 @@ if __name__ == '__main__':
 	if len(args) != 1:
 		usage()
 
-	enroll_machine(args[0], user, verbose)
+	enroll_machine(args[0], user, enroll, verbose)

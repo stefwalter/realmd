@@ -42,6 +42,13 @@ void                realm_command_runv_async                   (gchar **name_or_
                                                                 GAsyncReadyCallback callback,
                                                                 gpointer user_data);
 
+void                realm_command_run_known_async              (const gchar *known_command,
+                                                                gchar **environ,
+                                                                GDBusMethodInvocation *invocation,
+                                                                GCancellable *cancellable,
+                                                                GAsyncReadyCallback callback,
+                                                                gpointer user_data);
+
 gint                realm_command_run_finish                   (GAsyncResult *result,
                                                                 GString **output,
                                                                 GError **error);

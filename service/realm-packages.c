@@ -65,37 +65,37 @@ on_install_progress (PkProgress *progress,
 	switch (type) {
 	case PK_PROGRESS_TYPE_PACKAGE_ID:
 		g_object_get (progress, "package-id", &string, NULL);
-		realm_debug ("package-id: %s\n", string);
+		realm_debug ("package-id: %s", string);
 		g_free (string);
 		break;
 	case PK_PROGRESS_TYPE_TRANSACTION_ID:
 		g_object_get (progress, "transaction-id", &string, NULL);
-		realm_debug ("transaction-id: %s\n", string);
+		realm_debug ("transaction-id: %s", string);
 		g_free (string);
 		break;
 	case PK_PROGRESS_TYPE_PERCENTAGE:
 		g_object_get (progress, "percentage", &number, NULL);
-		realm_debug ("percentage: %d\n", number);
+		realm_debug ("percentage: %d", number);
 		break;
 	case PK_PROGRESS_TYPE_SUBPERCENTAGE:
 		g_object_get (progress, "subpercentage", &number, NULL);
-		realm_debug ("subpercentage: %d\n", number);
+		realm_debug ("subpercentage: %d", number);
 		break;
 	case PK_PROGRESS_TYPE_STATUS:
 		g_object_get (progress, "status", &unumber, NULL);
-		realm_debug ("status: %s\n", pk_status_enum_to_string (unumber));
+		realm_debug ("status: %s", pk_status_enum_to_string (unumber));
 		break;
 	case PK_PROGRESS_TYPE_ELAPSED_TIME:
 		g_object_get (progress, "elapsed-time", &unumber, NULL);
-		realm_debug ("elapsed-time: %u\n", unumber);
+		realm_debug ("elapsed-time: %u", unumber);
 		break;
 	case PK_PROGRESS_TYPE_REMAINING_TIME:
 		g_object_get (progress, "remaining-time", &unumber, NULL);
-		realm_debug ("remaining-time: %u\n", unumber);
+		realm_debug ("remaining-time: %u", unumber);
 		break;
 	case PK_PROGRESS_TYPE_SPEED:
 		g_object_get (progress, "speed", &unumber, NULL);
-		realm_debug ("speed: %u\n", unumber);
+		realm_debug ("speed: %u", unumber);
 		break;
 	case PK_PROGRESS_TYPE_INVALID:
 	case PK_PROGRESS_TYPE_ALLOW_CANCEL:

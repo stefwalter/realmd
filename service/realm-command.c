@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "realm-daemon.h"
 #define DEBUG_FLAG REALM_DEBUG_PROCESS
 #include "realm-debug.h"
 #include "realm-command.h"
@@ -421,7 +422,7 @@ realm_command_run_async (gchar **environ,
 }
 
 void
-realm_command_runv_async (gchar **name_or_path_and_arguments,
+realm_command_runv_async (gchar **argv,
                           gchar **environ,
                           GDBusMethodInvocation *invocation,
                           GCancellable *cancellable,
@@ -440,7 +441,7 @@ realm_command_runv_async (gchar **name_or_path_and_arguments,
 	GPid pid;
 	guint i;
 
-	g_return_if_fail (name_or_path_and_arguments != NULL);
+	g_return_if_fail (argv != NULL);
 	g_return_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable));
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
@@ -455,7 +456,7 @@ realm_command_runv_async (gchar **name_or_path_and_arguments,
 	child_fds[FD_ERROR] = 2;
 
 	if (realm_debugging) {
-		gchar *command = g_strjoinv (" ", name_or_path_and_arguments);
+		gchar *command = g_strjoinv (" ", argv);
 		realm_debug ("running command: %s", command);
 		realm_diagnostics_info (invocation, "%s", command);
 		g_free (command);
@@ -467,7 +468,7 @@ realm_command_runv_async (gchar **name_or_path_and_arguments,
 		}
 	}
 
-	g_spawn_async_with_pipes (NULL, name_or_path_and_arguments, environ,
+	g_spawn_async_with_pipes (NULL, argv, environ,
 	                          G_SPAWN_DO_NOT_REAP_CHILD,
 	                          on_unix_process_child_setup, child_fds,
 	                          &pid, &input_fd, &output_fd, &error_fd, &error);
@@ -534,6 +535,45 @@ realm_command_runv_async (gchar **name_or_path_and_arguments,
 	                                                    (GDestroyNotify)g_source_unref);
 
 	/* source is unreffed in complete_if_source_is_done() */
+}
+
+void
+realm_command_run_known_async (const gchar *known_command,
+                               gchar **environ,
+                               GDBusMethodInvocation *invocation,
+                               GCancellable *cancellable,
+                               GAsyncReadyCallback callback,
+                               gpointer user_data)
+{
+	const gchar *command_line;
+	GError *error = NULL;
+	gchar **argv;
+	gint unused;
+
+	const gchar *invalid_argv[] = {
+		"/bin/false",
+		"invalid-configured-command",
+		known_command,
+		NULL
+	};
+
+	g_return_if_fail (known_command != NULL);
+	g_return_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable));
+	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
+
+	command_line = realm_daemon_conf_value ("commands", known_command);
+	if (command_line == NULL) {
+		g_warning ("Couldn't find the configured string commands/%s", known_command);
+		argv = g_strdupv ((gchar **)invalid_argv);
+
+	} else if (!g_shell_parse_argv (command_line, &unused, &argv, &error)) {
+		g_warning ("Couldn't parse the command line: %s: %s", command_line, error->message);
+		g_error_free (error);
+		argv = g_strdupv ((gchar **)invalid_argv);
+	}
+
+	realm_command_runv_async (argv, environ, invocation, cancellable, callback, user_data);
+	g_strfreev (argv);
 }
 
 gint

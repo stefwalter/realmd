@@ -27,14 +27,18 @@
 #include <errno.h>
 
 static void
-on_winbind_enabled (GObject *source,
-                    GAsyncResult *result,
-                    gpointer user_data)
+on_nss_complete (GObject *source,
+                 GAsyncResult *result,
+                 gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
+	gint status;
 
-	realm_service_enable_finish (result, &error);
+	status = realm_command_run_finish (result, NULL, &error);
+	if (error == NULL && status != 0)
+		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
+		             "Enabling winbind in /etc/nsswitch.conf failed");
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 	g_simple_async_result_complete (res);
@@ -43,9 +47,31 @@ on_winbind_enabled (GObject *source,
 }
 
 static void
-on_samba_config_done (GObject *source,
-                      GAsyncResult *result,
-                      gpointer user_data)
+on_enable_do_nss (GObject *source,
+                  GAsyncResult *result,
+                  gpointer user_data)
+{
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	GDBusMethodInvocation *invocation = g_simple_async_result_get_op_res_gpointer (res);
+	GError *error = NULL;
+
+	realm_service_enable_finish (result, &error);
+	if (error == NULL) {
+		realm_command_run_known_async ("winbind-enable-nss", NULL, invocation,
+		                               NULL, on_nss_complete, g_object_ref (res));
+
+	} else {
+		g_simple_async_result_take_error (res, error);
+		g_simple_async_result_complete (res);
+	}
+
+	g_object_unref (res);
+}
+
+static void
+on_config_do_enable (GObject *source,
+                     GAsyncResult *result,
+                     gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GDBusMethodInvocation *invocation = g_simple_async_result_get_op_res_gpointer (res);
@@ -55,7 +81,7 @@ on_samba_config_done (GObject *source,
 	if (error == NULL) {
 		realm_service_enable_and_restart (realm_daemon_conf_string ("services", "winbind"),
 		                                  invocation,
-		                                  on_winbind_enabled,
+		                                  on_enable_do_nss,
 		                                  g_object_ref (res));
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -83,7 +109,7 @@ realm_winbind_configure_async (GDBusMethodInvocation *invocation,
 	/* TODO: need to use autorid mapping */
 
 	realm_samba_config_set_async ("global", invocation,
-	                              on_samba_config_done, g_object_ref (res),
+	                              on_config_do_enable, g_object_ref (res),
 	                              "idmap uid", "10000-20000",
 	                              "idmap gid", "10000-20000",
 	                              "winbind enum users", "no",
@@ -106,7 +132,7 @@ realm_winbind_configure_finish (GAsyncResult *result,
 }
 
 static void
-on_winbind_disabled (GObject *source,
+on_disable_complete (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
 {
@@ -121,6 +147,30 @@ on_winbind_disabled (GObject *source,
 	g_object_unref (res);
 }
 
+static void
+on_nss_do_disable (GObject *source,
+                   GAsyncResult *result,
+                   gpointer user_data)
+{
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	GDBusMethodInvocation *invocation = g_simple_async_result_get_op_res_gpointer (res);
+	GError *error = NULL;
+	gint status;
+
+	status = realm_command_run_finish (result, NULL, &error);
+	if (error == NULL && status != 0)
+		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
+		             "Disabling winbind in /etc/nsswitch.conf failed");
+	if (error == NULL) {
+		realm_service_disable_and_stop (realm_daemon_conf_string ("services", "winbind"),
+		                                invocation, on_disable_complete, g_object_ref (res));
+	} else {
+		g_simple_async_result_take_error (res, error);
+		g_simple_async_result_complete (res);
+	}
+
+	g_object_unref (res);
+}
 
 void
 realm_winbind_deconfigure_async (GDBusMethodInvocation *invocation,
@@ -133,11 +183,12 @@ realm_winbind_deconfigure_async (GDBusMethodInvocation *invocation,
 
 	res = g_simple_async_result_new (NULL, callback, user_data,
 	                                 realm_winbind_deconfigure_async);
+	if (invocation != NULL)
+		g_simple_async_result_set_op_res_gpointer (res, g_object_ref (invocation),
+		                                           g_object_unref);
 
-	realm_service_disable_and_stop (realm_daemon_conf_string ("services", "winbind"),
-	                                invocation,
-	                                on_winbind_disabled,
-	                                g_object_ref (res));
+	realm_command_run_known_async ("winbind-disable-nss", NULL, invocation,
+	                               NULL, on_nss_do_disable, g_object_ref (res));
 
 	g_object_unref (res);
 }

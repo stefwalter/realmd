@@ -58,7 +58,7 @@ on_enable_do_nss (GObject *source,
 
 	realm_service_enable_finish (result, &error);
 	if (error == NULL) {
-		realm_command_run_known_async ("winbind-enable-nss", NULL, invocation,
+		realm_command_run_known_async ("winbind-enable-logins", NULL, invocation,
 		                               NULL, on_nss_complete, g_object_ref (res));
 
 	} else {
@@ -175,7 +175,7 @@ realm_samba_winbind_deconfigure_async (GDBusMethodInvocation *invocation,
 		g_simple_async_result_set_op_res_gpointer (res, g_object_ref (invocation),
 		                                           g_object_unref);
 
-	realm_command_run_known_async ("winbind-disable-nss", NULL, invocation,
+	realm_command_run_known_async ("winbind-disable-logins", NULL, invocation,
 	                               NULL, on_nss_do_disable, g_object_ref (res));
 
 	g_object_unref (res);

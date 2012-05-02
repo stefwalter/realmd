@@ -31,12 +31,5 @@
 				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="yup"/>
 			</arg>
 		</method>
-
-		<property name="LoginsPossible" type="b" access="read"/>
-		<property name="LoginsEnabled" type="b" access="read"/>
-
-		<method name="SetLoginsEnabled">
-			<arg name="enabled" type="b" direction="in"/>
-		</method>
 	</interface>
 </node>

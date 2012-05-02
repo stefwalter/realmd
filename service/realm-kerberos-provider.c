@@ -240,56 +240,6 @@ handle_unenroll_machine_with_kerberos_cache (RealmKerberosProvider *self,
 	return TRUE;
 }
 
-static void
-on_set_logins_complete (GObject *source,
-                        GAsyncResult *result,
-                        gpointer user_data)
-{
-	MethodClosure *closure = user_data;
-	RealmKerberosProviderClass *klass;
-	GError *error = NULL;
-
-	klass = REALM_KERBEROS_PROVIDER_GET_CLASS (closure->self);
-	g_return_if_fail (klass->logins_finish != NULL);
-
-	if ((klass->logins_finish) (closure->self, result, &error)) {
-		realm_diagnostics_info (closure->invocation, "Successfully enabled/disabled logins");
-		g_dbus_method_invocation_return_value (closure->invocation, g_variant_new ("()"));
-	} else {
-		realm_diagnostics_error (closure->invocation, error, "Failed to enable/disable logins");
-		g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_SET_LOGINS_FAILED,
-		                                       "Failed to configure logins. See diagnostics.");
-		g_error_free (error);
-	}
-
-	realm_daemon_unlock_for_action (closure->invocation);
-	method_closure_free (closure);
-}
-
-static gboolean
-handle_set_logins_enabled (RealmKerberosProvider *self,
-                           GDBusMethodInvocation *invocation,
-                           gboolean enabled,
-                           gpointer unused)
-{
-	RealmKerberosProviderClass *klass;
-
-	if (!realm_daemon_lock_for_action (invocation)) {
-		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
-		                                       "Already running another action");
-		return TRUE;
-	}
-
-	klass = REALM_KERBEROS_PROVIDER_GET_CLASS (self);
-	g_return_val_if_fail (klass->logins_async != NULL, FALSE);
-	g_return_val_if_fail (klass->logins_finish != NULL, FALSE);
-
-	(klass->logins_async) (self, enabled, invocation, on_set_logins_complete,
-	                       method_closure_new (self, invocation));
-
-	return TRUE;
-}
-
 static gboolean
 on_authorize_method (GDBusInterfaceSkeleton *skeleton,
                      GDBusMethodInvocation  *invocation,
@@ -316,8 +266,6 @@ on_authorize_method (GDBusInterfaceSkeleton *skeleton,
 			action_id = "org.freedesktop.realmd.enroll-machine";
 		} else if (g_str_equal (method, "UnenrollMachineWithKerberosCache")) {
 			action_id = "org.freedesktop.realmd.unenroll-machine";
-		} else if (g_str_equal (method, "SetLoginsEnabled")) {
-			action_id = "org.freedesktop.realmd.set-logins";
 		} else {
 			g_warning ("encountered unknown method during auth checks: %s.%s",
 			           interface, method);
@@ -358,8 +306,6 @@ realm_kerberos_provider_init (RealmKerberosProvider *self)
 	                  G_CALLBACK (handle_enroll_machine_with_kerberos_cache), NULL);
 	g_signal_connect (self, "handle-unenroll-machine-with-kerberos-cache",
 	                  G_CALLBACK (handle_unenroll_machine_with_kerberos_cache), NULL);
-	g_signal_connect (self, "handle-set-logins-enabled",
-	                  G_CALLBACK (handle_set_logins_enabled), NULL);
 }
 
 static void

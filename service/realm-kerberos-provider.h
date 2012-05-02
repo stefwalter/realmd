@@ -74,16 +74,6 @@ struct _RealmKerberosProviderClass {
 	gboolean   (* unenroll_finish) (RealmKerberosProvider *provider,
 	                                GAsyncResult *result,
 	                                GError **error);
-
-	void       (* logins_async)    (RealmKerberosProvider *provider,
-	                                gboolean enabled,
-	                                GDBusMethodInvocation *invocation,
-	                                GAsyncReadyCallback callback,
-	                                gpointer user_data);
-
-	gboolean   (* logins_finish)   (RealmKerberosProvider *provider,
-	                                GAsyncResult *result,
-	                                GError **error);
 };
 
 GType               realm_kerberos_provider_get_type                 (void) G_GNUC_CONST;

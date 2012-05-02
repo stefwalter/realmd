@@ -48,10 +48,13 @@ test-py:
 test: test-c test-py
 
 EXTRA_DIST = \
+	files \
 	$(PY_TESTS) \
 	$(NULL)
 
 CLEANFILES = \
+	*.gcno \
+	*.gcda \
 	$(NULL)
 
 all-local: $(check_PROGRAMS)

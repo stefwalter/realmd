@@ -30,6 +30,7 @@ realmd_SOURCES = \
 	realm-ad-provider.c realm-ad-provider.h \
 	realm-command.c realm-command.h \
 	realm-daemon.c realm-daemon.h \
+	realm-dbus-constants.h \
 	realm-debug.c realm-debug.h \
 	realm-diagnostics.c realm-diagnostics.h \
 	realm-discovery.c realm-discovery.h \
@@ -72,6 +73,7 @@ realm-dbus-systemd.h: realm-dbus-systemd.c
 
 # Install and uninstall the config for this distro
 install-data-local:
+	$(INSTALL_PROGRAM) -d $(servicedir)
 	$(INSTALL_DATA) $(srcdir)/realmd-$(DISTRO).conf $(servicedir)/realmd-distro.conf
 uninstall-local:
 	rm -f $(servicedir)/realmd-distro.conf
@@ -79,13 +81,17 @@ uninstall-local:
 # ------------------------------------------------------------------
 
 EXTRA_DIST = \
-	org.freedesktop.realmd.xml \
+	$(DBUS_XML_DEFINITIONS) \
+	$(polkit_policy_in_files) \
 	$(REALMD_CONFIGS) \
 	$(dbusservice_DATA) \
 	$(service_DATA) \
 	$(NULL)
 
 CLEANFILES = \
+	$(polkit_policy_DATA) \
+	*.gcno \
+	*.gcda \
 	$(NULL)
 
 DISTCLEANFILES = \

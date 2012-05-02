@@ -93,6 +93,8 @@ realm_samba_winbind_configure_async (GDBusMethodInvocation *invocation,
 	                           "winbind enum users", "no",
 	                           "winbind enum groups", "no",
 	                           "template shell", realm_platform_string ("user", "shell"),
+	                           "winbind offline logon", "yes",
+	                           "winbind refresh tickets", "yes",
 	                           NULL);
 
 	if (error == NULL) {

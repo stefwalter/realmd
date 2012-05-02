@@ -234,7 +234,7 @@ parse_config_line_value (GBytes *bytes)
 	/* Remove any continuations and line endings */
 	remove_new_lines (value);
 
-	return g_string_free (value, FALSE);
+	return g_strstrip (g_string_free (value, FALSE));
 }
 
 static void

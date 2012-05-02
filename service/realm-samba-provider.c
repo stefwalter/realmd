@@ -22,6 +22,7 @@
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-packages.h"
+#include "realm-samba-config.h"
 #include "realm-samba-enroll.h"
 #include "realm-samba-provider.h"
 #include "realm-samba-winbind.h"
@@ -37,6 +38,11 @@ struct _RealmSambaProvider {
 typedef struct {
 	RealmKerberosProviderClass parent_class;
 } RealmSambaProviderClass;
+
+enum {
+	PROP_0,
+	PROP_ENROLLED_REALMS
+};
 
 static guint provider_owner_id = 0;
 
@@ -286,10 +292,73 @@ realm_samba_provider_generic_finish (RealmKerberosProvider *provider,
 	return TRUE;
 }
 
+static gchar *
+lookup_enrolled_realm (void)
+{
+	RealmSambaConfig *config;
+	GError *error = NULL;
+	gchar *realm = NULL;
+	gchar *security;
+
+	config = realm_samba_config_new ();
+	if (!realm_samba_config_read_system (config, &error)) {
+		g_warning ("Couldn't read samba global configuration file: %s", error->message);
+		g_error_free (error);
+		return NULL;
+	}
+
+	security = realm_samba_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "security");
+	if (security != NULL && g_ascii_strcasecmp (security, "ADS") == 0) {
+		realm = realm_samba_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
+	}
+
+	g_free (security);
+	g_object_unref (config);
+
+	return realm;
+}
+
+static void
+realm_samba_provider_get_property (GObject *obj,
+                                   guint prop_id,
+                                   GValue *value,
+                                   GParamSpec *pspec)
+{
+	const gchar *realms[2];
+	gchar *realm;
+
+	switch (prop_id) {
+	case PROP_ENROLLED_REALMS:
+		realm = lookup_enrolled_realm ();
+		realms[0] = realm;
+		realms[1] = NULL;
+		g_value_set_boxed (value, realms);
+		g_free (realm);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+realm_samba_provider_set_property (GObject *obj,
+                                   guint prop_id,
+                                   const GValue *value,
+                                   GParamSpec *pspec)
+{
+	switch (prop_id) {
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+		break;
+	}
+}
+
 void
 realm_samba_provider_class_init (RealmSambaProviderClass *klass)
 {
 	RealmKerberosProviderClass *kerberos_class = REALM_KERBEROS_PROVIDER_CLASS (klass);
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
 	kerberos_class->discover_async = realm_ad_discover_async;
 	kerberos_class->discover_finish = realm_ad_discover_finish;
@@ -297,6 +366,11 @@ realm_samba_provider_class_init (RealmSambaProviderClass *klass)
 	kerberos_class->enroll_finish = realm_samba_provider_generic_finish;
 	kerberos_class->unenroll_async = realm_samba_provider_unenroll_async;
 	kerberos_class->unenroll_finish = realm_samba_provider_generic_finish;
+
+	object_class->get_property = realm_samba_provider_get_property;
+	object_class->set_property = realm_samba_provider_set_property;
+
+	g_object_class_override_property (object_class, PROP_ENROLLED_REALMS, "enrolled-realms");
 }
 
 static void

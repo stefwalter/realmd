@@ -129,6 +129,9 @@ test_read_one (Test *test,
 	value = realm_samba_config_get (test->config, "section", "five");
 	g_assert_cmpstr (value, ==, "cinco");
 	g_free (value);
+	value = realm_samba_config_get (test->config, "section", "six");
+	g_assert_cmpstr (value, ==, "seis");
+	g_free (value);
 
 	/* Not present */
 	value = realm_samba_config_get (test->config, "section", "zero");

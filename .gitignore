@@ -1,5 +1,6 @@
 *~
 *.o
+*.gcno
 
 .cproject
 .deps
@@ -27,6 +28,9 @@ stamp-h1
 stamp-it
 temp.txt
 
+/build/coverage.info
+/build/coverage
+
 /service/identity-config-service
 /service/org.freedesktop.realmd.policy
 /service/realm-dbus-generated.c
@@ -34,3 +38,4 @@ temp.txt
 /service/realmd
 
 /tests/frob-install-packages
+/tests/test-samba-config

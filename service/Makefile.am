@@ -7,7 +7,7 @@ REALMD_CONFIGS = \
 	realmd-defaults.conf \
 	realmd-redhat.conf
 
-servicedir = $(libdir)/realmd
+servicedir = $(SERVICE_DIR)
 service_DATA = \
 	ad-provider-smb.conf \
 	realmd-defaults.conf
@@ -36,6 +36,7 @@ realmd_SOURCES = \
 	realm-discovery.c realm-discovery.h \
 	realm-errors.c realm-errors.h \
 	realm-packages.c realm-packages.h \
+	realm-platform.c realm-platform.h \
 	realm-kerberos-provider.c realm-kerberos-provider.h \
 	realm-samba-config.c realm-samba-config.h \
 	realm-service.c realm-service.h \

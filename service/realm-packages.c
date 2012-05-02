@@ -19,6 +19,7 @@
 #include "realm-diagnostics.h"
 #include "realm-daemon.h"
 #include "realm-packages.h"
+#include "realm-platform.h"
 
 #define I_KNOW_THE_PACKAGEKIT_GLIB2_API_IS_SUBJECT_TO_CHANGE
 #include <packagekit-glib2/packagekit.h>
@@ -233,7 +234,7 @@ lookup_required_files_and_packages (gchar ***packages,
 	gchar **f, **p;
 	gsize length;
 
-	settings = realm_daemon_conf_settings ("active-directory-packages");
+	settings = realm_platform_settings ("active-directory-packages");
 	length = settings ? g_hash_table_size (settings) : 0;
 
 	*packages = p = g_new0 (gchar *, length + 1);

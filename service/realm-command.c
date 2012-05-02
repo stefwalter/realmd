@@ -27,6 +27,7 @@
 #include "realm-debug.h"
 #include "realm-command.h"
 #include "realm-diagnostics.h"
+#include "realm-platform.h"
 
 #include <glib/gi18n-lib.h>
 
@@ -561,7 +562,7 @@ realm_command_run_known_async (const gchar *known_command,
 	g_return_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable));
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
-	command_line = realm_daemon_conf_value ("commands", known_command);
+	command_line = realm_platform_value ("commands", known_command);
 	if (command_line == NULL) {
 		g_warning ("Couldn't find the configured string commands/%s", known_command);
 		argv = g_strdupv ((gchar **)invalid_argv);

@@ -20,6 +20,7 @@
 #include "realm-daemon.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
+#include "realm-platform.h"
 #include "realm-samba-config.h"
 
 #include <glib/gstdio.h>
@@ -157,7 +158,7 @@ begin_net_process (JoinClosure *join,
 	args = g_ptr_array_new ();
 
 	/* Use our custom smb.conf */
-	g_ptr_array_add (args, (gpointer)realm_daemon_conf_path ("net"));
+	g_ptr_array_add (args, (gpointer)realm_platform_path ("net"));
 	g_ptr_array_add (args, "-s");
 	g_ptr_array_add (args, SERVICE_DIR "/ad-provider-smb.conf");
 
@@ -178,9 +179,9 @@ begin_net_process (JoinClosure *join,
 }
 
 static void
-on_net_ads_keytab_create (GObject *source,
-                          GAsyncResult *result,
-                          gpointer user_data)
+on_keytab_complete (GObject *source,
+                    GAsyncResult *result,
+                    gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
@@ -198,31 +199,9 @@ on_net_ads_keytab_create (GObject *source,
 }
 
 static void
-on_config_kerberos_method (GObject *source,
-                           GAsyncResult *result,
-                           gpointer user_data)
-{
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
-	GError *error = NULL;
-
-	realm_samba_config_set_finish (result, &error);
-	if (error == NULL) {
-		begin_net_process (join, on_net_ads_keytab_create, g_object_ref (res),
-		                   "ads", "keytab", "create", NULL);
-
-	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
-	}
-
-	g_object_unref (res);
-}
-
-static void
-on_net_ads_join (GObject *source,
-                 GAsyncResult *result,
-                 gpointer user_data)
+on_join_do_keytab (GObject *source,
+                   GAsyncResult *result,
+                   gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
@@ -233,11 +212,14 @@ on_net_ads_join (GObject *source,
 	if (error == NULL && status != 0)
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Joining the domain %s failed", join->domain);
-	if (error == NULL) {
-		realm_samba_config_set_async ("global", join->invocation,
-		                              on_config_kerberos_method, g_object_ref (res),
-		                              "kerberos method", "secrets and keytab", NULL);
+	if (error == NULL)
+		realm_samba_config_change (REALM_SAMBA_CONFIG_GLOBAL, &error,
+		                           "kerberos method", "secrets and keytab",
+		                           NULL);
 
+	if (error == NULL) {
+		begin_net_process (join, on_keytab_complete, g_object_ref (res),
+		                   "ads", "keytab", "create", NULL);
 	} else {
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete (res);
@@ -269,7 +251,7 @@ realm_ad_enroll_join_async (const gchar *realm,
 		g_simple_async_result_complete_in_idle (res);
 	} else {
 		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
-		begin_net_process (join,  on_net_ads_join, g_object_ref (res),
+		begin_net_process (join,  on_join_do_keytab, g_object_ref (res),
 		                   "ads", "join", "-k", join->domain, NULL);
 	}
 

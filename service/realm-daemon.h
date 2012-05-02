@@ -34,16 +34,6 @@ void                 realm_daemon_poke                       (void);
 gboolean             realm_daemon_check_dbus_action          (const gchar *sender,
                                                               const gchar *action_id);
 
-const gchar *        realm_daemon_conf_path                  (const gchar *name);
-
-GHashTable *         realm_daemon_conf_settings              (const gchar *section);
-
-const gchar *        realm_daemon_conf_value                 (const gchar *section,
-                                                              const gchar *key);
-
-const gchar *        realm_daemon_conf_string                (const gchar *section,
-                                                              const gchar *key);
-
 G_END_DECLS
 
 #endif /* __REALM_DAEMON_H__ */

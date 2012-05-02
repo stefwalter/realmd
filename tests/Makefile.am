@@ -2,9 +2,13 @@ include $(top_srcdir)/Makefile.decl
 
 INCLUDES = \
 	-I$(top_srcdir) \
+	-DTESTFILE_DIR="\"@abs_srcdir@/files\"" \
+	-DSYSCONF_DIR="\"/tmp/realmd-etc\"" \
+	-DSERVICE_DIR="\"@abs_srcdir@/files\"" \
 	$(NULL)
 
 TEST_PROGS = \
+	test-samba-config \
 	$(NULL)
 
 check_PROGRAMS = \
@@ -12,6 +16,12 @@ check_PROGRAMS = \
 
 noinst_PROGRAMS =  \
 	frob-install-packages \
+	$(NULL)
+
+test_samba_config_SOURCES = \
+	test-samba-config.c \
+	$(top_srcdir)/service/realm-samba-config.c \
+	$(top_srcdir)/service/realm-platform.c \
 	$(NULL)
 
 frob_install_packages_CFLAGS = \

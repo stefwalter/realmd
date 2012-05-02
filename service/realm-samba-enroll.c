@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "realm-ad-enroll.h"
 #include "realm-ad-provider.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
@@ -22,6 +21,7 @@
 #include "realm-errors.h"
 #include "realm-platform.h"
 #include "realm-samba-config.h"
+#include "realm-samba-enroll.h"
 
 #include <glib/gstdio.h>
 
@@ -282,11 +282,11 @@ on_join_do_keytab (GObject *source,
 }
 
 void
-realm_ad_enroll_join_async (const gchar *realm,
-                            GBytes *admin_kerberos_cache,
-                            GDBusMethodInvocation *invocation,
-                            GAsyncReadyCallback callback,
-                            gpointer user_data)
+realm_samba_enroll_join_async (const gchar *realm,
+                               GBytes *admin_kerberos_cache,
+                               GDBusMethodInvocation *invocation,
+                               GAsyncReadyCallback callback,
+                               gpointer user_data)
 {
 	GSimpleAsyncResult *res;
 	JoinClosure *join;
@@ -296,7 +296,7 @@ realm_ad_enroll_join_async (const gchar *realm,
 	g_return_if_fail (admin_kerberos_cache != NULL);
 
 	res = g_simple_async_result_new (NULL, callback, user_data,
-	                                 realm_ad_enroll_join_async);
+	                                 realm_samba_enroll_join_async);
 
 	join = join_closure_init (realm, admin_kerberos_cache, invocation, &error);
 	if (join == NULL) {
@@ -312,11 +312,11 @@ realm_ad_enroll_join_async (const gchar *realm,
 }
 
 gboolean
-realm_ad_enroll_join_finish (GAsyncResult *result,
-                             GError **error)
+realm_samba_enroll_join_finish (GAsyncResult *result,
+                                GError **error)
 {
 	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      realm_ad_enroll_join_async), FALSE);
+	                      realm_samba_enroll_join_async), FALSE);
 
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
 		return FALSE;
@@ -372,18 +372,18 @@ on_flush_do_leave (GObject *source,
 }
 
 void
-realm_ad_enroll_leave_async (const gchar *realm,
-                             GBytes *admin_kerberos_cache,
-                             GDBusMethodInvocation *invocation,
-                             GAsyncReadyCallback callback,
-                             gpointer user_data)
+realm_samba_enroll_leave_async (const gchar *realm,
+                                GBytes *admin_kerberos_cache,
+                                GDBusMethodInvocation *invocation,
+                                GAsyncReadyCallback callback,
+                                gpointer user_data)
 {
 	GSimpleAsyncResult *res;
 	JoinClosure *join;
 	GError *error = NULL;
 
 	res = g_simple_async_result_new (NULL, callback, user_data,
-	                                 realm_ad_enroll_leave_async);
+	                                 realm_samba_enroll_leave_async);
 
 	join = join_closure_init (realm, admin_kerberos_cache, invocation, &error);
 	if (error == NULL) {
@@ -400,11 +400,11 @@ realm_ad_enroll_leave_async (const gchar *realm,
 }
 
 gboolean
-realm_ad_enroll_leave_finish (GAsyncResult *result,
-                              GError **error)
+realm_samba_enroll_leave_finish (GAsyncResult *result,
+                                 GError **error)
 {
 	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      realm_ad_enroll_leave_async), FALSE);
+	                      realm_samba_enroll_leave_async), FALSE);
 
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
 		return FALSE;

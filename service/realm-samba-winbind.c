@@ -14,13 +14,13 @@
 
 #include "config.h"
 
-#include "realm-winbind.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
 #include "realm-platform.h"
 #include "realm-samba-config.h"
+#include "realm-samba-winbind.h"
 #include "realm-service.h"
 
 #include <glib/gstdio.h>
@@ -70,9 +70,9 @@ on_enable_do_nss (GObject *source,
 }
 
 void
-realm_winbind_configure_async (GDBusMethodInvocation *invocation,
-                               GAsyncReadyCallback callback,
-                               gpointer user_data)
+realm_samba_winbind_configure_async (GDBusMethodInvocation *invocation,
+                                     GAsyncReadyCallback callback,
+                                     gpointer user_data)
 {
 	GSimpleAsyncResult *res;
 	GError *error = NULL;
@@ -80,7 +80,7 @@ realm_winbind_configure_async (GDBusMethodInvocation *invocation,
 	g_return_if_fail (invocation != NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
 	res = g_simple_async_result_new (NULL, callback, user_data,
-	                                 realm_winbind_configure_async);
+	                                 realm_samba_winbind_configure_async);
 	if (invocation != NULL)
 		g_simple_async_result_set_op_res_gpointer (res, g_object_ref (invocation),
 		                                           g_object_unref);
@@ -109,11 +109,11 @@ realm_winbind_configure_async (GDBusMethodInvocation *invocation,
 }
 
 gboolean
-realm_winbind_configure_finish (GAsyncResult *result,
-                                GError **error)
+realm_samba_winbind_configure_finish (GAsyncResult *result,
+                                      GError **error)
 {
 	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      realm_winbind_configure_async), FALSE);
+	                      realm_samba_winbind_configure_async), FALSE);
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
 		return FALSE;
 	return TRUE;
@@ -161,16 +161,16 @@ on_nss_do_disable (GObject *source,
 }
 
 void
-realm_winbind_deconfigure_async (GDBusMethodInvocation *invocation,
-                                 GAsyncReadyCallback callback,
-                                 gpointer user_data)
+realm_samba_winbind_deconfigure_async (GDBusMethodInvocation *invocation,
+                                       GAsyncReadyCallback callback,
+                                       gpointer user_data)
 {
 	GSimpleAsyncResult *res;
 
 	g_return_if_fail (invocation != NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
 	res = g_simple_async_result_new (NULL, callback, user_data,
-	                                 realm_winbind_deconfigure_async);
+	                                 realm_samba_winbind_deconfigure_async);
 	if (invocation != NULL)
 		g_simple_async_result_set_op_res_gpointer (res, g_object_ref (invocation),
 		                                           g_object_unref);
@@ -182,11 +182,11 @@ realm_winbind_deconfigure_async (GDBusMethodInvocation *invocation,
 }
 
 gboolean
-realm_winbind_deconfigure_finish (GAsyncResult *result,
-                                  GError **error)
+realm_samba_winbind_deconfigure_finish (GAsyncResult *result,
+                                        GError **error)
 {
 	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      realm_winbind_deconfigure_async), FALSE);
+	                      realm_samba_winbind_deconfigure_async), FALSE);
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
 		return FALSE;
 	return TRUE;

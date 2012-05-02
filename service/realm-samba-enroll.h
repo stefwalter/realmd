@@ -14,8 +14,8 @@
 
 #include "config.h"
 
-#ifndef __REALM_AD_ENROLL_H__
-#define __REALM_AD_ENROLL_H__
+#ifndef __REALM_SAMBA_ENROLL_H__
+#define __REALM_SAMBA_ENROLL_H__
 
 #include <gio/gio.h>
 
@@ -23,24 +23,24 @@
 
 G_BEGIN_DECLS
 
-void               realm_ad_enroll_join_async        (const gchar *realm,
+void               realm_samba_enroll_join_async     (const gchar *realm,
                                                       GBytes *admin_kerberos_cache,
                                                       GDBusMethodInvocation *invocation,
                                                       GAsyncReadyCallback callback,
                                                       gpointer user_data);
 
-gboolean           realm_ad_enroll_join_finish       (GAsyncResult *result,
+gboolean           realm_samba_enroll_join_finish    (GAsyncResult *result,
                                                       GError **error);
 
-void               realm_ad_enroll_leave_async       (const gchar *realm,
+void               realm_samba_enroll_leave_async    (const gchar *realm,
                                                       GBytes *admin_kerberos_cache,
                                                       GDBusMethodInvocation *invocation,
                                                       GAsyncReadyCallback callback,
                                                       gpointer user_data);
 
-gboolean           realm_ad_enroll_leave_finish      (GAsyncResult *result,
+gboolean           realm_samba_enroll_leave_finish   (GAsyncResult *result,
                                                       GError **error);
 
 G_END_DECLS
 
-#endif /* __REALM_AD_ENROLL_H__ */
+#endif /* __REALM_SAMBA_ENROLL_H__ */

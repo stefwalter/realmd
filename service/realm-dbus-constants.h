@@ -48,4 +48,4 @@ G_BEGIN_DECLS
 
 G_END_DECLS
 
-#endif /* __REALM_AD_ENROLL_H__ */
+#endif /* __REALM_DBUS_CONSTANTS_H__ */

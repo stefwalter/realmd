@@ -27,7 +27,6 @@ BUILT_SOURCES = \
 
 realmd_SOURCES = \
 	realm-ad-discover.c realm-ad-discover.h \
-	realm-ad-enroll.c realm-ad-enroll.h \
 	realm-ad-provider.c realm-ad-provider.h \
 	realm-command.c realm-command.h \
 	realm-daemon.c realm-daemon.h \
@@ -39,8 +38,9 @@ realmd_SOURCES = \
 	realm-platform.c realm-platform.h \
 	realm-kerberos-provider.c realm-kerberos-provider.h \
 	realm-samba-config.c realm-samba-config.h \
+	realm-samba-enroll.c realm-samba-enroll.h \
+	realm-samba-winbind.c realm-samba-winbind.h \
 	realm-service.c realm-service.h \
-	realm-winbind.c realm-winbind.h \
 	$(BUILT_SOURCES) \
 	$(NULL)
 

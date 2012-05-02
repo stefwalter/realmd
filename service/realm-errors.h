@@ -37,4 +37,4 @@ typedef enum {
 
 G_END_DECLS
 
-#endif /* __REALM_AD_ENROLL_H__ */
+#endif /* __REALM_ERRORS_H__ */

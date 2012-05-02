@@ -15,7 +15,6 @@
 #include "config.h"
 
 #include "realm-ad-discover.h"
-#include "realm-ad-enroll.h"
 #include "realm-ad-provider.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
@@ -24,7 +23,8 @@
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-packages.h"
-#include "realm-winbind.h"
+#include "realm-samba-enroll.h"
+#include "realm-samba-winbind.h"
 
 #include <glib/gstdio.h>
 
@@ -74,7 +74,7 @@ on_winbind_done (GObject *source,
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
 
-	realm_winbind_configure_finish (result, &error);
+	realm_samba_winbind_configure_finish (result, &error);
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 	g_simple_async_result_complete (res);
@@ -91,10 +91,10 @@ on_join_do_winbind (GObject *source,
 	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
 	GError *error = NULL;
 
-	realm_ad_enroll_join_finish (result, &error);
+	realm_samba_enroll_join_finish (result, &error);
 	if (error == NULL) {
-		realm_winbind_configure_async (enroll->invocation,
-		                               on_winbind_done, g_object_ref (res));
+		realm_samba_winbind_configure_async (enroll->invocation,
+		                                     on_winbind_done, g_object_ref (res));
 	} else {
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete (res);
@@ -114,8 +114,9 @@ on_install_do_join (GObject *source,
 
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
-		realm_ad_enroll_join_async (enroll->realm, enroll->admin_kerberos_cache,
-		                            enroll->invocation, on_join_do_winbind, g_object_ref (res));
+		realm_samba_enroll_join_async (enroll->realm, enroll->admin_kerberos_cache,
+		                               enroll->invocation, on_join_do_winbind,
+		                               g_object_ref (res));
 
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -217,7 +218,7 @@ on_remove_winbind_done (GObject *source,
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
 
-	realm_winbind_deconfigure_finish (result, &error);
+	realm_samba_winbind_deconfigure_finish (result, &error);
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 	g_simple_async_result_complete (res);
@@ -234,11 +235,11 @@ on_leave_do_winbind (GObject *source,
 	UnenrollClosure *unenroll = g_simple_async_result_get_op_res_gpointer (res);
 	GError *error = NULL;
 
-	realm_ad_enroll_leave_finish (result, &error);
+	realm_samba_enroll_leave_finish (result, &error);
 	if (error == NULL) {
-		realm_winbind_deconfigure_async (unenroll->invocation,
-		                                 on_remove_winbind_done,
-		                                 g_object_ref (res));
+		realm_samba_winbind_deconfigure_async (unenroll->invocation,
+		                                       on_remove_winbind_done,
+		                                       g_object_ref (res));
 
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -268,8 +269,8 @@ realm_ad_provider_unenroll_async (RealmKerberosProvider *provider,
 
 	/* TODO: Check that we're enrolled as this realm */
 
-	realm_ad_enroll_leave_async (realm, admin_kerberos_cache, invocation,
-	                             on_leave_do_winbind, g_object_ref (res));
+	realm_samba_enroll_leave_async (realm, admin_kerberos_cache, invocation,
+	                                on_leave_do_winbind, g_object_ref (res));
 
 	g_object_unref (res);
 }

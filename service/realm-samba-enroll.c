@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "realm-ad-provider.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-diagnostics.h"
@@ -22,6 +21,7 @@
 #include "realm-platform.h"
 #include "realm-samba-config.h"
 #include "realm-samba-enroll.h"
+#include "realm-samba-provider.h"
 
 #include <glib/gstdio.h>
 

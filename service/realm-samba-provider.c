@@ -15,7 +15,6 @@
 #include "config.h"
 
 #include "realm-ad-discover.h"
-#include "realm-ad-provider.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
@@ -24,26 +23,27 @@
 #include "realm-errors.h"
 #include "realm-packages.h"
 #include "realm-samba-enroll.h"
+#include "realm-samba-provider.h"
 #include "realm-samba-winbind.h"
 
 #include <glib/gstdio.h>
 
 #include <errno.h>
 
-struct _RealmAdProvider {
+struct _RealmSambaProvider {
 	RealmKerberosProvider parent;
 };
 
 typedef struct {
 	RealmKerberosProviderClass parent_class;
-} RealmAdProviderClass;
+} RealmSambaProviderClass;
 
-static guint ad_provider_owner_id = 0;
+static guint provider_owner_id = 0;
 
-G_DEFINE_TYPE (RealmAdProvider, realm_ad_provider, REALM_TYPE_KERBEROS_PROVIDER);
+G_DEFINE_TYPE (RealmSambaProvider, realm_samba_provider, REALM_TYPE_KERBEROS_PROVIDER);
 
 static void
-realm_ad_provider_init (RealmAdProvider *self)
+realm_samba_provider_init (RealmSambaProvider *self)
 {
 
 }
@@ -162,18 +162,18 @@ on_discover_do_install (GObject *source,
 }
 
 static void
-realm_ad_provider_enroll_async (RealmKerberosProvider *provider,
-                                const gchar *realm,
-                                GBytes *admin_kerberos_cache,
-                                GDBusMethodInvocation *invocation,
-                                GAsyncReadyCallback callback,
-                                gpointer user_data)
+realm_samba_provider_enroll_async (RealmKerberosProvider *provider,
+                                   const gchar *realm,
+                                   GBytes *admin_kerberos_cache,
+                                   GDBusMethodInvocation *invocation,
+                                   GAsyncReadyCallback callback,
+                                   gpointer user_data)
 {
 	GSimpleAsyncResult *res;
 	EnrollClosure *enroll;
 
 	res = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
-	                                 realm_ad_provider_enroll_async);
+	                                 realm_samba_provider_enroll_async);
 	enroll = g_slice_new0 (EnrollClosure);
 	enroll->realm = g_strdup (realm);
 	enroll->invocation = g_object_ref (invocation);
@@ -250,18 +250,18 @@ on_leave_do_winbind (GObject *source,
 }
 
 static void
-realm_ad_provider_unenroll_async (RealmKerberosProvider *provider,
-                                  const gchar *realm,
-                                  GBytes *admin_kerberos_cache,
-                                  GDBusMethodInvocation *invocation,
-                                  GAsyncReadyCallback callback,
-                                  gpointer user_data)
+realm_samba_provider_unenroll_async (RealmKerberosProvider *provider,
+                                     const gchar *realm,
+                                     GBytes *admin_kerberos_cache,
+                                     GDBusMethodInvocation *invocation,
+                                     GAsyncReadyCallback callback,
+                                     gpointer user_data)
 {
 	GSimpleAsyncResult *res;
 	UnenrollClosure *unenroll;
 
 	res = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
-	                                 realm_ad_provider_unenroll_async);
+	                                 realm_samba_provider_unenroll_async);
 	unenroll = g_slice_new0 (UnenrollClosure);
 	unenroll->realm = g_strdup (realm);
 	unenroll->invocation = g_object_ref (invocation);
@@ -276,7 +276,7 @@ realm_ad_provider_unenroll_async (RealmKerberosProvider *provider,
 }
 
 static gboolean
-realm_ad_provider_generic_finish (RealmKerberosProvider *provider,
+realm_samba_provider_generic_finish (RealmKerberosProvider *provider,
                                      GAsyncResult *result,
                                      GError **error)
 {
@@ -287,16 +287,16 @@ realm_ad_provider_generic_finish (RealmKerberosProvider *provider,
 }
 
 void
-realm_ad_provider_class_init (RealmAdProviderClass *klass)
+realm_samba_provider_class_init (RealmSambaProviderClass *klass)
 {
 	RealmKerberosProviderClass *kerberos_class = REALM_KERBEROS_PROVIDER_CLASS (klass);
 
 	kerberos_class->discover_async = realm_ad_discover_async;
 	kerberos_class->discover_finish = realm_ad_discover_finish;
-	kerberos_class->enroll_async = realm_ad_provider_enroll_async;
-	kerberos_class->enroll_finish = realm_ad_provider_generic_finish;
-	kerberos_class->unenroll_async = realm_ad_provider_unenroll_async;
-	kerberos_class->unenroll_finish = realm_ad_provider_generic_finish;
+	kerberos_class->enroll_async = realm_samba_provider_enroll_async;
+	kerberos_class->enroll_finish = realm_samba_provider_generic_finish;
+	kerberos_class->unenroll_async = realm_samba_provider_unenroll_async;
+	kerberos_class->unenroll_finish = realm_samba_provider_generic_finish;
 }
 
 static void
@@ -312,41 +312,40 @@ on_name_lost (GDBusConnection *connection,
               const gchar     *name,
               gpointer         user_data)
 {
-	g_warning ("couldn't claim provider name on DBus bus: %s",
-	           REALM_DBUS_ACTIVE_DIRECTORY_NAME);
+	g_warning ("couldn't claim provider name on DBus bus: %s", REALM_DBUS_SAMBA_NAME);
 }
 
 void
-realm_ad_provider_start (GDBusConnection *connection)
+realm_samba_provider_start (GDBusConnection *connection)
 {
-	RealmAdProvider *provider;
+	RealmSambaProvider *provider;
 	GError *error = NULL;
 
-	g_return_if_fail (ad_provider_owner_id == 0);
+	g_return_if_fail (provider_owner_id == 0);
 
-	provider = g_object_new (REALM_TYPE_AD_PROVIDER, NULL);
-
-	ad_provider_owner_id = g_bus_own_name_on_connection (connection,
-	                                                     REALM_DBUS_ACTIVE_DIRECTORY_NAME,
-	                                                     G_BUS_NAME_OWNER_FLAGS_NONE,
-	                                                     on_name_acquired,
-	                                                     on_name_lost,
-	                                                     provider, g_object_unref);
+	provider = g_object_new (REALM_TYPE_SAMBA_PROVIDER, NULL);
 
 	g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (provider),
-	                                  connection, REALM_DBUS_ACTIVE_DIRECTORY_PATH,
+	                                  connection, REALM_DBUS_SAMBA_PATH,
 	                                  &error);
 
 	if (error != NULL) {
-		g_warning ("couldn't export RealmAdsProvider on dbus connection: %s",
+		g_warning ("couldn't export RealmSambaProvider on dbus connection: %s",
 		           error->message);
-		g_error_free (error);
+		return;
 	}
+
+	provider_owner_id = g_bus_own_name_on_connection (connection,
+	                                                  REALM_DBUS_SAMBA_NAME,
+	                                                  G_BUS_NAME_OWNER_FLAGS_NONE,
+	                                                  on_name_acquired,
+	                                                  on_name_lost,
+	                                                  provider, g_object_unref);
 }
 
 void
-realm_ad_provider_stop (void)
+realm_samba_provider_stop (void)
 {
-	g_return_if_fail (ad_provider_owner_id != 0);
-	g_bus_unown_name (ad_provider_owner_id);
+	if (provider_owner_id != 0)
+		g_bus_unown_name (provider_owner_id);
 }

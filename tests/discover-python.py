@@ -12,8 +12,8 @@ def discover_realm(string, verbose):
 	loop = gobject.MainLoop()
 
 	bus = dbus.SystemBus()
-	proxy = bus.get_object('org.freedesktop.realmd.ActiveDirectory',
-	                       '/org/freedesktop/realmd/ActiveDirectory')
+	proxy = bus.get_object('org.freedesktop.realmd.AdSamba',
+	                       '/org/freedesktop/realmd/AdSamba')
 	kerberos = dbus.Interface(proxy, 'org.freedesktop.realmd.Kerberos')
 	provider = dbus.Interface(proxy, 'org.freedesktop.realmd.Provider')
 

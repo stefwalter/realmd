@@ -14,7 +14,7 @@
 
 #include "config.h"
 
-#include "realm-ad-provider.h"
+#include "realm-samba-provider.h"
 #include "realm-daemon.h"
 #define DEBUG_FLAG REALM_DEBUG_SERVICE
 #include "realm-debug.h"
@@ -237,7 +237,7 @@ on_bus_get_connection (GObject *source,
 		g_dbus_connection_add_filter (*connection, on_connection_filter, NULL, NULL);
 
 		realm_diagnostics_initialize (*connection);
-		realm_ad_provider_start (*connection);
+		realm_samba_provider_start (*connection);
 	}
 
 	/* Matches the hold() in main() */
@@ -283,7 +283,7 @@ main (int argc,
 	g_main_loop_run (main_loop);
 
 	if (connection != NULL) {
-		realm_ad_provider_stop ();
+		realm_samba_provider_stop ();
 		g_object_unref (connection);
 	}
 

@@ -14,7 +14,7 @@ service_DATA = \
 
 dbusservicedir = $(DBUS_POLICY_DIR)
 dbusservice_DATA = \
-	org.freedesktop.realmd.ActiveDirectory.conf
+	org.freedesktop.realmd.conf
 
 polkit_policydir = $(POLKIT_ACTION_DIR)
 polkit_policy_in_files = org.freedesktop.realmd.policy.in
@@ -27,7 +27,6 @@ BUILT_SOURCES = \
 
 realmd_SOURCES = \
 	realm-ad-discover.c realm-ad-discover.h \
-	realm-ad-provider.c realm-ad-provider.h \
 	realm-command.c realm-command.h \
 	realm-daemon.c realm-daemon.h \
 	realm-dbus-constants.h \
@@ -40,6 +39,7 @@ realmd_SOURCES = \
 	realm-kerberos-provider.c realm-kerberos-provider.h \
 	realm-samba-config.c realm-samba-config.h \
 	realm-samba-enroll.c realm-samba-enroll.h \
+	realm-samba-provider.c realm-samba-provider.h \
 	realm-samba-winbind.c realm-samba-winbind.h \
 	realm-service.c realm-service.h \
 	$(BUILT_SOURCES) \

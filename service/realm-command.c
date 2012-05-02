@@ -339,7 +339,7 @@ on_unix_process_child_exited (GPid pid,
 		/* Ignore cases where we've signaled the process because we were cancelled */
 		if (!command->cancelled)
 			g_simple_async_result_set_error (process_source->res, G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED,
-			                                 _("Process was terminated with signal: %d"), code);
+			                                 "Process was terminated with signal: %d", code);
 	}
 
 	for (i = 0; i < NUM_FDS; ++i) {
@@ -380,7 +380,7 @@ on_cancellable_cancelled (GCancellable *cancellable,
 
 	/* Set an error, which is respected when this actually completes. */
 	g_simple_async_result_set_error (process_source->res, G_IO_ERROR, G_IO_ERROR_CANCELLED,
-	                                 _("The operation was cancelled"));
+	                                 "The operation was cancelled");
 	process_source->command->cancelled = TRUE;
 
 	/* Try and kill the child process */

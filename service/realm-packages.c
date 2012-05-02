@@ -55,7 +55,7 @@ on_install_progress (PkProgress *progress,
 		g_object_get (progress, "status", &status, NULL);
 		switch (status) {
 		case PK_STATUS_WAIT:
-			realm_status (install->invocation, _("Waiting for package system"));
+			realm_status (install->invocation, "Waiting for package system");
 			break;
 		case PK_STATUS_ENUM_WAITING_FOR_AUTH:
 			pk_status_enum_to_localised_text ();

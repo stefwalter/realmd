@@ -1,5 +1,6 @@
 *~
 *.o
+*.gcda
 *.gcno
 
 .cproject
@@ -30,6 +31,8 @@ temp.txt
 
 /build/coverage.info
 /build/coverage
+
+/po/realmd.pot
 
 /service/identity-config-service
 /service/org.freedesktop.realmd.policy

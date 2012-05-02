@@ -252,15 +252,33 @@ append_config_line (RealmSambaConfig *self,
 }
 
 static void
-insert_config_line (ConfigLine *tail,
+insert_config_line (RealmSambaConfig *self,
+                    ConfigLine *after,
                     ConfigLine *line)
 {
-	g_assert (tail != NULL);
-	line->next = tail->next;
-	line->prev = tail;
-	if (tail->next)
-		tail->next->prev = line;
-	tail->next = line;
+	g_assert (after != NULL);
+	g_assert (line != NULL);
+
+	line->next = after->next;
+	line->prev = after;
+	if (after->next)
+		after->next->prev = line;
+	after->next = line;
+}
+
+static void
+remove_config_line (RealmSambaConfig *self,
+                    ConfigLine *line)
+{
+	g_assert (line != NULL);
+
+	/* We only get called for parameters in sections */
+	g_assert (line->prev != NULL);
+	g_assert (self->head != line);
+
+	if (line->next)
+		line->next->prev = line->prev;
+	line->prev->next = line->next;
 }
 
 static void
@@ -301,6 +319,20 @@ parse_config_line (RealmSambaConfig *self,
 	/* Add this line as the end of the current section */
 	if (type != NONE && *current != NULL)
 		(*current)->tail = line;
+}
+
+void
+realm_samba_config_read_string (RealmSambaConfig *self,
+                                const gchar *data)
+{
+	GBytes *bytes;
+
+	g_return_if_fail (REALM_IS_SAMBA_CONFIG (self));
+	g_return_if_fail (data != NULL);
+
+	bytes = g_bytes_new (data, strlen (data));
+	realm_samba_config_read_bytes (self, bytes);
+	g_bytes_unref (bytes);
 }
 
 void
@@ -490,11 +522,14 @@ realm_samba_config_set (RealmSambaConfig *self,
 	g_return_if_fail (name != NULL);
 	g_return_if_fail (strchr (name, '=') == NULL);
 	g_return_if_fail (strchr (name, '\n') == NULL);
-	g_return_if_fail (value != NULL);
-	g_return_if_fail (strchr (value ? value : NULL, '\n') == NULL);
+	g_return_if_fail (value == NULL || strchr (value ? value : NULL, '\n') == NULL);
 
 	sect = g_hash_table_lookup (self->sections, section);
 	if (sect == NULL) {
+		/* No such section, and removing */
+		if (value == NULL)
+			return;
+
 		/* A blank line */
 		line = g_slice_new0 (ConfigLine);
 		line->bytes = g_bytes_new ("\n", 1);
@@ -515,15 +550,27 @@ realm_samba_config_set (RealmSambaConfig *self,
 		g_hash_table_replace (self->sections, line->name, sect);
 	}
 
-	data = g_strdup_printf ("%s = %s\n", name, value);
 	line = g_hash_table_lookup (sect->parameters, name);
+
+	/* Removing this parameter? */
+	if (value == NULL) {
+		if (line != NULL) {
+			if (sect->tail == line)
+				sect->tail = line->prev;
+			remove_config_line (self, line);
+			config_line_free (line);
+		}
+		return;
+	}
+
+	data = g_strdup_printf ("%s = %s\n", name, value);
 
 	/* Don't have this line, add to section */
 	if (line == NULL) {
 		line = g_slice_new0 (ConfigLine);
 		line->bytes = g_bytes_new_take (data, strlen (data));
 		line->name = g_strdup (name);
-		insert_config_line (sect->tail, line);
+		insert_config_line (self, sect->tail, line);
 
 	/* Already have this line, replace the data */
 	} else {
@@ -605,11 +652,10 @@ realm_samba_config_change (const gchar *section,
                            GError **error,
                            ...)
 {
-	RealmSambaConfig *config;
 	GHashTable *parameters;
-	gboolean ret = FALSE;
 	const gchar *name;
 	const gchar *value;
+	gboolean ret;
 	va_list va;
 
 	g_return_val_if_fail (section != NULL, FALSE);
@@ -619,14 +665,26 @@ realm_samba_config_change (const gchar *section,
 	va_start (va, error);
 	while ((name = va_arg (va, const gchar *)) != NULL) {
 		value = va_arg (va, const gchar *);
-		if (value == NULL) {
-			g_warning ("Arguments passed to realm_samba_config_change() not in "
-			           "name/value pairs or terminated in NULL.");
-			g_return_val_if_reached (FALSE);
-		}
 		g_hash_table_insert (parameters, (gpointer)name, (gpointer)value);
 	}
 	va_end (va);
+
+	ret = realm_samba_config_changev (section, parameters, error);
+	g_hash_table_unref (parameters);
+	return ret;
+}
+
+gboolean
+realm_samba_config_changev (const gchar *section,
+                            GHashTable *parameters,
+                            GError **error)
+{
+	RealmSambaConfig *config;
+	gboolean ret = FALSE;
+
+	g_return_val_if_fail (section != NULL, FALSE);
+	g_return_val_if_fail (parameters != NULL, FALSE);
+	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
 	config = realm_samba_config_new ();
 
@@ -636,8 +694,6 @@ realm_samba_config_change (const gchar *section,
 	}
 
 	g_object_unref (config);
-	g_hash_table_unref (parameters);
-
 	return ret;
 }
 

@@ -33,7 +33,7 @@ typedef struct {
 	GDBusMethodInvocation *invocation;
 	gchar *kerberos_cache_filename;
 	gchar **environ;
-	gchar *domain;
+	gchar *realm;
 } JoinClosure;
 
 static void
@@ -51,7 +51,7 @@ join_closure_free (gpointer data)
 		g_free (join->kerberos_cache_filename);
 	}
 
-	g_free (join->domain);
+	g_free (join->realm);
 	g_strfreev (join->environ);
 	g_clear_object (&join->invocation);
 
@@ -119,7 +119,7 @@ prepare_admin_cache (JoinClosure *join,
 }
 
 static JoinClosure *
-join_closure_init (const gchar *domain,
+join_closure_init (const gchar *realm,
                    GBytes *admin_kerberos_cache,
                    GDBusMethodInvocation *invocation,
                    GError **error)
@@ -127,7 +127,7 @@ join_closure_init (const gchar *domain,
 	JoinClosure *join;
 
 	join = g_slice_new0 (JoinClosure);
-	join->domain = g_strdup (domain);
+	join->realm = g_strdup (realm);
 	join->invocation = invocation ? g_object_ref (invocation) : NULL;
 
 	if (!prepare_admin_cache (join, admin_kerberos_cache, error)) {
@@ -160,7 +160,7 @@ begin_net_process (JoinClosure *join,
 	/* Use our custom smb.conf */
 	g_ptr_array_add (args, (gpointer)realm_platform_path ("net"));
 	g_ptr_array_add (args, "-s");
-	g_ptr_array_add (args, SERVICE_DIR "/ad-provider-smb.conf");
+	g_ptr_array_add (args, SERVICE_DIR "/net-ads-smb.conf");
 
 	va_start (va, user_data);
 	do {
@@ -179,11 +179,53 @@ begin_net_process (JoinClosure *join,
 }
 
 static void
-on_keytab_complete (GObject *source,
-                    GAsyncResult *result,
-                    gpointer user_data)
+on_list_complete (GObject *source,
+                  GAsyncResult *result,
+                  gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
+	GString *output = NULL;
+	RealmSambaConfig *config;
+	gchar *workgroup;
+	GError *error = NULL;
+	gint status;
+
+	status = realm_command_run_finish (result, &output, &error);
+	if (error == NULL && status != 0)
+		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
+		             "Listing samba registry failed");
+
+	if (error == NULL) {
+		/* Read the command output as a samba config */
+		config = realm_samba_config_new ();
+		realm_samba_config_read_string (config, output->str);
+		workgroup = realm_samba_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup");
+		g_object_unref (config);
+
+		/* Write the workgroup parameter to the smb.conf */
+		realm_samba_config_change (REALM_SAMBA_CONFIG_GLOBAL, &error,
+		                           "security", "ads",
+		                           "realm", join->realm,
+		                           "workgroup", workgroup,
+		                           NULL);
+		g_free (workgroup);
+	}
+
+	if (error != NULL)
+		g_simple_async_result_take_error (res, error);
+
+	g_simple_async_result_complete (res);
+	g_object_unref (res);
+}
+
+static void
+on_keytab_do_list (GObject *source,
+                   GAsyncResult *result,
+                   gpointer user_data)
+{
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
 	GError *error = NULL;
 	gint status;
 
@@ -191,10 +233,21 @@ on_keytab_complete (GObject *source,
 	if (error == NULL && status != 0)
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Extracting host keytab failed");
-	if (error != NULL)
-		g_simple_async_result_take_error (res, error);
 
-	g_simple_async_result_complete (res);
+	/*
+	 * So at this point we're done joining, and want to get some settings
+	 * that the net process wrote to the registry, and put them in the
+	 * main smb.conf
+	 */
+	if (error == NULL) {
+		begin_net_process (join, on_list_complete, g_object_ref (res),
+		                   "conf", "list", NULL);
+
+	} else {
+		g_simple_async_result_take_error (res, error);
+		g_simple_async_result_complete (res);
+	}
+
 	g_object_unref (res);
 }
 
@@ -211,14 +264,14 @@ on_join_do_keytab (GObject *source,
 	status = realm_command_run_finish (result, NULL, &error);
 	if (error == NULL && status != 0)
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Joining the domain %s failed", join->domain);
+		             "Joining the domain %s failed", join->realm);
 	if (error == NULL)
 		realm_samba_config_change (REALM_SAMBA_CONFIG_GLOBAL, &error,
 		                           "kerberos method", "secrets and keytab",
 		                           NULL);
 
 	if (error == NULL) {
-		begin_net_process (join, on_keytab_complete, g_object_ref (res),
+		begin_net_process (join, on_keytab_do_list, g_object_ref (res),
 		                   "ads", "keytab", "create", NULL);
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -252,7 +305,7 @@ realm_ad_enroll_join_async (const gchar *realm,
 	} else {
 		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
 		begin_net_process (join,  on_join_do_keytab, g_object_ref (res),
-		                   "ads", "join", "-k", join->domain, NULL);
+		                   "ads", "join", "-k", join->realm, NULL);
 	}
 
 	g_object_unref (res);
@@ -271,9 +324,9 @@ realm_ad_enroll_join_finish (GAsyncResult *result,
 }
 
 static void
-on_net_ads_leave (GObject *source,
-                  GAsyncResult *result,
-                  gpointer user_data)
+on_leave_complete (GObject *source,
+                   GAsyncResult *result,
+                   gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
@@ -283,7 +336,14 @@ on_net_ads_leave (GObject *source,
 	status = realm_command_run_finish (result, NULL, &error);
 	if (error == NULL && status != 0)
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Leaving the domain %s failed", join->domain);
+		             "Leaving the domain %s failed", join->realm);
+	if (error == NULL) {
+		realm_samba_config_change (REALM_SAMBA_CONFIG_GLOBAL, &error,
+		                           "workgroup", NULL,
+		                           "realm", NULL,
+		                           "security", "user",
+		                           NULL);
+	}
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 
@@ -292,9 +352,9 @@ on_net_ads_leave (GObject *source,
 }
 
 static void
-on_net_ads_flush (GObject *source,
-                  GAsyncResult *result,
-                  gpointer user_data)
+on_flush_do_leave (GObject *source,
+                   GAsyncResult *result,
+                   gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
@@ -306,7 +366,7 @@ on_net_ads_flush (GObject *source,
 		realm_diagnostics_error (join->invocation, error, "Flushing entries from the keytab failed");
 	g_clear_error (&error);
 
-	begin_net_process (join, on_net_ads_leave, g_object_ref (res),
+	begin_net_process (join, on_leave_complete, g_object_ref (res),
 	                   "ads", "leave", "-k", NULL);
 	g_object_unref (res);
 }
@@ -328,7 +388,7 @@ realm_ad_enroll_leave_async (const gchar *realm,
 	join = join_closure_init (realm, admin_kerberos_cache, invocation, &error);
 	if (error == NULL) {
 		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
-		begin_net_process (join, on_net_ads_flush, g_object_ref (res),
+		begin_net_process (join, on_flush_do_leave, g_object_ref (res),
 		                   "ads", "keytab", "flush", NULL);
 
 	} else {

@@ -31,6 +31,9 @@ GType               realm_samba_config_get_type                 (void) G_GNUC_CO
 
 RealmSambaConfig *  realm_samba_config_new                      (void);
 
+void                realm_samba_config_read_string              (RealmSambaConfig *self,
+                                                                 const gchar *data);
+
 void                realm_samba_config_read_bytes               (RealmSambaConfig *self,
                                                                  GBytes *data);
 
@@ -69,6 +72,10 @@ void                realm_samba_config_set_all                  (RealmSambaConfi
 gboolean            realm_samba_config_change                   (const gchar *section,
                                                                  GError **error,
                                                                  ...) G_GNUC_NULL_TERMINATED;
+
+gboolean            realm_samba_config_changev                  (const gchar *section,
+                                                                 GHashTable *parameters,
+                                                                 GError **error);
 
 G_END_DECLS
 

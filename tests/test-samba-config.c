@@ -187,6 +187,22 @@ test_read_carriage_return (Test *test,
 }
 
 static void
+test_read_string (Test *test,
+                  gconstpointer unused)
+{
+	const gchar *data = "[section]\n1=one\n2=two";
+	gchar *value;
+
+	realm_samba_config_read_string (test->config, data);
+
+	value = realm_samba_config_get (test->config, "section", "1");
+	g_assert_cmpstr (value, ==, "one");
+	g_free (value);
+	value = realm_samba_config_get (test->config, "section", "2");
+	g_assert_cmpstr (value, ==, "two");
+}
+
+static void
 test_read_system_error (Test *test,
                         gconstpointer unused)
 {
@@ -345,8 +361,8 @@ static void
 test_set (Test *test,
           gconstpointer unused)
 {
-	const gchar *data = "[section]\n\t1= one\r\n2=two";
-	const gchar *check = "[section]\n1 = the number one\n2=two\n3 = three\n";
+	const gchar *data = "[section]\n\t1= one\r\n2=two\n3=three";
+	const gchar *check = "[section]\n1 = the number one\n2=two\n4 = four\n";
 	const gchar *output;
 	gsize n_check;
 	gsize n_output;
@@ -357,7 +373,8 @@ test_set (Test *test,
 	g_bytes_unref (bytes);
 
 	realm_samba_config_set (test->config, "section", "1", "the number one");
-	realm_samba_config_set (test->config, "section", "3", "three");
+	realm_samba_config_set (test->config, "section", "3", NULL);
+	realm_samba_config_set (test->config, "section", "4", "four");
 
 	bytes = realm_samba_config_write_bytes (test->config);
 	output = g_bytes_get_data (bytes, &n_output);
@@ -406,6 +423,7 @@ test_set_section (Test *test,
 	g_bytes_unref (bytes);
 
 	realm_samba_config_set (test->config, "happy", "4", "four");
+	realm_samba_config_set (test->config, "nope", "6", NULL);
 
 	bytes = realm_samba_config_write_bytes (test->config);
 	output = g_bytes_get_data (bytes, &n_output);
@@ -418,8 +436,8 @@ static void
 test_set_all (Test *test,
               gconstpointer unused)
 {
-	const gchar *data = "[section]\n\t1= one\r\n2=two";
-	const gchar *check = "[section]\n1 = the number one\n2=two\n3 = three\n";
+	const gchar *data = "[section]\n\t1= one\r\n2=two\n3=three";
+	const gchar *check = "[section]\n1 = the number one\n2=two\n4 = four\n";
 	const gchar *output;
 	GHashTable *parameters;
 	gsize n_check;
@@ -432,7 +450,8 @@ test_set_all (Test *test,
 
 	parameters = g_hash_table_new (g_str_hash, g_str_equal);
 	g_hash_table_insert (parameters, "1", "the number one");
-	g_hash_table_insert (parameters, "3", "three");
+	g_hash_table_insert (parameters, "3", NULL);
+	g_hash_table_insert (parameters, "4", "four");
 	realm_samba_config_set_all (test->config, "section", parameters);
 	g_hash_table_unref (parameters);
 
@@ -447,8 +466,8 @@ static void
 test_change (Test *test,
              gconstpointer unused)
 {
-	const gchar *data = "[section]\n\t1= one\r\n2=two";
-	const gchar *check = "[section]\n1 = the number one\n2=two\n3 = three\n";
+	const gchar *data = "[section]\n\t1= one\r\n2=two\n3=three";
+	const gchar *check = "[section]\n1 = the number one\n2=two\n4 = four\n";
 	GError *error = NULL;
 	gchar *output;
 
@@ -459,7 +478,8 @@ test_change (Test *test,
 
 	realm_samba_config_change ("section", &error,
 	                           "1", "the number one",
-	                           "3", "three",
+	                           "3", NULL,
+	                           "4", "four",
 	                           NULL);
 
 	g_file_get_contents ("/tmp/test-samba-config.conf", &output, NULL, &error);
@@ -481,6 +501,7 @@ main (int argc,
 
 	g_test_add ("/realmd/samba-config/read-one", Test, NULL, setup, test_read_one, teardown);
 	g_test_add ("/realmd/samba-config/read-all", Test, NULL, setup, test_read_all, teardown);
+	g_test_add ("/realmd/samba-config/read-string", Test, NULL, setup, test_read_string, teardown);
 	g_test_add ("/realmd/samba-config/read-carriage-return", Test, NULL, setup, test_read_carriage_return, teardown);
 	g_test_add ("/realmd/samba-config/read-system-error", Test, NULL, setup, test_read_system_error, teardown);
 

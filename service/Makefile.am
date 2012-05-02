@@ -9,7 +9,7 @@ REALMD_CONFIGS = \
 
 servicedir = $(SERVICE_DIR)
 service_DATA = \
-	ad-provider-smb.conf \
+	net-ads-smb.conf \
 	realmd-defaults.conf
 
 dbusservicedir = $(DBUS_POLICY_DIR)

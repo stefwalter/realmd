@@ -12,6 +12,10 @@ service_DATA = \
 	net-ads-smb.conf \
 	realmd-defaults.conf
 
+providerdir = $(SERVICE_DIR)/provider.d
+provider_DATA = \
+	org.freedesktop.realmd.Samba.provider
+
 dbusservicedir = $(DBUS_POLICY_DIR)
 dbusservice_DATA = \
 	org.freedesktop.realmd.conf
@@ -43,12 +47,14 @@ realmd_SOURCES = \
 	realm-samba-provider.c realm-samba-provider.h \
 	realm-samba-winbind.c realm-samba-winbind.h \
 	realm-service.c realm-service.h \
+	realm-system.c realm-system.h \
 	$(BUILT_SOURCES) \
 	$(NULL)
 
 realmd_CFLAGS = \
-	-DSERVICE_DIR=\""$(servicedir)"\" \
-	-DSYSCONF_DIR=\""$(sysconfdir)"\" \
+	-DSERVICE_DIR="\"$(servicedir)\"" \
+	-DSYSCONF_DIR="\"$(sysconfdir)\"" \
+	-DPROVIDER_DIR="\"$(providerdir)\"" \
 	$(PACKAGEKIT_CFLAGS) \
 	$(POLKIT_CFLAGS) \
 	$(NULL)
@@ -87,6 +93,7 @@ EXTRA_DIST = \
 	$(REALMD_CONFIGS) \
 	$(dbusservice_DATA) \
 	$(service_DATA) \
+	$(provider_DATA) \
 	$(NULL)
 
 CLEANFILES = \

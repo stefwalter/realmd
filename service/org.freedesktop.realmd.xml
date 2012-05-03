@@ -2,15 +2,27 @@
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 
 <node name="/">
+	<!--
+	 * Global interface implemented by realmd. Allows listing of providers
+	 * and discovering which one is relevant for a given domain.
+	-->
+	<interface name="org.freedesktop.realmd.Service">
+		<property name="Providers" type="a(sso)" access="read"/>
+	</interface>
+
+	<!--
+	 * General interface for a provider. Allows listening in for diagnostics
+	 * during operations.
+	--> 
 	<interface name="org.freedesktop.realmd.Provider">
-		<signal name="Status">
-			<arg name="message" type="s"/>
-		</signal>
 		<signal name="Diagnostics">
 			<arg name="data" type="s"/>
 		</signal>
 	</interface>
 
+	<!--
+	 * Specific interface for Kerberos providers.
+	-->
 	<interface name="org.freedesktop.realmd.Kerberos">
 		<property name="EnrolledRealms" type="as" access="read"/>
 

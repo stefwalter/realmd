@@ -20,6 +20,7 @@
 #include "realm-diagnostics.h"
 #include "realm-platform.h"
 #include "realm-samba-provider.h"
+#include "realm-service.h"
 
 #include <glib.h>
 
@@ -237,6 +238,7 @@ on_bus_get_connection (GObject *source,
 		g_dbus_connection_add_filter (*connection, on_connection_filter, NULL, NULL);
 
 		realm_diagnostics_initialize (*connection);
+		realm_service_start (*connection);
 		realm_samba_provider_start (*connection);
 	}
 
@@ -284,6 +286,7 @@ main (int argc,
 
 	if (connection != NULL) {
 		realm_samba_provider_stop ();
+		realm_service_stop ();
 		g_object_unref (connection);
 	}
 

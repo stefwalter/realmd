@@ -21,21 +21,17 @@
 
 G_BEGIN_DECLS
 
-void        realm_service_enable_and_restart     (const gchar *service,
-                                                  GDBusMethodInvocation *invocation,
-                                                  GAsyncReadyCallback callback,
-                                                  gpointer user_data);
+#define REALM_TYPE_SERVICE            (realm_service_get_type ())
+#define REALM_SERVICE(inst)           (G_TYPE_CHECK_INSTANCE_CAST ((inst), REALM_TYPE_SERVICE, RealmService))
+#define REALM_IS_SERVICE(inst)        (G_TYPE_CHECK_INSTANCE_TYPE ((inst), REALM_TYPE_SERVICE))
 
-gboolean    realm_service_enable_finish          (GAsyncResult *result,
-                                                  GError **error);
+typedef struct _RealmService RealmService;
 
-void        realm_service_disable_and_stop       (const gchar *service,
-                                                  GDBusMethodInvocation *invocation,
-                                                  GAsyncReadyCallback callback,
-                                                  gpointer user_data);
+GType               realm_service_get_type                 (void) G_GNUC_CONST;
 
-gboolean    realm_service_disable_finish         (GAsyncResult *result,
-                                                  GError **error);
+void                realm_service_start                    (GDBusConnection *connection);
+
+void                realm_service_stop                     (void);
 
 G_END_DECLS
 

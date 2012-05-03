@@ -51,6 +51,7 @@ AM_PROG_CC_C_O
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
+AC_PROG_RANLIB
 IT_PROG_INTLTOOL([0.35.0])
 AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
 
@@ -204,6 +205,7 @@ AC_SUBST(SERVICE_DIR)
 AC_CONFIG_FILES([
 	Makefile
 	build/Makefile
+	dbus/Makefile
 	po/Makefile.in
 	po/Makefile
 	service/Makefile

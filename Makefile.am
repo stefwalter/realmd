@@ -3,7 +3,7 @@ include $(top_srcdir)/Makefile.decl
 
 ACLOCAL_AMFLAGS = -I build/m4 ${ACLOCAL_FLAGS}
 
-SUBDIRS = build service tests po
+SUBDIRS = build dbus service tests po
 
 DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-debug=yes \

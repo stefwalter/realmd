@@ -16,24 +16,15 @@ providerdir = $(SERVICE_DIR)/provider.d
 provider_DATA = \
 	org.freedesktop.realmd.Samba.provider
 
-dbusservicedir = $(DBUS_POLICY_DIR)
-dbusservice_DATA = \
-	org.freedesktop.realmd.conf
-
 polkit_policydir = $(POLKIT_ACTION_DIR)
 polkit_policy_in_files = org.freedesktop.realmd.policy.in
 polkit_policy_DATA = $(polkit_policy_in_files:.policy.in=.policy)
 @INTLTOOL_POLICY_RULE@
 
-BUILT_SOURCES = \
-	realm-dbus-generated.c realm-dbus-generated.h \
-	realm-dbus-systemd.c realm-dbus-systemd.h
-
 realmd_SOURCES = \
 	realm-ad-discover.c realm-ad-discover.h \
 	realm-command.c realm-command.h \
 	realm-daemon.c realm-daemon.h \
-	realm-dbus-constants.h \
 	realm-debug.c realm-debug.h \
 	realm-diagnostics.c realm-diagnostics.h \
 	realm-discovery.c realm-discovery.h \
@@ -48,10 +39,10 @@ realmd_SOURCES = \
 	realm-samba-winbind.c realm-samba-winbind.h \
 	realm-service.c realm-service.h \
 	realm-system.c realm-system.h \
-	$(BUILT_SOURCES) \
 	$(NULL)
 
 realmd_CFLAGS = \
+	-I$(top_srcdir)/dbus \
 	-DSERVICE_DIR="\"$(servicedir)\"" \
 	-DSYSCONF_DIR="\"$(sysconfdir)\"" \
 	-DPROVIDER_DIR="\"$(providerdir)\"" \
@@ -60,23 +51,10 @@ realmd_CFLAGS = \
 	$(NULL)
 
 realmd_LDADD = \
+	$(top_builddir)/dbus/librealm-dbus.a \
 	$(PACKAGEKIT_LIBS) \
 	$(POLKIT_LIBS) \
 	$(NULL)
-
-DBUS_XML_DEFINITIONS = \
-	org.freedesktop.realmd.xml \
-	org.freedesktop.systemd1.xml
-
-realm-dbus-generated.c: org.freedesktop.realmd.xml
-	$(AM_V_GEN) gdbus-codegen --interface-prefix org.freedesktop.realmd. \
-		--generate-c-code realm-dbus-generated --c-namespace RealmDbus $<
-realm-dbus-generated.h: realm-dbus-generated.c
-
-realm-dbus-systemd.c: org.freedesktop.systemd1.xml
-	$(AM_V_GEN) gdbus-codegen --interface-prefix org.freedesktop.systemd1. \
-		--generate-c-code realm-dbus-systemd --c-namespace RealmDbusSystemd $<
-realm-dbus-systemd.h: realm-dbus-systemd.c
 
 # Install and uninstall the config for this distro
 install-data-local:
@@ -88,10 +66,8 @@ uninstall-local:
 # ------------------------------------------------------------------
 
 EXTRA_DIST = \
-	$(DBUS_XML_DEFINITIONS) \
 	$(polkit_policy_in_files) \
 	$(REALMD_CONFIGS) \
-	$(dbusservice_DATA) \
 	$(service_DATA) \
 	$(provider_DATA) \
 	$(NULL)

@@ -8,7 +8,7 @@ INCLUDES = \
 	$(NULL)
 
 TEST_PROGS = \
-	test-samba-config \
+	test-ini-config \
 	$(NULL)
 
 check_PROGRAMS = \
@@ -18,10 +18,11 @@ noinst_PROGRAMS =  \
 	frob-install-packages \
 	$(NULL)
 
-test_samba_config_SOURCES = \
-	test-samba-config.c \
-	$(top_srcdir)/service/realm-samba-config.c \
+test_ini_config_SOURCES = \
+	test-ini-config.c \
+	$(top_srcdir)/service/realm-ini-config.c \
 	$(top_srcdir)/service/realm-platform.c \
+	$(top_srcdir)/service/realm-samba-config.c \
 	$(NULL)
 
 frob_install_packages_CFLAGS = \

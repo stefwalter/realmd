@@ -186,7 +186,7 @@ on_list_complete (GObject *source,
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
 	GString *output = NULL;
-	RealmSambaConfig *config;
+	RealmIniConfig *config;
 	gchar *workgroup;
 	GError *error = NULL;
 	gint status;
@@ -198,9 +198,9 @@ on_list_complete (GObject *source,
 
 	if (error == NULL) {
 		/* Read the command output as a samba config */
-		config = realm_samba_config_new ();
-		realm_samba_config_read_string (config, output->str);
-		workgroup = realm_samba_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup");
+		config = realm_ini_config_new (REALM_INI_LINE_CONTINUATIONS);
+		realm_ini_config_read_string (config, output->str);
+		workgroup = realm_ini_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup");
 		g_object_unref (config);
 
 		/* Write the workgroup parameter to the smb.conf */

@@ -42,4 +42,5 @@ temp.txt
 /service/realmd
 
 /tests/frob-install-packages
+/tests/test-ini-config
 /tests/test-samba-config

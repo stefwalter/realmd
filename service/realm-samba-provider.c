@@ -295,21 +295,21 @@ realm_samba_provider_generic_finish (RealmKerberosProvider *provider,
 static gchar *
 lookup_enrolled_realm (void)
 {
-	RealmSambaConfig *config;
+	RealmIniConfig *config;
 	GError *error = NULL;
 	gchar *realm = NULL;
 	gchar *security;
 
-	config = realm_samba_config_new ();
-	if (!realm_samba_config_read_system (config, &error)) {
+	config = realm_samba_config_new (&error);
+	if (error == NULL) {
 		g_warning ("Couldn't read samba global configuration file: %s", error->message);
 		g_error_free (error);
 		return NULL;
 	}
 
-	security = realm_samba_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "security");
+	security = realm_ini_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "security");
 	if (security != NULL && g_ascii_strcasecmp (security, "ADS") == 0) {
-		realm = realm_samba_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
+		realm = realm_ini_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
 	}
 
 	g_free (security);

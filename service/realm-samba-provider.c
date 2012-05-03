@@ -147,7 +147,7 @@ on_discover_do_install (GObject *source,
 		enroll->discovery = discovery;
 		discovery = NULL;
 
-		realm_packages_install_async ("active-directory-packages", enroll->invocation,
+		realm_packages_install_async ("samba-packages", enroll->invocation,
 		                              on_install_do_join, g_object_ref (res));
 
 	} else if (error == NULL) {

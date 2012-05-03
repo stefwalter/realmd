@@ -25,8 +25,8 @@ G_BEGIN_DECLS
 #define   DBUS_PROPERTIES_INTERFACE                "org.freedesktop.DBus.Properties"
 #define   DBUS_INTROSPECTABLE_INTERFACE            "org.freedesktop.DBus.Introspectable"
 
-#define   REALM_DBUS_SAMBA_NAME                    "org.freedesktop.realmd.AdSamba"
-#define   REALM_DBUS_SAMBA_PATH                    "/org/freedesktop/realmd/AdSamba"
+#define   REALM_DBUS_SAMBA_NAME                    "org.freedesktop.realmd.Samba"
+#define   REALM_DBUS_SAMBA_PATH                    "/org/freedesktop/realmd/Samba"
 
 #define   REALM_DBUS_PROVIDER_INTERFACE            "org.freedesktop.realmd.Provider"
 #define   REALM_DBUS_KERBEROS_INTERFACE            "org.freedesktop.realmd.Kerberos"

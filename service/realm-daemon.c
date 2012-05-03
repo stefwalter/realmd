@@ -14,12 +14,12 @@
 
 #include "config.h"
 
-#include "realm-samba-provider.h"
 #include "realm-daemon.h"
 #define DEBUG_FLAG REALM_DEBUG_SERVICE
 #include "realm-debug.h"
 #include "realm-diagnostics.h"
 #include "realm-platform.h"
+#include "realm-samba-provider.h"
 
 #include <glib.h>
 

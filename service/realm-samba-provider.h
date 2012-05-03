@@ -19,7 +19,7 @@
 
 #include <gio/gio.h>
 
-#include "realm-kerberos-provider.h"
+#include "realm-provider.h"
 
 G_BEGIN_DECLS
 

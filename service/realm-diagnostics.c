@@ -96,7 +96,7 @@ log_take_diagnostic (GDBusMethodInvocation *invocation,
 
 	g_dbus_connection_emit_signal (the_connection, g_dbus_method_invocation_get_sender (invocation),
 	                               g_dbus_method_invocation_get_object_path (invocation),
-	                               REALM_DBUS_PROVIDER_INTERFACE, REALM_DBUS_DIAGNOSTICS_SIGNAL,
+	                               REALM_DBUS_DIAGNOSTICS_INTERFACE, REALM_DBUS_DIAGNOSTICS_SIGNAL,
 	                               g_variant_new ("(s)", string), &error);
 
 	if (error != NULL)
@@ -137,12 +137,14 @@ realm_diagnostics_error (GDBusMethodInvocation *invocation,
 	va_list va;
 
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
-	g_return_if_fail (format != NULL);
 
-	va_start (va, format);
 	message = g_string_new (" ! ");
-	g_string_append_vprintf (message, format, va);
-	va_end (va);
+
+	if (format) {
+		va_start (va, format);
+		g_string_append_vprintf (message, format, va);
+		va_end (va);
+	}
 
 	if (error != NULL) {
 		g_string_append (message, ": ");

@@ -16,6 +16,10 @@ librealm_dbus_a_SOURCES = \
 	$(BUILT_SOURCES) \
 	$(NULL)
 
+librealm_dbus_a_CFLAGS = \
+	$(GLIB_CFLAGS) \
+	$(NULL)
+
 DBUS_XML_DEFINITIONS = \
 	org.freedesktop.realmd.xml \
 	org.freedesktop.systemd1.xml

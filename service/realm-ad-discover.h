@@ -19,19 +19,15 @@
 
 #include <gio/gio.h>
 
-#include "realm-kerberos-provider.h"
-
 G_BEGIN_DECLS
 
-void           realm_ad_discover_async         (RealmKerberosProvider *provider,
-                                                const gchar *string,
+void           realm_ad_discover_async         (const gchar *string,
                                                 GDBusMethodInvocation *invocation,
                                                 GAsyncReadyCallback callback,
                                                 gpointer user_data);
 
-gchar *        realm_ad_discover_finish        (RealmKerberosProvider *provider,
-                                                GAsyncResult *result,
-                                                GHashTable *discovery,
+gchar *        realm_ad_discover_finish        (GAsyncResult *result,
+                                                GHashTable **discovery,
                                                 GError **error);
 
 G_END_DECLS

@@ -23,6 +23,7 @@ polkit_policy_DATA = $(polkit_policy_in_files:.policy.in=.policy)
 
 realmd_SOURCES = \
 	realm-ad-discover.c realm-ad-discover.h \
+	realm-all-provider.c realm-all-provider.h \
 	realm-command.c realm-command.h \
 	realm-daemon.c realm-daemon.h \
 	realm-debug.c realm-debug.h \
@@ -30,14 +31,15 @@ realmd_SOURCES = \
 	realm-discovery.c realm-discovery.h \
 	realm-errors.c realm-errors.h \
 	realm-ini-config.c realm-ini-config.h \
+	realm-kerberos-realm.c realm-kerberos-realm.h \
 	realm-packages.c realm-packages.h \
 	realm-platform.c realm-platform.h \
-	realm-kerberos-provider.c realm-kerberos-provider.h \
+	realm-provider.c realm-provider.h \
 	realm-samba-config.c realm-samba-config.h \
 	realm-samba-enroll.c realm-samba-enroll.h \
 	realm-samba-provider.c realm-samba-provider.h \
+	realm-samba-realm.c realm-samba-realm.h \
 	realm-samba-winbind.c realm-samba-winbind.h \
-	realm-service.c realm-service.h \
 	realm-system.c realm-system.h \
 	$(NULL)
 
@@ -48,12 +50,14 @@ realmd_CFLAGS = \
 	-DPROVIDER_DIR="\"$(providerdir)\"" \
 	$(PACKAGEKIT_CFLAGS) \
 	$(POLKIT_CFLAGS) \
+	$(GLIB_CFLAGS) \
 	$(NULL)
 
 realmd_LDADD = \
 	$(top_builddir)/dbus/librealm-dbus.a \
 	$(PACKAGEKIT_LIBS) \
 	$(POLKIT_LIBS) \
+	$(GLIB_LIBS) \
 	$(NULL)
 
 # Install and uninstall the config for this distro

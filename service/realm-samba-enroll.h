@@ -19,8 +19,6 @@
 
 #include <gio/gio.h>
 
-#include "realm-kerberos-provider.h"
-
 G_BEGIN_DECLS
 
 void               realm_samba_enroll_join_async     (const gchar *realm,

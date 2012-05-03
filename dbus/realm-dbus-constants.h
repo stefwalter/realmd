@@ -25,18 +25,20 @@ G_BEGIN_DECLS
 #define   DBUS_PROPERTIES_INTERFACE                "org.freedesktop.DBus.Properties"
 #define   DBUS_INTROSPECTABLE_INTERFACE            "org.freedesktop.DBus.Introspectable"
 
-#define   REALM_DBUS_SERVICE_NAME                  "org.freedesktop.realmd"
-#define   REALM_DBUS_SERVICE_PATH                  "/org/freedesktop/realmd"
+#define   REALM_DBUS_ALL_PROVIDER_NAME             "org.freedesktop.realmd"
+#define   REALM_DBUS_ALL_PROVIDER_PATH             "/org/freedesktop/realmd"
 
 #define   REALM_DBUS_SAMBA_NAME                    "org.freedesktop.realmd.Samba"
 #define   REALM_DBUS_SAMBA_PATH                    "/org/freedesktop/realmd/Samba"
 
 #define   REALM_DBUS_PROVIDER_INTERFACE            "org.freedesktop.realmd.Provider"
-#define   REALM_DBUS_KERBEROS_INTERFACE            "org.freedesktop.realmd.Kerberos"
+#define   REALM_DBUS_KERBEROS_REALM_INTERFACE      "org.freedesktop.realmd.KerberosRealm"
+#define   REALM_DBUS_DIAGNOSTICS_INTERFACE         "org.freedesktop.realmd.Diagnostics"
 
 #define   REALM_DBUS_DIAGNOSTICS_SIGNAL            "Diagnostics"
 
 #define   REALM_DBUS_ERROR_INTERNAL                "org.freedesktop.realmd.Error.Internal"
+#define   REALM_DBUS_ERROR_DISCOVERED_NOTHING      "org.freedesktop.realmd.Error.DiscoveredNothing"
 #define   REALM_DBUS_ERROR_DISCOVERY_FAILED        "org.freedesktop.realmd.Error.DiscoveryFailed"
 #define   REALM_DBUS_ERROR_ENROLL_FAILED           "org.freedesktop.realmd.Error.EnrollFailed"
 #define   REALM_DBUS_ERROR_UNENROLL_FAILED         "org.freedesktop.realmd.Error.UnenrollFailed"
@@ -48,6 +50,8 @@ G_BEGIN_DECLS
 #define   REALM_DBUS_DISCOVERY_DOMAIN              "domain"
 #define   REALM_DBUS_DISCOVERY_KDCS                "kerberos-kdcs"
 #define   REALM_DBUS_DISCOVERY_REALM               "kerberos-realm"
+
+#define   REALM_DBUS_NAME_CHARS                    "abcdefghijklnmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
 
 G_END_DECLS
 

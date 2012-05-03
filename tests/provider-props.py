@@ -7,15 +7,15 @@ import sys
 
 def provider_props():
 	bus = dbus.SystemBus()
-	proxy = bus.get_object('org.freedesktop.realmd.AdSamba',
-	                       '/org/freedesktop/realmd/AdSamba')
+	proxy = bus.get_object('org.freedesktop.realmd',
+	                       '/org/freedesktop/realmd')
 	properties = dbus.Interface(proxy, 'org.freedesktop.DBus.Properties')
 
-	props = properties.GetAll('org.freedesktop.realmd.Kerberos')
+	props = properties.GetAll('org.freedesktop.realmd.Provider')
 
 	for (item, value) in props.items():
 		if isinstance(value, dbus.Array):
-			value = list(["%s" % v for v in value])
+			value = list(["%s" % (v, ) for v in value])
 		print "\t%s = %s" % (item, value)
 
 def usage():

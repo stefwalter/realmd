@@ -150,8 +150,7 @@ on_resolve_msdcs_soa (GObject *source,
 }
 
 void
-realm_ad_discover_async (RealmKerberosProvider *provider,
-                         const gchar *string,
+realm_ad_discover_async (const gchar *string,
                          GDBusMethodInvocation *invocation,
                          GAsyncReadyCallback callback,
                          gpointer user_data)
@@ -162,11 +161,10 @@ realm_ad_discover_async (RealmKerberosProvider *provider,
 	gchar *domain;
 	gchar *msdcs;
 
-	g_return_if_fail (REALM_IS_KERBEROS_PROVIDER (provider));
 	g_return_if_fail (string != NULL);
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
-	res = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
+	res = g_simple_async_result_new (NULL, callback, user_data,
 	                                 realm_ad_discover_async);
 
 	domain = g_ascii_strdown (string, -1);
@@ -199,17 +197,15 @@ realm_ad_discover_async (RealmKerberosProvider *provider,
 }
 
 gchar *
-realm_ad_discover_finish (RealmKerberosProvider *provider,
-                          GAsyncResult *result,
-                          GHashTable *discovery,
+realm_ad_discover_finish (GAsyncResult *result,
+                          GHashTable **discovery,
                           GError **error)
 {
 	GSimpleAsyncResult *res;
 	DiscoverClosure *discover;
 	gchar *realm;
 
-	g_return_val_if_fail (REALM_IS_KERBEROS_PROVIDER (provider), NULL);
-	g_return_val_if_fail (g_simple_async_result_is_valid (result, G_OBJECT (provider),
+	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
 	                      realm_ad_discover_async), NULL);
 	g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
@@ -223,18 +219,25 @@ realm_ad_discover_finish (RealmKerberosProvider *provider,
 	if (!discover->found_kerberos_srv || !discover->found_msdcs_soa)
 		return NULL;
 
-	/* The domain */
-	realm_discovery_add_string (discovery, REALM_DBUS_DISCOVERY_DOMAIN, discover->domain);
+	if (discovery) {
+		*discovery = realm_discovery_new ();
 
-	/* The realm */
-	realm = g_ascii_strup (discover->domain, -1);
-	realm_discovery_add_string (discovery, REALM_DBUS_DISCOVERY_REALM, realm);
+		/* The domain */
+		realm_discovery_add_string (*discovery, REALM_DBUS_DISCOVERY_DOMAIN,
+		                            discover->domain);
 
-	/* The servers */
-	realm_discovery_add_variant (discovery, REALM_DBUS_DISCOVERY_KDCS, discover->servers);
+		/* The realm */
+		realm = g_ascii_strup (discover->domain, -1);
+		realm_discovery_add_string (*discovery, REALM_DBUS_DISCOVERY_REALM, realm);
 
-	/* The type */
-	realm_discovery_add_string (discovery, REALM_DBUS_DISCOVERY_TYPE, "kerberos-ad");
+		/* The servers */
+		realm_discovery_add_variant (*discovery, REALM_DBUS_DISCOVERY_KDCS,
+		                             discover->servers);
+
+		/* The type */
+		realm_discovery_add_string (*discovery, REALM_DBUS_DISCOVERY_TYPE,
+		                            "kerberos-ad");
+	}
 
 	return realm;
 }

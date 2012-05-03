@@ -21,10 +21,12 @@
 #include "realm-diagnostics.h"
 #include "realm-discovery.h"
 #include "realm-errors.h"
+#include "realm-kerberos-realm.h"
 #include "realm-packages.h"
 #include "realm-samba-config.h"
 #include "realm-samba-enroll.h"
 #include "realm-samba-provider.h"
+#include "realm-samba-realm.h"
 #include "realm-samba-winbind.h"
 
 #include <glib/gstdio.h>
@@ -32,290 +34,171 @@
 #include <errno.h>
 
 struct _RealmSambaProvider {
-	RealmKerberosProvider parent;
+	RealmProvider parent;
+	GHashTable *realms;
 };
 
 typedef struct {
-	RealmKerberosProviderClass parent_class;
+	RealmProviderClass parent_class;
 } RealmSambaProviderClass;
 
 enum {
 	PROP_0,
-	PROP_ENROLLED_REALMS
+	PROP_REALMS,
 };
 
 static guint provider_owner_id = 0;
 
-G_DEFINE_TYPE (RealmSambaProvider, realm_samba_provider, REALM_TYPE_KERBEROS_PROVIDER);
+G_DEFINE_TYPE (RealmSambaProvider, realm_samba_provider, REALM_TYPE_PROVIDER);
 
 static void
 realm_samba_provider_init (RealmSambaProvider *self)
 {
-
+	self->realms = g_hash_table_new_full (g_str_hash, g_str_equal,
+	                                      g_free, g_object_unref);
 }
 
-typedef struct {
-	GDBusMethodInvocation *invocation;
-	GBytes *admin_kerberos_cache;
-	gchar *realm;
-	GHashTable *discovery;
-} EnrollClosure;
-
-static void
-enroll_closure_free (gpointer data)
+static RealmKerberosRealm *
+lookup_or_register_realm (RealmSambaProvider *self,
+                          const gchar *name)
 {
-	EnrollClosure *enroll = data;
-	g_free (enroll->realm);
-	g_object_unref (enroll->invocation);
-	g_bytes_unref (enroll->admin_kerberos_cache);
-	g_hash_table_unref (enroll->discovery);
-	g_slice_free (EnrollClosure, enroll);
-}
-
-static void
-on_winbind_done (GObject *source,
-              GAsyncResult *result,
-              gpointer user_data)
-{
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	RealmKerberosRealm *realm;
+	GDBusConnection *connection;
+	static gint unique_number = 0;
 	GError *error = NULL;
+	gchar *escaped;
+	gchar *path;
 
-	realm_samba_winbind_configure_finish (result, &error);
-	if (error != NULL)
-		g_simple_async_result_take_error (res, error);
-	g_simple_async_result_complete (res);
+	realm = g_hash_table_lookup (self->realms, name);
+	if (realm == NULL) {
+		realm = realm_samba_realm_new (name);
 
-	g_object_unref (res);
-}
+		escaped = g_strdup (name);
+		g_strcanon (escaped, REALM_DBUS_NAME_CHARS, '_');
 
-static void
-on_join_do_winbind (GObject *source,
-                    GAsyncResult *result,
-                    gpointer user_data)
-{
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
-	GError *error = NULL;
+		path = g_strdup_printf ("%s/%s_%d", REALM_DBUS_SAMBA_PATH,
+		                        escaped, ++unique_number);
 
-	realm_samba_enroll_join_finish (result, &error);
-	if (error == NULL) {
-		realm_samba_winbind_configure_async (enroll->invocation,
-		                                     on_winbind_done, g_object_ref (res));
-	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
+		g_free (escaped);
+
+		connection = g_dbus_interface_skeleton_get_connection (G_DBUS_INTERFACE_SKELETON (self));
+		g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (realm),
+		                                  connection, path, &error);
+
+		g_free (path);
+
+		if (error == NULL) {
+			g_hash_table_insert (self->realms, g_strdup (name), realm);
+
+		} else {
+			g_warning ("couldn't export samba realm on dbus connection: %s",
+			           error->message);
+			g_object_unref (realm);
+			realm = NULL;
+		}
 	}
 
-	g_object_unref (res);
+	return realm;
 }
 
 static void
-on_install_do_join (GObject *source,
-                    GAsyncResult *result,
-                    gpointer user_data)
-{
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
-	GError *error = NULL;
-
-	realm_packages_install_finish (result, &error);
-	if (error == NULL) {
-		realm_samba_enroll_join_async (enroll->realm, enroll->admin_kerberos_cache,
-		                               enroll->invocation, on_join_do_winbind,
-		                               g_object_ref (res));
-
-	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
-	}
-
-	g_object_unref (res);
-}
-
-static void
-on_discover_do_install (GObject *source,
-                        GAsyncResult *result,
-                        gpointer user_data)
-{
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
-	GError *error = NULL;
-	GHashTable *discovery;
-
-	discovery = realm_discovery_new ();
-	if (realm_ad_discover_finish (REALM_KERBEROS_PROVIDER (source), result, discovery, &error)) {
-		enroll->discovery = discovery;
-		discovery = NULL;
-
-		realm_packages_install_async ("samba-packages", enroll->invocation,
-		                              on_install_do_join, g_object_ref (res));
-
-	} else if (error == NULL) {
-		/* TODO: a better error code/message here */
-		g_simple_async_result_set_error (res, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-		                                 "Invalid or unusable realm argument");
-		g_simple_async_result_complete (res);
-
-	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
-	}
-
-	if (discovery)
-		g_hash_table_unref (discovery);
-	g_object_unref (res);
-
-}
-
-static void
-realm_samba_provider_enroll_async (RealmKerberosProvider *provider,
-                                   const gchar *realm,
-                                   GBytes *admin_kerberos_cache,
-                                   GDBusMethodInvocation *invocation,
-                                   GAsyncReadyCallback callback,
-                                   gpointer user_data)
-{
-	GSimpleAsyncResult *res;
-	EnrollClosure *enroll;
-
-	res = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
-	                                 realm_samba_provider_enroll_async);
-	enroll = g_slice_new0 (EnrollClosure);
-	enroll->realm = g_strdup (realm);
-	enroll->invocation = g_object_ref (invocation);
-	enroll->admin_kerberos_cache = g_bytes_ref (admin_kerberos_cache);
-	g_simple_async_result_set_op_res_gpointer (res, enroll, enroll_closure_free);
-
-	enroll->discovery = realm_kerberos_provider_lookup_discovery (provider, realm);
-
-	/* Caller didn't discover first time around, so do that now */
-	if (enroll->discovery == NULL) {
-		realm_ad_discover_async (provider, realm, invocation,
-		                         on_discover_do_install, g_object_ref (res));
-
-	/* Already have discovery info, so go straight to install */
-	} else {
-		realm_packages_install_async ("active-directory-packages", invocation,
-		                              on_install_do_join, g_object_ref (res));
-	}
-
-	g_object_unref (res);
-}
-
-typedef struct {
-	GDBusMethodInvocation *invocation;
-	gchar *realm;
-} UnenrollClosure;
-
-static void
-unenroll_closure_free (gpointer data)
-{
-	UnenrollClosure *unenroll = data;
-	g_free (unenroll->realm);
-	g_object_unref (unenroll->invocation);
-	g_slice_free (UnenrollClosure, unenroll);
-}
-
-static void
-on_remove_winbind_done (GObject *source,
-                        GAsyncResult *result,
-                        gpointer user_data)
-{
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	GError *error = NULL;
-
-	realm_samba_winbind_deconfigure_finish (result, &error);
-	if (error != NULL)
-		g_simple_async_result_take_error (res, error);
-	g_simple_async_result_complete (res);
-
-	g_object_unref (res);
-}
-
-static void
-on_leave_do_winbind (GObject *source,
-                     GAsyncResult *result,
-                     gpointer user_data)
-{
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	UnenrollClosure *unenroll = g_simple_async_result_get_op_res_gpointer (res);
-	GError *error = NULL;
-
-	realm_samba_enroll_leave_finish (result, &error);
-	if (error == NULL) {
-		realm_samba_winbind_deconfigure_async (unenroll->invocation,
-		                                       on_remove_winbind_done,
-		                                       g_object_ref (res));
-
-	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
-	}
-
-	g_object_unref (res);
-}
-
-static void
-realm_samba_provider_unenroll_async (RealmKerberosProvider *provider,
-                                     const gchar *realm,
-                                     GBytes *admin_kerberos_cache,
-                                     GDBusMethodInvocation *invocation,
-                                     GAsyncReadyCallback callback,
-                                     gpointer user_data)
-{
-	GSimpleAsyncResult *res;
-	UnenrollClosure *unenroll;
-
-	res = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
-	                                 realm_samba_provider_unenroll_async);
-	unenroll = g_slice_new0 (UnenrollClosure);
-	unenroll->realm = g_strdup (realm);
-	unenroll->invocation = g_object_ref (invocation);
-	g_simple_async_result_set_op_res_gpointer (res, unenroll, unenroll_closure_free);
-
-	/* TODO: Check that we're enrolled as this realm */
-
-	realm_samba_enroll_leave_async (realm, admin_kerberos_cache, invocation,
-	                                on_leave_do_winbind, g_object_ref (res));
-
-	g_object_unref (res);
-}
-
-static gboolean
-realm_samba_provider_generic_finish (RealmKerberosProvider *provider,
-                                     GAsyncResult *result,
-                                     GError **error)
-{
-	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
-		return FALSE;
-
-	return TRUE;
-}
-
-static gchar *
-lookup_enrolled_realm (void)
+ensure_local_realm (RealmSambaProvider *self)
 {
 	RealmIniConfig *config;
 	GError *error = NULL;
-	gchar *realm = NULL;
+	gchar *name = NULL;
 	gchar *security;
 
 	config = realm_samba_config_new (&error);
-	if (error == NULL) {
+	if (error != NULL) {
 		g_warning ("Couldn't read samba global configuration file: %s", error->message);
 		g_error_free (error);
-		return NULL;
+		return;
 	}
 
 	security = realm_ini_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "security");
 	if (security != NULL && g_ascii_strcasecmp (security, "ADS") == 0) {
-		realm = realm_ini_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
+		name = realm_ini_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
 	}
 
+	if (name != NULL)
+		lookup_or_register_realm (self, name);
+
+	g_free (name);
 	g_free (security);
 	g_object_unref (config);
+}
 
-	return realm;
+static GVariant *
+build_realms (GHashTable *realms)
+{
+	GHashTableIter iter;
+	RealmKerberosRealm *realm;
+	GVariantBuilder builder;
+	const gchar *path;
+
+	g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sos)"));
+
+	g_hash_table_iter_init (&iter, realms);
+	while (g_hash_table_iter_next (&iter, NULL, (gpointer)&realm)) {
+		path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
+		g_variant_builder_add (&builder, "(sos)", REALM_DBUS_SAMBA_NAME, path,
+		                       REALM_DBUS_KERBEROS_REALM_INTERFACE);
+	}
+
+	return g_variant_builder_end (&builder);
+}
+
+static void
+realm_samba_provider_discover_async (RealmProvider *provider,
+                                     const gchar *string,
+                                     GDBusMethodInvocation *invocation,
+                                     GAsyncReadyCallback callback,
+                                     gpointer user_data)
+{
+	realm_ad_discover_async (string, invocation, callback, user_data);
+}
+
+static gint
+realm_samba_provider_discover_finish (RealmProvider *provider,
+                                      GAsyncResult *result,
+                                      GVariant **realm_info,
+                                      GVariant **discovery_info,
+                                      GError **error)
+{
+	RealmSambaProvider *self = REALM_SAMBA_PROVIDER (provider);
+	RealmKerberosRealm *realm;
+	GHashTable *discovery;
+	const gchar *object_path;
+	gchar *name;
+
+	name = realm_ad_discover_finish (result, &discovery, error);
+	if (name == NULL)
+		return -1;
+
+	realm = lookup_or_register_realm (self, name);
+	g_free (name);
+
+	if (realm == NULL) {
+		g_hash_table_unref (discovery);
+		return -1;
+	}
+
+	realm_kerberos_realm_set_discovery (realm, discovery);
+
+	if (realm_info) {
+		object_path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
+		*realm_info = realm_provider_new_realm_info (REALM_DBUS_SAMBA_NAME, object_path,
+		                                             REALM_DBUS_KERBEROS_REALM_INTERFACE);
+		g_variant_ref_sink (*realm_info);
+	}
+	if (discovery_info) {
+		*discovery_info = realm_discovery_to_variant (discovery);
+		g_variant_ref_sink (*discovery_info);
+	}
+
+	g_hash_table_unref (discovery);
+	return 100;
 }
 
 static void
@@ -324,16 +207,12 @@ realm_samba_provider_get_property (GObject *obj,
                                    GValue *value,
                                    GParamSpec *pspec)
 {
-	const gchar *realms[2];
-	gchar *realm;
+	RealmSambaProvider *self = REALM_SAMBA_PROVIDER (obj);
 
 	switch (prop_id) {
-	case PROP_ENROLLED_REALMS:
-		realm = lookup_enrolled_realm ();
-		realms[0] = realm;
-		realms[1] = NULL;
-		g_value_set_boxed (value, realms);
-		g_free (realm);
+	case PROP_REALMS:
+		ensure_local_realm (self);
+		g_value_set_variant (value, build_realms (self->realms));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -354,23 +233,30 @@ realm_samba_provider_set_property (GObject *obj,
 	}
 }
 
+static void
+realm_samba_provider_finalize (GObject *obj)
+{
+	RealmSambaProvider *self = REALM_SAMBA_PROVIDER (obj);
+
+	g_hash_table_unref (self->realms);
+
+	G_OBJECT_CLASS (realm_samba_provider_parent_class)->finalize (obj);
+}
+
 void
 realm_samba_provider_class_init (RealmSambaProviderClass *klass)
 {
-	RealmKerberosProviderClass *kerberos_class = REALM_KERBEROS_PROVIDER_CLASS (klass);
+	RealmProviderClass *provider_class = REALM_PROVIDER_CLASS (klass);
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-	kerberos_class->discover_async = realm_ad_discover_async;
-	kerberos_class->discover_finish = realm_ad_discover_finish;
-	kerberos_class->enroll_async = realm_samba_provider_enroll_async;
-	kerberos_class->enroll_finish = realm_samba_provider_generic_finish;
-	kerberos_class->unenroll_async = realm_samba_provider_unenroll_async;
-	kerberos_class->unenroll_finish = realm_samba_provider_generic_finish;
+	provider_class->discover_async = realm_samba_provider_discover_async;
+	provider_class->discover_finish = realm_samba_provider_discover_finish;
 
 	object_class->get_property = realm_samba_provider_get_property;
 	object_class->set_property = realm_samba_provider_set_property;
+	object_class->finalize = realm_samba_provider_finalize;
 
-	g_object_class_override_property (object_class, PROP_ENROLLED_REALMS, "enrolled-realms");
+	g_object_class_override_property (object_class, PROP_REALMS, "realms");
 }
 
 static void

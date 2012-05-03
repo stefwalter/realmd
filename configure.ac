@@ -10,7 +10,7 @@ AC_CONFIG_MACRO_DIR([build/m4])
 AM_INIT_AUTOMAKE([1.11 tar-ustar foreign -Wno-portability])
 AM_SANITY_CHECK
 AM_CONFIG_HEADER(config.h)
-AC_CONFIG_SRCDIR([service/realm-service.c])
+AC_CONFIG_SRCDIR([service/realm-daemon.c])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AM_MAINTAINER_MODE([enable])
 
@@ -67,8 +67,9 @@ PKG_CHECK_MODULES(GLIB,
 	glib-2.0 >= 2.30.0
 	gio-2.0 >= 2.30.0
 	gio-unix-2.0)
-LIBS="$LIBS $GLIB_LIBS"
-CFLAGS="$CFLAGS $GLIB_CFLAGS"
+AC_SUBST(GLIB_CFLAGS)
+AC_SUBST(GLIB_LIBS)
+
 
 # --------------------------------------------------------------------
 # PackageKit

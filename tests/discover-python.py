@@ -12,9 +12,8 @@ def discover_realm(string, verbose):
 	loop = gobject.MainLoop()
 
 	bus = dbus.SystemBus()
-	proxy = bus.get_object('org.freedesktop.realmd.AdSamba',
-	                       '/org/freedesktop/realmd/AdSamba')
-	kerberos = dbus.Interface(proxy, 'org.freedesktop.realmd.Kerberos')
+	proxy = bus.get_object('org.freedesktop.realmd',
+	                       '/org/freedesktop/realmd')
 	provider = dbus.Interface(proxy, 'org.freedesktop.realmd.Provider')
 
 	def on_diagnostic_signal(data):
@@ -22,25 +21,26 @@ def discover_realm(string, verbose):
 	if verbose:
 		provider.connect_to_signal("Diagnostics", on_diagnostic_signal)
 
-	def on_discover_realm(realm, discovered):
-		if realm:
-			print realm
-			for (item, value) in discovered.items():
-				if isinstance(value, dbus.Array):
-					value = list(["%s" % v for v in value])
-				print "\t%s = %s" % (item, value)
-			sys.exit(0)
-		else:
-			print >> sys.stderr, "discover-python: not a valid realm: %s" % string
-			sys.exit(1)
+	def on_discover_realm(relevance, realm_info, discovered):
+		kerberos = dbus.Interface(proxy, 'org.freedesktop.realmd.Kerberos')
+		(bus_name, object_path, interface_name) = realm_info
+		props = dbus.Interface (bus.get_object (bus_name, object_path),
+		                        'org.freedesktop.DBus.Properties')
+		print props.Get('org.freedesktop.realmd.KerberosRealm', 'Name')
+		for (item, value) in discovered.items():
+			if isinstance(value, dbus.Array):
+				value = list(["%s" % v for v in value])
+			print "\t%s = %s" % (item, value)
+		sys.exit(0)
 
 	def on_discover_error(exc):
 		print >> sys.stderr, "discover-python: %s" % str(exc)
 		sys.exit(1)
 
-	kerberos.DiscoverRealm(string,
-	                       reply_handler=on_discover_realm,
-	                       error_handler=on_discover_error)
+	provider.Discover(string,
+	                  reply_handler=on_discover_realm,
+	                  error_handler=on_discover_error,
+	                  timeout=300)
 
 	loop.run()
 	assert False, "not reached"

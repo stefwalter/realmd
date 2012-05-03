@@ -34,12 +34,15 @@ temp.txt
 /build/coverage.info
 /build/coverage
 
+/dbus/realm-dbus-generated.c
+/dbus/realm-dbus-generated.h
+/dbus/realm-dbus-systemd.c
+/dbus/realm-dbus-systemd.h
+
 /po/realmd.pot
 
 /service/identity-config-service
 /service/org.freedesktop.realmd.policy
-/service/realm-dbus-generated.c
-/service/realm-dbus-generated.h
 /service/realmd
 
 /tests/frob-install-packages

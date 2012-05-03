@@ -9,26 +9,34 @@ import sys
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
 
-def enroll_machine(realm, user, enroll, verbose):
+def enroll_machine(string, user, enroll, verbose):
 	loop = gobject.MainLoop()
 
 	bus = dbus.SystemBus()
-	proxy = bus.get_object('org.freedesktop.realmd.AdSamba',
-	                       '/org/freedesktop/realmd/AdSamba')
-	kerberos = dbus.Interface(proxy, 'org.freedesktop.realmd.Kerberos')
+	proxy = bus.get_object('org.freedesktop.realmd',
+	                       '/org/freedesktop/realmd')
 	provider = dbus.Interface(proxy, 'org.freedesktop.realmd.Provider')
+
+	# Discover the realm
+	(relevance, realm_info, discovery) = provider.Discover(string, timeout=300)
+	(bus_name, object_path, interface_name) = realm_info
+	realm = dbus.Interface (bus.get_object (bus_name, object_path), interface_name)
+
+	props = dbus.Interface (realm, 'org.freedesktop.DBus.Properties')
+	realm_name = props.Get(interface_name, 'Name')
 
 	def on_diagnostic_signal(data):
 		sys.stderr.write(data)
 	if verbose:
-		provider.connect_to_signal("Diagnostics", on_diagnostic_signal)
+		diags = dbus.Interface (realm, 'org.freedesktop.realmd.Diagnostics')
+		diags.connect_to_signal("Diagnostics", on_diagnostic_signal)
 
 	if not user:
 		user = raw_input("User: ")
 	if not user:
 		sys.exit(0)
 	if "@" not in user:
-		user = "%s@%s" % (user, realm)
+		user = "%s@%s" % (user, realm_name)
 
 	ccache = "/tmp/my-strange-ccache"
 	if os.path.exists(ccache):
@@ -43,7 +51,7 @@ def enroll_machine(realm, user, enroll, verbose):
 
 	def on_enroll_machine():
 		action = enroll and "Enrolled in" or "Unenrolled from"
-		print >> sys.stderr, "%s domain: %s" % (action, realm)
+		print >> sys.stderr, "%s domain: %s" % (action, realm_name)
 		sys.exit(0)
 
 	def on_enroll_error(exc):
@@ -51,15 +59,15 @@ def enroll_machine(realm, user, enroll, verbose):
 		sys.exit(1)
 
 	if enroll:
-		kerberos.EnrollMachineWithKerberosCache(realm, kerberos_cache,
-		                                        reply_handler=on_enroll_machine,
-		                                        error_handler=on_enroll_error,
-		                                        timeout=300)
+		realm.EnrollWithKerberosCache(kerberos_cache,
+		                              reply_handler=on_enroll_machine,
+		                              error_handler=on_enroll_error,
+		                              timeout=300)
 	else:
-		kerberos.UnenrollMachineWithKerberosCache(realm, kerberos_cache,
-		                                          reply_handler=on_enroll_machine,
-		                                          error_handler=on_enroll_error,
-		                                          timeout=300)
+		realm.UnenrollWithKerberosCache(kerberos_cache,
+		                                reply_handler=on_enroll_machine,
+		                                error_handler=on_enroll_error,
+		                                timeout=300)
 
 	loop.run()
 	assert False, "not reached"

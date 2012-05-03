@@ -6,39 +6,33 @@
 	 * Global interface implemented by realmd. Allows listing of providers
 	 * and discovering which one is relevant for a given domain.
 	-->
-	<interface name="org.freedesktop.realmd.Service">
-		<property name="Providers" type="a(sso)" access="read"/>
+	<interface name="org.freedesktop.realmd.Provider">
+		<property name="Realms" type="a(sos)" access="read"/>
+		<method name="Discover">
+			<arg name="string" type="s" direction="in"/>
+			<arg name="relevance" type="i" direction="out"/>
+			<arg name="realm" type="(sos)" direction="out"/>
+			<arg name="discovered" type="a{sv}" direction="out"/>
+		</method>
 	</interface>
 
-	<!--
-	 * General interface for a provider. Allows listening in for diagnostics
-	 * during operations.
-	--> 
-	<interface name="org.freedesktop.realmd.Provider">
+	<interface name="org.freedesktop.realmd.Diagnostics">
 		<signal name="Diagnostics">
 			<arg name="data" type="s"/>
 		</signal>
 	</interface>
 
-	<!--
-	 * Specific interface for Kerberos providers.
-	-->
-	<interface name="org.freedesktop.realmd.Kerberos">
-		<property name="EnrolledRealms" type="as" access="read"/>
+	<interface name="org.freedesktop.realmd.KerberosRealm">
+		<property name="Name" type="s" access="read"/>
+		<property name="UserFormat" type="s" access="read"/>
+		<property name="Enrolled" type="b" access="read"/>
 
-		<method name="DiscoverRealm">
-			<arg name="string" type="s" direction="in"/>
-			<arg name="realm" type="s" direction="out"/>
-			<arg name="discovered" type="a{sv}" direction="out"/>
-		</method>
-		<method name="EnrollMachineWithKerberosCache">
-			<arg name="realm" type="s" direction="in"/>
+		<method name="EnrollWithKerberosCache">
 			<arg name="kerberos_cache" type="ay" direction="in">
 				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="yup"/>
 			</arg>
 		</method>
-		<method name="UnenrollMachineWithKerberosCache">
-			<arg name="realm" type="s" direction="in"/>
+		<method name="UnenrollWithKerberosCache">
 			<arg name="kerberos_cache" type="ay" direction="in">
 				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="yup"/>
 			</arg>

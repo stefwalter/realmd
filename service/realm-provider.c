@@ -26,8 +26,11 @@
 
 #include <glib/gi18n.h>
 
-G_DEFINE_TYPE (RealmProvider, realm_provider,
-               REALM_DBUS_TYPE_PROVIDER_SKELETON);
+static void realm_provider_iface_init (RealmDbusProviderIface *iface);
+
+G_DEFINE_TYPE_WITH_CODE (RealmProvider, realm_provider, REALM_DBUS_TYPE_PROVIDER_SKELETON,
+	G_IMPLEMENT_INTERFACE (REALM_DBUS_TYPE_PROVIDER, realm_provider_iface_init)
+);
 
 typedef struct {
 	RealmProvider *self;
@@ -91,11 +94,11 @@ on_discover_complete (GObject *source,
 }
 
 static gboolean
-handle_discover (RealmProvider *self,
-                 GDBusMethodInvocation *invocation,
-                 const gchar *string,
-                 gpointer unused)
+realm_provider_handle_discover (RealmDbusProvider *provider,
+                                GDBusMethodInvocation *invocation,
+                                const gchar *string)
 {
+	RealmProvider *self = REALM_PROVIDER (provider);
 	RealmProviderClass *klass;
 
 	klass = REALM_PROVIDER_GET_CLASS (self);
@@ -156,16 +159,22 @@ on_authorize_method (GDBusInterfaceSkeleton *skeleton,
 static void
 realm_provider_init (RealmProvider *self)
 {
-	g_signal_connect (self, "g-authorize-method",
-	                  G_CALLBACK (on_authorize_method), NULL);
-	g_signal_connect (self, "handle-discover",
-	                  G_CALLBACK (handle_discover), NULL);
+
 }
 
 static void
 realm_provider_class_init (RealmProviderClass *klass)
 {
+	GDBusInterfaceSkeletonClass *skeleton_class = G_DBUS_INTERFACE_SKELETON_CLASS (klass);
 
+	skeleton_class->g_authorize_method = realm_provider_authorize_method;
+}
+
+static void
+realm_provider_iface_init (RealmDbusProviderIface *iface)
+{
+	memcpy (iface, g_type_interface_peek_parent (iface), sizeof (*iface));
+	iface->handle_discover = realm_provider_handle_discover;
 }
 
 GVariant *

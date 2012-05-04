@@ -146,10 +146,10 @@ realm_diagnostics_error (GDBusMethodInvocation *invocation,
 		va_end (va);
 	}
 
-	if (error != NULL) {
+	if (format && error)
 		g_string_append (message, ": ");
+	if (error)
 		g_string_append (message, error->message);
-	}
 
 	g_string_append_c (message, '\n');
 

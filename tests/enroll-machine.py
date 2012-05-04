@@ -20,7 +20,7 @@ def do_with_credential_cache (realm, realm_name, principal, enroll):
 	if ret != 0:
 		sys.exit(1)
 
-	kerberos_cache = "" # open(ccache, 'rb').read()
+	kerberos_cache = open(ccache, 'rb').read()
 
 	def on_enroll_machine():
 		action = enroll and "Enrolled in" or "Unenrolled from"

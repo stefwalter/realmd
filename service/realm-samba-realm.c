@@ -34,6 +34,8 @@
 struct _RealmSambaRealm {
 	RealmKerberosRealm parent;
 	gchar *name;
+	RealmIniConfig *config;
+	gulong config_sig;
 };
 
 typedef struct {
@@ -43,8 +45,7 @@ typedef struct {
 enum {
 	PROP_0,
 	PROP_NAME,
-	PROP_USER_FORMAT,
-	PROP_ENROLLED,
+	PROP_SAMBA_CONFIG,
 };
 
 G_DEFINE_TYPE (RealmSambaRealm, realm_samba_realm, REALM_TYPE_KERBEROS_REALM);
@@ -290,30 +291,46 @@ realm_samba_realm_generic_finish (RealmKerberosRealm *realm,
 	return TRUE;
 }
 
-static gchar *
-lookup_enrolled_realm (void)
+static void
+update_properties (RealmSambaRealm *self)
 {
-	RealmIniConfig *config;
-	GError *error = NULL;
-	gchar *realm = NULL;
+	gchar *separator;
+	gchar *workgroup;
+	gchar *user_format;
+	gchar *enrolled;
 	gchar *security;
 
-	config = realm_samba_config_new (&error);
-	if (error != NULL) {
-		g_warning ("Couldn't read samba global configuration file: %s", error->message);
-		g_error_free (error);
-		return NULL;
-	}
-
-	security = realm_ini_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "security");
+	/* Setup the enrolled property */
+	security = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "security");
 	if (security != NULL && g_ascii_strcasecmp (security, "ADS") == 0) {
-		realm = realm_ini_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
+		enrolled = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
+		g_object_set (self, "enrolled", g_strcmp0 (self->name, enrolled) == 0, NULL);
+		g_free (enrolled);
+	} else {
+		g_object_set (self, "enrolled", FALSE, NULL);
 	}
-
 	g_free (security);
-	g_object_unref (config);
 
-	return realm;
+	/* Setup the workgroup property */
+	workgroup = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup");
+	if (workgroup != NULL) {
+		separator = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "winbind separator");
+		user_format = g_strdup_printf ("%s%s%%s", workgroup,
+		                               separator ? separator : "\\");
+		g_object_set (self, "user-format", user_format, NULL);
+		g_free (separator);
+		g_free (user_format);
+	} else {
+		g_object_set (self, "user-format", "", NULL);
+	}
+	g_free (workgroup);
+}
+
+static void
+on_config_changed (RealmIniConfig *config,
+                   gpointer user_data)
+{
+	update_properties (REALM_SAMBA_REALM (user_data));
 }
 
 static void
@@ -323,19 +340,13 @@ realm_samba_realm_get_property (GObject *obj,
                                 GParamSpec *pspec)
 {
 	RealmSambaRealm *self = REALM_SAMBA_REALM (obj);
-	gchar *realm;
 
 	switch (prop_id) {
 	case PROP_NAME:
 		g_value_set_string (value, self->name);
 		break;
-	case PROP_ENROLLED:
-		realm = lookup_enrolled_realm ();
-		g_value_set_boolean (value, g_strcmp0 (self->name, realm) == 0);
-		g_free (realm);
-		break;
-	case PROP_USER_FORMAT:
-		g_value_take_string (value, g_strdup_printf ("%s\%%s", self->name));
+	case PROP_SAMBA_CONFIG:
+		g_value_set_object (value, self->config);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -355,10 +366,40 @@ realm_samba_realm_set_property (GObject *obj,
 	case PROP_NAME:
 		self->name = g_value_dup_string (value);
 		break;
+	case PROP_SAMBA_CONFIG:
+		self->config = g_value_dup_object (value);
+		if (self->config != NULL) {
+			self->config_sig = g_signal_connect (self->config, "changed",
+			                                     G_CALLBACK (on_config_changed),
+			                                     self);
+		}
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
 		break;
 	}
+}
+
+static void
+realm_samba_realm_consructed (GObject *obj)
+{
+	RealmSambaRealm *self = REALM_SAMBA_REALM (obj);
+
+	G_OBJECT_CLASS (realm_samba_realm_parent_class)->constructed (obj);
+
+	update_properties (self);
+}
+
+static void
+realm_samba_realm_finalize (GObject *obj)
+{
+	RealmSambaRealm  *self = REALM_SAMBA_REALM (obj);
+
+	g_free (self->name);
+	if (self->config)
+		g_object_unref (self->config);
+
+	G_OBJECT_CLASS (realm_samba_realm_parent_class)->finalize (obj);
 }
 
 void
@@ -372,16 +413,26 @@ realm_samba_realm_class_init (RealmSambaRealmClass *klass)
 	kerberos_class->unenroll_async = realm_samba_realm_unenroll_async;
 	kerberos_class->unenroll_finish = realm_samba_realm_generic_finish;
 
+	object_class->constructed = realm_samba_realm_consructed;
 	object_class->get_property = realm_samba_realm_get_property;
 	object_class->set_property = realm_samba_realm_set_property;
+	object_class->finalize = realm_samba_realm_finalize;
 
-	g_object_class_override_property (object_class, PROP_NAME, "name");
-	g_object_class_override_property (object_class, PROP_ENROLLED, "enrolled");
-	g_object_class_override_property (object_class, PROP_USER_FORMAT, "user-format");
+	g_object_class_install_property (object_class, PROP_NAME,
+	            g_param_spec_string ("name", "Name", "Realm Name",
+	                                 "", G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+
+	g_object_class_install_property (object_class, PROP_SAMBA_CONFIG,
+	            g_param_spec_object ("samba-config", "Samba Config", "Samba Configuration",
+	                                 REALM_TYPE_INI_CONFIG, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 RealmKerberosRealm *
-realm_samba_realm_new (const gchar *name)
+realm_samba_realm_new (const gchar *name,
+                       RealmIniConfig *config)
 {
-	return g_object_new (REALM_TYPE_SAMBA_REALM, "name", name, NULL);
+	return g_object_new (REALM_TYPE_SAMBA_REALM,
+	                     "name", name,
+	                     "samba-config", config,
+	                     NULL);
 }

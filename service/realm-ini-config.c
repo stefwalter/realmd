@@ -38,10 +38,14 @@ typedef struct {
 struct _RealmIniConfig {
 	GObject parent;
 	gint flags;
-	gchar *filename;
 	GHashTable *sections;
 	ConfigLine *head;
 	ConfigLine *tail;
+
+	gchar *filename;
+	GFileMonitor *monitor;
+	gulong monitor_sig;
+	guint reload_scheduled;
 };
 
 typedef struct {
@@ -52,6 +56,12 @@ enum {
 	PROP_0,
 	PROP_FLAGS
 };
+
+enum {
+	CHANGED,
+	NUM_SIGNALS
+};
+static guint signals[NUM_SIGNALS] = { 0, };
 
 G_DEFINE_TYPE (RealmIniConfig, realm_ini_config, G_TYPE_OBJECT);
 
@@ -121,18 +131,139 @@ realm_ini_config_set_property (GObject *obj,
 	}
 }
 
-static void
-realm_ini_config_finalize (GObject *obj)
+static gboolean
+on_changes_reload_file (gpointer user_data)
 {
-	RealmIniConfig *self = REALM_INI_CONFIG (obj);
+	RealmIniConfig *self = REALM_INI_CONFIG (user_data);
+	GError *error = NULL;
+
+	g_return_val_if_fail (self->filename != NULL, FALSE);
+
+	self->reload_scheduled = 0;
+
+	realm_ini_config_read_file (self, self->filename, &error);
+	if (error != NULL) {
+		g_warning ("Couldn't reload config file: %s: %s",
+		           self->filename, error->message);
+		g_clear_error (&error);
+	}
+
+	return FALSE; /* don't call this timeout again */
+}
+
+static void
+on_directory_changed (GFileMonitor *monitor,
+                      GFile *file,
+                      GFile *other_file,
+                      GFileMonitorEvent event_type,
+                      gpointer user_data)
+{
+	RealmIniConfig *self = REALM_INI_CONFIG (user_data);
+	gchar *event_base;
+	gchar *our_base;
+
+	switch (event_type) {
+	case G_FILE_MONITOR_EVENT_CHANGED:
+	case G_FILE_MONITOR_EVENT_CREATED:
+	case G_FILE_MONITOR_EVENT_DELETED:
+		break;
+	default:
+		return;
+	}
+
+	if (!self->filename)
+		return;
+
+	event_base = g_file_get_basename (file);
+	our_base = g_path_get_basename (self->filename);
+
+	/* If it's our file, then schedule a reload */
+	if (g_strcmp0 (event_base, our_base) == 0) {
+		if (self->reload_scheduled == 0)
+			self->reload_scheduled = g_timeout_add (1, on_changes_reload_file, self);
+	}
+
+	g_free (event_base);
+	g_free (our_base);
+}
+
+static void
+connect_to_filename (RealmIniConfig *self,
+                     const gchar *filename)
+{
+	GError *error = NULL;
+	GFile *directory;
+	GFile *file;
+
+	/* Already connected to this filename */
+	if (g_strcmp0 (self->filename, filename) == 0)
+		return;
+
+	if (self->monitor) {
+		g_signal_handler_disconnect (self->monitor, self->monitor_sig);
+		g_object_unref (self->monitor);
+		self->monitor = NULL;
+		self->monitor_sig = 0;
+	}
+
+	if (self->reload_scheduled)
+		g_source_remove (self->reload_scheduled);
+	self->reload_scheduled = 0;
+
+	g_free (self->filename);
+	self->filename = NULL;
+
+	if (!filename)
+		return;
+
+	self->filename = g_strdup (filename);
+
+	/*
+	 * Setup a file monitor. Have to monitor directory, since the file
+	 * could theoretically not exist yet.
+	 */
+	if (!(self->flags & REALM_INI_NO_WATCH)) {
+		file = g_file_new_for_path (self->filename);
+		directory = g_file_get_parent (file);
+		self->monitor = g_file_monitor_directory (directory, G_FILE_MONITOR_NONE,
+		                                          NULL, &error);
+		if (error == NULL) {
+			self->monitor_sig = g_signal_connect (self->monitor, "changed",
+			                                      G_CALLBACK (on_directory_changed),
+			                                      self);
+		} else {
+			g_warning ("Couldn't monitor directory: %s", error->message);
+			g_error_free (error);
+		}
+		g_object_unref (directory);
+		g_object_unref (file);
+	}
+}
+
+static void
+reset_config_data (RealmIniConfig *self)
+{
 	ConfigLine *line, *next;
 
-	g_hash_table_destroy (self->sections);
+	g_hash_table_remove_all (self->sections);
 	for (line = self->head; line != NULL; line = next) {
 		next = line->next;
 		config_line_free (line);
 	}
-	g_free (self->filename);
+	self->head = NULL;
+	self->tail = NULL;
+}
+
+static void
+realm_ini_config_finalize (GObject *obj)
+{
+	RealmIniConfig *self = REALM_INI_CONFIG (obj);
+
+	/* Should free filename and clear up monitors */
+	connect_to_filename (self, NULL);
+	reset_config_data (self);
+
+	g_hash_table_destroy (self->sections);
 
 	G_OBJECT_CLASS (realm_ini_config_parent_class)->finalize (obj);
 }
@@ -148,6 +279,9 @@ realm_ini_config_class_init (RealmIniConfigClass *klass)
 	g_object_class_install_property (object_class, PROP_FLAGS,
 	               g_param_spec_int ("flags", "Flags", "Ini file flags",
 	                                 0, G_MAXINT, 0, G_PARAM_WRITABLE | G_PARAM_STATIC_STRINGS));
+
+	signals[CHANGED] = g_signal_new ("changed", REALM_TYPE_INI_CONFIG, G_SIGNAL_RUN_FIRST,
+	                                 0, NULL, NULL, g_cclosure_marshal_generic, G_TYPE_NONE, 0);
 }
 
 enum {
@@ -356,23 +490,9 @@ parse_config_line (RealmIniConfig *self,
 		(*current)->tail = line;
 }
 
-void
-realm_ini_config_read_string (RealmIniConfig *self,
-                                const gchar *data)
-{
-	GBytes *bytes;
-
-	g_return_if_fail (REALM_IS_INI_CONFIG (self));
-	g_return_if_fail (data != NULL);
-
-	bytes = g_bytes_new (data, strlen (data));
-	realm_ini_config_read_bytes (self, bytes);
-	g_bytes_unref (bytes);
-}
-
-void
-realm_ini_config_read_bytes (RealmIniConfig *self,
-                               GBytes *bytes)
+static void
+parse_config_bytes (RealmIniConfig *self,
+                    GBytes *bytes)
 {
 	ConfigSection *current;
 	GBytes *line;
@@ -382,8 +502,8 @@ realm_ini_config_read_bytes (RealmIniConfig *self,
 	const gchar *from;
 	gsize len;
 
-	g_return_if_fail (REALM_IS_INI_CONFIG (self));
-	g_return_if_fail (bytes != NULL);
+	/* Clear the current data */
+	reset_config_data (self);
 
 	current = NULL;
 
@@ -419,6 +539,33 @@ realm_ini_config_read_bytes (RealmIniConfig *self,
 			break;
 		from = at;
 	}
+
+	g_signal_emit (self, signals[CHANGED], 0);
+}
+
+void
+realm_ini_config_read_string (RealmIniConfig *self,
+                                const gchar *data)
+{
+	GBytes *bytes;
+
+	g_return_if_fail (REALM_IS_INI_CONFIG (self));
+	g_return_if_fail (data != NULL);
+
+	bytes = g_bytes_new (data, strlen (data));
+	realm_ini_config_read_bytes (self, bytes);
+	g_bytes_unref (bytes);
+}
+
+void
+realm_ini_config_read_bytes (RealmIniConfig *self,
+                             GBytes *bytes)
+{
+	g_return_if_fail (REALM_IS_INI_CONFIG (self));
+	g_return_if_fail (bytes != NULL);
+
+	connect_to_filename (self, NULL);
+	parse_config_bytes (self, bytes);
 }
 
 GBytes *
@@ -454,6 +601,7 @@ realm_ini_config_read_file (RealmIniConfig *self,
                             const gchar *filename,
                             GError **error)
 {
+	GError *err = NULL;
 	GBytes *bytes;
 	gchar *contents;
 	gsize length;
@@ -462,15 +610,22 @@ realm_ini_config_read_file (RealmIniConfig *self,
 	g_return_val_if_fail (filename != NULL, FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-	if (!g_file_get_contents (filename, &contents, &length, error))
+	g_file_get_contents (filename, &contents, &length, &err);
+
+	/* Ignore errors of the file not existing */
+	if (g_error_matches (err, G_FILE_ERROR, G_FILE_ERROR_NOENT))
+		g_clear_error (&err);
+
+	if (err != NULL) {
+		g_propagate_error (error, err);
 		return FALSE;
+	}
 
 	bytes = g_bytes_new_take (contents, length);
-	realm_ini_config_read_bytes (self, bytes);
+	parse_config_bytes (self, bytes);
 	g_bytes_unref (bytes);
 
-	g_free (self->filename);
-	self->filename = g_strdup (filename);
+	connect_to_filename (self, filename);
 	return TRUE;
 }
 
@@ -507,18 +662,16 @@ realm_ini_config_write_file (RealmIniConfig *self,
 	return ret;
 }
 
-void
-realm_ini_config_set (RealmIniConfig *self,
-                      const gchar *section,
-                      const gchar *name,
-                      const gchar *value)
+static void
+config_set_value (RealmIniConfig *self,
+                  const gchar *section,
+                  const gchar *name,
+                  const gchar *value)
 {
 	ConfigSection *sect;
 	ConfigLine *line;
 	gchar *data;
 
-	g_return_if_fail (REALM_IS_INI_CONFIG (self));
-	g_return_if_fail (section != NULL);
 	g_return_if_fail (strchr (section, ']') == NULL);
 	g_return_if_fail (strchr (section, '[') == NULL);
 	g_return_if_fail (name != NULL);
@@ -579,6 +732,19 @@ realm_ini_config_set (RealmIniConfig *self,
 		g_bytes_unref (line->bytes);
 		line->bytes = g_bytes_new_take (data, strlen (data));
 	}
+}
+
+void
+realm_ini_config_set (RealmIniConfig *self,
+                      const gchar *section,
+                      const gchar *name,
+                      const gchar *value)
+{
+	g_return_if_fail (REALM_IS_INI_CONFIG (self));
+	g_return_if_fail (section != NULL);
+
+	config_set_value (self, section, name, value);
+	g_signal_emit (self, signals[CHANGED], 0);
 }
 
 gchar *
@@ -646,9 +812,19 @@ realm_ini_config_set_all (RealmIniConfig *self,
 
 	g_hash_table_iter_init (&iter, parameters);
 	while (g_hash_table_iter_next (&iter, (gpointer *)&name, (gpointer *)&value))
-		realm_ini_config_set (self, section, name, value);
+		config_set_value (self, section, name, value);
+
+	g_signal_emit (self, signals[CHANGED], 0);
 }
 
+void
+realm_ini_config_reset (RealmIniConfig *self)
+{
+	g_return_if_fail (REALM_IS_INI_CONFIG (self));
+
+	reset_config_data (self);
+	g_signal_emit (self, signals[CHANGED], 0);
+}
 
 RealmIniConfig *
 realm_ini_config_new (RealmIniFlags flags)

@@ -20,7 +20,9 @@
 #include <gio/gio.h>
 
 typedef enum {
+	REALM_INI_NONE = 0,
 	REALM_INI_LINE_CONTINUATIONS = 1 << 1,
+	REALM_INI_NO_WATCH = 1 << 2
 } RealmIniFlags;
 
 #define REALM_TYPE_INI_CONFIG            (realm_ini_config_get_type ())
@@ -32,6 +34,8 @@ typedef struct _RealmIniConfig RealmIniConfig;
 GType               realm_ini_config_get_type                 (void) G_GNUC_CONST;
 
 RealmIniConfig *    realm_ini_config_new                      (RealmIniFlags flags);
+
+void                realm_ini_config_reset                    (RealmIniConfig *self);
 
 void                realm_ini_config_read_string              (RealmIniConfig *self,
                                                                const gchar *data);
@@ -64,14 +68,6 @@ GHashTable *        realm_ini_config_get_all                  (RealmIniConfig *s
 void                realm_ini_config_set_all                  (RealmIniConfig *self,
                                                                const gchar *section,
                                                                GHashTable *parameters);
-
-gboolean            realm_ini_config_change                   (const gchar *section,
-                                                               GError **error,
-                                                               ...) G_GNUC_NULL_TERMINATED;
-
-gboolean            realm_ini_config_changev                  (const gchar *section,
-                                                               GHashTable *parameters,
-                                                               GError **error);
 
 G_END_DECLS
 

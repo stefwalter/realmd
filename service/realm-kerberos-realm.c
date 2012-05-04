@@ -26,13 +26,11 @@
 #include <glib/gi18n.h>
 
 struct _RealmKerberosRealmPrivate {
-	gchar *name;
 	GHashTable *discovery;
 };
 
 enum {
 	PROP_0,
-	PROP_NAME,
 	PROP_DISCOVERY
 };
 
@@ -252,9 +250,6 @@ realm_kerberos_realm_get_property (GObject *obj,
 	RealmKerberosRealm *self = REALM_KERBEROS_REALM (obj);
 
 	switch (prop_id) {
-	case PROP_NAME:
-		g_value_set_string (value, self->pv->name);
-		break;
 	case PROP_DISCOVERY:
 		g_value_set_boxed (value, self->pv->discovery);
 		break;
@@ -282,7 +277,6 @@ realm_kerberos_realm_finalize (GObject *obj)
 {
 	RealmKerberosRealm *self = REALM_KERBEROS_REALM (obj);
 
-	g_free (self->pv->name);
 	if (self->pv->discovery)
 		g_hash_table_unref (self->pv->discovery);
 
@@ -299,8 +293,6 @@ realm_kerberos_realm_class_init (RealmKerberosRealmClass *klass)
 	object_class->finalize = realm_kerberos_realm_finalize;
 
 	g_type_class_add_private (klass, sizeof (RealmKerberosRealmPrivate));
-
-	g_object_class_override_property (object_class, PROP_NAME, "name");
 
 	g_object_class_install_property (object_class, PROP_DISCOVERY,
 	             g_param_spec_boxed ("discovery", "Discovery", "Discovery Data",

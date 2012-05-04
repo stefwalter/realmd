@@ -20,6 +20,7 @@
 #include <gio/gio.h>
 
 #include "realm-kerberos-realm.h"
+#include "realm-ini-config.h"
 
 G_BEGIN_DECLS
 
@@ -31,7 +32,8 @@ typedef struct _RealmSambaRealm RealmSambaRealm;
 
 GType                    realm_samba_realm_get_type    (void) G_GNUC_CONST;
 
-RealmKerberosRealm *     realm_samba_realm_new         (const gchar *name);
+RealmKerberosRealm *     realm_samba_realm_new         (const gchar *name,
+                                                        RealmIniConfig *config);
 
 G_END_DECLS
 

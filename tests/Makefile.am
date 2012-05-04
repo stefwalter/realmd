@@ -7,6 +7,12 @@ INCLUDES = \
 	-DSERVICE_DIR="\"@abs_srcdir@/files\"" \
 	$(NULL)
 
+AM_CFLAGS = \
+	$(GLIB_CFLAGS)
+
+LDADD = \
+	$(GLIB_LIBS)
+
 TEST_PROGS = \
 	test-ini-config \
 	$(NULL)

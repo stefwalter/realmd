@@ -36,6 +36,8 @@
 struct _RealmSambaProvider {
 	RealmProvider parent;
 	GHashTable *realms;
+	RealmIniConfig *config;
+	gulong config_sig;
 };
 
 typedef struct {
@@ -56,6 +58,8 @@ realm_samba_provider_init (RealmSambaProvider *self)
 {
 	self->realms = g_hash_table_new_full (g_str_hash, g_str_equal,
 	                                      g_free, g_object_unref);
+
+	self->config = realm_samba_config_new (NULL);
 }
 
 static RealmKerberosRealm *
@@ -71,7 +75,7 @@ lookup_or_register_realm (RealmSambaProvider *self,
 
 	realm = g_hash_table_lookup (self->realms, name);
 	if (realm == NULL) {
-		realm = realm_samba_realm_new (name);
+		realm = realm_samba_realm_new (name, self->config);
 
 		escaped = g_strdup (name);
 		g_strcanon (escaped, REALM_DBUS_NAME_CHARS, '_');
@@ -239,6 +243,8 @@ realm_samba_provider_finalize (GObject *obj)
 	RealmSambaProvider *self = REALM_SAMBA_PROVIDER (obj);
 
 	g_hash_table_unref (self->realms);
+	g_signal_handler_disconnect (self->config, self->config_sig);
+	g_object_unref (self->config);
 
 	G_OBJECT_CLASS (realm_samba_provider_parent_class)->finalize (obj);
 }

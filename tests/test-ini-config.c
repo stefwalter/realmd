@@ -17,6 +17,8 @@
 #include "service/realm-platform.h"
 #include "service/realm-samba-config.h"
 
+#include <glib/gstdio.h>
+
 #include <string.h>
 
 #define assert_cmpmem(a, na, cmp, b, nb) \
@@ -103,16 +105,29 @@ teardown (Test *test,
 }
 
 static void
+on_config_changed (RealmIniConfig *config,
+                   gpointer user_data)
+{
+	gboolean *changed = user_data;
+	*changed = TRUE;
+}
+
+static void
 test_read_one (Test *test,
                gconstpointer unused)
 {
+	gboolean changed = FALSE;
 	GError *error = NULL;
 	gchar *value;
 	gboolean ret;
 
+	g_signal_connect (test->config, "changed", G_CALLBACK (on_config_changed), &changed);
+
 	ret = realm_ini_config_read_file (test->config, TESTFILE_DIR "/smb-one.conf", &error);
 	g_assert_no_error (error);
 	g_assert (ret == TRUE);
+
+	g_assert (changed == TRUE);
 
 	value = realm_ini_config_get (test->config, "section", "one");
 	g_assert_cmpstr (value, ==, "uno");
@@ -286,9 +301,53 @@ test_file_not_exist (Test *test,
 	gboolean ret;
 
 	ret = realm_ini_config_read_file (test->config, "/non-existant", &error);
-	g_assert_error (error, G_FILE_ERROR, G_FILE_ERROR_NOENT);
-	g_assert (ret == FALSE);
-	g_error_free (error);
+	g_assert_no_error (error);
+	g_assert (ret == TRUE);
+}
+
+static gboolean
+on_timeout_quit_loop (gpointer user_data)
+{
+	g_main_loop_quit (user_data);
+	return FALSE; /* don't call again */
+}
+
+static void
+test_file_watch (Test *test,
+                 gconstpointer unused)
+{
+	const gchar *data = "[section]\nkey=12345";
+	const gchar *filename = "/tmp/test-samba-config.watch";
+	gboolean changed = FALSE;
+	GError *error = NULL;
+	GMainLoop *loop;
+	gchar *value;
+	gboolean ret;
+
+	g_unlink (filename);
+	ret = realm_ini_config_read_file (test->config, filename, &error);
+	g_assert_no_error (error);
+	g_assert (ret == TRUE);
+
+	g_signal_connect (test->config, "changed", G_CALLBACK (on_config_changed), &changed);
+
+	value = realm_ini_config_get (test->config, "section", "key");
+	g_assert (value == NULL);
+
+	/* Now write to the file */
+	g_file_set_contents (filename, data, -1, &error);
+	g_assert_no_error (error);
+
+	/* Wait a couple seconds */
+	loop = g_main_loop_new (NULL, FALSE);
+	g_timeout_add_seconds (2, on_timeout_quit_loop, loop);
+	g_main_loop_run (loop);
+	g_main_loop_unref (loop);
+
+	g_assert (changed == TRUE);
+	value = realm_ini_config_get (test->config, "section", "key");
+	g_assert_cmpstr (value, ==, "12345");
+	g_free (value);
 }
 
 static void
@@ -297,6 +356,7 @@ test_set (Test *test,
 {
 	const gchar *data = "[section]\n\t1= one\r\n2=two\n3=three";
 	const gchar *check = "[section]\n1 = the number one\n2=two\n4 = four\n";
+	gboolean changed = FALSE;
 	const gchar *output;
 	gsize n_check;
 	gsize n_output;
@@ -306,9 +366,13 @@ test_set (Test *test,
 	realm_ini_config_read_bytes (test->config, bytes);
 	g_bytes_unref (bytes);
 
+	g_signal_connect (test->config, "changed", G_CALLBACK (on_config_changed), &changed);
+
 	realm_ini_config_set (test->config, "section", "1", "the number one");
 	realm_ini_config_set (test->config, "section", "3", NULL);
 	realm_ini_config_set (test->config, "section", "4", "four");
+
+	g_assert (changed == TRUE);
 
 	bytes = realm_ini_config_write_bytes (test->config);
 	output = g_bytes_get_data (bytes, &n_output);
@@ -372,6 +436,7 @@ test_set_all (Test *test,
 {
 	const gchar *data = "[section]\n\t1= one\r\n2=two\n3=three";
 	const gchar *check = "[section]\n1 = the number one\n2=two\n4 = four\n";
+	gboolean changed = FALSE;
 	const gchar *output;
 	GHashTable *parameters;
 	gsize n_check;
@@ -382,12 +447,16 @@ test_set_all (Test *test,
 	realm_ini_config_read_bytes (test->config, bytes);
 	g_bytes_unref (bytes);
 
+	g_signal_connect (test->config, "changed", G_CALLBACK (on_config_changed), &changed);
+
 	parameters = g_hash_table_new (g_str_hash, g_str_equal);
 	g_hash_table_insert (parameters, "1", "the number one");
 	g_hash_table_insert (parameters, "3", NULL);
 	g_hash_table_insert (parameters, "4", "four");
 	realm_ini_config_set_all (test->config, "section", parameters);
 	g_hash_table_unref (parameters);
+
+	g_assert (changed == TRUE);
 
 	bytes = realm_ini_config_write_bytes (test->config);
 	output = g_bytes_get_data (bytes, &n_output);
@@ -433,23 +502,24 @@ main (int argc,
 
 	realm_platform_init ();
 
-	g_test_add ("/realmd/samba-config/read-one", Test, NULL, setup, test_read_one, teardown);
-	g_test_add ("/realmd/samba-config/read-all", Test, NULL, setup, test_read_all, teardown);
-	g_test_add ("/realmd/samba-config/read-string", Test, NULL, setup, test_read_string, teardown);
-	g_test_add ("/realmd/samba-config/read-carriage-return", Test, NULL, setup, test_read_carriage_return, teardown);
+	g_test_add ("/realmd/ini-config/read-one", Test, NULL, setup, test_read_one, teardown);
+	g_test_add ("/realmd/ini-config/read-all", Test, NULL, setup, test_read_all, teardown);
+	g_test_add ("/realmd/ini-config/read-string", Test, NULL, setup, test_read_string, teardown);
+	g_test_add ("/realmd/ini-config/read-carriage-return", Test, NULL, setup, test_read_carriage_return, teardown);
 
-	g_test_add ("/realmd/samba-config/write-exact", Test, NULL, setup, test_write_exact, teardown);
-	g_test_add ("/realmd/samba-config/write-file", Test, NULL, setup, test_write_file, teardown);
-	g_test_add ("/realmd/samba-config/write-empty-no-create", Test, NULL, setup, test_write_empty_no_create, teardown);
+	g_test_add ("/realmd/ini-config/write-exact", Test, NULL, setup, test_write_exact, teardown);
+	g_test_add ("/realmd/ini-config/write-file", Test, NULL, setup, test_write_file, teardown);
+	g_test_add ("/realmd/ini-config/write-empty-no-create", Test, NULL, setup, test_write_empty_no_create, teardown);
 
-	g_test_add ("/realmd/samba-config/set", Test, NULL, setup, test_set, teardown);
-	g_test_add ("/realmd/samba-config/set-middle", Test, NULL, setup, test_set_middle, teardown);
-	g_test_add ("/realmd/samba-config/set-section", Test, NULL, setup, test_set_section, teardown);
-	g_test_add ("/realmd/samba-config/set-all", Test, NULL, setup, test_set_all, teardown);
+	g_test_add ("/realmd/ini-config/set", Test, NULL, setup, test_set, teardown);
+	g_test_add ("/realmd/ini-config/set-middle", Test, NULL, setup, test_set_middle, teardown);
+	g_test_add ("/realmd/ini-config/set-section", Test, NULL, setup, test_set_section, teardown);
+	g_test_add ("/realmd/ini-config/set-all", Test, NULL, setup, test_set_all, teardown);
+
+	g_test_add ("/realmd/ini-config/file-not-exist", Test, NULL, setup, test_file_not_exist, teardown);
+	g_test_add ("/realmd/ini-config/file-watch", Test, NULL, setup, test_file_watch, teardown);
 
 	g_test_add ("/realmd/samba-config/change", Test, NULL, setup, test_change, teardown);
-
-	g_test_add ("/realmd/samba-config/file-not-exist", Test, NULL, setup, test_file_not_exist, teardown);
 
 	return g_test_run ();
 }

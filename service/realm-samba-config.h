@@ -25,6 +25,9 @@
 
 RealmIniConfig *    realm_samba_config_new                      (GError **error);
 
+RealmIniConfig *    realm_samba_config_new_with_flags           (RealmIniFlags flags,
+                                                                 GError **error);
+
 gboolean            realm_samba_config_change                   (const gchar *section,
                                                                  GError **error,
                                                                  ...) G_GNUC_NULL_TERMINATED;

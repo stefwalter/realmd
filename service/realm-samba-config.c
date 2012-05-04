@@ -21,28 +21,41 @@
 #include <string.h>
 
 RealmIniConfig *
-realm_samba_config_new (GError **error)
+realm_samba_config_new_with_flags (RealmIniFlags flags,
+                                   GError **error)
 {
 	RealmIniConfig *config;
 	const gchar *filename;
 	GError *err = NULL;
 
-	config = realm_ini_config_new (REALM_INI_LINE_CONTINUATIONS);
+	config = realm_ini_config_new (REALM_INI_LINE_CONTINUATIONS | flags);
 
 	filename = realm_platform_path ("smb.conf");
+
 	realm_ini_config_read_file (config, filename, &err);
 
-	/* Ignore errors of the file not existing */
-	if (g_error_matches (err, G_FILE_ERROR, G_FILE_ERROR_NOENT))
-		g_clear_error (&err);
-
 	if (err != NULL) {
-		g_object_unref (config);
-		g_propagate_error (error, err);
-		config = NULL;
+		/* If the caller wants errors, then don't return an invalid samba config */
+		if (error) {
+			g_propagate_error (error, err);
+			g_object_unref (config);
+			config = NULL;
+
+		/* If the caller doesn't care, then warn but continue */
+		} else {
+			g_warning ("Couldn't load config file: %s: %s", filename,
+			           err->message);
+			g_error_free (err);
+		}
 	}
 
 	return config;
+}
+
+RealmIniConfig *
+realm_samba_config_new (GError **error)
+{
+	return realm_samba_config_new_with_flags (REALM_INI_NONE, error);
 }
 
 gboolean
@@ -84,7 +97,7 @@ realm_samba_config_changev (const gchar *section,
 	g_return_val_if_fail (parameters != NULL, FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-	config = realm_samba_config_new (error);
+	config = realm_samba_config_new_with_flags (REALM_INI_NO_WATCH, error);
 	if (config != NULL) {
 		realm_ini_config_set_all (config, section, parameters);
 		ret = realm_ini_config_write_file (config, NULL, error);

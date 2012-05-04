@@ -5,37 +5,98 @@
 	<!--
 	 * Global interface implemented by realmd. Allows listing of providers
 	 * and discovering which one is relevant for a given domain.
+	 *
+	 * This is implemented by individual providers, but is aggregated
+	 * globally at the system bus name 'org.freedesktop.realmd' with the
+	 * object path '/org/freedesktop/realmd'
 	-->
 	<interface name="org.freedesktop.realmd.Provider">
+
+		<!-- 
+		 * A list of known, enrolled or discovered realms.
+		 * Each realm is a DBus object and is represeted by a:
+		 *   s: DBus bus name of the realm
+		 *   o: DBus object path of the realm
+		 *   s: DBus interface name, like 'ofr.KerberosRealm' (below)
+		-->
 		<property name="Realms" type="a(sos)" access="read"/>
+
+		<!--
+		 * Discover whether a string represents a realm that a provider
+		 * can enroll or otherwise use.
+		-->
 		<method name="Discover">
+			<!-- The input string -->
 			<arg name="string" type="s" direction="in"/>
+
+			<!-- Returned match relevance -->
 			<arg name="relevance" type="i" direction="out"/>
+
+			<!-- The realm object: bus name, object path, interface -->
 			<arg name="realm" type="(sos)" direction="out"/>
+
+			<!-- More detailed information about discovered realm -->
 			<arg name="discovered" type="a{sv}" direction="out"/>
 		</method>
 	</interface>
 
+	<!--
+	 * This interface is implemented by Providers and Realms to provide
+	 * additional information when an long running operation is happening
+	 *
+	 * In particular you can connect to the "Diagnostics" signal when
+	 * during an enroll or unenroll to get details.
+	-->
 	<interface name="org.freedesktop.realmd.Diagnostics">
 		<signal name="Diagnostics">
 			<arg name="data" type="s"/>
 		</signal>
 	</interface>
 
+	<!--
+	 * This interface is implemented by Kerberos realms.
+	-->
 	<interface name="org.freedesktop.realmd.KerberosRealm">
+
+		<!--
+		 * The kerberos realm name. Usually capitalized.
+		-->
 		<property name="Name" type="s" access="read"/>
+
+		<!--
+		 * The format for user logins when this realm is enrolled.
+		 * This property may not be valid unless machine is enrolled
+		 * in this realm. The format contains a %s where the user name
+		 * goes eg: "DOMAIN\%s"
+		--> 
 		<property name="UserFormat" type="s" access="read"/>
+
+		<!--
+		 * Whether the machine is enrolled in this realm or not.
+		-->
 		<property name="Enrolled" type="b" access="read"/>
 
+		<!--
+		 * Enroll the machine in this realm using kerberos cached
+		 * administrative credentials.
+		-->
 		<method name="EnrollWithKerberosCache">
+			<!-- The contents of a kerberos cache file containing administrative credentials -->
 			<arg name="kerberos_cache" type="ay" direction="in">
 				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="yup"/>
 			</arg>
 		</method>
+
+		<!--
+		 * Unenroll the machine from this realm using a kerberos cached
+		 * administrative credentials.
+		-->
 		<method name="UnenrollWithKerberosCache">
+			<!-- The contents of a kerberos cache file containing administrative credentials -->
 			<arg name="kerberos_cache" type="ay" direction="in">
 				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="yup"/>
 			</arg>
 		</method>
+
 	</interface>
 </node>

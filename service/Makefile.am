@@ -51,6 +51,7 @@ realmd_CFLAGS = \
 	$(PACKAGEKIT_CFLAGS) \
 	$(POLKIT_CFLAGS) \
 	$(GLIB_CFLAGS) \
+	$(KRB5_CFLAGS) \
 	$(NULL)
 
 realmd_LDADD = \
@@ -58,6 +59,7 @@ realmd_LDADD = \
 	$(PACKAGEKIT_LIBS) \
 	$(POLKIT_LIBS) \
 	$(GLIB_LIBS) \
+	$(KRB5_LIBS) \
 	$(NULL)
 
 # Install and uninstall the config for this distro

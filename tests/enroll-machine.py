@@ -2,6 +2,7 @@
 
 import dbus
 import getopt
+import getpass
 import gobject
 import os
 import sys
@@ -9,7 +10,65 @@ import sys
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
 
-def enroll_machine(string, user, enroll, verbose):
+def do_with_credential_cache (realm, realm_name, principal, enroll):
+	ccache = "/tmp/my-strange-ccache"
+	if os.path.exists(ccache):
+		os.unlink(ccache)
+	os.environ["KRB5CCNAME"] = "FILE:%s" % ccache
+
+	ret = os.system("kinit %s" % user)
+	if ret != 0:
+		sys.exit(1)
+
+	kerberos_cache = "" # open(ccache, 'rb').read()
+
+	def on_enroll_machine():
+		action = enroll and "Enrolled in" or "Unenrolled from"
+		print >> sys.stderr, "%s domain: %s" % (action, realm_name)
+		sys.exit(0)
+
+	def on_enroll_error(exc):
+		print >> sys.stderr, "enroll-machine.py: %s" % str(exc)
+		sys.exit(1)
+
+	if enroll:
+		realm.EnrollWithCredentialCache(kerberos_cache,
+		                                reply_handler=on_enroll_machine,
+		                                error_handler=on_enroll_error,
+		                                timeout=300)
+	else:
+		realm.UnenrollWithCredentialCache(kerberos_cache,
+		                                  reply_handler=on_enroll_machine,
+		                                  error_handler=on_enroll_error,
+		                                  timeout=300)
+
+def do_with_password (realm, realm_name, principal, enroll):
+	password = getpass.getpass("Password for %s: " % principal)
+	if not password:
+		sys.exit(1)
+
+	def on_enroll_machine():
+		action = enroll and "Enrolled in" or "Unenrolled from"
+		print >> sys.stderr, "%s domain: %s" % (action, realm_name)
+		sys.exit(0)
+
+	def on_enroll_error(exc):
+		print >> sys.stderr, "enroll-machine.py: %s" % str(exc)
+		sys.exit(1)
+
+	if enroll:
+		realm.EnrollWithPassword(principal, password,
+		                         reply_handler=on_enroll_machine,
+		                         error_handler=on_enroll_error,
+		                         timeout=300)
+	else:
+		realm.UnenrollWithPassword(principal, password,
+		                           reply_handler=on_enroll_machine,
+		                           error_handler=on_enroll_error,
+		                           timeout=300)
+
+
+def enroll_machine(string, user, enroll, verbose, lazy):
 	loop = gobject.MainLoop()
 
 	bus = dbus.SystemBus()
@@ -38,59 +97,36 @@ def enroll_machine(string, user, enroll, verbose):
 	if "@" not in user:
 		user = "%s@%s" % (user, realm_name)
 
-	ccache = "/tmp/my-strange-ccache"
-	if os.path.exists(ccache):
-		os.unlink(ccache)
-	os.environ["KRB5CCNAME"] = "FILE:%s" % ccache
-
-	ret = os.system("kinit %s" % user)
-	if ret != 0:
-		sys.exit(1)
-
-	kerberos_cache = open(ccache, 'rb').read()
-
-	def on_enroll_machine():
-		action = enroll and "Enrolled in" or "Unenrolled from"
-		print >> sys.stderr, "%s domain: %s" % (action, realm_name)
-		sys.exit(0)
-
-	def on_enroll_error(exc):
-		print >> sys.stderr, "enroll-machine.py: %s" % str(exc)
-		sys.exit(1)
-
-	if enroll:
-		realm.EnrollWithKerberosCache(kerberos_cache,
-		                              reply_handler=on_enroll_machine,
-		                              error_handler=on_enroll_error,
-		                              timeout=300)
+	if lazy:
+		do_with_password(realm, realm_name, user, enroll)
 	else:
-		realm.UnenrollWithKerberosCache(kerberos_cache,
-		                                reply_handler=on_enroll_machine,
-		                                error_handler=on_enroll_error,
-		                                timeout=300)
+		do_with_credential_cache(realm, realm_name, user, enroll)
 
 	loop.run()
 	assert False, "not reached"
 
 def usage():
-	print >> sys.stderr, "usage: enroll-machine.py [-v] [-U username] realm"
-	print >> sys.stderr, "       enroll-machine.py -u [-v] [-U username] realm"
+	print >> sys.stderr, "usage: enroll-machine.py [-lv] [-U username] realm"
+	print >> sys.stderr, "       enroll-machine.py -u [-lv] [-U username] realm"
 	sys.exit(2)
 
 if __name__ == '__main__':
 	try:
-		opts, args = getopt.getopt(sys.argv[1:], "uU:v", ["user=", "unenroll", "verbose"])
+		opts, args = getopt.getopt(sys.argv[1:], "luU:v", ["lazy", "user=", "unenroll", "verbose"])
 	except getopt.GetoptError, err:
 		print str(err)
 		usage()
 		sys.exit(2)
 
+	lazy = False
 	user = None
 	enroll = True
 	verbose = False
 	for o, a in opts:
 		if o in ("-h", "--help"):
 			usage()
+		elif o in ("-l", "--lazy"):
+			lazy = True
 		elif o in ("-u", "--unenroll"):
 			enroll = False
 		elif o in ("-U", "--user"):
@@ -103,4 +139,4 @@ if __name__ == '__main__':
 	if len(args) != 1:
 		usage()
 
-	enroll_machine(args[0], user, enroll, verbose)
+	enroll_machine(args[0], user, enroll, verbose, lazy)

@@ -71,11 +71,7 @@ prepare_admin_cache (JoinClosure *join,
 	int res;
 
 	data = g_bytes_get_data (admin_cache, &length);
-	if (length == 0) {
-		g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-		             "Invalid zero length admin-kerberos-cache argument");
-		return FALSE;
-	}
+	g_return_val_if_fail (length > 0, FALSE);
 
 	directory = g_get_tmp_dir ();
 	filename = g_build_filename (directory, "realm-ad-kerberos-XXXXXX", NULL);

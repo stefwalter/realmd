@@ -333,13 +333,13 @@ realm_join_or_leave (const gchar *string,
 	/* Start actual operation */
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (realm), G_MAXINT);
 	if (join)
-		realm_dbus_kerberos_realm_call_enroll_with_kerberos_cache (realm, kerberos_cache,
-		                                                           NULL, on_complete_get_result,
-		                                                           &sync);
-	else
-		realm_dbus_kerberos_realm_call_unenroll_with_kerberos_cache (realm, kerberos_cache,
+		realm_dbus_kerberos_realm_call_enroll_with_credential_cache (realm, kerberos_cache,
 		                                                             NULL, on_complete_get_result,
 		                                                             &sync);
+	else
+		realm_dbus_kerberos_realm_call_unenroll_with_credential_cache (realm, kerberos_cache,
+		                                                               NULL, on_complete_get_result,
+		                                                               &sync);
 
 	g_variant_unref (kerberos_cache);
 
@@ -347,13 +347,13 @@ realm_join_or_leave (const gchar *string,
 	g_main_loop_run (sync.loop);
 
 	if (join)
-		realm_dbus_kerberos_realm_call_enroll_with_kerberos_cache_finish (realm,
-		                                                                  sync.result,
-		                                                                  &error);
-	else
-		realm_dbus_kerberos_realm_call_unenroll_with_kerberos_cache_finish (realm,
+		realm_dbus_kerberos_realm_call_enroll_with_credential_cache_finish (realm,
 		                                                                    sync.result,
 		                                                                    &error);
+	else
+		realm_dbus_kerberos_realm_call_unenroll_with_credential_cache_finish (realm,
+		                                                                      sync.result,
+		                                                                      &error);
 
 	g_object_unref (sync.result);
 	g_main_loop_unref (sync.loop);

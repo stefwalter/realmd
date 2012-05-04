@@ -48,3 +48,5 @@ temp.txt
 /tests/frob-install-packages
 /tests/test-ini-config
 /tests/test-samba-config
+
+/tools/realm-enroll

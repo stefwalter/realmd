@@ -144,12 +144,13 @@ update_all_properties (RealmAllProvider *self)
 }
 
 static void
-on_proxy_realms_changed (GObject *gobject,
-                         GParamSpec *pspec,
-                         gpointer user_data)
+on_proxy_properties_changed (GDBusProxy *proxy,
+                             GVariant   *changed_properties,
+                             GStrv       invalidated_properties,
+                             gpointer    user_data)
 {
 	RealmAllProvider *self = REALM_ALL_PROVIDER (user_data);
-	update_realms_property (self);
+	update_all_properties (self);
 }
 
 typedef struct {
@@ -353,8 +354,8 @@ on_provider_proxy (GObject *source,
 
 	proxy = g_dbus_proxy_new_for_bus_finish (result, &error);
 	if (error == NULL) {
-		g_signal_connect (proxy, "notify::realms",
-		                  G_CALLBACK (on_proxy_realms_changed), self);
+		g_signal_connect (proxy, "g-properties-changed",
+		                  G_CALLBACK (on_proxy_properties_changed), self);
 		self->providers = g_list_prepend (self->providers, proxy);
 	} else {
 		g_warning ("Couldn't load realm provider: %s", error->message);
@@ -433,6 +434,8 @@ realm_all_provider_init_async (GAsyncInitable *initable,
 
 	if (init->outstanding == 0)
 		g_simple_async_result_complete_in_idle (res);
+
+	g_object_unref (res);
 }
 
 static gboolean

@@ -37,17 +37,11 @@ struct _RealmSambaProvider {
 	RealmProvider parent;
 	GHashTable *realms;
 	RealmIniConfig *config;
-	gulong config_sig;
 };
 
 typedef struct {
 	RealmProviderClass parent_class;
 } RealmSambaProviderClass;
-
-enum {
-	PROP_0,
-	PROP_REALMS,
-};
 
 static guint provider_owner_id = 0;
 
@@ -60,6 +54,29 @@ realm_samba_provider_init (RealmSambaProvider *self)
 	                                      g_free, g_object_unref);
 
 	self->config = realm_samba_config_new (NULL);
+}
+
+static void
+update_realms_property (RealmSambaProvider *self)
+{
+	GHashTableIter iter;
+	RealmKerberosRealm *realm;
+	GVariantBuilder builder;
+	const gchar *path;
+	GVariant *variant;
+
+	g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sos)"));
+
+	g_hash_table_iter_init (&iter, self->realms);
+	while (g_hash_table_iter_next (&iter, NULL, (gpointer)&realm)) {
+		path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
+		g_variant_builder_add (&builder, "(sos)", REALM_DBUS_SAMBA_NAME, path,
+		                       REALM_DBUS_KERBEROS_REALM_INTERFACE);
+	}
+
+	variant = g_variant_builder_end (&builder);
+	g_object_set (self, "realms", g_variant_ref_sink (variant), NULL);
+	g_variant_unref (variant);
 }
 
 static RealmKerberosRealm *
@@ -93,6 +110,7 @@ lookup_or_register_realm (RealmSambaProvider *self,
 
 		if (error == NULL) {
 			g_hash_table_insert (self->realms, g_strdup (name), realm);
+			update_realms_property (self);
 
 		} else {
 			g_warning ("couldn't export samba realm on dbus connection: %s",
@@ -131,26 +149,6 @@ ensure_local_realm (RealmSambaProvider *self)
 	g_free (name);
 	g_free (security);
 	g_object_unref (config);
-}
-
-static GVariant *
-build_realms (GHashTable *realms)
-{
-	GHashTableIter iter;
-	RealmKerberosRealm *realm;
-	GVariantBuilder builder;
-	const gchar *path;
-
-	g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sos)"));
-
-	g_hash_table_iter_init (&iter, realms);
-	while (g_hash_table_iter_next (&iter, NULL, (gpointer)&realm)) {
-		path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
-		g_variant_builder_add (&builder, "(sos)", REALM_DBUS_SAMBA_NAME, path,
-		                       REALM_DBUS_KERBEROS_REALM_INTERFACE);
-	}
-
-	return g_variant_builder_end (&builder);
 }
 
 static void
@@ -209,35 +207,13 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
 }
 
 static void
-realm_samba_provider_get_property (GObject *obj,
-                                   guint prop_id,
-                                   GValue *value,
-                                   GParamSpec *pspec)
+realm_samba_provider_constructed (GObject *obj)
 {
 	RealmSambaProvider *self = REALM_SAMBA_PROVIDER (obj);
 
-	switch (prop_id) {
-	case PROP_REALMS:
-		ensure_local_realm (self);
-		g_value_set_variant (value, build_realms (self->realms));
-		break;
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
-		break;
-	}
-}
+	update_realms_property (self);
 
-static void
-realm_samba_provider_set_property (GObject *obj,
-                                   guint prop_id,
-                                   const GValue *value,
-                                   GParamSpec *pspec)
-{
-	switch (prop_id) {
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
-		break;
-	}
+	G_OBJECT_CLASS (realm_samba_provider_parent_class)->constructed (obj);
 }
 
 static void
@@ -246,7 +222,6 @@ realm_samba_provider_finalize (GObject *obj)
 	RealmSambaProvider *self = REALM_SAMBA_PROVIDER (obj);
 
 	g_hash_table_unref (self->realms);
-	g_signal_handler_disconnect (self->config, self->config_sig);
 	g_object_unref (self->config);
 
 	G_OBJECT_CLASS (realm_samba_provider_parent_class)->finalize (obj);
@@ -261,11 +236,8 @@ realm_samba_provider_class_init (RealmSambaProviderClass *klass)
 	provider_class->discover_async = realm_samba_provider_discover_async;
 	provider_class->discover_finish = realm_samba_provider_discover_finish;
 
-	object_class->get_property = realm_samba_provider_get_property;
-	object_class->set_property = realm_samba_provider_set_property;
+	object_class->constructed = realm_samba_provider_constructed;
 	object_class->finalize = realm_samba_provider_finalize;
-
-	g_object_class_override_property (object_class, PROP_REALMS, "realms");
 }
 
 static void
@@ -303,6 +275,8 @@ realm_samba_provider_start (GDBusConnection *connection)
 		           error->message);
 		return;
 	}
+
+	ensure_local_realm (provider);
 
 	provider_owner_id = g_bus_own_name_on_connection (connection,
 	                                                  REALM_DBUS_SAMBA_NAME,

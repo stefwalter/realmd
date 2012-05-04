@@ -1,6 +1,6 @@
 === ChangeLog discontinued ===
 
- identity-config relies on commit messages to provide change history. Please
+ realmd relies on commit messages to provide change history. Please
  write commit messages in the following format:
 
 === begin example commit ===

@@ -162,7 +162,6 @@ on_discover_do_install (GObject *source,
 		                              on_install_do_join, g_object_ref (res));
 
 	} else if (error == NULL) {
-		/* TODO: a better error code/message here */
 		g_simple_async_result_set_error (res, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
 		                                 "Invalid or unusable realm argument");
 		g_simple_async_result_complete (res);

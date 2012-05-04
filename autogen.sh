@@ -6,7 +6,7 @@ test -z "$srcdir" && srcdir=.
 
 ORIGDIR=`pwd`
 cd $srcdir
-PROJECT=identity-config
+PROJECT=realmd
 TEST_TYPE=-f
 FILE=service/realm-service.c
 

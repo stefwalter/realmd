@@ -459,7 +459,7 @@ realm_kerberos_realm_get_property (GObject *obj,
 
 	switch (prop_id) {
 	case PROP_DISCOVERY:
-		g_value_set_boxed (value, self->pv->discovery);
+		g_value_set_boxed (value, realm_kerberos_realm_get_discovery (self));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -473,7 +473,12 @@ realm_kerberos_realm_set_property (GObject *obj,
                                    const GValue *value,
                                    GParamSpec *pspec)
 {
+	RealmKerberosRealm *self = REALM_KERBEROS_REALM (obj);
+
 	switch (prop_id) {
+	case PROP_DISCOVERY:
+		realm_kerberos_realm_set_discovery (self, g_value_get_boxed (value));
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
 		break;

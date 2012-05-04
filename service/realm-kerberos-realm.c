@@ -403,25 +403,16 @@ handle_unenroll_with_password (RealmDbusKerberosRealm *realm,
 }
 
 static gboolean
-on_authorize_method (GDBusInterfaceSkeleton *skeleton,
-                     GDBusMethodInvocation  *invocation,
-                     gpointer user_data)
+realm_kerberos_realm_authorize_method (GDBusInterfaceSkeleton *skeleton,
+                                       GDBusMethodInvocation  *invocation)
 {
 	const gchar *interface = g_dbus_method_invocation_get_interface_name (invocation);
 	const gchar *method = g_dbus_method_invocation_get_method_name (invocation);
 	const gchar *action_id = NULL;
 	gboolean ret;
 
-	/* Reading properties is authorized */
-	if (g_str_equal (interface, DBUS_PROPERTIES_INTERFACE)) {
-		if (g_str_equal (method, "Get") ||
-		    g_str_equal (method, "GetAll"))
-			ret = TRUE;
-		else
-			ret = FALSE; /* we have no setters */
-
 	/* Each method has its own polkit authorization */
-	} else if (g_str_equal (interface, REALM_DBUS_KERBEROS_REALM_INTERFACE)) {
+	if (g_str_equal (interface, REALM_DBUS_KERBEROS_REALM_INTERFACE)) {
 		if (g_str_equal (method, "EnrollWithCredentialCache") ||
 		    g_str_equal (method, "EnrollWithPassword")) {
 			action_id = "org.freedesktop.realmd.enroll-machine";

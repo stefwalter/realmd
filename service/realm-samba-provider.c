@@ -177,8 +177,11 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
 	gchar *name;
 
 	name = realm_ad_discover_finish (result, &discovery, error);
-	if (name == NULL)
+	if (name == NULL) {
+		g_set_error (error, REALM_ERROR, REALM_ERROR_DISCOVERED_NOTHING,
+		             "Nothing found during discovery");
 		return -1;
+	}
 
 	realm = lookup_or_register_realm (self, name);
 	g_free (name);

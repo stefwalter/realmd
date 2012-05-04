@@ -56,6 +56,18 @@ realm_samba_realm_init (RealmSambaRealm *self)
 
 }
 
+static gchar *
+lookup_enrolled_realm (RealmSambaRealm *self)
+{
+	gchar *enrolled = NULL;
+	gchar *security;
+
+	security = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "security");
+	if (security != NULL && g_ascii_strcasecmp (security, "ADS") == 0)
+		enrolled = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
+	return enrolled;
+}
+
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	GBytes *admin_kerberos_cache;
@@ -174,6 +186,7 @@ realm_samba_realm_enroll_async (RealmKerberosRealm *realm,
 	RealmSambaRealm *self = REALM_SAMBA_REALM (realm);
 	GSimpleAsyncResult *res;
 	EnrollClosure *enroll;
+	gchar *enrolled;
 
 	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
 	                                 realm_samba_realm_enroll_async);
@@ -187,8 +200,15 @@ realm_samba_realm_enroll_async (RealmKerberosRealm *realm,
 	if (enroll->discovery)
 		g_hash_table_ref (enroll->discovery);
 
+	/* Make sure not already enrolled in a realm */
+	enrolled = lookup_enrolled_realm (self);
+	if (enrolled != NULL) {
+		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_ALREADY_ENROLLED,
+		                                 "Already enrolled in a realm");
+		g_simple_async_result_complete_in_idle (res);
+
 	/* Caller didn't discover first time around, so do that now */
-	if (enroll->discovery == NULL) {
+	} else if (enroll->discovery == NULL) {
 		realm_ad_discover_async (self->name, invocation,
 		                         on_discover_do_install, g_object_ref (res));
 
@@ -198,6 +218,7 @@ realm_samba_realm_enroll_async (RealmKerberosRealm *realm,
 		                              on_install_do_join, g_object_ref (res));
 	}
 
+	g_free (enrolled);
 	g_object_unref (res);
 }
 
@@ -264,6 +285,7 @@ realm_samba_realm_unenroll_async (RealmKerberosRealm *realm,
 	RealmSambaRealm *self = REALM_SAMBA_REALM (realm);
 	GSimpleAsyncResult *res;
 	UnenrollClosure *unenroll;
+	gchar *enrolled;
 
 	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
 	                                 realm_samba_realm_unenroll_async);
@@ -272,10 +294,16 @@ realm_samba_realm_unenroll_async (RealmKerberosRealm *realm,
 	unenroll->invocation = g_object_ref (invocation);
 	g_simple_async_result_set_op_res_gpointer (res, unenroll, unenroll_closure_free);
 
-	/* TODO: Check that we're enrolled as this realm */
-
-	realm_samba_enroll_leave_async (self->name, admin_kerberos_cache, invocation,
-	                                on_leave_do_winbind, g_object_ref (res));
+	/* Check that enrolled in this realm */
+	enrolled = lookup_enrolled_realm (self);
+	if (g_strcmp0 (enrolled, self->name) == 0) {
+		realm_samba_enroll_leave_async (self->name, admin_kerberos_cache, invocation,
+		                                on_leave_do_winbind, g_object_ref (res));
+	} else {
+		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_NOT_ENROLLED,
+		                                 "Not currently enrolled in the realm");
+		g_simple_async_result_complete_in_idle (res);
+	}
 
 	g_object_unref (res);
 }
@@ -298,18 +326,9 @@ update_properties (RealmSambaRealm *self)
 	gchar *workgroup;
 	gchar *user_format;
 	gchar *enrolled;
-	gchar *security;
 
-	/* Setup the enrolled property */
-	security = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "security");
-	if (security != NULL && g_ascii_strcasecmp (security, "ADS") == 0) {
-		enrolled = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
-		g_object_set (self, "enrolled", g_strcmp0 (self->name, enrolled) == 0, NULL);
-		g_free (enrolled);
-	} else {
-		g_object_set (self, "enrolled", FALSE, NULL);
-	}
-	g_free (security);
+	enrolled = lookup_enrolled_realm (self);
+	g_object_set (self, "enrolled", g_strcmp0 (self->name, enrolled) == 0, NULL);
 
 	/* Setup the workgroup property */
 	workgroup = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup");

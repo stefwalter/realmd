@@ -77,6 +77,11 @@ on_enroll_complete (GObject *source,
 		realm_diagnostics_info (closure->invocation, "Successfully enrolled machine in realm");
 		g_dbus_method_invocation_return_value (closure->invocation, g_variant_new ("()"));
 
+	} else if (error && error->domain == REALM_ERROR) {
+		realm_diagnostics_error (closure->invocation, error, NULL);
+		g_dbus_method_invocation_return_gerror (closure->invocation, error);
+		g_error_free (error);
+
 	} else {
 		realm_diagnostics_error (closure->invocation, error, "Failed to enroll machine in realm");
 		g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_ENROLL_FAILED,
@@ -136,6 +141,12 @@ on_unenroll_complete (GObject *source,
 	if ((klass->unenroll_finish) (closure->self, result, &error)) {
 		realm_diagnostics_info (closure->invocation, "Successfully unenrolled machine from realm");
 		g_dbus_method_invocation_return_value (closure->invocation, g_variant_new ("()"));
+
+	} else if (error && error->domain == REALM_ERROR) {
+		realm_diagnostics_error (closure->invocation, error, NULL);
+		g_dbus_method_invocation_return_gerror (closure->invocation, error);
+		g_error_free (error);
+
 	} else {
 		realm_diagnostics_error (closure->invocation, error, "Failed to unenroll machine from realm");
 		g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_UNENROLL_FAILED,

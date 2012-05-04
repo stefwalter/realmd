@@ -45,6 +45,8 @@ G_BEGIN_DECLS
 #define   REALM_DBUS_ERROR_SET_LOGINS_FAILED       "org.freedesktop.realmd.Error.SetLoginsFailed"
 #define   REALM_DBUS_ERROR_BUSY                    "org.freedesktop.realmd.Error.Busy"
 #define   REALM_DBUS_ERROR_NOT_AUTHORIZED          "org.freedesktop.realmd.Error.NotAuthorized"
+#define   REALM_DBUS_ERROR_ALREADY_ENROLLED        "org.freedesktop.realmd.Error.AlreadyEnrolled"
+#define   REALM_DBUS_ERROR_NOT_ENROLLED            "org.freedesktop.realmd.Error.NotEnrolled"
 
 #define   REALM_DBUS_DISCOVERY_TYPE                "type"
 #define   REALM_DBUS_DISCOVERY_DOMAIN              "domain"

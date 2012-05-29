@@ -32,6 +32,10 @@ G_DEFINE_TYPE_WITH_CODE (RealmProvider, realm_provider, REALM_DBUS_TYPE_PROVIDER
 	G_IMPLEMENT_INTERFACE (REALM_DBUS_TYPE_PROVIDER, realm_provider_iface_init)
 );
 
+struct _RealmProviderPrivate {
+	GHashTable *realms;
+};
+
 typedef struct {
 	RealmProvider *self;
 	GDBusMethodInvocation *invocation;
@@ -78,6 +82,12 @@ on_discover_complete (GObject *source,
 		g_dbus_method_invocation_return_value (closure->invocation, retval);
 		g_variant_unref (discovery);
 		g_variant_unref (realm);
+
+	} else if (error == NULL) {
+		realm_diagnostics_error (closure->invocation, NULL, "Nothing found during discovery");
+		g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR,
+		                                       REALM_ERROR_DISCOVERED_NOTHING,
+		                                       "Nothing found during discovery");
 
 	} else if (error != NULL && error->domain == REALM_ERROR) {
 		realm_diagnostics_error (closure->invocation, error, NULL);
@@ -150,15 +160,66 @@ realm_provider_authorize_method (GDBusInterfaceSkeleton *skeleton,
 static void
 realm_provider_init (RealmProvider *self)
 {
+	self->pv = G_TYPE_INSTANCE_GET_PRIVATE (self, REALM_TYPE_PROVIDER,
+	                                        RealmProviderPrivate);
+	self->pv->realms = g_hash_table_new_full (g_str_hash, g_str_equal,
+	                                          g_free, g_object_unref);
+}
 
+static void
+update_realms_property (RealmProvider *self)
+{
+	GHashTableIter iter;
+	GDBusInterfaceSkeleton *realm;
+	GVariantBuilder builder;
+	const gchar *path;
+	GVariant *variant;
+
+	g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sos)"));
+
+	g_hash_table_iter_init (&iter, self->pv->realms);
+	while (g_hash_table_iter_next (&iter, NULL, (gpointer)&realm)) {
+		path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
+		g_variant_builder_add (&builder, "(sos)", REALM_DBUS_SAMBA_NAME, path,
+		                       REALM_DBUS_KERBEROS_REALM_INTERFACE);
+	}
+
+	variant = g_variant_builder_end (&builder);
+	g_object_set (self, "realms", g_variant_ref_sink (variant), NULL);
+	g_variant_unref (variant);
+}
+
+static void
+realm_provider_constructed (GObject *obj)
+{
+	RealmProvider *self = REALM_PROVIDER (obj);
+
+	G_OBJECT_CLASS (realm_provider_parent_class)->constructed (obj);
+
+	update_realms_property (self);
+}
+
+static void
+realm_provider_finalize (GObject *obj)
+{
+	RealmProvider *self = REALM_PROVIDER (obj);
+
+	g_hash_table_unref (self->pv->realms);
+
+	G_OBJECT_CLASS (realm_provider_parent_class)->finalize (obj);
 }
 
 static void
 realm_provider_class_init (RealmProviderClass *klass)
 {
 	GDBusInterfaceSkeletonClass *skeleton_class = G_DBUS_INTERFACE_SKELETON_CLASS (klass);
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+	object_class->constructed = realm_provider_constructed;
+	object_class->finalize = realm_provider_finalize;
 	skeleton_class->g_authorize_method = realm_provider_authorize_method;
+
+	g_type_class_add_private (klass, sizeof (RealmProviderPrivate));
 }
 
 static void
@@ -177,4 +238,50 @@ realm_provider_new_realm_info (const gchar *bus_name,
 	g_return_val_if_fail (g_variant_is_object_path (object_path), NULL);
 	g_return_val_if_fail (g_dbus_is_interface_name (interface), NULL);
 	return g_variant_new ("(sos)", bus_name, object_path, interface);
+}
+
+GDBusInterfaceSkeleton *
+realm_provider_lookup_or_register_realm (RealmProvider *self,
+                                         GType realm_type,
+                                         const gchar *realm_name)
+{
+	GDBusInterfaceSkeleton *realm;
+	GDBusConnection *connection;
+	static gint unique_number = 0;
+	const char *provider_path;
+	GError *error = NULL;
+	gchar *escaped;
+	gchar *path;
+
+	realm = g_hash_table_lookup (self->pv->realms, realm_name);
+	if (realm != NULL)
+		return realm;
+
+	realm = g_object_new (realm_type, "name", realm_name, NULL);
+
+	escaped = g_strdup (realm_name);
+	g_strcanon (escaped, REALM_DBUS_NAME_CHARS, '_');
+
+	provider_path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (self));
+	connection = g_dbus_interface_skeleton_get_connection (G_DBUS_INTERFACE_SKELETON (self));
+
+	path = g_strdup_printf ("%s/%s_%d", provider_path, escaped, ++unique_number);
+	g_free (escaped);
+
+	g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (realm),
+	                                  connection, path, &error);
+	g_free (path);
+
+	if (error == NULL) {
+		g_hash_table_insert (self->pv->realms, g_strdup (realm_name), realm);
+		update_realms_property (self);
+
+	} else {
+		g_warning ("couldn't export realm on dbus connection: %s",
+		           error->message);
+		g_object_unref (realm);
+		realm = NULL;
+	}
+
+	return realm;
 }

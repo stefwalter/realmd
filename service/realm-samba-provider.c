@@ -21,12 +21,12 @@
 #include "realm-diagnostics.h"
 #include "realm-discovery.h"
 #include "realm-errors.h"
-#include "realm-kerberos-realm.h"
+#include "realm-kerberos.h"
 #include "realm-packages.h"
+#include "realm-samba.h"
 #include "realm-samba-config.h"
 #include "realm-samba-enroll.h"
 #include "realm-samba-provider.h"
-#include "realm-samba-realm.h"
 #include "realm-samba-winbind.h"
 
 #include <glib/gstdio.h>
@@ -35,7 +35,6 @@
 
 struct _RealmSambaProvider {
 	RealmProvider parent;
-	GHashTable *realms;
 	RealmIniConfig *config;
 };
 
@@ -50,77 +49,7 @@ G_DEFINE_TYPE (RealmSambaProvider, realm_samba_provider, REALM_TYPE_PROVIDER);
 static void
 realm_samba_provider_init (RealmSambaProvider *self)
 {
-	self->realms = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                                      g_free, g_object_unref);
-
 	self->config = realm_samba_config_new (NULL);
-}
-
-static void
-update_realms_property (RealmSambaProvider *self)
-{
-	GHashTableIter iter;
-	RealmKerberosRealm *realm;
-	GVariantBuilder builder;
-	const gchar *path;
-	GVariant *variant;
-
-	g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sos)"));
-
-	g_hash_table_iter_init (&iter, self->realms);
-	while (g_hash_table_iter_next (&iter, NULL, (gpointer)&realm)) {
-		path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
-		g_variant_builder_add (&builder, "(sos)", REALM_DBUS_SAMBA_NAME, path,
-		                       REALM_DBUS_KERBEROS_REALM_INTERFACE);
-	}
-
-	variant = g_variant_builder_end (&builder);
-	g_object_set (self, "realms", g_variant_ref_sink (variant), NULL);
-	g_variant_unref (variant);
-}
-
-static RealmKerberosRealm *
-lookup_or_register_realm (RealmSambaProvider *self,
-                          const gchar *name)
-{
-	RealmKerberosRealm *realm;
-	GDBusConnection *connection;
-	static gint unique_number = 0;
-	GError *error = NULL;
-	gchar *escaped;
-	gchar *path;
-
-	realm = g_hash_table_lookup (self->realms, name);
-	if (realm == NULL) {
-		realm = realm_samba_realm_new (name, self->config);
-
-		escaped = g_strdup (name);
-		g_strcanon (escaped, REALM_DBUS_NAME_CHARS, '_');
-
-		path = g_strdup_printf ("%s/%s_%d", REALM_DBUS_SAMBA_PATH,
-		                        escaped, ++unique_number);
-
-		g_free (escaped);
-
-		connection = g_dbus_interface_skeleton_get_connection (G_DBUS_INTERFACE_SKELETON (self));
-		g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (realm),
-		                                  connection, path, &error);
-
-		g_free (path);
-
-		if (error == NULL) {
-			g_hash_table_insert (self->realms, g_strdup (name), realm);
-			update_realms_property (self);
-
-		} else {
-			g_warning ("couldn't export samba realm on dbus connection: %s",
-			           error->message);
-			g_object_unref (realm);
-			realm = NULL;
-		}
-	}
-
-	return realm;
 }
 
 static void
@@ -139,12 +68,13 @@ ensure_local_realm (RealmSambaProvider *self)
 	}
 
 	security = realm_ini_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "security");
-	if (security != NULL && g_ascii_strcasecmp (security, "ADS") == 0) {
+	if (security != NULL && g_ascii_strcasecmp (security, "ADS") == 0)
 		name = realm_ini_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
-	}
 
-	if (name != NULL)
-		lookup_or_register_realm (self, name);
+	if (name != NULL) {
+		realm_provider_lookup_or_register_realm (REALM_PROVIDER (self),
+		                                         REALM_TYPE_SAMBA, name);
+	}
 
 	g_free (name);
 	g_free (security);
@@ -168,8 +98,7 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
                                       GVariant **discovery_info,
                                       GError **error)
 {
-	RealmSambaProvider *self = REALM_SAMBA_PROVIDER (provider);
-	RealmKerberosRealm *realm;
+	GDBusInterfaceSkeleton *realm;
 	GHashTable *discovery;
 	const gchar *object_path;
 	gchar *name;
@@ -181,7 +110,9 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
 		return -1;
 	}
 
-	realm = lookup_or_register_realm (self, name);
+	realm = realm_provider_lookup_or_register_realm (provider,
+	                                                 REALM_TYPE_SAMBA_PROVIDER,
+	                                                 name);
 	g_free (name);
 
 	if (realm == NULL) {
@@ -189,7 +120,7 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
 		return -1;
 	}
 
-	realm_kerberos_realm_set_discovery (realm, discovery);
+	realm_kerberos_set_discovery (REALM_KERBEROS (realm), discovery);
 
 	if (realm_info) {
 		object_path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
@@ -207,21 +138,10 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
 }
 
 static void
-realm_samba_provider_constructed (GObject *obj)
-{
-	RealmSambaProvider *self = REALM_SAMBA_PROVIDER (obj);
-
-	update_realms_property (self);
-
-	G_OBJECT_CLASS (realm_samba_provider_parent_class)->constructed (obj);
-}
-
-static void
 realm_samba_provider_finalize (GObject *obj)
 {
 	RealmSambaProvider *self = REALM_SAMBA_PROVIDER (obj);
 
-	g_hash_table_unref (self->realms);
 	g_object_unref (self->config);
 
 	G_OBJECT_CLASS (realm_samba_provider_parent_class)->finalize (obj);
@@ -236,7 +156,6 @@ realm_samba_provider_class_init (RealmSambaProviderClass *klass)
 	provider_class->discover_async = realm_samba_provider_discover_async;
 	provider_class->discover_finish = realm_samba_provider_discover_finish;
 
-	object_class->constructed = realm_samba_provider_constructed;
 	object_class->finalize = realm_samba_provider_finalize;
 }
 

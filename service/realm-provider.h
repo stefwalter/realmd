@@ -55,11 +55,15 @@ struct _RealmProviderClass {
 	                                  GError **error);
 };
 
-GType               realm_provider_get_type                 (void) G_GNUC_CONST;
+GType                    realm_provider_get_type                 (void) G_GNUC_CONST;
 
-GVariant *          realm_provider_new_realm_info           (const gchar *bus_name,
-                                                             const gchar *object_path,
-                                                             const gchar *interface);
+GVariant *               realm_provider_new_realm_info           (const gchar *bus_name,
+                                                                  const gchar *object_path,
+                                                                  const gchar *interface);
+
+GDBusInterfaceSkeleton * realm_provider_lookup_or_register_realm (RealmProvider *self,
+                                                                  GType realm_type,
+                                                                  const gchar *realm_name);
 
 G_END_DECLS
 

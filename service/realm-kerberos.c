@@ -21,7 +21,7 @@
 #include "realm-dbus-generated.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
-#include "realm-kerberos-realm.h"
+#include "realm-kerberos.h"
 
 #include <krb5/krb5.h>
 
@@ -33,7 +33,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
-struct _RealmKerberosRealmPrivate {
+struct _RealmKerberosPrivate {
 	GHashTable *discovery;
 };
 
@@ -42,10 +42,10 @@ enum {
 	PROP_DISCOVERY
 };
 
-static void realm_kerberos_realm_iface_init (RealmDbusKerberosRealmIface *iface);
+static void realm_kerberos_iface_init (RealmDbusKerberosRealmIface *iface);
 
-G_DEFINE_TYPE_WITH_CODE (RealmKerberosRealm, realm_kerberos_realm, REALM_DBUS_TYPE_KERBEROS_REALM_SKELETON,
-	G_IMPLEMENT_INTERFACE (REALM_DBUS_TYPE_KERBEROS_REALM, realm_kerberos_realm_iface_init);
+G_DEFINE_TYPE_WITH_CODE (RealmKerberos, realm_kerberos, REALM_DBUS_TYPE_KERBEROS_REALM_SKELETON,
+	G_IMPLEMENT_INTERFACE (REALM_DBUS_TYPE_KERBEROS_REALM, realm_kerberos_iface_init);
 );
 
 static void
@@ -167,12 +167,12 @@ cleanup:
 }
 
 typedef struct {
-	RealmKerberosRealm *self;
+	RealmKerberos *self;
 	GDBusMethodInvocation *invocation;
 } MethodClosure;
 
 static MethodClosure *
-method_closure_new (RealmKerberosRealm *self,
+method_closure_new (RealmKerberos *self,
                     GDBusMethodInvocation *invocation)
 {
 	MethodClosure *closure = g_slice_new (MethodClosure);
@@ -195,10 +195,10 @@ on_enroll_complete (GObject *source,
                     gpointer user_data)
 {
 	MethodClosure *closure = user_data;
-	RealmKerberosRealmClass *klass;
+	RealmKerberosClass *klass;
 	GError *error = NULL;
 
-	klass = REALM_KERBEROS_REALM_GET_CLASS (closure->self);
+	klass = REALM_KERBEROS_GET_CLASS (closure->self);
 	g_return_if_fail (klass->enroll_finish != NULL);
 
 	(klass->enroll_finish) (closure->self, result, &error);
@@ -227,9 +227,9 @@ handle_enroll_with_credential_cache (RealmDbusKerberosRealm *realm,
                                      GDBusMethodInvocation *invocation,
                                      GVariant *admin_cache)
 {
-	RealmKerberosRealm *self = REALM_KERBEROS_REALM (realm);
+	RealmKerberos *self = REALM_KERBEROS (realm);
 	GBytes *admin_kerberos_cache;
-	RealmKerberosRealmClass *klass;
+	RealmKerberosClass *klass;
 	const guchar *data;
 	gsize length;
 
@@ -246,7 +246,7 @@ handle_enroll_with_credential_cache (RealmDbusKerberosRealm *realm,
 		return TRUE;
 	}
 
-	klass = REALM_KERBEROS_REALM_GET_CLASS (self);
+	klass = REALM_KERBEROS_GET_CLASS (self);
 	g_return_val_if_fail (klass->enroll_async != NULL, FALSE);
 	g_return_val_if_fail (klass->enroll_finish != NULL, FALSE);
 
@@ -267,9 +267,9 @@ handle_enroll_with_password (RealmDbusKerberosRealm *realm,
                              const gchar *principal,
                              const gchar *password)
 {
-	RealmKerberosRealm *self = REALM_KERBEROS_REALM (realm);
+	RealmKerberos *self = REALM_KERBEROS (realm);
 	GBytes *admin_kerberos_cache;
-	RealmKerberosRealmClass *klass;
+	RealmKerberosClass *klass;
 
 	admin_kerberos_cache = kinit_to_kerberos_cache (invocation, principal, password);
 	if (admin_kerberos_cache == NULL) {
@@ -285,7 +285,7 @@ handle_enroll_with_password (RealmDbusKerberosRealm *realm,
 		return TRUE;
 	}
 
-	klass = REALM_KERBEROS_REALM_GET_CLASS (self);
+	klass = REALM_KERBEROS_GET_CLASS (self);
 	g_return_val_if_fail (klass->enroll_async != NULL, FALSE);
 	g_return_val_if_fail (klass->enroll_finish != NULL, FALSE);
 
@@ -302,10 +302,10 @@ on_unenroll_complete (GObject *source,
                       gpointer user_data)
 {
 	MethodClosure *closure = user_data;
-	RealmKerberosRealmClass *klass;
+	RealmKerberosClass *klass;
 	GError *error = NULL;
 
-	klass = REALM_KERBEROS_REALM_GET_CLASS (closure->self);
+	klass = REALM_KERBEROS_GET_CLASS (closure->self);
 	g_return_if_fail (klass->unenroll_finish != NULL);
 
 	if ((klass->unenroll_finish) (closure->self, result, &error)) {
@@ -333,8 +333,8 @@ handle_unenroll_with_credential_cache (RealmDbusKerberosRealm *realm,
                                        GDBusMethodInvocation *invocation,
                                        GVariant *admin_cache)
 {
-	RealmKerberosRealm *self = REALM_KERBEROS_REALM (realm);
-	RealmKerberosRealmClass *klass;
+	RealmKerberos *self = REALM_KERBEROS (realm);
+	RealmKerberosClass *klass;
 	GBytes *admin_kerberos_cache;
 	const guchar *data;
 	gsize length;
@@ -352,7 +352,7 @@ handle_unenroll_with_credential_cache (RealmDbusKerberosRealm *realm,
 		return TRUE;
 	}
 
-	klass = REALM_KERBEROS_REALM_GET_CLASS (self);
+	klass = REALM_KERBEROS_GET_CLASS (self);
 	g_return_val_if_fail (klass->unenroll_async != NULL, FALSE);
 	g_return_val_if_fail (klass->unenroll_finish != NULL, FALSE);
 
@@ -373,8 +373,8 @@ handle_unenroll_with_password (RealmDbusKerberosRealm *realm,
                                const gchar *principal,
                                const gchar *password)
 {
-	RealmKerberosRealm *self = REALM_KERBEROS_REALM (realm);
-	RealmKerberosRealmClass *klass;
+	RealmKerberos *self = REALM_KERBEROS (realm);
+	RealmKerberosClass *klass;
 	GBytes *admin_kerberos_cache;
 
 	admin_kerberos_cache = kinit_to_kerberos_cache (invocation, principal, password);
@@ -391,7 +391,7 @@ handle_unenroll_with_password (RealmDbusKerberosRealm *realm,
 		return TRUE;
 	}
 
-	klass = REALM_KERBEROS_REALM_GET_CLASS (self);
+	klass = REALM_KERBEROS_GET_CLASS (self);
 	g_return_val_if_fail (klass->unenroll_async != NULL, FALSE);
 	g_return_val_if_fail (klass->unenroll_finish != NULL, FALSE);
 
@@ -403,8 +403,8 @@ handle_unenroll_with_password (RealmDbusKerberosRealm *realm,
 }
 
 static gboolean
-realm_kerberos_realm_authorize_method (GDBusInterfaceSkeleton *skeleton,
-                                       GDBusMethodInvocation  *invocation)
+realm_kerberos_authorize_method (GDBusInterfaceSkeleton *skeleton,
+                                 GDBusMethodInvocation  *invocation)
 {
 	const gchar *interface = g_dbus_method_invocation_get_interface_name (invocation);
 	const gchar *method = g_dbus_method_invocation_get_method_name (invocation);
@@ -443,23 +443,23 @@ realm_kerberos_realm_authorize_method (GDBusInterfaceSkeleton *skeleton,
 }
 
 static void
-realm_kerberos_realm_init (RealmKerberosRealm *self)
+realm_kerberos_init (RealmKerberos *self)
 {
-	self->pv = G_TYPE_INSTANCE_GET_PRIVATE (self, REALM_TYPE_KERBEROS_REALM,
-	                                        RealmKerberosRealmPrivate);
+	self->pv = G_TYPE_INSTANCE_GET_PRIVATE (self, REALM_TYPE_KERBEROS,
+	                                        RealmKerberosPrivate);
 }
 
 static void
-realm_kerberos_realm_get_property (GObject *obj,
-                                   guint prop_id,
-                                   GValue *value,
-                                   GParamSpec *pspec)
+realm_kerberos_get_property (GObject *obj,
+                             guint prop_id,
+                             GValue *value,
+                             GParamSpec *pspec)
 {
-	RealmKerberosRealm *self = REALM_KERBEROS_REALM (obj);
+	RealmKerberos *self = REALM_KERBEROS (obj);
 
 	switch (prop_id) {
 	case PROP_DISCOVERY:
-		g_value_set_boxed (value, realm_kerberos_realm_get_discovery (self));
+		g_value_set_boxed (value, realm_kerberos_get_discovery (self));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -468,16 +468,16 @@ realm_kerberos_realm_get_property (GObject *obj,
 }
 
 static void
-realm_kerberos_realm_set_property (GObject *obj,
-                                   guint prop_id,
-                                   const GValue *value,
-                                   GParamSpec *pspec)
+realm_kerberos_set_property (GObject *obj,
+                             guint prop_id,
+                             const GValue *value,
+                             GParamSpec *pspec)
 {
-	RealmKerberosRealm *self = REALM_KERBEROS_REALM (obj);
+	RealmKerberos *self = REALM_KERBEROS (obj);
 
 	switch (prop_id) {
 	case PROP_DISCOVERY:
-		realm_kerberos_realm_set_discovery (self, g_value_get_boxed (value));
+		realm_kerberos_set_discovery (self, g_value_get_boxed (value));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -486,29 +486,29 @@ realm_kerberos_realm_set_property (GObject *obj,
 }
 
 static void
-realm_kerberos_realm_finalize (GObject *obj)
+realm_kerberos_finalize (GObject *obj)
 {
-	RealmKerberosRealm *self = REALM_KERBEROS_REALM (obj);
+	RealmKerberos *self = REALM_KERBEROS (obj);
 
 	if (self->pv->discovery)
 		g_hash_table_unref (self->pv->discovery);
 
-	G_OBJECT_CLASS (realm_kerberos_realm_parent_class)->finalize (obj);
+	G_OBJECT_CLASS (realm_kerberos_parent_class)->finalize (obj);
 }
 
 static void
-realm_kerberos_realm_class_init (RealmKerberosRealmClass *klass)
+realm_kerberos_class_init (RealmKerberosClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 	GDBusInterfaceSkeletonClass *skeleton_class = G_DBUS_INTERFACE_SKELETON_CLASS (klass);
 
-	object_class->get_property = realm_kerberos_realm_get_property;
-	object_class->set_property = realm_kerberos_realm_set_property;
-	object_class->finalize = realm_kerberos_realm_finalize;
+	object_class->get_property = realm_kerberos_get_property;
+	object_class->set_property = realm_kerberos_set_property;
+	object_class->finalize = realm_kerberos_finalize;
 
-	skeleton_class->g_authorize_method = realm_kerberos_realm_authorize_method;
+	skeleton_class->g_authorize_method = realm_kerberos_authorize_method;
 
-	g_type_class_add_private (klass, sizeof (RealmKerberosRealmPrivate));
+	g_type_class_add_private (klass, sizeof (RealmKerberosPrivate));
 
 	g_object_class_install_property (object_class, PROP_DISCOVERY,
 	             g_param_spec_boxed ("discovery", "Discovery", "Discovery Data",
@@ -516,7 +516,7 @@ realm_kerberos_realm_class_init (RealmKerberosRealmClass *klass)
 }
 
 static void
-realm_kerberos_realm_iface_init (RealmDbusKerberosRealmIface *iface)
+realm_kerberos_iface_init (RealmDbusKerberosRealmIface *iface)
 {
 	memcpy (iface, g_type_interface_peek_parent (iface), sizeof (*iface));
 	iface->handle_enroll_with_password = handle_enroll_with_password;
@@ -526,10 +526,10 @@ realm_kerberos_realm_iface_init (RealmDbusKerberosRealmIface *iface)
 }
 
 void
-realm_kerberos_realm_set_discovery (RealmKerberosRealm *self,
-                                    GHashTable *discovery)
+realm_kerberos_set_discovery (RealmKerberos *self,
+                              GHashTable *discovery)
 {
-	g_return_if_fail (REALM_IS_KERBEROS_REALM (self));
+	g_return_if_fail (REALM_IS_KERBEROS (self));
 	g_return_if_fail (discovery != NULL);
 
 	if (discovery)
@@ -541,8 +541,8 @@ realm_kerberos_realm_set_discovery (RealmKerberosRealm *self,
 }
 
 GHashTable *
-realm_kerberos_realm_get_discovery (RealmKerberosRealm *self)
+realm_kerberos_get_discovery (RealmKerberos *self)
 {
-	g_return_val_if_fail (REALM_IS_KERBEROS_REALM (self), NULL);
+	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
 	return self->pv->discovery;
 }

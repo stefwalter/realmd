@@ -22,25 +22,25 @@
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-packages.h"
+#include "realm-samba.h"
 #include "realm-samba-config.h"
 #include "realm-samba-enroll.h"
-#include "realm-samba-realm.h"
 #include "realm-samba-winbind.h"
 
 #include <glib/gstdio.h>
 
 #include <errno.h>
 
-struct _RealmSambaRealm {
-	RealmKerberosRealm parent;
+struct _RealmSamba {
+	RealmKerberos parent;
 	gchar *name;
 	RealmIniConfig *config;
 	gulong config_sig;
 };
 
 typedef struct {
-	RealmKerberosRealmClass parent_class;
-} RealmSambaRealmClass;
+	RealmKerberosClass parent_class;
+} RealmSambaClass;
 
 enum {
 	PROP_0,
@@ -48,16 +48,16 @@ enum {
 	PROP_SAMBA_CONFIG,
 };
 
-G_DEFINE_TYPE (RealmSambaRealm, realm_samba_realm, REALM_TYPE_KERBEROS_REALM);
+G_DEFINE_TYPE (RealmSamba, realm_samba, REALM_TYPE_KERBEROS);
 
 static void
-realm_samba_realm_init (RealmSambaRealm *self)
+realm_samba_init (RealmSamba *self)
 {
 
 }
 
 static gchar *
-lookup_enrolled_realm (RealmSambaRealm *self)
+lookup_enrolled_realm (RealmSamba *self)
 {
 	gchar *enrolled = NULL;
 	gchar *security;
@@ -88,8 +88,8 @@ enroll_closure_free (gpointer data)
 
 static void
 on_winbind_done (GObject *source,
-              GAsyncResult *result,
-              gpointer user_data)
+                 GAsyncResult *result,
+                 gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
@@ -176,26 +176,26 @@ on_discover_do_install (GObject *source,
 }
 
 static void
-realm_samba_realm_enroll_async (RealmKerberosRealm *realm,
-                                GBytes *admin_kerberos_cache,
-                                GDBusMethodInvocation *invocation,
-                                GAsyncReadyCallback callback,
-                                gpointer user_data)
+realm_samba_enroll_async (RealmKerberos *realm,
+                          GBytes *admin_kerberos_cache,
+                          GDBusMethodInvocation *invocation,
+                          GAsyncReadyCallback callback,
+                          gpointer user_data)
 {
-	RealmSambaRealm *self = REALM_SAMBA_REALM (realm);
+	RealmSamba *self = REALM_SAMBA (realm);
 	GSimpleAsyncResult *res;
 	EnrollClosure *enroll;
 	gchar *enrolled;
 
 	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
-	                                 realm_samba_realm_enroll_async);
+	                                 realm_samba_enroll_async);
 	enroll = g_slice_new0 (EnrollClosure);
 	enroll->realm_name = g_strdup (self->name);
 	enroll->invocation = g_object_ref (invocation);
 	enroll->admin_kerberos_cache = g_bytes_ref (admin_kerberos_cache);
 	g_simple_async_result_set_op_res_gpointer (res, enroll, enroll_closure_free);
 
-	enroll->discovery = realm_kerberos_realm_get_discovery (realm);
+	enroll->discovery = realm_kerberos_get_discovery (realm);
 	if (enroll->discovery)
 		g_hash_table_ref (enroll->discovery);
 
@@ -275,19 +275,19 @@ on_leave_do_winbind (GObject *source,
 }
 
 static void
-realm_samba_realm_unenroll_async (RealmKerberosRealm *realm,
-                                  GBytes *admin_kerberos_cache,
-                                  GDBusMethodInvocation *invocation,
-                                  GAsyncReadyCallback callback,
-                                  gpointer user_data)
+realm_samba_unenroll_async (RealmKerberos *realm,
+                            GBytes *admin_kerberos_cache,
+                            GDBusMethodInvocation *invocation,
+                            GAsyncReadyCallback callback,
+                            gpointer user_data)
 {
-	RealmSambaRealm *self = REALM_SAMBA_REALM (realm);
+	RealmSamba *self = REALM_SAMBA (realm);
 	GSimpleAsyncResult *res;
 	UnenrollClosure *unenroll;
 	gchar *enrolled;
 
 	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
-	                                 realm_samba_realm_unenroll_async);
+	                                 realm_samba_unenroll_async);
 	unenroll = g_slice_new0 (UnenrollClosure);
 	unenroll->realm_name = g_strdup (self->name);
 	unenroll->invocation = g_object_ref (invocation);
@@ -308,9 +308,9 @@ realm_samba_realm_unenroll_async (RealmKerberosRealm *realm,
 }
 
 static gboolean
-realm_samba_realm_generic_finish (RealmKerberosRealm *realm,
-                                  GAsyncResult *result,
-                                  GError **error)
+realm_samba_generic_finish (RealmKerberos *realm,
+                            GAsyncResult *result,
+                            GError **error)
 {
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
 		return FALSE;
@@ -319,7 +319,7 @@ realm_samba_realm_generic_finish (RealmKerberosRealm *realm,
 }
 
 static void
-update_properties (RealmSambaRealm *self)
+update_properties (RealmSamba *self)
 {
 	gchar *separator;
 	gchar *workgroup;
@@ -348,16 +348,16 @@ static void
 on_config_changed (RealmIniConfig *config,
                    gpointer user_data)
 {
-	update_properties (REALM_SAMBA_REALM (user_data));
+	update_properties (REALM_SAMBA (user_data));
 }
 
 static void
-realm_samba_realm_get_property (GObject *obj,
-                                guint prop_id,
-                                GValue *value,
-                                GParamSpec *pspec)
+realm_samba_get_property (GObject *obj,
+                          guint prop_id,
+                          GValue *value,
+                          GParamSpec *pspec)
 {
-	RealmSambaRealm *self = REALM_SAMBA_REALM (obj);
+	RealmSamba *self = REALM_SAMBA (obj);
 
 	switch (prop_id) {
 	case PROP_NAME:
@@ -373,12 +373,12 @@ realm_samba_realm_get_property (GObject *obj,
 }
 
 static void
-realm_samba_realm_set_property (GObject *obj,
-                                guint prop_id,
-                                const GValue *value,
-                                GParamSpec *pspec)
+realm_samba_set_property (GObject *obj,
+                          guint prop_id,
+                          const GValue *value,
+                          GParamSpec *pspec)
 {
-	RealmSambaRealm *self = REALM_SAMBA_REALM (obj);
+	RealmSamba *self = REALM_SAMBA (obj);
 
 	switch (prop_id) {
 	case PROP_NAME:
@@ -399,42 +399,42 @@ realm_samba_realm_set_property (GObject *obj,
 }
 
 static void
-realm_samba_realm_consructed (GObject *obj)
+realm_samba_consructed (GObject *obj)
 {
-	RealmSambaRealm *self = REALM_SAMBA_REALM (obj);
+	RealmSamba *self = REALM_SAMBA (obj);
 
-	G_OBJECT_CLASS (realm_samba_realm_parent_class)->constructed (obj);
+	G_OBJECT_CLASS (realm_samba_parent_class)->constructed (obj);
 
 	update_properties (self);
 }
 
 static void
-realm_samba_realm_finalize (GObject *obj)
+realm_samba_finalize (GObject *obj)
 {
-	RealmSambaRealm  *self = REALM_SAMBA_REALM (obj);
+	RealmSamba  *self = REALM_SAMBA (obj);
 
 	g_free (self->name);
 	if (self->config)
 		g_object_unref (self->config);
 
-	G_OBJECT_CLASS (realm_samba_realm_parent_class)->finalize (obj);
+	G_OBJECT_CLASS (realm_samba_parent_class)->finalize (obj);
 }
 
 void
-realm_samba_realm_class_init (RealmSambaRealmClass *klass)
+realm_samba_class_init (RealmSambaClass *klass)
 {
-	RealmKerberosRealmClass *kerberos_class = REALM_KERBEROS_REALM_CLASS (klass);
+	RealmKerberosClass *kerberos_class = REALM_KERBEROS_CLASS (klass);
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-	kerberos_class->enroll_async = realm_samba_realm_enroll_async;
-	kerberos_class->enroll_finish = realm_samba_realm_generic_finish;
-	kerberos_class->unenroll_async = realm_samba_realm_unenroll_async;
-	kerberos_class->unenroll_finish = realm_samba_realm_generic_finish;
+	kerberos_class->enroll_async = realm_samba_enroll_async;
+	kerberos_class->enroll_finish = realm_samba_generic_finish;
+	kerberos_class->unenroll_async = realm_samba_unenroll_async;
+	kerberos_class->unenroll_finish = realm_samba_generic_finish;
 
-	object_class->constructed = realm_samba_realm_consructed;
-	object_class->get_property = realm_samba_realm_get_property;
-	object_class->set_property = realm_samba_realm_set_property;
-	object_class->finalize = realm_samba_realm_finalize;
+	object_class->constructed = realm_samba_consructed;
+	object_class->get_property = realm_samba_get_property;
+	object_class->set_property = realm_samba_set_property;
+	object_class->finalize = realm_samba_finalize;
 
 	g_object_class_install_property (object_class, PROP_NAME,
 	            g_param_spec_string ("name", "Name", "Realm Name",
@@ -445,11 +445,11 @@ realm_samba_realm_class_init (RealmSambaRealmClass *klass)
 	                                 REALM_TYPE_INI_CONFIG, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
-RealmKerberosRealm *
-realm_samba_realm_new (const gchar *name,
-                       RealmIniConfig *config)
+RealmKerberos *
+realm_samba_new (const gchar *name,
+                 RealmIniConfig *config)
 {
-	return g_object_new (REALM_TYPE_SAMBA_REALM,
+	return g_object_new (REALM_TYPE_SAMBA,
 	                     "name", name,
 	                     "samba-config", config,
 	                     NULL);

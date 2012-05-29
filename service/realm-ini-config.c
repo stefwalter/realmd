@@ -14,7 +14,7 @@
 
 #include "config.h"
 
-#include "realm-platform.h"
+#include "realm-settings.h"
 #include "realm-ini-config.h"
 
 #include <string.h>

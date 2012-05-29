@@ -14,34 +14,34 @@
 
 #include "config.h"
 
-#ifndef __REALM_PLATFORM_H__
-#define __REALM_PLATFORM_H__
+#ifndef __REALM_SETTINGS_H__
+#define __REALM_SETTINGS_H__
 
 #include <glib.h>
 
 G_BEGIN_DECLS
 
-void                 realm_platform_init                  (void);
+void                 realm_settings_init                  (void);
 
-void                 realm_platform_uninit                (void);
+void                 realm_settings_uninit                (void);
 
-gboolean             realm_platform_load                  (const gchar *filename,
+gboolean             realm_settings_load                  (const gchar *filename,
                                                            GError **error);
 
-void                 realm_platform_add                   (const gchar *section,
+void                 realm_settings_add                   (const gchar *section,
                                                            const gchar *key,
                                                            const gchar *value);
 
-const gchar *        realm_platform_path                  (const gchar *name);
+const gchar *        realm_settings_path                  (const gchar *name);
 
-GHashTable *         realm_platform_settings              (const gchar *section);
+GHashTable *         realm_settings_section               (const gchar *section);
 
-const gchar *        realm_platform_value                 (const gchar *section,
+const gchar *        realm_settings_value                 (const gchar *section,
                                                            const gchar *key);
 
-const gchar *        realm_platform_string                (const gchar *section,
+const gchar *        realm_settings_string                (const gchar *section,
                                                            const gchar *key);
 
 G_END_DECLS
 
-#endif /* __REALM_PLATFORM_H__ */
+#endif /* __REALM_SETTINGS_H__ */

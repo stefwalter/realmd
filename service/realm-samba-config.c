@@ -14,9 +14,9 @@
 
 #include "config.h"
 
-#include "realm-platform.h"
 #include "realm-ini-config.h"
 #include "realm-samba-config.h"
+#include "realm-settings.h"
 
 #include <string.h>
 
@@ -30,7 +30,7 @@ realm_samba_config_new_with_flags (RealmIniFlags flags,
 
 	config = realm_ini_config_new (REALM_INI_LINE_CONTINUATIONS | flags);
 
-	filename = realm_platform_path ("smb.conf");
+	filename = realm_settings_path ("smb.conf");
 
 	realm_ini_config_read_file (config, filename, &err);
 

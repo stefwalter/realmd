@@ -27,8 +27,8 @@ noinst_PROGRAMS =  \
 test_ini_config_SOURCES = \
 	test-ini-config.c \
 	$(top_srcdir)/service/realm-ini-config.c \
-	$(top_srcdir)/service/realm-platform.c \
 	$(top_srcdir)/service/realm-samba-config.c \
+	$(top_srcdir)/service/realm-settings.c \
 	$(NULL)
 
 frob_install_packages_CFLAGS = \

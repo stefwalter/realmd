@@ -18,10 +18,10 @@
 #include "realm-daemon.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
-#include "realm-platform.h"
 #include "realm-samba-config.h"
 #include "realm-samba-enroll.h"
 #include "realm-samba-provider.h"
+#include "realm-settings.h"
 
 #include <glib/gstdio.h>
 
@@ -154,7 +154,7 @@ begin_net_process (JoinClosure *join,
 	args = g_ptr_array_new ();
 
 	/* Use our custom smb.conf */
-	g_ptr_array_add (args, (gpointer)realm_platform_path ("net"));
+	g_ptr_array_add (args, (gpointer)realm_settings_path ("net"));
 	g_ptr_array_add (args, "-s");
 	g_ptr_array_add (args, SERVICE_DIR "/net-ads-smb.conf");
 

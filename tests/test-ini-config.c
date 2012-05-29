@@ -14,8 +14,8 @@
 
 #include "config.h"
 
-#include "service/realm-platform.h"
 #include "service/realm-samba-config.h"
+#include "service/realm-settings.h"
 
 #include <glib/gstdio.h>
 
@@ -475,7 +475,7 @@ test_change (Test *test,
 	gchar *output;
 
 	/* Setup this file as the system smb.conf */
-	realm_platform_add ("paths", "smb.conf", "/tmp/test-samba-config.conf");
+	realm_settings_add ("paths", "smb.conf", "/tmp/test-samba-config.conf");
 	g_file_set_contents ("/tmp/test-samba-config.conf", data, -1, &error);
 	g_assert_no_error (error);
 
@@ -500,7 +500,7 @@ main (int argc,
 	g_test_init (&argc, &argv, NULL);
 	g_set_prgname ("test-samba-config");
 
-	realm_platform_init ();
+	realm_settings_init ();
 
 	g_test_add ("/realmd/ini-config/read-one", Test, NULL, setup, test_read_one, teardown);
 	g_test_add ("/realmd/ini-config/read-all", Test, NULL, setup, test_read_all, teardown);

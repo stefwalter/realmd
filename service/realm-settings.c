@@ -14,14 +14,14 @@
 
 #include "config.h"
 
-#include "realm-platform.h"
+#include "realm-settings.h"
 
 #include <glib.h>
 
 static GHashTable *realm_conf = NULL;
 
 void
-realm_platform_add (const gchar *section,
+realm_settings_add (const gchar *section,
                     const gchar *key,
                     const gchar *value)
 {
@@ -37,7 +37,7 @@ realm_platform_add (const gchar *section,
 }
 
 gboolean
-realm_platform_load (const gchar *file_path,
+realm_settings_load (const gchar *file_path,
                      GError **error)
 {
 	GKeyFile *key_file = NULL;
@@ -82,7 +82,7 @@ realm_platform_load (const gchar *file_path,
 }
 
 void
-realm_platform_init (void)
+realm_settings_init (void)
 {
 	const gchar *default_conf = SERVICE_DIR "/realmd-defaults.conf";
 	const gchar *distro_conf = SERVICE_DIR "/realmd-distro.conf";
@@ -98,14 +98,14 @@ realm_platform_init (void)
 	 * this data. The reason it is not compiled into the daemon itself, is
 	 * for easier modification by packagers and distros
 	 */
-	realm_platform_load (default_conf, &error);
+	realm_settings_load (default_conf, &error);
 	if (error != NULL) {
 		g_error ("couldn't load package configuration file: %s: %s",
 		         default_conf, error->message);
 		g_clear_error (&error);
 	}
 
-	realm_platform_load (distro_conf, &error);
+	realm_settings_load (distro_conf, &error);
 	if (error != NULL) {
 		g_error ("couldn't load distro configuration file: %s: %s",
 		         distro_conf, error->message);
@@ -113,7 +113,7 @@ realm_platform_init (void)
 	}
 
 	/* We allow failure of loading or parsing this data, it's only overrides */
-	realm_platform_load (admin_conf, &error);
+	realm_settings_load (admin_conf, &error);
 	if (error != NULL) {
 		if (!g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
 			g_message ("couldn't load admin configuration file: %s: %s",
@@ -123,7 +123,7 @@ realm_platform_init (void)
 }
 
 void
-realm_platform_uninit (void)
+realm_settings_uninit (void)
 {
 	g_assert (realm_conf != NULL);
 	g_hash_table_destroy (realm_conf);
@@ -131,11 +131,11 @@ realm_platform_uninit (void)
 }
 
 const gchar *
-realm_platform_path (const gchar *name)
+realm_settings_path (const gchar *name)
 {
 	const gchar *path;
 
-	path = realm_platform_value ("paths", name);
+	path = realm_settings_value ("paths", name);
 	if (path == NULL) {
 		g_warning ("no path found for '%s' in realmd config", name);
 		return "/invalid/or/misconfigured";
@@ -145,30 +145,30 @@ realm_platform_path (const gchar *name)
 }
 
 GHashTable *
-realm_platform_settings (const gchar *section)
+realm_settings_section (const gchar *section)
 {
 	return g_hash_table_lookup (realm_conf, section);
 }
 
 const gchar *
-realm_platform_value (const gchar *section,
+realm_settings_value (const gchar *section,
                       const gchar *key)
 {
 	GHashTable *settings;
 
-	settings = realm_platform_settings (section);
+	settings = realm_settings_section (section);
 	if (settings == NULL)
 		return NULL;
 	return g_hash_table_lookup (settings, key);
 }
 
 const gchar *
-realm_platform_string (const gchar *section,
+realm_settings_string (const gchar *section,
                        const gchar *key)
 {
 	const gchar *string;
 
-	string = realm_platform_value (section, key);
+	string = realm_settings_value (section, key);
 	if (string == NULL) {
 		g_warning ("no value found for '%s/%s' in realmd config", section, key);
 		return "";

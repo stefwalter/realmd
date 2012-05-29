@@ -19,8 +19,8 @@
 #define DEBUG_FLAG REALM_DEBUG_SERVICE
 #include "realm-debug.h"
 #include "realm-diagnostics.h"
-#include "realm-platform.h"
 #include "realm-samba-provider.h"
+#include "realm-settings.h"
 
 #include <glib.h>
 
@@ -275,7 +275,7 @@ main (int argc,
 	realm_daemon_hold ();
 
 	/* Load the platform specific data */
-	realm_platform_init ();
+	realm_settings_init ();
 
 	realm_debug ("starting service");
 	g_bus_get (G_BUS_TYPE_SYSTEM, NULL, on_bus_get_connection, &connection);
@@ -294,7 +294,7 @@ main (int argc,
 	g_clear_object (&polkit_authority);
 	G_UNLOCK (polkit_authority);
 
-	realm_platform_uninit ();
+	realm_settings_uninit ();
 
 	g_main_loop_unref (main_loop);
 	g_option_context_free (context);

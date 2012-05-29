@@ -33,13 +33,13 @@ realmd_SOURCES = \
 	realm-ini-config.c realm-ini-config.h \
 	realm-kerberos.c realm-kerberos.h \
 	realm-packages.c realm-packages.h \
-	realm-platform.c realm-platform.h \
 	realm-provider.c realm-provider.h \
 	realm-samba.c realm-samba.h \
 	realm-samba-config.c realm-samba-config.h \
 	realm-samba-enroll.c realm-samba-enroll.h \
 	realm-samba-provider.c realm-samba-provider.h \
 	realm-samba-winbind.c realm-samba-winbind.h \
+	realm-settings.c realm-settings.h \
 	realm-system.c realm-system.h \
 	$(NULL)
 

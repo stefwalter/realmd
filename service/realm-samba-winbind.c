@@ -18,9 +18,9 @@
 #include "realm-daemon.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
-#include "realm-platform.h"
 #include "realm-samba-config.h"
 #include "realm-samba-winbind.h"
+#include "realm-settings.h"
 #include "realm-system.h"
 
 #include <glib/gstdio.h>
@@ -93,13 +93,13 @@ realm_samba_winbind_configure_async (GDBusMethodInvocation *invocation,
 	                           "idmap gid", "10000-20000",
 	                           "winbind enum users", "no",
 	                           "winbind enum groups", "no",
-	                           "template shell", realm_platform_string ("user", "shell"),
+	                           "template shell", realm_settings_string ("user", "shell"),
 	                           "winbind offline logon", "yes",
 	                           "winbind refresh tickets", "yes",
 	                           NULL);
 
 	if (error == NULL) {
-		service = realm_platform_string ("services", "winbind");
+		service = realm_settings_string ("services", "winbind");
 		realm_system_enable_and_restart_service (service, invocation,
 		                                         on_enable_do_nss, g_object_ref (res));
 	} else {
@@ -153,7 +153,7 @@ on_nss_do_disable (GObject *source,
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Disabling winbind in /etc/nsswitch.conf failed");
 	if (error == NULL) {
-		service = realm_platform_string ("services", "winbind");
+		service = realm_settings_string ("services", "winbind");
 		realm_system_disable_and_stop_service (service, invocation,
 		                                       on_disable_complete, g_object_ref (res));
 	} else {

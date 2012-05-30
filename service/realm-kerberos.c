@@ -225,7 +225,8 @@ on_enroll_complete (GObject *source,
 static gboolean
 handle_enroll_with_credential_cache (RealmDbusKerberosRealm *realm,
                                      GDBusMethodInvocation *invocation,
-                                     GVariant *admin_cache)
+                                     GVariant *admin_cache,
+                                     GVariant *options)
 {
 	RealmKerberos *self = REALM_KERBEROS (realm);
 	GBytes *admin_kerberos_cache;
@@ -265,7 +266,8 @@ static gboolean
 handle_enroll_with_password (RealmDbusKerberosRealm *realm,
                              GDBusMethodInvocation *invocation,
                              const gchar *principal,
-                             const gchar *password)
+                             const gchar *password,
+                             GVariant *options)
 {
 	RealmKerberos *self = REALM_KERBEROS (realm);
 	GBytes *admin_kerberos_cache;
@@ -331,7 +333,8 @@ on_unenroll_complete (GObject *source,
 static gboolean
 handle_unenroll_with_credential_cache (RealmDbusKerberosRealm *realm,
                                        GDBusMethodInvocation *invocation,
-                                       GVariant *admin_cache)
+                                       GVariant *admin_cache,
+                                       GVariant *options)
 {
 	RealmKerberos *self = REALM_KERBEROS (realm);
 	RealmKerberosClass *klass;
@@ -371,7 +374,8 @@ static gboolean
 handle_unenroll_with_password (RealmDbusKerberosRealm *realm,
                                GDBusMethodInvocation *invocation,
                                const gchar *principal,
-                               const gchar *password)
+                               const gchar *password,
+                               GVariant *options)
 {
 	RealmKerberos *self = REALM_KERBEROS (realm);
 	RealmKerberosClass *klass;

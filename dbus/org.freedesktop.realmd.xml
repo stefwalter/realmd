@@ -83,6 +83,7 @@
 		<method name="EnrollWithPassword">
 			<arg name="principal" type="s" direction="in"/>
 			<arg name="password" type="s" direction="in"/>
+			<arg name="options" type="a{sv}" direction="in"/>
 		</method>
 
 		<!--
@@ -94,6 +95,7 @@
 			<arg name="kerberos_cache" type="ay" direction="in">
 				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="yup"/>
 			</arg>
+			<arg name="options" type="a{sv}" direction="in"/>
 		</method>
 
 		<!--
@@ -103,6 +105,7 @@
 		<method name="UnenrollWithPassword">
 			<arg name="principal" type="s" direction="in"/>
 			<arg name="password" type="s" direction="in"/>
+			<arg name="options" type="a{sv}" direction="in"/>
 		</method>
 
 		<!--
@@ -114,6 +117,7 @@
 			<arg name="kerberos_cache" type="ay" direction="in">
 				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="yup"/>
 			</arg>
+			<arg name="options" type="a{sv}" direction="in"/>
 		</method>
 
 	</interface>

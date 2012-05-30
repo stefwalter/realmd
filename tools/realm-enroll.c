@@ -302,6 +302,7 @@ realm_join_or_leave (const gchar *string,
 	GVariant *kerberos_cache;
 	const gchar *realm_name;
 	GError *error = NULL;
+	GVariant *options;
 	SyncClosure sync;
 	gchar *principal;
 
@@ -330,17 +331,20 @@ realm_join_or_leave (const gchar *string,
 	if (verbose)
 		connect_to_diagnostics (G_DBUS_PROXY (realm));
 
+	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
+
 	/* Start actual operation */
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (realm), G_MAXINT);
 	if (join)
-		realm_dbus_kerberos_realm_call_enroll_with_credential_cache (realm, kerberos_cache,
+		realm_dbus_kerberos_realm_call_enroll_with_credential_cache (realm, kerberos_cache, options,
 		                                                             NULL, on_complete_get_result,
 		                                                             &sync);
 	else
-		realm_dbus_kerberos_realm_call_unenroll_with_credential_cache (realm, kerberos_cache,
+		realm_dbus_kerberos_realm_call_unenroll_with_credential_cache (realm, kerberos_cache, options,
 		                                                               NULL, on_complete_get_result,
 		                                                               &sync);
 
+	g_variant_unref (options);
 	g_variant_unref (kerberos_cache);
 
 	/* This mainloop is quit by on_complete_get_result */

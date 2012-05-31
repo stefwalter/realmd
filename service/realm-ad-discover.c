@@ -15,11 +15,12 @@
 #include "config.h"
 
 #include "realm-ad-discover.h"
+#include "realm-command.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
 #include "realm-discovery.h"
 #include "realm-errors.h"
-#include "realm-command.h"
+#include "realm-network.h"
 
 #include <glib/gi18n.h>
 
@@ -149,44 +150,29 @@ on_resolve_msdcs_soa (GObject *source,
 	g_object_unref (res);
 }
 
-void
-realm_ad_discover_async (const gchar *string,
-                         GDBusMethodInvocation *invocation,
-                         GAsyncReadyCallback callback,
-                         gpointer user_data)
+static void
+ad_discover_domain_begin (GSimpleAsyncResult *res,
+                          DiscoverClosure *discover)
 {
-	GSimpleAsyncResult *res;
 	GResolver *resolver;
-	DiscoverClosure *discover;
-	gchar *domain;
 	gchar *msdcs;
 
-	g_return_if_fail (string != NULL);
-	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
+	g_assert (discover->domain != NULL);
 
-	res = g_simple_async_result_new (NULL, callback, user_data,
-	                                 realm_ad_discover_async);
-
-	domain = g_ascii_strdown (string, -1);
-	g_strstrip (domain);
-
-	discover = g_slice_new0 (DiscoverClosure);
-	discover->invocation = g_object_ref (invocation);
-	discover->discovery = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                                             g_free, (GDestroyNotify)g_variant_unref);
-	discover->domain = domain;
-	g_simple_async_result_set_op_res_gpointer (res, discover, discover_closure_free);
-
-	realm_diagnostics_info (invocation, "Searching for kerberos SRV records on %s domain", domain);
+	realm_diagnostics_info (discover->invocation,
+	                        "Searching for kerberos SRV records on %s domain",
+	                        discover->domain);
 
 	resolver = g_resolver_get_default ();
-	g_resolver_lookup_service_async (resolver, "kerberos", "udp", domain, NULL,
+	g_resolver_lookup_service_async (resolver, "kerberos", "udp", discover->domain, NULL,
 	                                 on_resolve_kerberos_srv, g_object_ref (res));
 
-	realm_diagnostics_info (invocation, "Searching for _msdcs zone on %s domain", domain);
+	realm_diagnostics_info (discover->invocation,
+	                        "Searching for _msdcs zone on %s domain",
+	                        discover->domain);
 
 	/* Active Directory DNS zones have this subzone */
-	msdcs = g_strdup_printf ("_msdcs.%s", domain);
+	msdcs = g_strdup_printf ("_msdcs.%s", discover->domain);
 
 	g_resolver_lookup_records_async (resolver, msdcs, G_RESOLVER_RECORD_SOA, NULL,
 	                                 on_resolve_msdcs_soa, g_object_ref (res));
@@ -194,6 +180,65 @@ realm_ad_discover_async (const gchar *string,
 	g_free (msdcs);
 
 	g_object_unref (resolver);
+}
+
+static void
+on_get_dhcp_domain (GObject *source,
+                    GAsyncResult *result,
+                    gpointer user_data)
+{
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	DiscoverClosure *discover = g_simple_async_result_get_op_res_gpointer (res);
+	GError *error = NULL;
+
+	discover->domain = realm_network_get_dhcp_domain_finish (result, &error);
+	if (error != NULL) {
+		realm_diagnostics_error (discover->invocation, error, "Failure to lookup DHCP domain");
+		g_error_free (error);
+	}
+
+	if (discover->domain)
+		ad_discover_domain_begin (res, discover);
+	else
+		g_simple_async_result_complete (res);
+}
+
+void
+realm_ad_discover_async (const gchar *string,
+                         GDBusMethodInvocation *invocation,
+                         GAsyncReadyCallback callback,
+                         gpointer user_data)
+{
+	GSimpleAsyncResult *res;
+	DiscoverClosure *discover;
+	GDBusConnection *connection;
+	gchar *domain;
+
+	g_return_if_fail (string != NULL);
+	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
+
+	res = g_simple_async_result_new (NULL, callback, user_data,
+	                                 realm_ad_discover_async);
+	discover = g_slice_new0 (DiscoverClosure);
+	discover->invocation = g_object_ref (invocation);
+	discover->discovery = g_hash_table_new_full (g_str_hash, g_str_equal,
+	                                             g_free, (GDestroyNotify)g_variant_unref);
+	g_simple_async_result_set_op_res_gpointer (res, discover, discover_closure_free);
+
+	if (g_str_equal (string, "")) {
+		connection = g_dbus_method_invocation_get_connection (invocation);
+		realm_diagnostics_info (invocation, "Looking up our DHCP domain");
+		realm_network_get_dhcp_domain_async (connection, on_get_dhcp_domain,
+		                                     g_object_ref (res));
+
+	} else {
+		domain = g_ascii_strdown (string, -1);
+		g_strstrip (domain);
+		discover->domain = domain;
+		ad_discover_domain_begin (res, discover);
+	}
+
+	g_object_unref (res);
 }
 
 gchar *

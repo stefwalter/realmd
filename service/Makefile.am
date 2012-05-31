@@ -32,6 +32,7 @@ realmd_SOURCES = \
 	realm-errors.c realm-errors.h \
 	realm-ini-config.c realm-ini-config.h \
 	realm-kerberos.c realm-kerberos.h \
+	realm-network.c realm-network.h \
 	realm-packages.c realm-packages.h \
 	realm-provider.c realm-provider.h \
 	realm-samba.c realm-samba.h \

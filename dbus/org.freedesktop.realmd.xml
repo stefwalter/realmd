@@ -61,6 +61,11 @@
 		<property name="Name" type="s" access="read"/>
 
 		<!--
+		 * The DNS domain name for this realm.
+		-->
+		<property name="Domain" type="s" access="read"/>
+
+		<!--
 		 * The format for user logins when this realm is enrolled.
 		 * This property may not be valid unless machine is enrolled
 		 * in this realm. The format contains a %s where the user name

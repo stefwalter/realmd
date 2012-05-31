@@ -46,6 +46,7 @@ typedef struct {
 enum {
 	PROP_0,
 	PROP_NAME,
+	PROP_DOMAIN,
 	PROP_PROVIDER,
 };
 
@@ -378,10 +379,14 @@ realm_samba_set_property (GObject *obj,
 {
 	RealmSamba *self = REALM_SAMBA (obj);
 	RealmProvider *provider;
+	gchar *domain;
 
 	switch (prop_id) {
 	case PROP_NAME:
 		self->name = g_value_dup_string (value);
+		domain = g_ascii_strdown (self->name, -1);
+		g_object_set (self, "domain", domain, NULL);
+		g_free (domain);
 		break;
 	case PROP_PROVIDER:
 		provider = g_value_get_object (value);

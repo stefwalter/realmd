@@ -32,11 +32,8 @@
 			<!-- Returned match relevance -->
 			<arg name="relevance" type="i" direction="out"/>
 
-			<!-- The realm object: bus name, object path, interface -->
-			<arg name="realm" type="(sos)" direction="out"/>
-
-			<!-- More detailed information about discovered realm -->
-			<arg name="discovered" type="a{sv}" direction="out"/>
+			<!-- The realm objects: bus name, object path, interface -->
+			<arg name="realm" type="a(sos)" direction="out"/>
 		</method>
 	</interface>
 

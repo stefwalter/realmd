@@ -66,37 +66,34 @@ on_discover_complete (GObject *source,
 {
 	MethodClosure *closure = user_data;
 	RealmProviderClass *klass;
-	GVariant *discovery = NULL;
 	GVariant *retval;
 	GError *error = NULL;
-	GVariant *realm;
+	GVariant *realms = NULL;
 	gint relevance;
 
 	klass = REALM_PROVIDER_GET_CLASS (closure->self);
 	g_return_if_fail (klass->discover_finish != NULL);
 
-	relevance = (klass->discover_finish) (closure->self, result, &realm, &discovery, &error);
-	if (relevance >= 0) {
-		realm_diagnostics_info (closure->invocation, "Successfully discovered realm");
-		retval = g_variant_new ("(i@(sos)@a{sv})", relevance, realm, discovery);
+	relevance = (klass->discover_finish) (closure->self, result, &realms, &error);
+	if (error == NULL) {
+		if (relevance > 0)
+			realm_diagnostics_info (closure->invocation, "Successfully discovered realm(s)");
+		if (realms == NULL) {
+			realms =  g_variant_new_array (G_VARIANT_TYPE ("(sos)"), NULL, 0);
+			g_variant_ref_sink (realms);
+		}
+		retval = g_variant_new ("(i@a(sos))", relevance, realms);
 		g_dbus_method_invocation_return_value (closure->invocation, retval);
-		g_variant_unref (discovery);
-		g_variant_unref (realm);
-
-	} else if (error == NULL) {
-		realm_diagnostics_error (closure->invocation, NULL, "Nothing found during discovery");
-		g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR,
-		                                       REALM_ERROR_DISCOVERED_NOTHING,
-		                                       "Nothing found during discovery");
-
-	} else if (error != NULL && error->domain == REALM_ERROR) {
-		realm_diagnostics_error (closure->invocation, error, NULL);
-		g_dbus_method_invocation_return_gerror (closure->invocation, error);
-
+		g_variant_unref (realms);
 	} else {
-		realm_diagnostics_error (closure->invocation, error, "Failed to discover realm");
-		g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_DISCOVERY_FAILED,
-		                                       "Failed to discover realm. See diagnostics.");
+		if (error->domain == REALM_ERROR) {
+			realm_diagnostics_error (closure->invocation, error, NULL);
+			g_dbus_method_invocation_return_gerror (closure->invocation, error);
+		} else {
+			realm_diagnostics_error (closure->invocation, error, "Failed to discover realm");
+			g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_DISCOVERY_FAILED,
+			                                       "Failed to discover realm. See diagnostics.");
+		}
 		g_error_free (error);
 	}
 

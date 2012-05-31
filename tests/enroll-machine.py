@@ -32,12 +32,12 @@ def do_with_credential_cache (realm, realm_name, principal, enroll):
 		sys.exit(1)
 
 	if enroll:
-		realm.EnrollWithCredentialCache(kerberos_cache,
+		realm.EnrollWithCredentialCache(kerberos_cache, { },
 		                                reply_handler=on_enroll_machine,
 		                                error_handler=on_enroll_error,
 		                                timeout=300)
 	else:
-		realm.UnenrollWithCredentialCache(kerberos_cache,
+		realm.UnenrollWithCredentialCache(kerberos_cache, { },
 		                                  reply_handler=on_enroll_machine,
 		                                  error_handler=on_enroll_error,
 		                                  timeout=300)
@@ -57,12 +57,12 @@ def do_with_password (realm, realm_name, principal, enroll):
 		sys.exit(1)
 
 	if enroll:
-		realm.EnrollWithPassword(principal, password,
+		realm.EnrollWithPassword(principal, password, { },
 		                         reply_handler=on_enroll_machine,
 		                         error_handler=on_enroll_error,
 		                         timeout=300)
 	else:
-		realm.UnenrollWithPassword(principal, password,
+		realm.UnenrollWithPassword(principal, password, { },
 		                           reply_handler=on_enroll_machine,
 		                           error_handler=on_enroll_error,
 		                           timeout=300)
@@ -77,8 +77,12 @@ def enroll_machine(string, user, enroll, verbose, lazy):
 	provider = dbus.Interface(proxy, 'org.freedesktop.realmd.Provider')
 
 	# Discover the realm
-	(relevance, realm_info, discovery) = provider.Discover(string, timeout=300)
-	(bus_name, object_path, interface_name) = realm_info
+	(relevance, realms) = provider.Discover(string, timeout=300)
+	if not realms:
+		print >> sys.stderr, "enroll-machine.py: nothing discovered"
+		sys.exit(1)
+
+	(bus_name, object_path, interface_name) = realms[0]
 	realm = dbus.Interface (bus.get_object (bus_name, object_path), interface_name)
 
 	props = dbus.Interface (realm, 'org.freedesktop.DBus.Properties')

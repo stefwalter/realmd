@@ -21,16 +21,15 @@ def discover_realm(string, verbose):
 	if verbose:
 		provider.connect_to_signal("Diagnostics", on_diagnostic_signal)
 
-	def on_discover_realm(relevance, realm_info, discovered):
+	def on_discover_realm(relevance, realms):
 		kerberos = dbus.Interface(proxy, 'org.freedesktop.realmd.Kerberos')
-		(bus_name, object_path, interface_name) = realm_info
-		props = dbus.Interface (bus.get_object (bus_name, object_path),
-		                        'org.freedesktop.DBus.Properties')
-		print props.Get('org.freedesktop.realmd.KerberosRealm', 'Name')
-		for (item, value) in discovered.items():
-			if isinstance(value, dbus.Array):
-				value = list(["%s" % v for v in value])
-			print "\t%s = %s" % (item, value)
+		if not realms:
+			print >> sys.stderr, "discover-python: nothing discovered"
+			sys.exit(1)
+		for (bus_name, object_path, interface_name) in realms:
+			props = dbus.Interface (bus.get_object (bus_name, object_path),
+		                            'org.freedesktop.DBus.Properties')
+			print props.Get('org.freedesktop.realmd.KerberosRealm', 'Name')
 		sys.exit(0)
 
 	def on_discover_error(exc):

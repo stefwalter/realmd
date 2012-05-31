@@ -104,13 +104,31 @@ realm_info_to_realm_proxy (GVariant *realm_info)
 }
 
 static RealmDbusKerberosRealm *
+realms_to_realm_proxy (GVariant *realms)
+{
+	RealmDbusKerberosRealm *realm = NULL;
+	GVariant *realm_info;
+	GVariantIter iter;
+
+	g_variant_iter_init (&iter, realms);
+	while ((realm_info = g_variant_iter_next_value (&iter)) != NULL) {
+		realm = realm_info_to_realm_proxy (realm_info);
+		g_variant_unref (realm_info);
+
+		if (realm != NULL)
+			break;
+	}
+
+	return realm;
+}
+
+static RealmDbusKerberosRealm *
 discover_realm_for_string (const gchar *string)
 {
 	RealmDbusKerberosRealm *realm;
 	RealmDbusProvider *provider;
 	GError *error = NULL;
-	GVariant *realm_info;
-	GVariant *discovered;
+	GVariant *realms;
 	gint relevance;
 
 	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
@@ -125,8 +143,7 @@ discover_realm_for_string (const gchar *string)
 
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);
 	realm_dbus_provider_call_discover_sync (provider, string, &relevance,
-	                                        &realm_info, &discovered,
-	                                        NULL, &error);
+	                                        &realms, NULL, &error);
 
 	g_object_unref (provider);
 
@@ -135,10 +152,11 @@ discover_realm_for_string (const gchar *string)
 		return NULL;
 	}
 
-	realm = realm_info_to_realm_proxy (realm_info);
+	realm = realms_to_realm_proxy (realms);
+	g_variant_unref (realms);
 
-	g_variant_unref (realm_info);
-	g_variant_unref (discovered);
+	if (realm == NULL)
+		handle_error (NULL, "no such realm found: %s", string);
 
 	return realm;
 }
@@ -332,6 +350,7 @@ realm_join_or_leave (const gchar *string,
 		connect_to_diagnostics (G_DBUS_PROXY (realm));
 
 	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
+	g_variant_ref_sink (options);
 
 	/* Start actual operation */
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (realm), G_MAXINT);

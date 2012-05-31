@@ -50,8 +50,7 @@ struct _RealmProviderClass {
 
 	gint         (* discover_finish) (RealmProvider *provider,
 	                                  GAsyncResult *result,
-	                                  GVariant **realm,
-	                                  GVariant **discovery,
+	                                  GVariant **realms,
 	                                  GError **error);
 };
 

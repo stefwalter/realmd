@@ -99,44 +99,36 @@ realm_samba_provider_discover_async (RealmProvider *provider,
 static gint
 realm_samba_provider_discover_finish (RealmProvider *provider,
                                       GAsyncResult *result,
-                                      GVariant **realm_info,
-                                      GVariant **discovery_info,
+                                      GVariant **realms,
                                       GError **error)
 {
 	GDBusInterfaceSkeleton *realm;
 	GHashTable *discovery;
 	const gchar *object_path;
+	GVariant *realm_info;
 	gchar *name;
 
 	name = realm_ad_discover_finish (result, &discovery, error);
-	if (name == NULL) {
-		g_set_error (error, REALM_ERROR, REALM_ERROR_DISCOVERED_NOTHING,
-		             "Nothing found during discovery");
-		return -1;
-	}
+	if (name == NULL)
+		return 0;
 
 	realm = realm_provider_lookup_or_register_realm (provider,
-	                                                 REALM_TYPE_SAMBA_PROVIDER,
+	                                                 REALM_TYPE_SAMBA,
 	                                                 name);
 	g_free (name);
 
 	if (realm == NULL) {
 		g_hash_table_unref (discovery);
-		return -1;
+		return 0;
 	}
 
 	realm_kerberos_set_discovery (REALM_KERBEROS (realm), discovery);
 
-	if (realm_info) {
-		object_path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
-		*realm_info = realm_provider_new_realm_info (REALM_DBUS_SAMBA_NAME, object_path,
-		                                             REALM_DBUS_KERBEROS_REALM_INTERFACE);
-		g_variant_ref_sink (*realm_info);
-	}
-	if (discovery_info) {
-		*discovery_info = realm_discovery_to_variant (discovery);
-		g_variant_ref_sink (*discovery_info);
-	}
+	object_path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
+	realm_info = realm_provider_new_realm_info (REALM_DBUS_SAMBA_NAME, object_path,
+	                                            REALM_DBUS_KERBEROS_REALM_INTERFACE);
+	*realms = g_variant_new_array (G_VARIANT_TYPE ("(sos)"), &realm_info, 1);
+	g_variant_ref_sink (*realms);
 
 	g_hash_table_unref (discovery);
 	return 100;

@@ -42,6 +42,11 @@ typedef struct {
 	RealmProviderClass parent_class;
 } RealmSambaProviderClass;
 
+enum {
+	PROP_0,
+	PROP_SAMBA_CONFIG,
+};
+
 static guint provider_owner_id = 0;
 
 G_DEFINE_TYPE (RealmSambaProvider, realm_samba_provider, REALM_TYPE_PROVIDER);
@@ -138,6 +143,24 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
 }
 
 static void
+realm_samba_provider_get_property (GObject *obj,
+                                   guint prop_id,
+                                   GValue *value,
+                                   GParamSpec *pspec)
+{
+	RealmSambaProvider *self = REALM_SAMBA_PROVIDER (obj);
+
+	switch (prop_id) {
+	case PROP_SAMBA_CONFIG:
+		g_value_set_object (value, self->config);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+		break;
+	}
+}
+
+static void
 realm_samba_provider_finalize (GObject *obj)
 {
 	RealmSambaProvider *self = REALM_SAMBA_PROVIDER (obj);
@@ -156,7 +179,13 @@ realm_samba_provider_class_init (RealmSambaProviderClass *klass)
 	provider_class->discover_async = realm_samba_provider_discover_async;
 	provider_class->discover_finish = realm_samba_provider_discover_finish;
 
+	object_class->get_property = realm_samba_provider_get_property;
 	object_class->finalize = realm_samba_provider_finalize;
+
+	g_object_class_install_property (object_class, PROP_SAMBA_CONFIG,
+	            g_param_spec_object ("samba-config", "Samba Config", "Samba Config",
+	                                 REALM_TYPE_INI_CONFIG, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
+
 }
 
 static void

@@ -22,6 +22,7 @@
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-packages.h"
+#include "realm-provider.h"
 #include "realm-samba.h"
 #include "realm-samba-config.h"
 #include "realm-samba-enroll.h"
@@ -45,7 +46,7 @@ typedef struct {
 enum {
 	PROP_0,
 	PROP_NAME,
-	PROP_SAMBA_CONFIG,
+	PROP_PROVIDER,
 };
 
 G_DEFINE_TYPE (RealmSamba, realm_samba, REALM_TYPE_KERBEROS);
@@ -363,9 +364,6 @@ realm_samba_get_property (GObject *obj,
 	case PROP_NAME:
 		g_value_set_string (value, self->name);
 		break;
-	case PROP_SAMBA_CONFIG:
-		g_value_set_object (value, self->config);
-		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
 		break;
@@ -379,18 +377,18 @@ realm_samba_set_property (GObject *obj,
                           GParamSpec *pspec)
 {
 	RealmSamba *self = REALM_SAMBA (obj);
+	RealmProvider *provider;
 
 	switch (prop_id) {
 	case PROP_NAME:
 		self->name = g_value_dup_string (value);
 		break;
-	case PROP_SAMBA_CONFIG:
-		self->config = g_value_dup_object (value);
-		if (self->config != NULL) {
-			self->config_sig = g_signal_connect (self->config, "changed",
-			                                     G_CALLBACK (on_config_changed),
-			                                     self);
-		}
+	case PROP_PROVIDER:
+		provider = g_value_get_object (value);
+		g_object_get (provider, "samba-config", &self->config, NULL);
+		self->config_sig = g_signal_connect (self->config, "changed",
+		                                     G_CALLBACK (on_config_changed),
+		                                     self);
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -440,17 +438,17 @@ realm_samba_class_init (RealmSambaClass *klass)
 	            g_param_spec_string ("name", "Name", "Realm Name",
 	                                 "", G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 
-	g_object_class_install_property (object_class, PROP_SAMBA_CONFIG,
-	            g_param_spec_object ("samba-config", "Samba Config", "Samba Configuration",
-	                                 REALM_TYPE_INI_CONFIG, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+	g_object_class_install_property (object_class, PROP_PROVIDER,
+	            g_param_spec_object ("provider", "Provider", "Samba Provider",
+	                                 REALM_TYPE_PROVIDER, G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 RealmKerberos *
 realm_samba_new (const gchar *name,
-                 RealmIniConfig *config)
+                 RealmProvider *provider)
 {
 	return g_object_new (REALM_TYPE_SAMBA,
 	                     "name", name,
-	                     "samba-config", config,
+	                     "provider", provider,
 	                     NULL);
 }

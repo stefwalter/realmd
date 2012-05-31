@@ -257,7 +257,9 @@ realm_provider_lookup_or_register_realm (RealmProvider *self,
 	if (realm != NULL)
 		return realm;
 
-	realm = g_object_new (realm_type, "name", realm_name, NULL);
+	realm = g_object_new (realm_type,
+	                      "name", realm_name,
+	                      "provider", self, NULL);
 
 	escaped = g_strdup (realm_name);
 	g_strcanon (escaped, REALM_DBUS_NAME_CHARS, '_');

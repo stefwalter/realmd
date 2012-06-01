@@ -32,7 +32,7 @@ G_BEGIN_DECLS
 #define   REALM_DBUS_SAMBA_PATH                    "/org/freedesktop/realmd/Samba"
 
 #define   REALM_DBUS_PROVIDER_INTERFACE            "org.freedesktop.realmd.Provider"
-#define   REALM_DBUS_KERBEROS_REALM_INTERFACE      "org.freedesktop.realmd.KerberosRealm"
+#define   REALM_DBUS_KERBEROS_REALM_INTERFACE      "org.freedesktop.realmd.Kerberos"
 #define   REALM_DBUS_DIAGNOSTICS_INTERFACE         "org.freedesktop.realmd.Diagnostics"
 
 #define   REALM_DBUS_DIAGNOSTICS_SIGNAL            "Diagnostics"

@@ -17,7 +17,7 @@
 		 * Each realm is a DBus object and is represeted by a:
 		 *   s: DBus bus name of the realm
 		 *   o: DBus object path of the realm
-		 *   s: DBus interface name, like 'ofr.KerberosRealm' (below)
+		 *   s: DBus interface name, like 'ofr.Kerberos' (below)
 		-->
 		<property name="Realms" type="a(sos)" access="read"/>
 
@@ -53,7 +53,7 @@
 	<!--
 	 * This interface is implemented by Kerberos realms.
 	-->
-	<interface name="org.freedesktop.realmd.KerberosRealm">
+	<interface name="org.freedesktop.realmd.Kerberos">
 
 		<!--
 		 * The kerberos realm name. Usually capitalized.

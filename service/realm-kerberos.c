@@ -42,10 +42,10 @@ enum {
 	PROP_DISCOVERY
 };
 
-static void realm_kerberos_iface_init (RealmDbusKerberosRealmIface *iface);
+static void realm_kerberos_iface_init (RealmDbusKerberosIface *iface);
 
-G_DEFINE_TYPE_WITH_CODE (RealmKerberos, realm_kerberos, REALM_DBUS_TYPE_KERBEROS_REALM_SKELETON,
-	G_IMPLEMENT_INTERFACE (REALM_DBUS_TYPE_KERBEROS_REALM, realm_kerberos_iface_init);
+G_DEFINE_TYPE_WITH_CODE (RealmKerberos, realm_kerberos, REALM_DBUS_TYPE_KERBEROS_SKELETON,
+	G_IMPLEMENT_INTERFACE (REALM_DBUS_TYPE_KERBEROS, realm_kerberos_iface_init);
 );
 
 static void
@@ -163,7 +163,6 @@ cleanup:
 	if (context)
 		krb5_free_context (context);
 	return result;
-
 }
 
 typedef struct {
@@ -223,7 +222,7 @@ on_enroll_complete (GObject *source,
 }
 
 static gboolean
-handle_enroll_with_credential_cache (RealmDbusKerberosRealm *realm,
+handle_enroll_with_credential_cache (RealmDbusKerberos *realm,
                                      GDBusMethodInvocation *invocation,
                                      GVariant *admin_cache,
                                      GVariant *options)
@@ -263,7 +262,7 @@ handle_enroll_with_credential_cache (RealmDbusKerberosRealm *realm,
 }
 
 static gboolean
-handle_enroll_with_password (RealmDbusKerberosRealm *realm,
+handle_enroll_with_password (RealmDbusKerberos *realm,
                              GDBusMethodInvocation *invocation,
                              const gchar *principal,
                              const gchar *password,
@@ -331,7 +330,7 @@ on_unenroll_complete (GObject *source,
 }
 
 static gboolean
-handle_unenroll_with_credential_cache (RealmDbusKerberosRealm *realm,
+handle_unenroll_with_credential_cache (RealmDbusKerberos *realm,
                                        GDBusMethodInvocation *invocation,
                                        GVariant *admin_cache,
                                        GVariant *options)
@@ -371,7 +370,7 @@ handle_unenroll_with_credential_cache (RealmDbusKerberosRealm *realm,
 }
 
 static gboolean
-handle_unenroll_with_password (RealmDbusKerberosRealm *realm,
+handle_unenroll_with_password (RealmDbusKerberos *realm,
                                GDBusMethodInvocation *invocation,
                                const gchar *principal,
                                const gchar *password,
@@ -520,7 +519,7 @@ realm_kerberos_class_init (RealmKerberosClass *klass)
 }
 
 static void
-realm_kerberos_iface_init (RealmDbusKerberosRealmIface *iface)
+realm_kerberos_iface_init (RealmDbusKerberosIface *iface)
 {
 	memcpy (iface, g_type_interface_peek_parent (iface), sizeof (*iface));
 	iface->handle_enroll_with_password = handle_enroll_with_password;

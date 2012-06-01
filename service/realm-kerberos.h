@@ -35,12 +35,12 @@ typedef struct _RealmKerberosClass RealmKerberosClass;
 typedef struct _RealmKerberosPrivate RealmKerberosPrivate;
 
 struct _RealmKerberos {
-	RealmDbusKerberosRealmSkeleton parent;
+	RealmDbusKerberosSkeleton parent;
 	RealmKerberosPrivate *pv;
 };
 
 struct _RealmKerberosClass {
-	RealmDbusKerberosRealmSkeletonClass parent_class;
+	RealmDbusKerberosSkeletonClass parent_class;
 
 	void       (* enroll_async)    (RealmKerberos *realm,
 	                                GBytes *admin_kerberos_cache,

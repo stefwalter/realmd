@@ -77,10 +77,10 @@ handle_krb5_error (krb5_error_code code,
 	g_string_free (message, TRUE);
 }
 
-static RealmDbusKerberosRealm *
+static RealmDbusKerberos *
 realm_info_to_realm_proxy (GVariant *realm_info)
 {
-	RealmDbusKerberosRealm *realm = NULL;
+	RealmDbusKerberos *realm = NULL;
 	const gchar *bus_name;
 	const gchar *object_path;
 	const gchar *interface_name;
@@ -89,10 +89,10 @@ realm_info_to_realm_proxy (GVariant *realm_info)
 	g_variant_get (realm_info, "(&s&o&s)", &bus_name, &object_path, &interface_name);
 
 	if (g_str_equal (interface_name, REALM_DBUS_KERBEROS_REALM_INTERFACE)) {
-		realm = realm_dbus_kerberos_realm_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-		                                                          G_DBUS_PROXY_FLAGS_NONE,
-		                                                          bus_name, object_path,
-		                                                          NULL, &error);
+		realm = realm_dbus_kerberos_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+		                                                    G_DBUS_PROXY_FLAGS_NONE,
+		                                                    bus_name, object_path,
+		                                                    NULL, &error);
 	}
 
 	if (error != NULL)
@@ -103,10 +103,10 @@ realm_info_to_realm_proxy (GVariant *realm_info)
 	return realm;
 }
 
-static RealmDbusKerberosRealm *
+static RealmDbusKerberos *
 realms_to_realm_proxy (GVariant *realms)
 {
-	RealmDbusKerberosRealm *realm = NULL;
+	RealmDbusKerberos *realm = NULL;
 	GVariant *realm_info;
 	GVariantIter iter;
 
@@ -122,10 +122,10 @@ realms_to_realm_proxy (GVariant *realms)
 	return realm;
 }
 
-static RealmDbusKerberosRealm *
+static RealmDbusKerberos *
 discover_realm_for_string (const gchar *string)
 {
-	RealmDbusKerberosRealm *realm;
+	RealmDbusKerberos *realm;
 	RealmDbusProvider *provider;
 	GError *error = NULL;
 	GVariant *realms;
@@ -316,7 +316,7 @@ realm_join_or_leave (const gchar *string,
                      gboolean verbose,
                      gboolean join)
 {
-	RealmDbusKerberosRealm *realm;
+	RealmDbusKerberos *realm;
 	GVariant *kerberos_cache;
 	const gchar *realm_name;
 	GError *error = NULL;
@@ -333,7 +333,7 @@ realm_join_or_leave (const gchar *string,
 		return 1;
 
 	/* Do a kinit for the given realm */
-	realm_name = realm_dbus_kerberos_realm_get_name (realm);
+	realm_name = realm_dbus_kerberos_get_name (realm);
 	principal = g_strdup_printf ("%s@%s", user_name, realm_name);
 	kerberos_cache = kinit_to_kerberos_cache (principal);
 	g_free (principal);
@@ -355,13 +355,13 @@ realm_join_or_leave (const gchar *string,
 	/* Start actual operation */
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (realm), G_MAXINT);
 	if (join)
-		realm_dbus_kerberos_realm_call_enroll_with_credential_cache (realm, kerberos_cache, options,
-		                                                             NULL, on_complete_get_result,
-		                                                             &sync);
+		realm_dbus_kerberos_call_enroll_with_credential_cache (realm, kerberos_cache, options,
+		                                                       NULL, on_complete_get_result,
+		                                                       &sync);
 	else
-		realm_dbus_kerberos_realm_call_unenroll_with_credential_cache (realm, kerberos_cache, options,
-		                                                               NULL, on_complete_get_result,
-		                                                               &sync);
+		realm_dbus_kerberos_call_unenroll_with_credential_cache (realm, kerberos_cache, options,
+		                                                         NULL, on_complete_get_result,
+		                                                         &sync);
 
 	g_variant_unref (options);
 	g_variant_unref (kerberos_cache);
@@ -370,13 +370,13 @@ realm_join_or_leave (const gchar *string,
 	g_main_loop_run (sync.loop);
 
 	if (join)
-		realm_dbus_kerberos_realm_call_enroll_with_credential_cache_finish (realm,
-		                                                                    sync.result,
-		                                                                    &error);
+		realm_dbus_kerberos_call_enroll_with_credential_cache_finish (realm,
+		                                                              sync.result,
+		                                                              &error);
 	else
-		realm_dbus_kerberos_realm_call_unenroll_with_credential_cache_finish (realm,
-		                                                                      sync.result,
-		                                                                      &error);
+		realm_dbus_kerberos_call_unenroll_with_credential_cache_finish (realm,
+		                                                                sync.result,
+		                                                                &error);
 
 	g_object_unref (sync.result);
 	g_main_loop_unref (sync.loop);
@@ -394,7 +394,7 @@ static int
 realm_list (gboolean verbose)
 {
 	RealmDbusProvider *provider;
-	RealmDbusKerberosRealm *realm;
+	RealmDbusKerberos *realm;
 	GVariant *realms;
 	GVariant *realm_info;
 	GError *error = NULL;
@@ -417,8 +417,8 @@ realm_list (gboolean verbose)
 		realm = realm_info_to_realm_proxy (realm_info);
 		if (realm != NULL) {
 			g_print ("%s: %s\n",
-			         realm_dbus_kerberos_realm_get_name (realm),
-			         realm_dbus_kerberos_realm_get_enrolled (realm) ? "enrolled" : "not enrolled");
+			         realm_dbus_kerberos_get_name (realm),
+			         realm_dbus_kerberos_get_enrolled (realm) ? "enrolled" : "not enrolled");
 			g_object_unref (realm);
 		}
 		printed = TRUE;

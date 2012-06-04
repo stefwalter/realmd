@@ -38,7 +38,6 @@ G_BEGIN_DECLS
 #define   REALM_DBUS_DIAGNOSTICS_SIGNAL            "Diagnostics"
 
 #define   REALM_DBUS_ERROR_INTERNAL                "org.freedesktop.realmd.Error.Internal"
-#define   REALM_DBUS_ERROR_DISCOVERED_NOTHING      "org.freedesktop.realmd.Error.DiscoveredNothing"
 #define   REALM_DBUS_ERROR_DISCOVERY_FAILED        "org.freedesktop.realmd.Error.DiscoveryFailed"
 #define   REALM_DBUS_ERROR_ENROLL_FAILED           "org.freedesktop.realmd.Error.EnrollFailed"
 #define   REALM_DBUS_ERROR_UNENROLL_FAILED         "org.freedesktop.realmd.Error.UnenrollFailed"

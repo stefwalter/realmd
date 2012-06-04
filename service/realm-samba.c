@@ -55,7 +55,7 @@ G_DEFINE_TYPE (RealmSamba, realm_samba, REALM_TYPE_KERBEROS);
 static void
 realm_samba_init (RealmSamba *self)
 {
-
+	g_object_set (self, "suggested-administrator", "Administrator", NULL);
 }
 
 static gchar *

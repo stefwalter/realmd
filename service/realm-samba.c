@@ -260,18 +260,13 @@ on_leave_do_winbind (GObject *source,
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	UnenrollClosure *unenroll = g_simple_async_result_get_op_res_gpointer (res);
-	GError *error = NULL;
 
-	realm_samba_enroll_leave_finish (result, &error);
-	if (error == NULL) {
-		realm_samba_winbind_deconfigure_async (unenroll->invocation,
-		                                       on_remove_winbind_done,
-		                                       g_object_ref (res));
+	realm_samba_enroll_leave_finish (result, NULL);
 
-	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
-	}
+	/* We don't care if we can leave or not, just continue with other steps */
+	realm_samba_winbind_deconfigure_async (unenroll->invocation,
+	                                       on_remove_winbind_done,
+	                                       g_object_ref (res));
 
 	g_object_unref (res);
 }

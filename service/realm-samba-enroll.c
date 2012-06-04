@@ -333,13 +333,15 @@ on_leave_complete (GObject *source,
 	if (error == NULL && status != 0)
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Leaving the domain %s failed", join->realm);
-	if (error == NULL) {
-		realm_samba_config_change (REALM_SAMBA_CONFIG_GLOBAL, &error,
-		                           "workgroup", NULL,
-		                           "realm", NULL,
-		                           "security", "user",
-		                           NULL);
-	}
+
+	/* Deconfigure the domain anyway, even if its not successful */
+	realm_samba_config_change (REALM_SAMBA_CONFIG_GLOBAL,
+	                           error ? NULL : &error,
+	                           "workgroup", NULL,
+	                           "realm",	 NULL,
+	                           "security", "user",
+	                           NULL);
+
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 

@@ -92,18 +92,18 @@ realm_samba_config_changev (const gchar *section,
 {
 	RealmIniConfig *config;
 	gboolean ret = FALSE;
+	const gchar *filename;
 
 	g_return_val_if_fail (section != NULL, FALSE);
 	g_return_val_if_fail (parameters != NULL, FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-	config = realm_samba_config_new_with_flags (REALM_INI_NO_WATCH, error);
-	if (config != NULL) {
-		realm_ini_config_set_all (config, section, parameters);
-		ret = realm_ini_config_write_file (config, NULL, error);
-		g_object_unref (config);
-	}
+	config = realm_ini_config_new (REALM_INI_LINE_CONTINUATIONS | REALM_INI_NO_WATCH);
+	filename = realm_settings_path ("smb.conf");
+	realm_ini_config_set_filename (config, filename);
 
+	ret = realm_ini_config_changev (config, section, parameters, error);
+	g_object_unref (config);
 	return ret;
 }
 

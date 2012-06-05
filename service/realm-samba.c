@@ -399,13 +399,12 @@ realm_samba_change_logins (RealmKerberos *realm,
 		remove_names = prune_login_names (prefix, remove, error);
 
 	if (add_names && remove_names) {
-		ret = realm_samba_config_change_list (REALM_SAMBA_CONFIG_GLOBAL,
-		                                      "realmd permitted logins", ",",
-		                                      (const gchar **)add_names,
-		                                      (const gchar **)remove_names,
-		                                      error);
-		if (ret == TRUE)
-			realm_ini_config_reload (self->config);
+		ret = realm_ini_config_change_list (self->config,
+		                                    REALM_SAMBA_CONFIG_GLOBAL,
+		                                    "realmd permitted logins", ",",
+		                                    (const gchar **)add_names,
+		                                    (const gchar **)remove_names,
+		                                    error);
 	}
 
 	g_strfreev (remove_names);

@@ -22,7 +22,7 @@
 typedef enum {
 	REALM_INI_NONE = 0,
 	REALM_INI_LINE_CONTINUATIONS = 1 << 1,
-	REALM_INI_NO_WATCH = 1 << 2
+	REALM_INI_NO_WATCH = 1 << 2,
 } RealmIniFlags;
 
 #define REALM_TYPE_INI_CONFIG            (realm_ini_config_get_type ())
@@ -36,6 +36,11 @@ GType               realm_ini_config_get_type                 (void) G_GNUC_CONS
 RealmIniConfig *    realm_ini_config_new                      (RealmIniFlags flags);
 
 void                realm_ini_config_reset                    (RealmIniConfig *self);
+
+const gchar *       realm_ini_config_get_filename             (RealmIniConfig *self);
+
+void                realm_ini_config_set_filename             (RealmIniConfig *self,
+                                                               const gchar *filename);
 
 void                realm_ini_config_reload                   (RealmIniConfig *self);
 
@@ -81,6 +86,24 @@ GHashTable *        realm_ini_config_get_all                  (RealmIniConfig *s
 void                realm_ini_config_set_all                  (RealmIniConfig *self,
                                                                const gchar *section,
                                                                GHashTable *parameters);
+
+gboolean            realm_ini_config_change                   (RealmIniConfig *self,
+                                                               const gchar *section,
+                                                               GError **error,
+                                                               ...);
+
+gboolean            realm_ini_config_changev                  (RealmIniConfig *self,
+                                                               const gchar *section,
+                                                               GHashTable *parameters,
+                                                               GError **error);
+
+gboolean            realm_ini_config_change_list              (RealmIniConfig *self,
+                                                               const gchar *section,
+                                                               const gchar *name,
+                                                               const gchar *delimiters,
+                                                               const gchar **add,
+                                                               const gchar **remove,
+                                                               GError **error);
 
 G_END_DECLS
 

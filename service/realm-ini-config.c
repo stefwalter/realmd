@@ -175,9 +175,15 @@ on_directory_changed (GFileMonitor *monitor,
 	g_free (our_base);
 }
 
-static void
-connect_to_filename (RealmIniConfig *self,
-                     const gchar *filename)
+const gchar *
+realm_ini_config_get_filename (RealmIniConfig *self)
+{
+	return self->filename;
+}
+
+void
+realm_ini_config_set_filename (RealmIniConfig *self,
+                               const gchar *filename)
 {
 	GError *error = NULL;
 	GFile *directory;
@@ -248,7 +254,7 @@ realm_ini_config_finalize (GObject *obj)
 	RealmIniConfig *self = REALM_INI_CONFIG (obj);
 
 	/* Should free filename and clear up monitors */
-	connect_to_filename (self, NULL);
+	realm_ini_config_set_filename (self, NULL);
 	reset_config_data (self);
 
 	g_hash_table_destroy (self->sections);
@@ -552,7 +558,7 @@ realm_ini_config_read_bytes (RealmIniConfig *self,
 	g_return_if_fail (REALM_IS_INI_CONFIG (self));
 	g_return_if_fail (bytes != NULL);
 
-	connect_to_filename (self, NULL);
+	realm_ini_config_set_filename (self, NULL);
 	parse_config_bytes (self, bytes);
 }
 
@@ -613,7 +619,7 @@ realm_ini_config_read_file (RealmIniConfig *self,
 	parse_config_bytes (self, bytes);
 	g_bytes_unref (bytes);
 
-	connect_to_filename (self, filename);
+	realm_ini_config_set_filename (self, filename);
 	return TRUE;
 }
 
@@ -849,6 +855,125 @@ realm_ini_config_set_list (RealmIniConfig *self,
 	value = g_strjoinv (delimiter, (gchar **)values);
 	realm_ini_config_set (self, section, name, value);
 	g_free (value);
+}
+
+gboolean
+realm_ini_config_change (RealmIniConfig *self,
+                         const gchar *section,
+                         GError **error,
+                         ...)
+{
+	GHashTable *parameters;
+	const gchar *name;
+	const gchar *value;
+	gboolean ret;
+	va_list va;
+
+	g_return_val_if_fail (section != NULL, FALSE);
+	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+	parameters = g_hash_table_new (g_str_hash, g_str_equal);
+	va_start (va, error);
+	while ((name = va_arg (va, const gchar *)) != NULL) {
+		value = va_arg (va, const gchar *);
+		g_hash_table_insert (parameters, (gpointer)name, (gpointer)value);
+	}
+	va_end (va);
+
+	ret = realm_ini_config_changev (self, section, parameters, error);
+	g_hash_table_unref (parameters);
+	return ret;
+}
+
+gboolean
+realm_ini_config_changev (RealmIniConfig *self,
+                          const gchar *section,
+                          GHashTable *parameters,
+                          GError **error)
+{
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), FALSE);
+	g_return_val_if_fail (section != NULL, FALSE);
+	g_return_val_if_fail (parameters != NULL, FALSE);
+	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+	if (!realm_ini_config_read_file (self, self->filename, error))
+		return FALSE;
+
+	realm_ini_config_set_all (self, section, parameters);
+	return realm_ini_config_write_file (self, NULL, error);
+}
+
+static gchar **
+update_lists_for_changes (const gchar **original,
+                          const gchar **add,
+                          const gchar **remove)
+{
+	GPtrArray *changed;
+	gchar *value;
+	gint i, j;
+
+	changed = g_ptr_array_new ();
+
+	/* Filter the remove values */
+	for (i = 0; original != NULL && original[i] != NULL; i++) {
+		value = g_strstrip (g_strdup (original[i]));
+		for (j = 0; remove != NULL && remove[j] != NULL; j++) {
+			if (g_ascii_strcasecmp (remove[j], value) == 0)
+				break;
+		}
+		if ((remove == NULL || remove[j] == NULL) && !g_str_equal (value, ""))
+			g_ptr_array_add (changed, value);
+		else
+			g_free (value);
+	}
+
+	/* Add new values */
+	for (j = 0; add != NULL && add[j] != NULL; j++) {
+		for (i = 0; original != NULL && original[i] != NULL; i++) {
+			if (g_ascii_strcasecmp (add[j], original[i]) == 0)
+				break;
+		}
+		if (original == NULL || original[i] == NULL)
+			g_ptr_array_add (changed, g_strdup (add[j]));
+	}
+
+	g_ptr_array_add (changed, NULL);
+	return (gchar **)g_ptr_array_free (changed, FALSE);
+}
+
+gboolean
+realm_ini_config_change_list (RealmIniConfig *self,
+                              const gchar *section,
+                              const gchar *name,
+                              const gchar *delimiters,
+                              const gchar **add,
+                              const gchar **remove,
+                              GError **error)
+{
+	gchar **original;
+	gchar **changed;
+	gchar *delim;
+
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), FALSE);
+	g_return_val_if_fail (section != NULL, FALSE);
+	g_return_val_if_fail (name != NULL, FALSE);
+	g_return_val_if_fail (delimiters != NULL, FALSE);
+	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+	if (!realm_ini_config_read_file (self, self->filename, error))
+		return FALSE;
+
+	original = realm_ini_config_get_list (self, section, name, delimiters);
+	changed = update_lists_for_changes ((const gchar **)original, add, remove);
+	g_strfreev (original);
+
+	delim = g_strdup_printf ("%c ", delimiters[0]);
+	realm_ini_config_set_list (self, section, name, delim,
+	                           (const gchar **)changed);
+	g_strfreev (changed);
+	g_free (delim);
+
+	return realm_ini_config_write_file (self, NULL, error);
 }
 
 void

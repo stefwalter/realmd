@@ -509,8 +509,9 @@ test_change_list (Test *test,
 	g_file_set_contents ("/tmp/test-samba-config.conf", data, -1, &error);
 	g_assert_no_error (error);
 
-	realm_samba_config_change_list ("section", "2", ",",
-	                                add, remove, &error);
+	realm_ini_config_set_filename (test->config, "/tmp/test-samba-config.conf");
+	realm_ini_config_change_list (test->config, "section", "2", ",",
+	                              add, remove, &error);
 	g_assert_no_error (error);
 
 	g_file_get_contents ("/tmp/test-samba-config.conf", &output, NULL, &error);
@@ -536,8 +537,9 @@ test_change_list_new (Test *test,
 	g_file_set_contents ("/tmp/test-samba-config.conf", data, -1, &error);
 	g_assert_no_error (error);
 
-	realm_samba_config_change_list ("section", "2", ",",
-	                                add, remove, &error);
+	realm_ini_config_set_filename (test->config, "/tmp/test-samba-config.conf");
+	realm_ini_config_change_list (test->config, "section", "2", ",",
+	                              add, remove, &error);
 	g_assert_no_error (error);
 
 	g_file_get_contents ("/tmp/test-samba-config.conf", &output, NULL, &error);
@@ -563,8 +565,9 @@ test_change_list_null_add (Test *test,
 	g_file_set_contents ("/tmp/test-samba-config.conf", data, -1, &error);
 	g_assert_no_error (error);
 
-	realm_samba_config_change_list ("section", "2", ",",
-	                                add, remove, &error);
+	realm_ini_config_set_filename (test->config, "/tmp/test-samba-config.conf");
+	realm_ini_config_change_list (test->config, "section", "2", ",",
+	                              add, remove, &error);
 	g_assert_no_error (error);
 
 	g_file_get_contents ("/tmp/test-samba-config.conf", &output, NULL, &error);
@@ -590,8 +593,9 @@ test_change_list_null_remove (Test *test,
 	g_file_set_contents ("/tmp/test-samba-config.conf", data, -1, &error);
 	g_assert_no_error (error);
 
-	realm_samba_config_change_list ("section", "2", ",",
-	                                add, remove, &error);
+	realm_ini_config_set_filename (test->config, "/tmp/test-samba-config.conf");
+	realm_ini_config_change_list (test->config, "section", "2", ",",
+	                              add, remove, &error);
 	g_assert_no_error (error);
 
 	g_file_get_contents ("/tmp/test-samba-config.conf", &output, NULL, &error);

@@ -484,6 +484,115 @@ test_change (Test *test,
 	                           "3", NULL,
 	                           "4", "four",
 	                           NULL);
+	g_assert_no_error (error);
+
+	g_file_get_contents ("/tmp/test-samba-config.conf", &output, NULL, &error);
+	g_assert_no_error (error);
+
+	g_assert_cmpstr (output, ==, check);
+	g_free (output);
+}
+
+static void
+test_change_list (Test *test,
+                  gconstpointer unused)
+{
+	const gchar *data = "[section]\n\t1= one\n2=two, dos,zwei ,duo\n3=three";
+	const gchar *check = "[section]\n\t1= one\n2 = dos, zwei, 10\n3=three";
+	const gchar *remove[] = { "two", "duo", NULL };
+	const gchar *add[] = { "TWO", "10", NULL };
+	GError *error = NULL;
+	gchar *output;
+
+	/* Setup this file as the system smb.conf */
+	realm_settings_add ("paths", "smb.conf", "/tmp/test-samba-config.conf");
+	g_file_set_contents ("/tmp/test-samba-config.conf", data, -1, &error);
+	g_assert_no_error (error);
+
+	realm_samba_config_change_list ("section", "2", ",",
+	                                add, remove, &error);
+	g_assert_no_error (error);
+
+	g_file_get_contents ("/tmp/test-samba-config.conf", &output, NULL, &error);
+	g_assert_no_error (error);
+
+	g_assert_cmpstr (output, ==, check);
+	g_free (output);
+}
+
+static void
+test_change_list_new (Test *test,
+                      gconstpointer unused)
+{
+	const gchar *data = "[section]\n\t1= one\n3=three";
+	const gchar *check = "[section]\n\t1= one\n3=three\n2 = dos, zwei, 10\n";
+	const gchar **remove = NULL;
+	const gchar *add[] = { "dos", "zwei", "10", NULL };
+	GError *error = NULL;
+	gchar *output;
+
+	/* Setup this file as the system smb.conf */
+	realm_settings_add ("paths", "smb.conf", "/tmp/test-samba-config.conf");
+	g_file_set_contents ("/tmp/test-samba-config.conf", data, -1, &error);
+	g_assert_no_error (error);
+
+	realm_samba_config_change_list ("section", "2", ",",
+	                                add, remove, &error);
+	g_assert_no_error (error);
+
+	g_file_get_contents ("/tmp/test-samba-config.conf", &output, NULL, &error);
+	g_assert_no_error (error);
+
+	g_assert_cmpstr (output, ==, check);
+	g_free (output);
+}
+
+static void
+test_change_list_null_add (Test *test,
+                           gconstpointer unused)
+{
+	const gchar *data = "[section]\n\t1= one\n2=two, dos,zwei ,duo\n3=three";
+	const gchar *check = "[section]\n\t1= one\n2 = dos, zwei\n3=three";
+	const gchar *remove[] = { "two", "duo", NULL };
+	const gchar **add = NULL;
+	GError *error = NULL;
+	gchar *output;
+
+	/* Setup this file as the system smb.conf */
+	realm_settings_add ("paths", "smb.conf", "/tmp/test-samba-config.conf");
+	g_file_set_contents ("/tmp/test-samba-config.conf", data, -1, &error);
+	g_assert_no_error (error);
+
+	realm_samba_config_change_list ("section", "2", ",",
+	                                add, remove, &error);
+	g_assert_no_error (error);
+
+	g_file_get_contents ("/tmp/test-samba-config.conf", &output, NULL, &error);
+	g_assert_no_error (error);
+
+	g_assert_cmpstr (output, ==, check);
+	g_free (output);
+}
+
+static void
+test_change_list_null_remove (Test *test,
+                              gconstpointer unused)
+{
+	const gchar *data = "[section]\n\t1= one\n2=two, dos,zwei ,duo\n3=three";
+	const gchar *check = "[section]\n\t1= one\n2 = two, dos, zwei, duo, 10\n3=three";
+	const gchar **remove = NULL;
+	const gchar *add[] = { "TWO", "10", NULL };
+	GError *error = NULL;
+	gchar *output;
+
+	/* Setup this file as the system smb.conf */
+	realm_settings_add ("paths", "smb.conf", "/tmp/test-samba-config.conf");
+	g_file_set_contents ("/tmp/test-samba-config.conf", data, -1, &error);
+	g_assert_no_error (error);
+
+	realm_samba_config_change_list ("section", "2", ",",
+	                                add, remove, &error);
+	g_assert_no_error (error);
 
 	g_file_get_contents ("/tmp/test-samba-config.conf", &output, NULL, &error);
 	g_assert_no_error (error);
@@ -520,6 +629,10 @@ main (int argc,
 	g_test_add ("/realmd/ini-config/file-watch", Test, NULL, setup, test_file_watch, teardown);
 
 	g_test_add ("/realmd/samba-config/change", Test, NULL, setup, test_change, teardown);
+	g_test_add ("/realmd/samba-config/change-list", Test, NULL, setup, test_change_list, teardown);
+	g_test_add ("/realmd/samba-config/change-list-new", Test, NULL, setup, test_change_list_new, teardown);
+	g_test_add ("/realmd/samba-config/change-list-null-add", Test, NULL, setup, test_change_list_null_add, teardown);
+	g_test_add ("/realmd/samba-config/change-list-null-remove", Test, NULL, setup, test_change_list_null_remove, teardown);
 
 	return g_test_run ();
 }

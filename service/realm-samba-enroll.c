@@ -27,6 +27,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 
 typedef struct {
 	GCancellable *cancellable;
@@ -255,12 +256,21 @@ on_join_do_keytab (GObject *source,
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
 	GError *error = NULL;
+	GString *output;
 	gint status;
 
-	status = realm_command_run_finish (result, NULL, &error);
-	if (error == NULL && status != 0)
-		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Joining the domain %s failed", join->realm);
+	status = realm_command_run_finish (result, &output, &error);
+	if (error == NULL && status != 0) {
+		if (strstr (output->str, "NT_STATUS_ACCESS_DENIED"))
+			g_set_error (&error, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
+			             "Insufficient permissions to join the domain %s",
+			             join->realm);
+		else
+			g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
+			             "Joining the domain %s failed", join->realm);
+	}
+	g_string_free (output, TRUE);
+
 	if (error == NULL)
 		realm_samba_config_change (REALM_SAMBA_CONFIG_GLOBAL, &error,
 		                           "kerberos method", "secrets and keytab",

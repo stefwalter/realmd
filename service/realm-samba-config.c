@@ -106,3 +106,78 @@ realm_samba_config_changev (const gchar *section,
 
 	return ret;
 }
+
+static gchar **
+update_lists_for_changes (const gchar **original,
+                          const gchar **add,
+                          const gchar **remove)
+{
+	GPtrArray *changed;
+	gchar *value;
+	gint i, j;
+
+	changed = g_ptr_array_new ();
+
+	/* Filter the remove logins */
+	for (i = 0; original != NULL && original[i] != NULL; i++) {
+		value = g_strstrip (g_strdup (original[i]));
+		for (j = 0; remove != NULL && remove[j] != NULL; j++) {
+			if (g_ascii_strcasecmp (remove[j], value) == 0)
+				break;
+		}
+		if ((remove == NULL || remove[j] == NULL) && !g_str_equal (value, ""))
+			g_ptr_array_add (changed, value);
+		else
+			g_free (value);
+	}
+
+	/* Add the logins */
+	for (j = 0; add != NULL && add[j] != NULL; j++) {
+		for (i = 0; original != NULL && original[i] != NULL; i++) {
+			if (g_ascii_strcasecmp (add[j], original[i]) == 0)
+				break;
+		}
+		if (original == NULL || original[i] == NULL)
+			g_ptr_array_add (changed, g_strdup (add[j]));
+	}
+
+	g_ptr_array_add (changed, NULL);
+	return (gchar **)g_ptr_array_free (changed, FALSE);
+}
+
+gboolean
+realm_samba_config_change_list (const gchar *section,
+                                const gchar *name,
+                                const gchar *delimiters,
+                                const gchar **add,
+                                const gchar **remove,
+                                GError **error)
+{
+	RealmIniConfig *config;
+	gboolean ret = FALSE;
+	gchar **original;
+	gchar **changed;
+	gchar *delim;
+
+	g_return_val_if_fail (section != NULL, FALSE);
+	g_return_val_if_fail (name != NULL, FALSE);
+	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+	config = realm_samba_config_new_with_flags (REALM_INI_NO_WATCH, error);
+	if (config != NULL) {
+		original = realm_ini_config_get_list (config, section, name, delimiters);
+		changed = update_lists_for_changes ((const gchar **)original, add, remove);
+		g_strfreev (original);
+
+		delim = g_strdup_printf ("%c ", delimiters[0]);
+		realm_ini_config_set_list (config, section, name, delim,
+		                           (const gchar **)changed);
+		g_strfreev (changed);
+		g_free (delim);
+
+		ret = realm_ini_config_write_file (config, NULL, error);
+		g_object_unref (config);
+	}
+
+	return ret;
+}

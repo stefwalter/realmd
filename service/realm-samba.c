@@ -31,6 +31,7 @@
 #include <glib/gstdio.h>
 
 #include <errno.h>
+#include <string.h>
 
 struct _RealmSamba {
 	RealmKerberos parent;
@@ -68,6 +69,36 @@ lookup_enrolled_realm (RealmSamba *self)
 	if (security != NULL && g_ascii_strcasecmp (security, "ADS") == 0)
 		enrolled = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
 	return enrolled;
+}
+
+static gboolean
+lookup_is_enrolled (RealmSamba *self)
+{
+	gchar *enrolled;
+	gboolean ret;
+
+	enrolled = lookup_enrolled_realm (self);
+	ret = g_strcmp0 (self->name, enrolled) == 0;
+	g_free (enrolled);
+
+	return ret;
+}
+
+static gchar *
+lookup_login_prefix (RealmSamba *self)
+{
+	gchar *workgroup;
+	gchar *separator;
+
+	workgroup = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup");
+	if (workgroup == NULL)
+		return NULL;
+
+	separator = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "winbind separator");
+	if (separator == NULL)
+		separator = g_strdup ("\\");
+
+	return g_strdup_printf ("%s%s", workgroup, separator);
 }
 
 typedef struct {
@@ -315,30 +346,108 @@ realm_samba_generic_finish (RealmKerberos *realm,
 	return TRUE;
 }
 
+static gchar **
+prune_login_names (const gchar *prefix,
+                   const gchar **logins,
+                   GError **error)
+{
+	GPtrArray *names;
+	gsize prefix_len;
+	gint i;
+
+	names = g_ptr_array_new_full (0, g_free);
+	prefix_len = strlen (prefix);
+
+	for (i = 0; logins != NULL && logins[i] != NULL; i++) {
+		if (g_ascii_strncasecmp (prefix, logins[i], prefix_len) != 0) {
+			g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+			             "Invalid login argument: %s", logins[i]);
+			g_ptr_array_free (names, TRUE);
+			return NULL;
+		}
+
+		g_ptr_array_add (names, g_strdup (logins[i] + prefix_len));
+	}
+
+	g_ptr_array_add (names, NULL);
+	return (gchar **)g_ptr_array_free (names, FALSE);
+}
+
+static gboolean
+realm_samba_change_logins (RealmKerberos *realm,
+                           GDBusMethodInvocation *invocation,
+                           const gchar **add,
+                           const gchar **remove,
+                           GError **error)
+{
+	RealmSamba *self = REALM_SAMBA (realm);
+	gchar **remove_names = NULL;
+	gchar **add_names = NULL;
+	gboolean ret = FALSE;
+	gchar *prefix;
+
+	if (!lookup_is_enrolled (self)) {
+		g_set_error (error, REALM_ERROR, REALM_ERROR_NOT_ENROLLED,
+		             "Not enrolled in this realm");
+		return FALSE;
+	}
+
+	prefix = lookup_login_prefix (self);
+
+	add_names = prune_login_names (prefix, add, error);
+	if (add_names != NULL)
+		remove_names = prune_login_names (prefix, remove, error);
+
+	if (add_names && remove_names) {
+		ret = realm_samba_config_change_list (REALM_SAMBA_CONFIG_GLOBAL,
+		                                      "realmd permitted logins", ",",
+		                                      (const gchar **)add_names,
+		                                      (const gchar **)remove_names,
+		                                      error);
+		if (ret == TRUE)
+			realm_ini_config_reload (self->config);
+	}
+
+	g_strfreev (remove_names);
+	g_strfreev (add_names);
+
+	return ret;
+}
+
 static void
 update_properties (RealmSamba *self)
 {
-	gchar *separator;
-	gchar *workgroup;
-	gchar *user_format;
-	gchar *enrolled;
+	GPtrArray *permitted;
+	gchar *login_format;
+	gchar **values;
+	gchar *prefix;
+	gint i;
 
-	enrolled = lookup_enrolled_realm (self);
-	g_object_set (self, "enrolled", g_strcmp0 (self->name, enrolled) == 0, NULL);
+	g_object_set (self, "enrolled", lookup_is_enrolled (self), NULL);
 
 	/* Setup the workgroup property */
-	workgroup = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup");
-	if (workgroup != NULL) {
-		separator = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "winbind separator");
-		user_format = g_strdup_printf ("%s%s%%s", workgroup,
-		                               separator ? separator : "\\");
-		g_object_set (self, "user-format", user_format, NULL);
-		g_free (separator);
-		g_free (user_format);
+	prefix = lookup_login_prefix (self);
+	if (prefix != NULL) {
+		login_format = g_strdup_printf ("%s%%s", prefix);
+		g_object_set (self, "login-format", login_format, NULL);
+		g_free (login_format);
 	} else {
-		g_object_set (self, "user-format", "", NULL);
+		g_object_set (self, "login-format", "", NULL);
 	}
-	g_free (workgroup);
+
+	permitted = g_ptr_array_new_full (0, g_free);
+	values = realm_ini_config_get_list (self->config, REALM_SAMBA_CONFIG_GLOBAL,
+	                                    "realmd permitted logins", ",");
+
+	for (i = 0; values != NULL && values[i] != NULL; i++)
+		g_ptr_array_add (permitted, g_strdup_printf ("%s%s", prefix, values[i]));
+	g_ptr_array_add (permitted, NULL);
+
+	g_object_set (self, "permitted-logins", (gchar **)permitted->pdata, NULL);
+	g_ptr_array_free (permitted, TRUE);
+	g_strfreev (values);
+
+	g_free (prefix);
 }
 
 static void
@@ -428,6 +537,7 @@ realm_samba_class_init (RealmSambaClass *klass)
 	kerberos_class->enroll_finish = realm_samba_generic_finish;
 	kerberos_class->unenroll_async = realm_samba_unenroll_async;
 	kerberos_class->unenroll_finish = realm_samba_generic_finish;
+	kerberos_class->change_logins = realm_samba_change_logins;
 
 	object_class->constructed = realm_samba_consructed;
 	object_class->get_property = realm_samba_get_property;

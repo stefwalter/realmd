@@ -37,6 +37,8 @@ RealmIniConfig *    realm_ini_config_new                      (RealmIniFlags fla
 
 void                realm_ini_config_reset                    (RealmIniConfig *self);
 
+void                realm_ini_config_reload                   (RealmIniConfig *self);
+
 void                realm_ini_config_read_string              (RealmIniConfig *self,
                                                                const gchar *data);
 
@@ -62,8 +64,19 @@ gchar *             realm_ini_config_get                      (RealmIniConfig *s
                                                                const gchar *section,
                                                                const gchar *name);
 
+gchar **            realm_ini_config_get_list                 (RealmIniConfig *self,
+                                                               const gchar *section,
+                                                               const gchar *name,
+                                                               const gchar *delimiters);
+
+void                realm_ini_config_set_list                 (RealmIniConfig *self,
+                                                               const gchar *section,
+                                                               const gchar *name,
+                                                               const gchar *delimiter,
+                                                               const gchar **values);
+
 GHashTable *        realm_ini_config_get_all                  (RealmIniConfig *self,
-                                                                 const gchar *section);
+                                                               const gchar *section);
 
 void                realm_ini_config_set_all                  (RealmIniConfig *self,
                                                                const gchar *section,

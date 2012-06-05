@@ -71,14 +71,6 @@
 		<property name="SuggestedAdministrator" type="s" access="read"/>
 
 		<!--
-		 * The format for user logins when this realm is enrolled.
-		 * This property may not be valid unless machine is enrolled
-		 * in this realm. The format contains a %s where the user name
-		 * goes eg: "DOMAIN\%s"
-		--> 
-		<property name="UserFormat" type="s" access="read"/>
-
-		<!--
 		 * Whether the machine is enrolled in this realm or not.
 		-->
 		<property name="Enrolled" type="b" access="read"/>
@@ -125,6 +117,28 @@
 				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="yup"/>
 			</arg>
 			<arg name="options" type="a{sv}" direction="in"/>
+		</method>
+
+		<!--
+		 * The format for user logins when this realm is enrolled.
+		 * This property may not be valid unless machine is enrolled
+		 * in this realm. The format contains a %s where the user name
+		 * goes eg: "DOMAIN\%s"
+		-->
+		<property name="LoginFormat" type="s" access="read"/>
+
+		<!--
+		 * none
+		 * permitted
+		 * any
+		-->
+		<property name="LoginPolicy" type="s" access="readwrite"/>
+
+		<property name="PermittedLogins" type="as" access="read"/>
+
+		<method name="ChangePermittedLogins">
+			<arg name="add" type="as" direction="in"/>
+			<arg name="remove" type="as" direction="in"/>
 		</method>
 
 	</interface>

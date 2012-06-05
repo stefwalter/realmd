@@ -44,4 +44,14 @@
 		</defaults>
 	</action>
 
+	<action id="org.freedesktop.realmd.login-policy">
+		<_description>Change login policy</_description>
+		<_message>Authentication is required to change the policy of who can log in on this computer.</_message>
+		<defaults>
+			<allow_any>no</allow_any>
+			<allow_inactive>auth_admin</allow_inactive>
+			<allow_active>auth_admin_keep</allow_active>
+		</defaults>
+	</action>
+
 </policyconfig>

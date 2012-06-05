@@ -135,19 +135,7 @@ static gboolean
 on_changes_reload_file (gpointer user_data)
 {
 	RealmIniConfig *self = REALM_INI_CONFIG (user_data);
-	GError *error = NULL;
-
-	g_return_val_if_fail (self->filename != NULL, FALSE);
-
-	self->reload_scheduled = 0;
-
-	realm_ini_config_read_file (self, self->filename, &error);
-	if (error != NULL) {
-		g_warning ("Couldn't reload config file: %s: %s",
-		           self->filename, error->message);
-		g_clear_error (&error);
-	}
-
+	realm_ini_config_reload (self);
 	return FALSE; /* don't call this timeout again */
 }
 
@@ -817,6 +805,52 @@ realm_ini_config_set_all (RealmIniConfig *self,
 	g_signal_emit (self, signals[CHANGED], 0);
 }
 
+gchar **
+realm_ini_config_get_list (RealmIniConfig *self,
+                           const gchar *section,
+                           const gchar *name,
+                           const gchar *delimiters)
+{
+	gchar **values;
+	gchar *value;
+	gint i;
+
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), NULL);
+	g_return_val_if_fail (section != NULL, NULL);
+	g_return_val_if_fail (name != NULL, NULL);
+	g_return_val_if_fail (delimiters != NULL, NULL);
+
+	value = realm_ini_config_get (self, section, name);
+	if (value == NULL)
+		return NULL;
+
+	values = g_strsplit_set (value, delimiters, -1);
+	for (i = 0; values[i] != NULL; i++)
+		values[i] = g_strstrip (values[i]);
+	g_free (value);
+
+	return values;
+}
+
+void
+realm_ini_config_set_list (RealmIniConfig *self,
+                           const gchar *section,
+                           const gchar *name,
+                           const gchar *delimiter,
+                           const gchar **values)
+{
+	gchar *value;
+
+	g_return_if_fail (REALM_IS_INI_CONFIG (self));
+	g_return_if_fail (section != NULL);
+	g_return_if_fail (name != NULL);
+	g_return_if_fail (delimiter != NULL);
+
+	value = g_strjoinv (delimiter, (gchar **)values);
+	realm_ini_config_set (self, section, name, value);
+	g_free (value);
+}
+
 void
 realm_ini_config_reset (RealmIniConfig *self)
 {
@@ -824,6 +858,23 @@ realm_ini_config_reset (RealmIniConfig *self)
 
 	reset_config_data (self);
 	g_signal_emit (self, signals[CHANGED], 0);
+}
+
+void
+realm_ini_config_reload (RealmIniConfig *self)
+{
+	GError *error = NULL;
+
+	g_return_if_fail (self->filename != NULL);
+
+	self->reload_scheduled = 0;
+
+	realm_ini_config_read_file (self, self->filename, &error);
+	if (error != NULL) {
+		g_warning ("Couldn't reload config file: %s: %s",
+		           self->filename, error->message);
+		g_clear_error (&error);
+	}
 }
 
 RealmIniConfig *

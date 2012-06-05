@@ -205,7 +205,8 @@ on_enroll_complete (GObject *source,
 		realm_diagnostics_info (closure->invocation, "Successfully enrolled machine in realm");
 		g_dbus_method_invocation_return_value (closure->invocation, g_variant_new ("()"));
 
-	} else if (error && error->domain == REALM_ERROR) {
+	} else if (error != NULL &&
+	           (error->domain == REALM_ERROR || error->domain == G_DBUS_ERROR)) {
 		realm_diagnostics_error (closure->invocation, error, NULL);
 		g_dbus_method_invocation_return_gerror (closure->invocation, error);
 		g_error_free (error);
@@ -313,7 +314,8 @@ on_unenroll_complete (GObject *source,
 		realm_diagnostics_info (closure->invocation, "Successfully unenrolled machine from realm");
 		g_dbus_method_invocation_return_value (closure->invocation, g_variant_new ("()"));
 
-	} else if (error && error->domain == REALM_ERROR) {
+	} else if (error != NULL &&
+	           (error->domain == REALM_ERROR || error->domain == G_DBUS_ERROR)) {
 		realm_diagnostics_error (closure->invocation, error, NULL);
 		g_dbus_method_invocation_return_gerror (closure->invocation, error);
 		g_error_free (error);
@@ -406,6 +408,52 @@ handle_unenroll_with_password (RealmDbusKerberos *realm,
 }
 
 static gboolean
+handle_change_permitted_logins (RealmDbusKerberos *realm,
+                                GDBusMethodInvocation *invocation,
+                                const gchar *const *add,
+                                const gchar *const *remove)
+{
+	RealmKerberos *self = REALM_KERBEROS (realm);
+	RealmKerberosClass *klass;
+	GError *error = NULL;
+	gboolean ret;
+
+	if (!realm_daemon_lock_for_action (invocation)) {
+		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
+		                                       "Already running another action");
+		return TRUE;
+	}
+
+	klass = REALM_KERBEROS_GET_CLASS (self);
+	g_return_val_if_fail (klass->change_logins != NULL, FALSE);
+
+	ret = (klass->change_logins) (self, invocation,
+	                              (const gchar **)add,
+	                              (const gchar **)remove,
+	                              &error);
+
+	if (ret) {
+		realm_dbus_kerberos_complete_change_permitted_logins (realm,
+		                                                      invocation);
+
+	} else if (error != NULL &&
+	           (error->domain == REALM_ERROR || error->domain == G_DBUS_ERROR)) {
+		realm_diagnostics_error (invocation, error, NULL);
+		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free (error);
+
+	} else {
+		realm_diagnostics_error (invocation, error, "Failed to change permitted logins");
+		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_INTERNAL,
+		                                       "Failed to change permitted logins. See diagnostics.");
+		g_error_free (error);
+	}
+
+	realm_daemon_unlock_for_action (invocation);
+	return TRUE;
+}
+
+static gboolean
 realm_kerberos_authorize_method (GDBusInterfaceSkeleton *skeleton,
                                  GDBusMethodInvocation  *invocation)
 {
@@ -419,9 +467,14 @@ realm_kerberos_authorize_method (GDBusInterfaceSkeleton *skeleton,
 		if (g_str_equal (method, "EnrollWithCredentialCache") ||
 		    g_str_equal (method, "EnrollWithPassword")) {
 			action_id = "org.freedesktop.realmd.enroll-machine";
+
 		} else if (g_str_equal (method, "UnenrollWithCredentialCache") ||
 		           g_str_equal (method, "UnenrollWithPassword")) {
 			action_id = "org.freedesktop.realmd.unenroll-machine";
+
+		} else if (g_str_equal (method, "ChangePermittedLogins")) {
+		        action_id = "org.freedesktop.realmd.login-policy";
+
 		} else {
 			g_warning ("encountered unknown method during auth checks: %s.%s",
 			           interface, method);
@@ -526,6 +579,7 @@ realm_kerberos_iface_init (RealmDbusKerberosIface *iface)
 	iface->handle_unenroll_with_password = handle_unenroll_with_password;
 	iface->handle_enroll_with_credential_cache = handle_enroll_with_credential_cache;
 	iface->handle_unenroll_with_credential_cache = handle_unenroll_with_credential_cache;
+	iface->handle_change_permitted_logins = handle_change_permitted_logins;
 }
 
 void

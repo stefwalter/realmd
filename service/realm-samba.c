@@ -353,6 +353,7 @@ prune_login_names (const gchar *prefix,
 {
 	GPtrArray *names;
 	gsize prefix_len;
+	gchar *login;
 	gint i;
 
 	names = g_ptr_array_new_full (0, g_free);
@@ -366,7 +367,8 @@ prune_login_names (const gchar *prefix,
 			return NULL;
 		}
 
-		g_ptr_array_add (names, g_strdup (logins[i] + prefix_len));
+		login = g_utf8_strdown (logins[i] + prefix_len, -1);
+		g_ptr_array_add (names, login);
 	}
 
 	g_ptr_array_add (names, NULL);

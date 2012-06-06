@@ -8,7 +8,7 @@ ORIGDIR=`pwd`
 cd $srcdir
 PROJECT=realmd
 TEST_TYPE=-f
-FILE=service/realm-service.c
+FILE=service/realm-daemon.c
 
 DIE=0
 

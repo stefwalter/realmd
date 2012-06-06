@@ -128,14 +128,14 @@
 		<property name="LoginFormat" type="s" access="read"/>
 
 		<!--
-		 * none
-		 * permitted
-		 * any
+		 * The list of permitted logins in the LoginFormat style
 		-->
-		<property name="LoginPolicy" type="s" access="readwrite"/>
-
 		<property name="PermittedLogins" type="as" access="read"/>
 
+		<!--
+		 * Change the PermittedLogins property. Should take effect
+		 * immediately. Some providers may not enforce this :S
+		-->
 		<method name="ChangePermittedLogins">
 			<arg name="add" type="as" direction="in"/>
 			<arg name="remove" type="as" direction="in"/>

@@ -538,6 +538,18 @@ realm_command_runv_async (gchar **argv,
 	/* source is unreffed in complete_if_source_is_done() */
 }
 
+static gboolean
+is_only_whitespace (const gchar *string)
+{
+	while (*string != '\0') {
+		if (!g_ascii_isspace (*string))
+			return FALSE;
+		string++;
+	}
+
+	return TRUE;
+}
+
 void
 realm_command_run_known_async (const gchar *known_command,
                                gchar **environ,
@@ -550,6 +562,13 @@ realm_command_run_known_async (const gchar *known_command,
 	GError *error = NULL;
 	gchar **argv;
 	gint unused;
+
+	const gchar *empty_argv[] = {
+		"/bin/true",
+		"empty-configured-command",
+		known_command,
+		NULL,
+	};
 
 	const gchar *invalid_argv[] = {
 		"/bin/false",
@@ -566,6 +585,9 @@ realm_command_run_known_async (const gchar *known_command,
 	if (command_line == NULL) {
 		g_warning ("Couldn't find the configured string commands/%s", known_command);
 		argv = g_strdupv ((gchar **)invalid_argv);
+
+	} else if (is_only_whitespace (command_line)) {
+		argv = g_strdupv ((gchar **)empty_argv);
 
 	} else if (!g_shell_parse_argv (command_line, &unused, &argv, &error)) {
 		g_warning ("Couldn't parse the command line: %s: %s", command_line, error->message);

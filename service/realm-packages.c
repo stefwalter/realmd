@@ -225,7 +225,8 @@ on_install_refresh (GObject *source,
 
 static void
 lookup_required_files_and_packages (gchar ***packages,
-                                    gchar ***files)
+                                    gchar ***files,
+                                    gboolean *unconditional)
 {
 	GHashTable *settings;
 	GHashTableIter iter;
@@ -233,6 +234,8 @@ lookup_required_files_and_packages (gchar ***packages,
 	gchar *file;
 	gchar **f, **p;
 	gsize length;
+
+	*unconditional = FALSE;
 
 	settings = realm_settings_section ("active-directory-packages");
 	length = settings ? g_hash_table_size (settings) : 0;
@@ -243,10 +246,12 @@ lookup_required_files_and_packages (gchar ***packages,
 	g_hash_table_iter_init (&iter, settings);
 	while (g_hash_table_iter_next (&iter, (gpointer *)&package, (gpointer *)&file)) {
 		file = g_strstrip (g_strdup (file));
-		if (g_str_equal (file, ""))
+		if (g_str_equal (file, "")) {
 			g_free (file);
-		else
+			*unconditional = TRUE;
+		} else {
 			*(f++) = file;
+		}
 		package = g_strstrip (g_strdup (package));
 		if (g_str_equal (package, ""))
 			g_free (package);
@@ -266,6 +271,7 @@ realm_packages_install_async (const gchar *package_set,
 {
 	GSimpleAsyncResult *res;
 	InstallClosure *install;
+	gboolean unconditional;
 	gchar **required_files;
 	gchar **packages;
 	gchar *string;
@@ -274,7 +280,7 @@ realm_packages_install_async (const gchar *package_set,
 	g_return_if_fail (package_set != NULL);
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
-	lookup_required_files_and_packages (&packages, &required_files);
+	lookup_required_files_and_packages (&packages, &required_files, &unconditional);
 
 	res = g_simple_async_result_new (NULL, callback, user_data, realm_packages_install_async);
 	install = g_slice_new (InstallClosure);
@@ -284,12 +290,17 @@ realm_packages_install_async (const gchar *package_set,
 	install->invocation = invocation ? g_object_ref (invocation) : NULL;
 	g_simple_async_result_set_op_res_gpointer (res, install, install_closure_free);
 
-	have = realm_packages_check_paths ((const gchar **)required_files, invocation);
+	if (unconditional) {
+		have = FALSE;
+		realm_diagnostics_info (invocation, "Unconditionally checking packages");
 
-	string = g_strjoinv (", ", required_files);
-	realm_diagnostics_info (invocation, "Required files %s: %s",
-	                        have ? "present" : "not present, installing", string);
-	g_free (string);
+	} else {
+		have = realm_packages_check_paths ((const gchar **)required_files, invocation);
+		string = g_strjoinv (", ", required_files);
+		realm_diagnostics_info (invocation, "Required files %s: %s",
+		                        have ? "present" : "not present, installing", string);
+		g_free (string);
+	}
 
 	g_strfreev (required_files);
 

@@ -21,7 +21,7 @@
 #include "realm-samba-config.h"
 #include "realm-samba-winbind.h"
 #include "realm-settings.h"
-#include "realm-system.h"
+#include "realm-service.h"
 
 #include <glib/gstdio.h>
 
@@ -56,7 +56,7 @@ on_enable_do_nss (GObject *source,
 	GDBusMethodInvocation *invocation = g_simple_async_result_get_op_res_gpointer (res);
 	GError *error = NULL;
 
-	realm_system_enable_service_finish (result, &error);
+	realm_service_enable_and_restart_finish (result, &error);
 	if (error == NULL) {
 		realm_command_run_known_async ("winbind-enable-logins", NULL, invocation,
 		                               NULL, on_nss_complete, g_object_ref (res));
@@ -100,8 +100,8 @@ realm_samba_winbind_configure_async (GDBusMethodInvocation *invocation,
 
 	if (error == NULL) {
 		service = realm_settings_string ("services", "winbind");
-		realm_system_enable_and_restart_service (service, invocation,
-		                                         on_enable_do_nss, g_object_ref (res));
+		realm_service_enable_and_restart (service, invocation,
+		                                  on_enable_do_nss, g_object_ref (res));
 	} else {
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete_in_idle (res);
@@ -129,7 +129,7 @@ on_disable_complete (GObject *source,
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
 
-	realm_system_disable_service_finish (result, &error);
+	realm_service_disable_and_stop_finish (result, &error);
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 	g_simple_async_result_complete (res);
@@ -145,7 +145,6 @@ on_nss_do_disable (GObject *source,
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GDBusMethodInvocation *invocation = g_simple_async_result_get_op_res_gpointer (res);
 	GError *error = NULL;
-	const gchar *service;
 	gint status;
 
 	status = realm_command_run_finish (result, NULL, &error);
@@ -153,9 +152,8 @@ on_nss_do_disable (GObject *source,
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Disabling winbind in /etc/nsswitch.conf failed");
 	if (error == NULL) {
-		service = realm_settings_string ("services", "winbind");
-		realm_system_disable_and_stop_service (service, invocation,
-		                                       on_disable_complete, g_object_ref (res));
+		realm_service_disable_and_stop ("winbind", invocation,
+		                                on_disable_complete, g_object_ref (res));
 	} else {
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete (res);

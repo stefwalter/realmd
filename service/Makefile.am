@@ -40,8 +40,10 @@ realmd_SOURCES = \
 	realm-samba-enroll.c realm-samba-enroll.h \
 	realm-samba-provider.c realm-samba-provider.h \
 	realm-samba-winbind.c realm-samba-winbind.h \
+	realm-service.c realm-service.h \
+	realm-service-systemd.c realm-service-systemd.h \
+	realm-service-upstart.c realm-service-upstart.h \
 	realm-settings.c realm-settings.h \
-	realm-system.c realm-system.h \
 	$(NULL)
 
 realmd_CFLAGS = \

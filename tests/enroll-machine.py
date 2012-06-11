@@ -16,7 +16,8 @@ def do_with_credential_cache (realm, realm_name, principal, enroll):
 		os.unlink(ccache)
 	os.environ["KRB5CCNAME"] = "FILE:%s" % ccache
 
-	ret = os.system("kinit %s" % user)
+	print "kinit %s" % principal
+	ret = os.system("kinit %s" % principal)
 	if ret != 0:
 		sys.exit(1)
 

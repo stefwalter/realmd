@@ -46,10 +46,6 @@ on_progress_callback (PkProgress *progress,
 		g_object_get (progress, "percentage", &number, NULL);
 		g_printerr ("progress: percentage: %d\n", number);
 		break;
-	case PK_PROGRESS_TYPE_SUBPERCENTAGE:
-		g_object_get (progress, "subpercentage", &number, NULL);
-		g_printerr ("progress: subpercentage: %d\n", number);
-		break;
 	case PK_PROGRESS_TYPE_ALLOW_CANCEL:
 		g_object_get (progress, "allow-cancel", &boolean, NULL);
 		g_printerr ("progress: allow-cancel: %s\n", boolean ? "TRUE" : "FALSE");

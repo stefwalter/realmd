@@ -25,13 +25,11 @@ AC_ARG_WITH([distro],
 
 if test -z $DISTRO; then
 	AC_CHECK_FILE(/etc/redhat-release, [DISTRO="redhat"])
-
+	AC_CHECK_FILE(/etc/debian_version, [DISTRO="debian"])
 	# Not customized for these yet
 	dnl AC_CHECK_FILE(/etc/gentoo-release, [DISTRO="gentoo"])
 	dnl AC_CHECK_FILE(/etc/slackware-version, [DISTRO="slackware"])
-	dnl AC_CHECK_FILE(/etc/debian_version, [DISTRO="debian"])
 	dnl AC_CHECK_FILE(/etc/SuSE-release, [DISTRO="suse"])
-
 fi
 
 if test -z $DISTRO; then

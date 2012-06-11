@@ -18,6 +18,8 @@
 
 #include <packagekit-glib2/packagekit.h>
 
+static GMainLoop *loop;
+
 static void
 on_progress_callback (PkProgress *progress,
                       PkProgressType type,
@@ -98,8 +100,19 @@ on_progress_callback (PkProgress *progress,
 }
 
 static void
+on_ready_get_result (GObject *source,
+                     GAsyncResult *result,
+                     gpointer user_data)
+{
+	GAsyncResult **place = (GAsyncResult **)user_data;
+	*place = g_object_ref (result);
+	g_main_loop_quit (loop);
+}
+
+static void
 test_resolve (void)
 {
+	GAsyncResult *result = NULL;
 	PkTask *task;
 	GError *error = NULL;
 	gchar *packages[] = { "sssd", "samba-client", "samba-common", "freeipa-client" };
@@ -116,11 +129,15 @@ test_resolve (void)
 
 	filter = pk_filter_bitfield_from_string ("arch");
 
-	results = pk_task_refresh_cache_sync (task, FALSE, NULL,
-	                                      on_progress_callback, NULL, &error);
+	pk_task_refresh_cache_async (task, FALSE, NULL,
+	                             on_progress_callback, NULL,
+	                             on_ready_get_result, &result);
+	g_main_loop_run (loop);
+	results = pk_task_generic_finish (task, result, &error);
+	g_object_unref (result);
 
 	if (error != NULL) {
-		g_printerr ("%s\n", error->message);;
+		g_printerr ("%s\n", error->message);
 		exit (1);
 	}
 
@@ -128,8 +145,12 @@ test_resolve (void)
 
 	g_printerr ("REFRESHED\n");
 
-	results = pk_task_resolve_sync (task, filter, packages, NULL,
-	                                on_progress_callback, NULL, &error);
+	pk_task_resolve_async (task, filter, packages, NULL,
+	                       on_progress_callback, NULL,
+	                       on_ready_get_result, &result);
+	g_main_loop_run (loop);
+	results = pk_task_generic_finish (task, result, &error);
+	g_object_unref (result);
 
 	if (error != NULL) {
 		g_printerr ("%s\n", error->message);;
@@ -154,9 +175,13 @@ test_resolve (void)
 
 	if (ids->len > 0) {
 		g_ptr_array_add (ids, NULL);
-		results = pk_task_install_packages_sync (task, (gchar **)ids->pdata,
-		                                         NULL, on_progress_callback, NULL, &error);
+		pk_task_install_packages_async (task, (gchar **)ids->pdata,
+		                                NULL, on_progress_callback, NULL,
+		                                on_ready_get_result, &result);
 		g_ptr_array_free (ids, TRUE);
+		g_main_loop_run (loop);
+		results = pk_task_generic_finish (task, result, &error);
+		g_object_unref (result);
 
 		if (error != NULL) {
 			g_printerr ("%s\n", error->message);;
@@ -176,7 +201,9 @@ main(int argc,
 {
 	g_type_init ();
 
+	loop = g_main_loop_new (NULL, FALSE);
 	test_resolve ();
+	g_main_loop_unref (loop);
 
 	return 0;
 }

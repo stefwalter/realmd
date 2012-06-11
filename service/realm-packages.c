@@ -78,10 +78,6 @@ on_install_progress (PkProgress *progress,
 		g_object_get (progress, "percentage", &number, NULL);
 		realm_debug ("percentage: %d", number);
 		break;
-	case PK_PROGRESS_TYPE_SUBPERCENTAGE:
-		g_object_get (progress, "subpercentage", &number, NULL);
-		realm_debug ("subpercentage: %d", number);
-		break;
 	case PK_PROGRESS_TYPE_STATUS:
 		g_object_get (progress, "status", &unumber, NULL);
 		realm_debug ("status: %s", pk_status_enum_to_string (unumber));

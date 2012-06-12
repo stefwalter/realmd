@@ -159,17 +159,20 @@ realm_service_new_finish (GAsyncResult *result,
                           GError **error)
 {
 	GSimpleAsyncResult *async;
-	RealmService *service;
+	RealmService *service = NULL;
+	InitClosure *init;
 
 	if (g_simple_async_result_is_valid (result, NULL, realm_service_new)) {
 		async = G_SIMPLE_ASYNC_RESULT (result);
 		if (g_simple_async_result_propagate_error (async, error))
 			return NULL;
-		service = g_simple_async_result_get_op_res_gpointer (async);
-		if (service != NULL)
-			g_object_ref (service);
+		init = g_simple_async_result_get_op_res_gpointer (async);
+		if (init->service == NULL)
+			return NULL;
+		else
+			return g_object_ref (init->service);
 	} else {
-		service = discovered_service_new_finish (result, error);
+		return discovered_service_new_finish (result, error);
 	}
 
 	return service;

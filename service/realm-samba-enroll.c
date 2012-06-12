@@ -109,8 +109,9 @@ prepare_admin_cache (JoinClosure *join,
 	}
 
 	join->kerberos_cache_filename = filename;
-	join->environ = g_environ_setenv (g_get_environ (), "KRB5CCNAME",
-	                                  join->kerberos_cache_filename, TRUE);
+	join->environ = g_environ_setenv (join->environ,
+	                                  "KRB5CCNAME", join->kerberos_cache_filename,
+	                                  TRUE);
 
 	return TRUE;
 }
@@ -126,6 +127,10 @@ join_closure_init (const gchar *realm,
 	join = g_slice_new0 (JoinClosure);
 	join->realm = g_strdup (realm);
 	join->invocation = invocation ? g_object_ref (invocation) : NULL;
+
+	join->environ = g_environ_setenv (g_get_environ (),
+	                                  "LC_ALL", "C",
+	                                  TRUE);
 
 	if (!prepare_admin_cache (join, admin_kerberos_cache, error)) {
 		join_closure_free (join);
@@ -261,13 +266,31 @@ on_join_do_keytab (GObject *source,
 
 	status = realm_command_run_finish (result, &output, &error);
 	if (error == NULL && status != 0) {
-		if (strstr (output->str, "NT_STATUS_ACCESS_DENIED"))
+
+		/*
+		 * This is bad and ugly. We run the process with LC_ALL=C so
+		 * at least we know these messages will be in english.
+		 *
+		 * At first I thought this was a deficiency in samba's 'net'
+		 * command. It's true that 'net' could be better at returning
+		 * different error codes for different types of failures.
+		 *
+		 * But in the end this is a deficiency in Windows. When you use
+		 * LDAP to do enrollment, and the permissions aren't correct
+		 * it often returns stupid errors such as 'Constraint violation'
+		 * or 'Object class invalid' instead of 'Insufficient access'.
+		 */
+		if (g_pattern_match_simple ("*NT_STATUS_ACCESS_DENIED*", output->str) ||
+		    g_pattern_match_simple ("*failed*: Constraint violation*", output->str) ||
+		    g_pattern_match_simple ("*failed*: Object class violation*", output->str) ||
+		    g_pattern_match_simple ("*failed*: Insufficient access*", output->str)) {
 			g_set_error (&error, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
 			             "Insufficient permissions to join the domain %s",
 			             join->realm);
-		else
+		} else {
 			g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 			             "Joining the domain %s failed", join->realm);
+		}
 	}
 	g_string_free (output, TRUE);
 

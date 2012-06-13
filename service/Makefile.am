@@ -48,6 +48,7 @@ realmd_SOURCES = \
 
 realmd_CFLAGS = \
 	-I$(top_srcdir)/dbus \
+	-I$(top_builddir)/dbus \
 	-DSERVICE_DIR="\"$(servicedir)\"" \
 	-DSYSCONF_DIR="\"$(sysconfdir)\"" \
 	-DPROVIDER_DIR="\"$(providerdir)\"" \
@@ -88,4 +89,5 @@ CLEANFILES = \
 	$(NULL)
 
 DISTCLEANFILES = \
+	$(BUILT_SOURCES) \
 	$(NULL)

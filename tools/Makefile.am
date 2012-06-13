@@ -9,6 +9,7 @@ realm_enroll_SOURCES = \
 
 realm_enroll_CFLAGS = \
 	-I$(top_srcdir)/dbus \
+	-I$(top_builddir)/dbus \
 	$(GLIB_CFLAGS) \
 	$(KRB5_CFLAGS) \
 	$(NULL)

@@ -12,6 +12,9 @@ BUILT_SOURCES = \
 
 librealm_dbus_a_SOURCES = \
 	realm-dbus-constants.h \
+	$(NULL)
+
+nodist_librealm_dbus_a_SOURCES = \
 	$(BUILT_SOURCES) \
 	$(NULL)
 
@@ -35,6 +38,7 @@ EXTRA_DIST = \
 	$(NULL)
 
 CLEANFILES = \
+	$(BUILT_SOURCES) \
 	*.gcno \
 	*.gcda \
 	$(NULL)

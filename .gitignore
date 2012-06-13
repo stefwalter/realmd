@@ -31,6 +31,8 @@ stamp-h1
 stamp-it
 temp.txt
 
+/realmd-*.*
+
 /build/coverage.info
 /build/coverage
 

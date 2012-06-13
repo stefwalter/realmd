@@ -776,7 +776,6 @@ realm_ini_config_get_all (RealmIniConfig *self,
 
 	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), NULL);
 	g_return_val_if_fail (section != NULL, NULL);
-	g_return_val_if_fail (name != NULL, NULL);
 
 	sect = g_hash_table_lookup (self->sections, section);
 	if (sect == NULL)

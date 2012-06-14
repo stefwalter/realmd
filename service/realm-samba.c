@@ -56,7 +56,32 @@ G_DEFINE_TYPE (RealmSamba, realm_samba, REALM_TYPE_KERBEROS);
 static void
 realm_samba_init (RealmSamba *self)
 {
-	g_object_set (self, "suggested-administrator", "Administrator", NULL);
+	GPtrArray *entries;
+	GVariant *entry;
+	GVariant *details;
+
+	entries = g_ptr_array_new ();
+
+	entry = g_variant_new_dict_entry (g_variant_new_string ("server-software"),
+	                                  g_variant_new_string ("active-directory"));
+	g_ptr_array_add (entries, entry);
+
+	entry = g_variant_new_dict_entry (g_variant_new_string ("client-software"),
+	                                  g_variant_new_string ("samba-winbind"));
+	g_ptr_array_add (entries, entry);
+
+	details = g_variant_new_array (G_VARIANT_TYPE ("{ss}"),
+	                               (GVariant * const *)entries->pdata,
+	                               entries->len);
+	g_variant_ref_sink (details);
+
+	g_object_set (self,
+	              "details", details,
+	              "suggested-administrator", "Administrator",
+	              NULL);
+
+	g_variant_unref (details);
+	g_ptr_array_free (entries, TRUE);
 }
 
 static gchar *

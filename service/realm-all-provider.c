@@ -436,6 +436,9 @@ realm_all_provider_init_async (GAsyncInitable *initable,
 			                          REALM_DBUS_PROVIDER_INTERFACE,
 			                          cancellable, on_provider_proxy,
 			                          g_object_ref (res));
+
+			realm_debug ("Initializing provider: %s", provider_name);
+
 			g_free (provider_name);
 			g_free (provider_path);
 			init->outstanding++;
@@ -444,8 +447,10 @@ realm_all_provider_init_async (GAsyncInitable *initable,
 		g_free (filename);
 	}
 
-	if (init->outstanding == 0)
+	if (init->outstanding == 0) {
+		realm_debug ("No realm providers found");
 		g_simple_async_result_complete_in_idle (res);
+	}
 
 	g_object_unref (res);
 }

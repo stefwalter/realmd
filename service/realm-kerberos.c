@@ -460,7 +460,7 @@ realm_kerberos_authorize_method (GDBusInterfaceSkeleton *skeleton,
 	const gchar *interface = g_dbus_method_invocation_get_interface_name (invocation);
 	const gchar *method = g_dbus_method_invocation_get_method_name (invocation);
 	const gchar *action_id = NULL;
-	gboolean ret;
+	gboolean ret = FALSE;
 
 	/* Each method has its own polkit authorization */
 	if (g_str_equal (interface, REALM_DBUS_KERBEROS_REALM_INTERFACE)) {

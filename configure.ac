@@ -154,6 +154,21 @@ if test "$GCC" = "yes"; then
 			CFLAGS="$SAVE_CFLAGS"
 		fi
 	done
+
+	# Only add this when optimizing is enabled (default)
+	AC_MSG_CHECKING([whether optimization is enabled])
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#if __OPTIMIZE__ == 0
+	                                     #error No optimization
+	                                     #endif
+	                                   ]], [[]])],
+	                  [has_optimization=yes],
+	                  [has_optimization=no])
+	if test $has_optimization = yes; then
+		CFLAGS="$CFLAGS -Wp,-D_FORTIFY_SOURCE=2"
+		AC_MSG_RESULT([yes, fortifying source])
+	else
+		AC_MSG_RESULT([no, not fortifying source])
+	fi
 fi
 
 AC_ARG_ENABLE(strict, [

@@ -62,6 +62,9 @@ provider_load (const gchar *filename,
 	g_assert (name != NULL);
 	g_assert (path != NULL);
 
+	*name = NULL;
+	*path = NULL;
+
 	key_file = g_key_file_new ();
 	g_key_file_load_from_file (key_file, filename, G_KEY_FILE_NONE, &error);
 	if (error == NULL)

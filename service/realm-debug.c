@@ -70,6 +70,7 @@ on_realm_log_debug (const gchar *log_domain,
 {
 	GString *gstring;
 	const gchar *progname;
+	int ret;
 
 	gstring = g_string_new (NULL);
 
@@ -79,7 +80,12 @@ on_realm_log_debug (const gchar *log_domain,
 	                        log_domain ? log_domain : "", log_domain ? "-" : "",
 	                        message ? message : "(NULL) message");
 
-	write (1, gstring->str, gstring->len);
+	ret = write (1, gstring->str, gstring->len);
+
+	/* Yes this is dumb, but gets around compiler warning */
+	if (ret < 0)
+		g_warning ("couldn't write debug output");
+
 	g_string_free (gstring, TRUE);
 }
 

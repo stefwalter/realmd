@@ -264,6 +264,8 @@ realm_ad_discover_finish (GAsyncResult *result,
 	if (!discover->found_kerberos_srv || !discover->found_msdcs_soa)
 		return NULL;
 
+	realm = g_ascii_strup (discover->domain, -1);
+
 	if (discovery) {
 		*discovery = realm_discovery_new ();
 
@@ -272,7 +274,6 @@ realm_ad_discover_finish (GAsyncResult *result,
 		                            discover->domain);
 
 		/* The realm */
-		realm = g_ascii_strup (discover->domain, -1);
 		realm_discovery_add_string (*discovery, REALM_DBUS_DISCOVERY_REALM, realm);
 
 		/* The servers */

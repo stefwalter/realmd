@@ -53,3 +53,4 @@ temp.txt
 /tests/test-samba-config
 
 /tools/realm-enroll
+/tools/realm-discover

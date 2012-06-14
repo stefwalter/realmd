@@ -27,6 +27,9 @@
 #include <errno.h>
 #include <fcntl.h>
 
+/* Only one operation at a time per process, so fine to do this */
+static const gchar *operation_id = "realm-enroll";
+
 static void
 handle_error (GError *error,
               const gchar *format,
@@ -142,8 +145,8 @@ discover_realm_for_string (const gchar *string)
 	}
 
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);
-	realm_dbus_provider_call_discover_sync (provider, string, &relevance,
-	                                        &realms, NULL, &error);
+	realm_dbus_provider_call_discover_sync (provider, string, operation_id,
+	                                        &relevance, &realms, NULL, &error);
 
 	g_object_unref (provider);
 
@@ -272,8 +275,10 @@ on_diagnostics_signal (GDBusConnection *connection,
                        GVariant *parameters,
                        gpointer user_data)
 {
+	const gchar *operation_id;
 	const gchar *data;
-	g_variant_get (parameters, "(&s)", &data);
+
+	g_variant_get (parameters, "(&s&s)", &data, &operation_id);
 	g_printerr ("%s", data);
 }
 
@@ -356,12 +361,12 @@ realm_join_or_leave (const gchar *string,
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (realm), G_MAXINT);
 	if (join)
 		realm_dbus_kerberos_call_enroll_with_credential_cache (realm, kerberos_cache, options,
-		                                                       NULL, on_complete_get_result,
-		                                                       &sync);
+		                                                       operation_id, NULL,
+		                                                       on_complete_get_result, &sync);
 	else
 		realm_dbus_kerberos_call_unenroll_with_credential_cache (realm, kerberos_cache, options,
-		                                                         NULL, on_complete_get_result,
-		                                                         &sync);
+		                                                         operation_id, NULL,
+		                                                         on_complete_get_result, &sync);
 
 	g_variant_unref (options);
 	g_variant_unref (kerberos_cache);

@@ -285,5 +285,6 @@ realm_ad_discover_finish (GAsyncResult *result,
 		                            "kerberos-ad");
 	}
 
+	realm_diagnostics_info (discover->invocation, "Successfully discovered realm: %s", realm);
 	return realm;
 }

@@ -19,7 +19,7 @@ def change_permitted(string, add_or_remove, logins):
 	provider = dbus.Interface(proxy, 'org.freedesktop.realmd.Provider')
 
 	# Discover the realm
-	(relevance, realms) = provider.Discover(string, timeout=300)
+	(relevance, realms) = provider.Discover(string, "unused-operation-id", timeout=300)
 	if not realms:
 		print >> sys.stderr, "change-permitted.py: nothing discovered"
 		sys.exit(1)
@@ -38,7 +38,7 @@ def change_permitted(string, add_or_remove, logins):
 
 	print "Previous: " + " ".join(props.Get(interface_name, 'PermittedLogins'))
 
-	realm.ChangePermittedLogins(add, remove)
+	realm.ChangePermittedLogins(add, remove, "unused-operation-id")
 
 	print "Changed: " + " ".join(props.Get(interface_name, 'PermittedLogins'))
 

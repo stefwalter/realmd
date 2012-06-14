@@ -226,13 +226,17 @@ static gboolean
 handle_enroll_with_credential_cache (RealmDbusKerberos *realm,
                                      GDBusMethodInvocation *invocation,
                                      GVariant *admin_cache,
-                                     GVariant *options)
+                                     GVariant *options,
+                                     const gchar *operation_id)
 {
 	RealmKerberos *self = REALM_KERBEROS (realm);
 	GBytes *admin_kerberos_cache;
 	RealmKerberosClass *klass;
 	const guchar *data;
 	gsize length;
+
+	/* Make note of the current operation id, for diagnostics */
+	realm_diagnostics_mark_operation (invocation, operation_id);
 
 	data = g_variant_get_fixed_array (admin_cache, &length, 1);
 	if (length == 0) {
@@ -267,11 +271,15 @@ handle_enroll_with_password (RealmDbusKerberos *realm,
                              GDBusMethodInvocation *invocation,
                              const gchar *principal,
                              const gchar *password,
-                             GVariant *options)
+                             GVariant *options,
+                             const gchar *operation_id)
 {
 	RealmKerberos *self = REALM_KERBEROS (realm);
 	GBytes *admin_kerberos_cache;
 	RealmKerberosClass *klass;
+
+	/* Make note of the current operation id, for diagnostics */
+	realm_diagnostics_mark_operation (invocation, operation_id);
 
 	admin_kerberos_cache = kinit_to_kerberos_cache (invocation, principal, password);
 	if (admin_kerberos_cache == NULL) {
@@ -335,13 +343,17 @@ static gboolean
 handle_unenroll_with_credential_cache (RealmDbusKerberos *realm,
                                        GDBusMethodInvocation *invocation,
                                        GVariant *admin_cache,
-                                       GVariant *options)
+                                       GVariant *options,
+                                       const gchar *operation_id)
 {
 	RealmKerberos *self = REALM_KERBEROS (realm);
 	RealmKerberosClass *klass;
 	GBytes *admin_kerberos_cache;
 	const guchar *data;
 	gsize length;
+
+	/* Make note of the current operation id, for diagnostics */
+	realm_diagnostics_mark_operation (invocation, operation_id);
 
 	data = g_variant_get_fixed_array (admin_cache, &length, 1);
 	if (length == 0) {
@@ -376,11 +388,15 @@ handle_unenroll_with_password (RealmDbusKerberos *realm,
                                GDBusMethodInvocation *invocation,
                                const gchar *principal,
                                const gchar *password,
-                               GVariant *options)
+                               GVariant *options,
+                               const gchar *operation_id)
 {
 	RealmKerberos *self = REALM_KERBEROS (realm);
 	RealmKerberosClass *klass;
 	GBytes *admin_kerberos_cache;
+
+	/* Make note of the current operation id, for diagnostics */
+	realm_diagnostics_mark_operation (invocation, operation_id);
 
 	admin_kerberos_cache = kinit_to_kerberos_cache (invocation, principal, password);
 	if (admin_kerberos_cache == NULL) {
@@ -411,12 +427,16 @@ static gboolean
 handle_change_permitted_logins (RealmDbusKerberos *realm,
                                 GDBusMethodInvocation *invocation,
                                 const gchar *const *add,
-                                const gchar *const *remove)
+                                const gchar *const *remove,
+                                const gchar *operation_id)
 {
 	RealmKerberos *self = REALM_KERBEROS (realm);
 	RealmKerberosClass *klass;
 	GError *error = NULL;
 	gboolean ret;
+
+	/* Make note of the current operation id, for diagnostics */
+	realm_diagnostics_mark_operation (invocation, operation_id);
 
 	if (!realm_daemon_lock_for_action (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,

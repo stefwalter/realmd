@@ -24,6 +24,7 @@
 
 static GDBusConnection *the_connection = NULL;
 static GString *line_buffer = NULL;
+static GQuark operation_id_quark = 0;
 
 void
 realm_diagnostics_initialize (GDBusConnection *connection)
@@ -36,6 +37,19 @@ realm_diagnostics_initialize (GDBusConnection *connection)
 
 	the_connection = connection;
 	g_object_add_weak_pointer (G_OBJECT (the_connection), (gpointer *)&the_connection);
+
+	operation_id_quark = g_quark_from_static_string ("realm-diagnostics-operation-id");
+}
+
+void
+realm_diagnostics_mark_operation (GDBusMethodInvocation *invocation,
+                                  const gchar *operation_id)
+{
+	g_return_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation));
+	g_return_if_fail (operation_id != NULL);
+
+	g_object_set_qdata_full (G_OBJECT (invocation), operation_id_quark,
+	                         g_strdup (operation_id), g_free);
 }
 
 static void
@@ -80,7 +94,6 @@ log_take_diagnostic (GDBusMethodInvocation *invocation,
                      gchar *string)
 {
 	static gboolean syslog_initialized = FALSE;
-	GError *error = NULL;
 
 	if (!syslog_initialized) {
 		openlog ("realmd", 0, LOG_AUTH);
@@ -89,19 +102,7 @@ log_take_diagnostic (GDBusMethodInvocation *invocation,
 
 	log_syslog_and_debug (log_level, string, strlen (string));
 
-	if (!the_connection || !invocation) {
-		g_free (string);
-		return;
-	}
-
-	g_dbus_connection_emit_signal (the_connection, g_dbus_method_invocation_get_sender (invocation),
-	                               g_dbus_method_invocation_get_object_path (invocation),
-	                               REALM_DBUS_DIAGNOSTICS_INTERFACE, REALM_DBUS_DIAGNOSTICS_SIGNAL,
-	                               g_variant_new ("(s)", string), &error);
-
-	if (error != NULL)
-		g_warning ("couldn't emit the Diagnostics signal: %s", error->message);
-
+	realm_diagnostics_signal (invocation, string);
 	g_free (string);
 }
 
@@ -179,4 +180,29 @@ realm_diagnostics_info_data (GDBusMethodInvocation *invocation,
 	}
 
 	log_take_diagnostic (invocation, LOG_INFO, info);
+}
+
+void
+realm_diagnostics_signal (GDBusMethodInvocation *invocation,
+                          const gchar *data)
+{
+	const gchar *operation_id;
+	GError *error = NULL;
+
+	if (!the_connection || !invocation)
+		return;
+
+	operation_id = g_object_get_qdata (G_OBJECT (invocation), operation_id_quark);
+	if (operation_id == NULL) {
+		g_warning ("method invocation not marked with operation_id");
+		operation_id = "";
+	}
+
+	g_dbus_connection_emit_signal (the_connection, g_dbus_method_invocation_get_sender (invocation),
+	                               g_dbus_method_invocation_get_object_path (invocation),
+	                               REALM_DBUS_DIAGNOSTICS_INTERFACE, REALM_DBUS_DIAGNOSTICS_SIGNAL,
+	                               g_variant_new ("(ss)", data, operation_id), &error);
+
+	if (error != NULL)
+		g_warning ("couldn't emit the Diagnostics signal: %s", error->message);
 }

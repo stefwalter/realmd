@@ -16,27 +16,27 @@ def discover_realm(string, verbose):
 	                       '/org/freedesktop/realmd')
 	provider = dbus.Interface(proxy, 'org.freedesktop.realmd.Provider')
 
-	def on_diagnostic_signal(data):
+	def on_diagnostic_signal(data, operation_id):
 		sys.stderr.write(data)
 	if verbose:
-		provider.connect_to_signal("Diagnostics", on_diagnostic_signal)
+		diagnostics = dbus.Interface(proxy, "org.freedesktop.realmd.Diagnostics")
+		diagnostics.connect_to_signal("Diagnostics", on_diagnostic_signal)
 
 	def on_discover_realm(relevance, realms):
-		kerberos = dbus.Interface(proxy, 'org.freedesktop.realmd.Kerberos')
 		if not realms:
 			print >> sys.stderr, "discover-python: nothing discovered"
 			sys.exit(1)
 		for (bus_name, object_path, interface_name) in realms:
 			props = dbus.Interface (bus.get_object (bus_name, object_path),
 		                            'org.freedesktop.DBus.Properties')
-			print props.Get('org.freedesktop.realmd.KerberosRealm', 'Name')
+			print props.Get('org.freedesktop.realmd.Kerberos', 'Name')
 		sys.exit(0)
 
 	def on_discover_error(exc):
 		print >> sys.stderr, "discover-python: %s" % str(exc)
 		sys.exit(1)
 
-	provider.Discover(string,
+	provider.Discover(string, "unused-operation-id",
 	                  reply_handler=on_discover_realm,
 	                  error_handler=on_discover_error,
 	                  timeout=300)

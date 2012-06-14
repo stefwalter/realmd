@@ -76,8 +76,6 @@ on_discover_complete (GObject *source,
 
 	relevance = (klass->discover_finish) (closure->self, result, &realms, &error);
 	if (error == NULL) {
-		if (relevance > 0)
-			realm_diagnostics_info (closure->invocation, "Successfully discovered realm(s)");
 		if (realms == NULL) {
 			realms =  g_variant_new_array (G_VARIANT_TYPE ("(sos)"), NULL, 0);
 			g_variant_ref_sink (realms);
@@ -103,10 +101,14 @@ on_discover_complete (GObject *source,
 static gboolean
 realm_provider_handle_discover (RealmDbusProvider *provider,
                                 GDBusMethodInvocation *invocation,
-                                const gchar *string)
+                                const gchar *string,
+                                const gchar *operation_id)
 {
 	RealmProvider *self = REALM_PROVIDER (provider);
 	RealmProviderClass *klass;
+
+	/* Make note of the current operation id, for diagnostics */
+	realm_diagnostics_mark_operation (invocation, operation_id);
 
 	klass = REALM_PROVIDER_GET_CLASS (self);
 	g_return_val_if_fail (klass->discover_async != NULL, FALSE);

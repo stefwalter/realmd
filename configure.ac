@@ -123,6 +123,9 @@ AC_SUBST(KRB5_LIBS)
 # -------------------------------------------------------------------
 # Directories
 
+DBUS_SERVICES_DIR="${datadir}/dbus-1/system-services"
+AC_SUBST(DBUS_SERVICES_DIR)
+
 DBUS_POLICY_DIR="${sysconfdir}/dbus-1/system.d"
 AC_SUBST(DBUS_POLICY_DIR)
 
@@ -235,8 +238,8 @@ AC_SUBST(GENHTML)
 # ------------------------------------------------------------------------------
 # Results
 
-SERVICE_DIR=$libdir/realmd
-AC_SUBST(SERVICE_DIR)
+privatedir=$libdir/realmd
+AC_SUBST(privatedir)
 
 AC_CONFIG_FILES([
 	Makefile

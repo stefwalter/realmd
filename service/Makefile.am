@@ -1,20 +1,15 @@
 include $(top_srcdir)/Makefile.decl
 
-service_PROGRAMS = \
+private_PROGRAMS = \
 	realmd
 
 REALMD_CONFIGS = \
 	realmd-defaults.conf \
 	realmd-redhat.conf
 
-servicedir = $(SERVICE_DIR)
-service_DATA = \
+private_DATA = \
 	net-ads-smb.conf \
 	realmd-defaults.conf
-
-providerdir = $(SERVICE_DIR)/provider.d
-provider_DATA = \
-	org.freedesktop.realmd.Samba.provider
 
 polkit_policydir = $(POLKIT_ACTION_DIR)
 polkit_policy_in_files = org.freedesktop.realmd.policy.in
@@ -49,7 +44,7 @@ realmd_SOURCES = \
 realmd_CFLAGS = \
 	-I$(top_srcdir)/dbus \
 	-I$(top_builddir)/dbus \
-	-DSERVICE_DIR="\"$(servicedir)\"" \
+	-DPRIVATE_DIR="\"$(privatedir)\"" \
 	-DSYSCONF_DIR="\"$(sysconfdir)\"" \
 	-DPROVIDER_DIR="\"$(providerdir)\"" \
 	$(PACKAGEKIT_CFLAGS) \
@@ -68,17 +63,17 @@ realmd_LDADD = \
 
 # Install and uninstall the config for this distro
 install-data-local:
-	$(INSTALL_PROGRAM) -d $(servicedir)
-	$(INSTALL_DATA) $(srcdir)/realmd-$(DISTRO).conf $(servicedir)/realmd-distro.conf
+	$(INSTALL_PROGRAM) -d $(privatedir)
+	$(INSTALL_DATA) $(srcdir)/realmd-$(DISTRO).conf $(privatedir)/realmd-distro.conf
 uninstall-local:
-	rm -f $(servicedir)/realmd-distro.conf
+	rm -f $(privatedir)/realmd-distro.conf
 
 # ------------------------------------------------------------------
 
 EXTRA_DIST = \
 	$(polkit_policy_in_files) \
 	$(REALMD_CONFIGS) \
-	$(service_DATA) \
+	$(private_DATA) \
 	$(provider_DATA) \
 	$(NULL)
 

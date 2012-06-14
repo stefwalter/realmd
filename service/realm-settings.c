@@ -84,8 +84,8 @@ realm_settings_load (const gchar *file_path,
 void
 realm_settings_init (void)
 {
-	const gchar *default_conf = SERVICE_DIR "/realmd-defaults.conf";
-	const gchar *distro_conf = SERVICE_DIR "/realmd-distro.conf";
+	const gchar *default_conf = PRIVATE_DIR "/realmd-defaults.conf";
+	const gchar *distro_conf = PRIVATE_DIR "/realmd-distro.conf";
 	const gchar *admin_conf = SYSCONF_DIR "/realmd.conf";
 	GError *error = NULL;
 

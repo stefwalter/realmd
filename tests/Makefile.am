@@ -4,7 +4,7 @@ INCLUDES = \
 	-I$(top_srcdir) \
 	-DTESTFILE_DIR="\"@abs_srcdir@/files\"" \
 	-DSYSCONF_DIR="\"/tmp/realmd-etc\"" \
-	-DSERVICE_DIR="\"@abs_srcdir@/files\"" \
+	-DPRIVATE_DIR="\"@abs_srcdir@/files\"" \
 	$(NULL)
 
 AM_CFLAGS = \

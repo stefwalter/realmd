@@ -162,7 +162,7 @@ begin_net_process (JoinClosure *join,
 	/* Use our custom smb.conf */
 	g_ptr_array_add (args, (gpointer)realm_settings_path ("net"));
 	g_ptr_array_add (args, "-s");
-	g_ptr_array_add (args, SERVICE_DIR "/net-ads-smb.conf");
+	g_ptr_array_add (args, PRIVATE_DIR "/net-ads-smb.conf");
 
 	va_start (va, user_data);
 	do {

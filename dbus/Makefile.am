@@ -1,11 +1,21 @@
 include $(top_srcdir)/Makefile.decl
 
-noinst_LIBRARIES = \
-	librealm-dbus.a
-
 dbusservicedir = $(DBUS_POLICY_DIR)
 dbusservice_DATA = \
 	org.freedesktop.realmd.conf
+
+providerdir = $(privatedir)/provider.d
+provider_DATA = \
+	org.freedesktop.realmd.Samba.provider
+
+servicedir       = $(DBUS_SERVICES_DIR)
+service_in_files = \
+	org.freedesktop.realmd.service.in \
+	org.freedesktop.realmd.Samba.service.in
+service_DATA     = $(service_in_files:.service.in=.service)
+
+noinst_LIBRARIES = \
+	librealm-dbus.a
 
 BUILT_SOURCES = \
 	realm-dbus-generated.c realm-dbus-generated.h
@@ -35,10 +45,13 @@ realm-dbus-generated.h: realm-dbus-generated.c
 EXTRA_DIST = \
 	$(DBUS_XML_DEFINITIONS) \
 	$(dbusservice_DATA) \
+	$(provider_DATA) \
+	$(service_in_files) \
 	$(NULL)
 
 CLEANFILES = \
 	$(BUILT_SOURCES) \
+	$(service_DATA) \
 	*.gcno \
 	*.gcda \
 	$(NULL)

@@ -3,6 +3,7 @@
 *.o
 *.gcda
 *.gcno
+*.service
 *.tar.gz
 
 .cproject

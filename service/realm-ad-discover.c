@@ -160,19 +160,19 @@ ad_discover_domain_begin (GSimpleAsyncResult *res,
 	g_assert (discover->domain != NULL);
 
 	realm_diagnostics_info (discover->invocation,
-	                        "Searching for kerberos SRV records on %s domain",
+	                        "Searching for kerberos SRV records for domain: _kerberos._udp.%s",
 	                        discover->domain);
 
 	resolver = g_resolver_get_default ();
 	g_resolver_lookup_service_async (resolver, "kerberos", "udp", discover->domain, NULL,
 	                                 on_resolve_kerberos_srv, g_object_ref (res));
 
-	realm_diagnostics_info (discover->invocation,
-	                        "Searching for _msdcs zone on %s domain",
-	                        discover->domain);
-
 	/* Active Directory DNS zones have this subzone */
 	msdcs = g_strdup_printf ("_msdcs.%s", discover->domain);
+
+	realm_diagnostics_info (discover->invocation,
+	                        "Searching for sub zone on domain: %s",
+	                        msdcs);
 
 	g_resolver_lookup_records_async (resolver, msdcs, G_RESOLVER_RECORD_SOA, NULL,
 	                                 on_resolve_msdcs_soa, g_object_ref (res));

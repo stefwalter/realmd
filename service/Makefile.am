@@ -46,7 +46,7 @@ realmd_CFLAGS = \
 	-I$(top_builddir)/dbus \
 	-DPRIVATE_DIR="\"$(privatedir)\"" \
 	-DSYSCONF_DIR="\"$(sysconfdir)\"" \
-	-DPROVIDER_DIR="\"$(providerdir)\"" \
+	-DPROVIDER_DIR="\"$(privatedir)/provider.d\"" \
 	$(PACKAGEKIT_CFLAGS) \
 	$(POLKIT_CFLAGS) \
 	$(GLIB_CFLAGS) \

@@ -163,6 +163,9 @@ realm_provider_init (RealmProvider *self)
 	                                        RealmProviderPrivate);
 	self->pv->realms = g_hash_table_new_full (g_str_hash, g_str_equal,
 	                                          g_free, g_object_unref);
+
+	/* The dbus version property of the provider */
+	g_object_set (self, "version", VERSION, NULL);
 }
 
 static void

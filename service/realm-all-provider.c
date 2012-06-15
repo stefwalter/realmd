@@ -58,6 +58,9 @@ realm_all_provider_init (RealmAllProvider *self)
 {
 	self->invocations = g_hash_table_new_full (g_str_hash, g_str_equal,
 	                                           g_free, g_object_unref);
+
+	/* The dbus Name property of the provider */
+	g_object_set (self, "name", "All", NULL);
 }
 
 static gboolean

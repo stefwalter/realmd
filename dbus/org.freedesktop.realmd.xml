@@ -12,6 +12,16 @@
 	-->
 	<interface name="org.freedesktop.realmd.Provider">
 
+		<!--
+		 * The name of the provider
+		-->
+		<property name="Name" type="s" access="read"/>
+
+		<!--
+		 * A version number for the provider
+		-->
+		<property name="Version" type="s" access="read"/>
+
 		<!-- 
 		 * A list of known, enrolled or discovered realms.
 		 * Each realm is a DBus object and is represeted by a:

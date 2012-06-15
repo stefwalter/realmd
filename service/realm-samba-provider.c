@@ -55,6 +55,9 @@ static void
 realm_samba_provider_init (RealmSambaProvider *self)
 {
 	self->config = realm_samba_config_new (NULL);
+
+	/* The dbus Name property of the provider */
+	g_object_set (self, "name", "Samba", NULL);
 }
 
 static void

@@ -22,7 +22,7 @@
 		-->
 		<property name="Version" type="s" access="read"/>
 
-		<!-- 
+		<!--
 		 * A list of known, enrolled or discovered realms.
 		 * Each realm is a DBus object and is represeted by a:
 		 *   s: DBus bus name of the realm
@@ -82,11 +82,6 @@
 		 * The server software, for information only. eg: active-directory
 		-->
 		<property name="Details" type="a{ss}" access="read"/>
-
-		<!--
-		 * The client software, for information only. eg: samba-winbind
-		-->
-		<property name="ClientSoftware" type="s" access="read"/>
 
 		<!--
 		 * The suggested Administrator login name for this realm

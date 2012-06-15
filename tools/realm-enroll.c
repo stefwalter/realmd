@@ -329,13 +329,15 @@ realm_join_or_leave (const gchar *string,
 	SyncClosure sync;
 	gchar *principal;
 
-	if (user_name == NULL)
-		user_name = g_get_user_name ();
-
 	/* Discover the realm */
 	realm = discover_realm_for_string (string);
 	if (realm == NULL)
 		return 1;
+
+	if (user_name == NULL)
+		user_name = realm_dbus_kerberos_get_suggested_administrator (realm);
+	if (user_name == NULL)
+		user_name = g_get_user_name ();
 
 	/* Do a kinit for the given realm */
 	realm_name = realm_dbus_kerberos_get_name (realm);

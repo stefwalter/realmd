@@ -1,2 +1,9 @@
+0.2
+ * Add possibility for cancellation to the DBus interface
+ * Add provider Name and Version properties
+ * Clearer diagnostics on discovery
+ * Add realm-discover tool to identify a domain
+ * Add proper DBus service files
+
 0.1
  * Initial release

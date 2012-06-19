@@ -135,6 +135,30 @@ AC_SUBST(POLKIT_ACTION_DIR)
 # --------------------------------------------------------------------
 # Compilation options
 
+AC_MSG_CHECKING([for debug mode])
+AC_ARG_ENABLE(debug,
+              AC_HELP_STRING([--enable-debug=no/default/yes],
+                             [Turn on or off debugging])
+             )
+
+if test "$enable_debug" != "no"; then
+	AC_DEFINE_UNQUOTED(WITH_DEBUG, 1, [Print debug output])
+	AC_DEFINE_UNQUOTED(_DEBUG, 1, [In debug mode])
+	CFLAGS="$CFLAGS -g"
+fi
+if test "$enable_debug" = "yes"; then
+	debug_status="yes"
+	CFLAGS="$CFLAGS -O0"
+elif test "$enable_debug" = "no"; then
+	debug_status="no"
+	CFLAGS="$CFLAGS -O2"
+	AC_DEFINE_UNQUOTED(G_DISABLE_ASSERT, 1, [Disable glib assertions])
+else
+	debug_status="default"
+fi
+
+AC_MSG_RESULT($debug_status)
+
 if test "$GCC" = "yes"; then
 	CFLAGS="$CFLAGS \
 		-Wall -Wmissing-declarations \
@@ -189,30 +213,6 @@ fi
 
 AC_MSG_RESULT($enable_strict)
 AC_SUBST(TEST_MODE)
-
-AC_MSG_CHECKING([for debug mode])
-AC_ARG_ENABLE(debug,
-              AC_HELP_STRING([--enable-debug=no/default/yes],
-                             [Turn on or off debugging])
-             )
-
-if test "$enable_debug" != "no"; then
-	AC_DEFINE_UNQUOTED(WITH_DEBUG, 1, [Print debug output])
-	AC_DEFINE_UNQUOTED(_DEBUG, 1, [In debug mode])
-	CFLAGS="$CFLAGS -g"
-fi
-if test "$enable_debug" = "yes"; then
-	debug_status="yes"
-	CFLAGS="$CFLAGS -O0"
-elif test "$enable_debug" = "no"; then
-	debug_status="no"
-	CFLAGS="$CFLAGS -O2"
-	AC_DEFINE_UNQUOTED(G_DISABLE_ASSERT, 1, [Disable glib assertions])
-else
-	debug_status="default"
-fi
-
-AC_MSG_RESULT($debug_status)
 
 AC_MSG_CHECKING([whether to build with gcov testing])
 AC_ARG_ENABLE([coverage],

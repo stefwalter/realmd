@@ -30,3 +30,7 @@ check-memory:
 		test -d $(builddir)/$$subdir/tests && \
 			make -C $(builddir)/$$subdir/tests check-memory; \
 	done
+
+upload-release: $(DIST_ARCHIVES)
+	gpg --detach-sign --local-user 'stef@thewalter.net' $(DIST_ARCHIVES)
+	scp $(DIST_ARCHIVES) $(DIST_ARCHIVES).sig people.freedesktop.org:/home/stefw/public_html/source

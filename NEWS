@@ -1,3 +1,6 @@
+0.3
+ * Build and packaging fixes
+
 0.2
  * Add possibility for cancellation to the DBus interface
  * Add provider Name and Version properties

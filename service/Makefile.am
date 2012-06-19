@@ -63,10 +63,10 @@ realmd_LDADD = \
 
 # Install and uninstall the config for this distro
 install-data-local:
-	$(INSTALL_PROGRAM) -d $(privatedir)
-	$(INSTALL_DATA) $(srcdir)/realmd-$(DISTRO).conf $(privatedir)/realmd-distro.conf
+	$(INSTALL_PROGRAM) -d $(DESTDIR)$(privatedir)
+	$(INSTALL_DATA) $(srcdir)/realmd-$(DISTRO).conf $(DESTDIR)$(privatedir)/realmd-distro.conf
 uninstall-local:
-	rm -f $(privatedir)/realmd-distro.conf
+	rm -f $(DESTDIR)$(privatedir)/realmd-distro.conf
 
 # ------------------------------------------------------------------
 

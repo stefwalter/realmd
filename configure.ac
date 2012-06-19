@@ -253,7 +253,7 @@ AC_SUBST(GENHTML)
 # ------------------------------------------------------------------------------
 # Results
 
-privatedir=$libdir/realmd
+privatedir='${libdir}/realmd'
 AC_SUBST(privatedir)
 
 AC_CONFIG_FILES([

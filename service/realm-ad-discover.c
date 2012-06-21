@@ -29,10 +29,10 @@ typedef struct {
 	GHashTable *discovery;
 	gchar *domain;
 	GVariant *servers;
-	gboolean found_kerberos_srv;
-	gboolean finished_srv;
-	gboolean found_msdcs_soa;
-	gboolean finished_soa;
+	gboolean found_kerberos;
+	gboolean finished_kerberos;
+	gboolean found_msdcs;
+	gboolean finished_msdcs;
 } DiscoverClosure;
 
 static void
@@ -52,10 +52,10 @@ static void
 maybe_complete_discover (GSimpleAsyncResult *res,
                          DiscoverClosure *discover)
 {
-	if (!discover->finished_srv || !discover->finished_soa)
+	if (!discover->finished_kerberos || !discover->finished_msdcs)
 		return;
 
-	if (discover->found_kerberos_srv && discover->found_msdcs_soa)
+	if (discover->found_kerberos && discover->found_msdcs)
 		realm_diagnostics_info (discover->invocation, "Found AD style DNS records on domain");
 	else
 		realm_diagnostics_info (discover->invocation, "Couldn't find AD style DNS records on domain");
@@ -64,9 +64,9 @@ maybe_complete_discover (GSimpleAsyncResult *res,
 }
 
 static void
-on_resolve_kerberos_srv (GObject *source,
-                         GAsyncResult *result,
-                         gpointer user_data)
+on_resolve_kerberos (GObject *source,
+                     GAsyncResult *result,
+                     gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	DiscoverClosure *discover = g_simple_async_result_get_op_res_gpointer (res);
@@ -89,7 +89,7 @@ on_resolve_kerberos_srv (GObject *source,
 		servers = g_ptr_array_new ();
 
 		for (l = targets; l != NULL; l = g_list_next (l)) {
-			discover->found_kerberos_srv = TRUE;
+			discover->found_kerberos = TRUE;
 			server = g_strdup_printf ("%s:%d", g_srv_target_get_hostname (l->data),
 			                          (int)g_srv_target_get_port (l->data));
 			g_ptr_array_add (servers, g_variant_new_string (server));
@@ -100,7 +100,7 @@ on_resolve_kerberos_srv (GObject *source,
 
 		g_list_free (targets);
 
-		if (discover->found_kerberos_srv)
+		if (discover->found_kerberos)
 			realm_diagnostics_info (discover->invocation, "%s", info->str);
 		else
 			realm_diagnostics_info (discover->invocation, "No kerberos SRV records");
@@ -119,15 +119,15 @@ on_resolve_kerberos_srv (GObject *source,
 		g_simple_async_result_take_error (res, error);
 	}
 
-	discover->finished_srv = TRUE;
+	discover->finished_kerberos = TRUE;
 	maybe_complete_discover (res, discover);
 	g_object_unref (res);
 }
 
 static void
-on_resolve_msdcs_soa (GObject *source,
-                      GAsyncResult *result,
-                      gpointer user_data)
+on_resolve_msdcs (GObject *source,
+                  GAsyncResult *result,
+                  gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	DiscoverClosure *discover = g_simple_async_result_get_op_res_gpointer (res);
@@ -137,15 +137,15 @@ on_resolve_msdcs_soa (GObject *source,
 
 	records = g_resolver_lookup_records_finish (resolver, result, &error);
 	if (error == NULL || g_error_matches (error, G_RESOLVER_ERROR, G_RESOLVER_ERROR_NOT_FOUND)) {
-		discover->found_msdcs_soa = (records != NULL);
+		discover->found_msdcs = (records != NULL);
 		g_list_free_full (records, (GDestroyNotify)g_variant_unref);
 
 	} else {
-		realm_diagnostics_error (discover->invocation, error, "Failure to lookup domain SOA record");
+		realm_diagnostics_error (discover->invocation, error, "Failure to lookup domain MSDCS records");
 		g_simple_async_result_take_error (res, error);
 	}
 
-	discover->finished_soa = TRUE;
+	discover->finished_msdcs = TRUE;
 	maybe_complete_discover (res, discover);
 	g_object_unref (res);
 }
@@ -165,17 +165,17 @@ ad_discover_domain_begin (GSimpleAsyncResult *res,
 
 	resolver = g_resolver_get_default ();
 	g_resolver_lookup_service_async (resolver, "kerberos", "udp", discover->domain, NULL,
-	                                 on_resolve_kerberos_srv, g_object_ref (res));
+	                                 on_resolve_kerberos, g_object_ref (res));
 
 	/* Active Directory DNS zones have this subzone */
-	msdcs = g_strdup_printf ("_msdcs.%s", discover->domain);
+	msdcs = g_strdup_printf ("dc._msdcs.%s", discover->domain);
 
 	realm_diagnostics_info (discover->invocation,
-	                        "Searching for sub zone on domain: %s",
+	                        "Searching for MSDCS SRV records on domain: _kerberos._tcp.%s",
 	                        msdcs);
 
-	g_resolver_lookup_records_async (resolver, msdcs, G_RESOLVER_RECORD_SOA, NULL,
-	                                 on_resolve_msdcs_soa, g_object_ref (res));
+	g_resolver_lookup_service_async (resolver, "kerberos", "tcp", msdcs, NULL,
+	                                 on_resolve_msdcs, g_object_ref (res));
 
 	g_free (msdcs);
 
@@ -261,7 +261,7 @@ realm_ad_discover_finish (GAsyncResult *result,
 	discover = g_simple_async_result_get_op_res_gpointer (res);
 
 	/* Didn't find a valid domain */
-	if (!discover->found_kerberos_srv || !discover->found_msdcs_soa)
+	if (!discover->found_kerberos || !discover->found_msdcs)
 		return NULL;
 
 	realm = g_ascii_strup (discover->domain, -1);

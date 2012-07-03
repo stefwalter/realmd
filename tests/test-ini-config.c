@@ -609,7 +609,7 @@ main (int argc,
 {
 	g_type_init ();
 	g_test_init (&argc, &argv, NULL);
-	g_set_prgname ("test-samba-config");
+	g_set_prgname ("test-ini-config");
 
 	realm_settings_init ();
 
@@ -635,13 +635,14 @@ main (int argc,
 	g_test_add ("/realmd/ini-config/remove-section-not-exist", Test, NULL, setup, test_remove_section_not_exist, teardown);
 
 	g_test_add ("/realmd/ini-config/file-not-exist", Test, NULL, setup, test_file_not_exist, teardown);
-	g_test_add ("/realmd/ini-config/file-watch", Test, NULL, setup, test_file_watch, teardown);
+	if (!g_test_quick ())
+		g_test_add ("/realmd/ini-config/file-watch", Test, NULL, setup, test_file_watch, teardown);
 
-	g_test_add ("/realmd/samba-config/change", Test, NULL, setup, test_change, teardown);
-	g_test_add ("/realmd/samba-config/change-list", Test, NULL, setup, test_change_list, teardown);
-	g_test_add ("/realmd/samba-config/change-list-new", Test, NULL, setup, test_change_list_new, teardown);
-	g_test_add ("/realmd/samba-config/change-list-null-add", Test, NULL, setup, test_change_list_null_add, teardown);
-	g_test_add ("/realmd/samba-config/change-list-null-remove", Test, NULL, setup, test_change_list_null_remove, teardown);
+	g_test_add ("/realmd/ini-config/change", Test, NULL, setup, test_change, teardown);
+	g_test_add ("/realmd/ini-config/change-list", Test, NULL, setup, test_change_list, teardown);
+	g_test_add ("/realmd/ini-config/change-list-new", Test, NULL, setup, test_change_list_new, teardown);
+	g_test_add ("/realmd/ini-config/change-list-null-add", Test, NULL, setup, test_change_list_null_add, teardown);
+	g_test_add ("/realmd/ini-config/change-list-null-remove", Test, NULL, setup, test_change_list_null_remove, teardown);
 
 	return g_test_run ();
 }

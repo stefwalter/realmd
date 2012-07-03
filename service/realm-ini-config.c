@@ -485,7 +485,7 @@ parse_config_line (RealmIniConfig *self,
 	append_config_line (self, line);
 
 	/* Add this line as the end of the current section */
-	if (type != NONE && *current != NULL)
+	if (type != NONE && type != COMMENT && *current != NULL)
 		(*current)->tail = line;
 }
 

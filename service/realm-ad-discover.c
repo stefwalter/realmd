@@ -43,8 +43,8 @@ discover_closure_free (gpointer data)
 	g_object_unref (discover->invocation);
 	g_hash_table_unref (discover->discovery);
 	g_free (discover->domain);
-	g_variant_unref (discover->servers);
-
+	if (discover->servers)
+		g_variant_unref (discover->servers);
 	g_slice_free (DiscoverClosure, discover);
 }
 

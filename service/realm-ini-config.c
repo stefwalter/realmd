@@ -32,6 +32,7 @@ typedef struct _ConfigLine {
 
 typedef struct {
 	GHashTable *parameters;
+	ConfigLine *head;
 	ConfigLine *tail;
 } ConfigSection;
 
@@ -469,6 +470,7 @@ parse_config_line (RealmIniConfig *self,
 			sect = g_slice_new0 (ConfigSection);
 			sect->parameters = g_hash_table_new (conf_str_hash, conf_str_equal);
 			g_hash_table_replace (self->sections, name, sect);
+			sect->head = line;
 			sect->tail = line;
 		}
 		*current = sect;
@@ -719,7 +721,7 @@ config_set_value (RealmIniConfig *self,
 		/* Register it */
 		sect = g_slice_new0 (ConfigSection);
 		sect->parameters = g_hash_table_new (conf_str_hash, conf_str_equal);
-		sect->tail = line;
+		sect->head = sect->tail = line;
 		g_hash_table_replace (self->sections, line->name, sect);
 	}
 
@@ -730,6 +732,10 @@ config_set_value (RealmIniConfig *self,
 		if (line != NULL) {
 			if (sect->tail == line)
 				sect->tail = line->prev;
+
+			/* head points to [section] line, not parameter */
+			g_assert (sect->head != line);
+
 			remove_config_line (self, line);
 			config_line_free (line);
 		}
@@ -888,6 +894,45 @@ realm_ini_config_have_section (RealmIniConfig *self,
 	g_return_val_if_fail (section != NULL, FALSE);
 
 	return g_hash_table_lookup (self->sections, section) != NULL;
+}
+
+void
+realm_ini_config_remove_section (RealmIniConfig *self,
+                                 const gchar *section)
+{
+	ConfigSection *sect;
+	ConfigLine *head, *tail, *line, *next;
+
+	g_return_if_fail (REALM_IS_INI_CONFIG (self));
+	g_return_if_fail (section != NULL);
+
+	sect = g_hash_table_lookup (self->sections, section);
+	if (sect == NULL)
+		return;
+
+	g_assert (sect->head != NULL);
+	g_assert (sect->tail != NULL);
+	head = sect->head;
+	tail = sect->tail;
+
+	g_hash_table_remove (self->sections, section);
+
+	/* Remove this section from the config file */
+	if (head->prev)
+		head->prev->next = tail->next;
+	if (sect->tail->next)
+		tail->next->prev = head->prev;
+	if (self->head == head)
+		self->head = tail->next;
+	if (self->tail == tail)
+		self->tail = head->prev;
+	head->prev = NULL;
+	tail->next = NULL;
+
+	for (line = head; line != NULL; line = next) {
+		next = line->next;
+		config_line_free (line);
+	}
 }
 
 gboolean

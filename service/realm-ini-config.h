@@ -92,6 +92,9 @@ void                realm_ini_config_set_all                  (RealmIniConfig *s
 gboolean            realm_ini_config_have_section             (RealmIniConfig *self,
                                                                const gchar *section);
 
+void                realm_ini_config_remove_section           (RealmIniConfig *self,
+                                                               const gchar *section);
+
 gboolean            realm_ini_config_change                   (RealmIniConfig *self,
                                                                const gchar *section,
                                                                GError **error,

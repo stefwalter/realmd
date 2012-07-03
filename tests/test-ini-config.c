@@ -386,6 +386,85 @@ test_have_section (Test *test,
 }
 
 static void
+test_remove_section_first (Test *test,
+                            gconstpointer unused)
+{
+	const gchar *data = "[first]\nblah=blue\n#A\n[section]\n\t1=I\n#B\n2=II\n#C\n[after]\n2=two";
+	const gchar *check = "#A\n[section]\n\t1=I\n#B\n2=II\n#C\n[after]\n2=two";
+	gchar *output;
+
+	realm_ini_config_read_string (test->config, data);
+	realm_ini_config_remove_section (test->config, "first");
+
+	output = realm_ini_config_write_string (test->config);
+	g_assert_cmpstr (check, ==, output);
+	g_free (output);
+}
+
+static void
+test_remove_section_middle (Test *test,
+                            gconstpointer unused)
+{
+	const gchar *data = "[first]\nblah=blue\n#A\n[section]\n\t1=I\n#B\n2=II\n#C\n[after]\n2=two";
+	const gchar *check = "[first]\nblah=blue\n#A\n#C\n[after]\n2=two";
+	gchar *output;
+
+	realm_ini_config_read_string (test->config, data);
+	realm_ini_config_remove_section (test->config, "section");
+
+	output = realm_ini_config_write_string (test->config);
+	g_assert_cmpstr (check, ==, output);
+	g_free (output);
+}
+
+static void
+test_remove_section_last (Test *test,
+                          gconstpointer unused)
+{
+	const gchar *data = "[first]\nblah=blue\n#A\n[section]\n\t1=I\n#B\n2=II\n#C\n[after]\n2=two";
+	const gchar *check = "[first]\nblah=blue\n#A\n[section]\n\t1=I\n#B\n2=II\n#C\n";
+	gchar *output;
+
+	realm_ini_config_read_string (test->config, data);
+	realm_ini_config_remove_section (test->config, "after");
+
+	output = realm_ini_config_write_string (test->config);
+	g_assert_cmpstr (check, ==, output);
+	g_free (output);
+}
+
+static void
+test_remove_section_all (Test *test,
+                         gconstpointer unused)
+{
+	const gchar *data = "#A\n[section]\n\t1=I\n#B\n2=II\n#C\n";
+	const gchar *check = "#A\n#C\n";
+	gchar *output;
+
+	realm_ini_config_read_string (test->config, data);
+	realm_ini_config_remove_section (test->config, "section");
+
+	output = realm_ini_config_write_string (test->config);
+	g_assert_cmpstr (check, ==, output);
+	g_free (output);
+}
+
+static void
+test_remove_section_not_exist (Test *test,
+                               gconstpointer unused)
+{
+	const gchar *data = "[first]\nblah=blue\n# Comment\n[section]\n\t1=I\n#C\n2=II\n# Comment\n[after]\n2=two";
+	gchar *output;
+
+	realm_ini_config_read_string (test->config, data);
+	realm_ini_config_remove_section (test->config, "nonexistant");
+
+	output = realm_ini_config_write_string (test->config);
+	g_assert_cmpstr (data, ==, output);
+	g_free (output);
+}
+
+static void
 test_change (Test *test,
              gconstpointer unused)
 {
@@ -550,6 +629,11 @@ main (int argc,
 	g_test_add ("/realmd/ini-config/set-all", Test, NULL, setup, test_set_all, teardown);
 
 	g_test_add ("/realmd/ini-config/have-section", Test, NULL, setup, test_have_section, teardown);
+	g_test_add ("/realmd/ini-config/remove-section-first", Test, NULL, setup, test_remove_section_first, teardown);
+	g_test_add ("/realmd/ini-config/remove-section-middle", Test, NULL, setup, test_remove_section_middle, teardown);
+	g_test_add ("/realmd/ini-config/remove-section-last", Test, NULL, setup, test_remove_section_last, teardown);
+	g_test_add ("/realmd/ini-config/remove-section-all", Test, NULL, setup, test_remove_section_all, teardown);
+	g_test_add ("/realmd/ini-config/remove-section-not-exist", Test, NULL, setup, test_remove_section_not_exist, teardown);
 
 	g_test_add ("/realmd/ini-config/file-not-exist", Test, NULL, setup, test_file_not_exist, teardown);
 	g_test_add ("/realmd/ini-config/file-watch", Test, NULL, setup, test_file_watch, teardown);

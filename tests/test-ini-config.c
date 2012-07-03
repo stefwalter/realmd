@@ -375,6 +375,17 @@ test_set_all (Test *test,
 }
 
 static void
+test_have_section (Test *test,
+                   gconstpointer unused)
+{
+	const gchar *data = "[section]\n\t1= one\r\n2=two\n3=three";
+
+	realm_ini_config_read_string (test->config, data);
+	g_assert (realm_ini_config_have_section (test->config, "section") == TRUE);
+	g_assert (realm_ini_config_have_section (test->config, "nonexistant") == FALSE);
+}
+
+static void
 test_change (Test *test,
              gconstpointer unused)
 {
@@ -537,6 +548,8 @@ main (int argc,
 	g_test_add ("/realmd/ini-config/set-middle", Test, NULL, setup, test_set_middle, teardown);
 	g_test_add ("/realmd/ini-config/set-section", Test, NULL, setup, test_set_section, teardown);
 	g_test_add ("/realmd/ini-config/set-all", Test, NULL, setup, test_set_all, teardown);
+
+	g_test_add ("/realmd/ini-config/have-section", Test, NULL, setup, test_have_section, teardown);
 
 	g_test_add ("/realmd/ini-config/file-not-exist", Test, NULL, setup, test_file_not_exist, teardown);
 	g_test_add ("/realmd/ini-config/file-watch", Test, NULL, setup, test_file_watch, teardown);

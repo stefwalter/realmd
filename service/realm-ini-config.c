@@ -881,6 +881,16 @@ realm_ini_config_set_list (RealmIniConfig *self,
 }
 
 gboolean
+realm_ini_config_have_section (RealmIniConfig *self,
+                               const gchar *section)
+{
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), FALSE);
+	g_return_val_if_fail (section != NULL, FALSE);
+
+	return g_hash_table_lookup (self->sections, section) != NULL;
+}
+
+gboolean
 realm_ini_config_change (RealmIniConfig *self,
                          const gchar *section,
                          GError **error,

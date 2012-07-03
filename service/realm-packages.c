@@ -220,7 +220,8 @@ on_install_refresh (GObject *source,
 }
 
 static void
-lookup_required_files_and_packages (gchar ***packages,
+lookup_required_files_and_packages (const gchar *package_set,
+                                    gchar ***packages,
                                     gchar ***files,
                                     gboolean *unconditional)
 {
@@ -233,7 +234,7 @@ lookup_required_files_and_packages (gchar ***packages,
 
 	*unconditional = FALSE;
 
-	settings = realm_settings_section ("active-directory-packages");
+	settings = realm_settings_section (package_set);
 	length = settings ? g_hash_table_size (settings) : 0;
 
 	*packages = p = g_new0 (gchar *, length + 1);
@@ -276,7 +277,7 @@ realm_packages_install_async (const gchar *package_set,
 	g_return_if_fail (package_set != NULL);
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
-	lookup_required_files_and_packages (&packages, &required_files, &unconditional);
+	lookup_required_files_and_packages (package_set, &packages, &required_files, &unconditional);
 
 	res = g_simple_async_result_new (NULL, callback, user_data, realm_packages_install_async);
 	install = g_slice_new (InstallClosure);

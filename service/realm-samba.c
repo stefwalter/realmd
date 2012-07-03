@@ -441,6 +441,27 @@ realm_samba_change_logins (RealmKerberos *realm,
 }
 
 static void
+realm_samba_logins_async (RealmKerberos *realm,
+                          GDBusMethodInvocation *invocation,
+                          const gchar **add,
+                          const gchar **remove,
+                          GAsyncReadyCallback callback,
+                          gpointer user_data)
+{
+	GSimpleAsyncResult *async;
+	GError *error = NULL;
+
+	async = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
+	                                   realm_samba_logins_async);
+
+	if (!realm_samba_change_logins (realm, invocation, add, remove, &error))
+		g_simple_async_result_take_error (async, error);
+
+	g_simple_async_result_complete_in_idle (async);
+	g_object_unref (async);
+}
+
+static void
 update_properties (RealmSamba *self)
 {
 	GPtrArray *permitted;
@@ -563,7 +584,8 @@ realm_samba_class_init (RealmSambaClass *klass)
 	kerberos_class->enroll_finish = realm_samba_generic_finish;
 	kerberos_class->unenroll_async = realm_samba_unenroll_async;
 	kerberos_class->unenroll_finish = realm_samba_generic_finish;
-	kerberos_class->change_logins = realm_samba_change_logins;
+	kerberos_class->logins_async = realm_samba_logins_async;
+	kerberos_class->logins_finish = realm_samba_generic_finish;
 
 	object_class->constructed = realm_samba_consructed;
 	object_class->get_property = realm_samba_get_property;

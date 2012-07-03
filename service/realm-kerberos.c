@@ -423,6 +423,39 @@ handle_unenroll_with_password (RealmDbusKerberos *realm,
 	return TRUE;
 }
 
+static void
+on_logins_complete (GObject *source,
+                    GAsyncResult *result,
+                    gpointer user_data)
+{
+	MethodClosure *closure = user_data;
+	RealmKerberosClass *klass;
+	GError *error = NULL;
+
+	klass = REALM_KERBEROS_GET_CLASS (closure->self);
+	g_return_if_fail (klass->logins_finish != NULL);
+
+	if ((klass->logins_finish) (closure->self, result, &error)) {
+		realm_diagnostics_info (closure->invocation, "Successfully changed permitted logins for realm");
+		g_dbus_method_invocation_return_value (closure->invocation, g_variant_new ("()"));
+
+	} else if (error != NULL &&
+	           (error->domain == REALM_ERROR || error->domain == G_DBUS_ERROR)) {
+		realm_diagnostics_error (closure->invocation, error, NULL);
+		g_dbus_method_invocation_return_gerror (closure->invocation, error);
+		g_error_free (error);
+
+	} else {
+		realm_diagnostics_error (closure->invocation, error, "Failed to change permitted logins");
+		g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_INTERNAL,
+		                                       "Failed to change permitted logins. See diagnostics.");
+		g_error_free (error);
+	}
+
+	realm_daemon_unlock_for_action (closure->invocation);
+	method_closure_free (closure);
+}
+
 static gboolean
 handle_change_permitted_logins (RealmDbusKerberos *realm,
                                 GDBusMethodInvocation *invocation,
@@ -432,8 +465,6 @@ handle_change_permitted_logins (RealmDbusKerberos *realm,
 {
 	RealmKerberos *self = REALM_KERBEROS (realm);
 	RealmKerberosClass *klass;
-	GError *error = NULL;
-	gboolean ret;
 
 	/* Make note of the current operation id, for diagnostics */
 	realm_diagnostics_mark_operation (invocation, operation_id);
@@ -445,31 +476,12 @@ handle_change_permitted_logins (RealmDbusKerberos *realm,
 	}
 
 	klass = REALM_KERBEROS_GET_CLASS (self);
-	g_return_val_if_fail (klass->change_logins != NULL, FALSE);
+	g_return_val_if_fail (klass->logins_async != NULL, FALSE);
 
-	ret = (klass->change_logins) (self, invocation,
-	                              (const gchar **)add,
-	                              (const gchar **)remove,
-	                              &error);
+	(klass->logins_async) (self, invocation, (const gchar **)add,
+	                       (const gchar **)remove, on_logins_complete,
+	                       method_closure_new (self, invocation));
 
-	if (ret) {
-		realm_dbus_kerberos_complete_change_permitted_logins (realm,
-		                                                      invocation);
-
-	} else if (error != NULL &&
-	           (error->domain == REALM_ERROR || error->domain == G_DBUS_ERROR)) {
-		realm_diagnostics_error (invocation, error, NULL);
-		g_dbus_method_invocation_return_gerror (invocation, error);
-		g_error_free (error);
-
-	} else {
-		realm_diagnostics_error (invocation, error, "Failed to change permitted logins");
-		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_INTERNAL,
-		                                       "Failed to change permitted logins. See diagnostics.");
-		g_error_free (error);
-	}
-
-	realm_daemon_unlock_for_action (invocation);
 	return TRUE;
 }
 

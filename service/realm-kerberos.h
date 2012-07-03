@@ -62,11 +62,17 @@ struct _RealmKerberosClass {
 	                                GAsyncResult *result,
 	                                GError **error);
 
-	gboolean   (* change_logins)   (RealmKerberos *realm,
+	void       (* logins_async)    (RealmKerberos *realm,
 	                                GDBusMethodInvocation *invocation,
 	                                const gchar **add,
 	                                const gchar **remove,
+	                                GAsyncReadyCallback callback,
+	                                gpointer user_data);
+
+	gboolean   (* logins_finish)   (RealmKerberos *realm,
+	                                GAsyncResult *result,
 	                                GError **error);
+
 };
 
 GType               realm_kerberos_get_type              (void) G_GNUC_CONST;

@@ -371,35 +371,6 @@ realm_samba_generic_finish (RealmKerberos *realm,
 	return TRUE;
 }
 
-static gchar **
-prune_login_names (const gchar *prefix,
-                   const gchar **logins,
-                   GError **error)
-{
-	GPtrArray *names;
-	gsize prefix_len;
-	gchar *login;
-	gint i;
-
-	names = g_ptr_array_new_full (0, g_free);
-	prefix_len = strlen (prefix);
-
-	for (i = 0; logins != NULL && logins[i] != NULL; i++) {
-		if (g_ascii_strncasecmp (prefix, logins[i], prefix_len) != 0) {
-			g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-			             "Invalid login argument: %s", logins[i]);
-			g_ptr_array_free (names, TRUE);
-			return NULL;
-		}
-
-		login = g_utf8_strdown (logins[i] + prefix_len, -1);
-		g_ptr_array_add (names, login);
-	}
-
-	g_ptr_array_add (names, NULL);
-	return (gchar **)g_ptr_array_free (names, FALSE);
-}
-
 static gboolean
 realm_samba_change_logins (RealmKerberos *realm,
                            GDBusMethodInvocation *invocation,
@@ -411,7 +382,6 @@ realm_samba_change_logins (RealmKerberos *realm,
 	gchar **remove_names = NULL;
 	gchar **add_names = NULL;
 	gboolean ret = FALSE;
-	gchar *prefix;
 
 	if (!lookup_is_enrolled (self)) {
 		g_set_error (error, REALM_ERROR, REALM_ERROR_NOT_ENROLLED,
@@ -419,11 +389,14 @@ realm_samba_change_logins (RealmKerberos *realm,
 		return FALSE;
 	}
 
-	prefix = lookup_login_prefix (self);
-
-	add_names = prune_login_names (prefix, add, error);
+	add_names = realm_kerberos_parse_logins (realm, TRUE, add);
 	if (add_names != NULL)
-		remove_names = prune_login_names (prefix, remove, error);
+		remove_names = realm_kerberos_parse_logins (realm, TRUE, add);
+
+	if (add_names == NULL || remove_names == NULL) {
+		g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+		             "Invalid login argument");
+	}
 
 	if (add_names && remove_names) {
 		ret = realm_ini_config_change_list (self->config,
@@ -478,8 +451,9 @@ update_properties (RealmSamba *self)
 		login_format = g_strdup_printf ("%s%%s", prefix);
 		g_object_set (self, "login-format", login_format, NULL);
 		g_free (login_format);
+		g_free (prefix);
 	} else {
-		g_object_set (self, "login-format", "", NULL);
+		g_object_set (self, "login-format", "%s", NULL);
 	}
 
 	permitted = g_ptr_array_new_full (0, g_free);
@@ -487,14 +461,12 @@ update_properties (RealmSamba *self)
 	                                    "realmd permitted logins", ",");
 
 	for (i = 0; values != NULL && values[i] != NULL; i++)
-		g_ptr_array_add (permitted, g_strdup_printf ("%s%s", prefix, values[i]));
+		g_ptr_array_add (permitted, realm_kerberos_format_login (REALM_KERBEROS (self), values[i]));
 	g_ptr_array_add (permitted, NULL);
 
 	g_object_set (self, "permitted-logins", (gchar **)permitted->pdata, NULL);
 	g_ptr_array_free (permitted, TRUE);
 	g_strfreev (values);
-
-	g_free (prefix);
 }
 
 static void

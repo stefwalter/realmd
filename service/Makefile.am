@@ -27,6 +27,7 @@ realmd_SOURCES = \
 	realm-errors.c realm-errors.h \
 	realm-ini-config.c realm-ini-config.h \
 	realm-kerberos.c realm-kerberos.h \
+	realm-login-name.c realm-login-name.h \
 	realm-network.c realm-network.h \
 	realm-packages.c realm-packages.h \
 	realm-provider.c realm-provider.h \

@@ -22,6 +22,7 @@
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
 #include "realm-kerberos.h"
+#include "realm-login-name.h"
 
 #include <krb5/krb5.h>
 
@@ -32,6 +33,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 
 struct _RealmKerberosPrivate {
 	GHashTable *discovery;
@@ -634,4 +636,53 @@ realm_kerberos_get_discovery (RealmKerberos *self)
 {
 	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
 	return self->pv->discovery;
+}
+
+gchar *
+realm_kerberos_parse_login (RealmKerberos *self,
+                            gboolean lower,
+                            const gchar *login)
+{
+	const gchar *format;
+
+	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
+	g_return_val_if_fail (login != NULL, NULL);
+
+	format = realm_dbus_kerberos_get_login_format (REALM_DBUS_KERBEROS (self));
+	if (format == NULL)
+		return NULL;
+
+	return realm_login_name_parse (format, lower, login);
+}
+
+gchar **
+realm_kerberos_parse_logins (RealmKerberos *self,
+                             gboolean lower,
+                             const gchar **logins)
+{
+	const gchar *format;
+
+	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
+
+	format = realm_dbus_kerberos_get_login_format (REALM_DBUS_KERBEROS (self));
+	if (format == NULL)
+		return NULL;
+
+	return realm_login_name_parse_all (format, lower, logins);
+}
+
+gchar *
+realm_kerberos_format_login (RealmKerberos *self,
+                             const gchar *user)
+{
+	const gchar *format;
+
+	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
+	g_return_val_if_fail (user != NULL, NULL);
+
+	format = realm_dbus_kerberos_get_login_format (REALM_DBUS_KERBEROS (self));
+	if (format == NULL)
+		return NULL;
+
+	return realm_login_name_format (format, user);
 }

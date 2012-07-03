@@ -15,6 +15,7 @@ LDADD = \
 
 TEST_PROGS = \
 	test-ini-config \
+	test-login-name \
 	$(NULL)
 
 check_PROGRAMS = \
@@ -29,6 +30,11 @@ test_ini_config_SOURCES = \
 	$(top_srcdir)/service/realm-ini-config.c \
 	$(top_srcdir)/service/realm-samba-config.c \
 	$(top_srcdir)/service/realm-settings.c \
+	$(NULL)
+
+test_login_name_SOURCES = \
+	test-login-name.c \
+	$(top_srcdir)/service/realm-login-name.c \
 	$(NULL)
 
 frob_install_packages_CFLAGS = \

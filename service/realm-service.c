@@ -132,7 +132,7 @@ realm_service_new (const gchar *service_name,
 
 	g_return_if_fail (service_name != NULL);
 
-	name = realm_settings_string ("services", "winbind");
+	name = realm_settings_string ("services", service_name);
 	if (name == NULL)
 		name = service_name;
 

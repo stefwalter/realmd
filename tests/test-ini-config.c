@@ -504,7 +504,6 @@ test_change_list (Test *test,
 	gchar *output;
 
 	/* Setup this file as the system smb.conf */
-	realm_settings_add ("paths", "smb.conf", "/tmp/test-samba-config.conf");
 	g_file_set_contents ("/tmp/test-samba-config.conf", data, -1, &error);
 	g_assert_no_error (error);
 

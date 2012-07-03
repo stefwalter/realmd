@@ -627,8 +627,12 @@ realm_ini_config_read_file (RealmIniConfig *self,
 	gsize length;
 
 	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), FALSE);
-	g_return_val_if_fail (filename != NULL, FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+	if (filename == NULL) {
+		g_return_val_if_fail (self->filename != NULL, FALSE);
+		filename = self->filename;
+	}
 
 	g_file_get_contents (filename, &contents, &length, &err);
 
@@ -662,9 +666,10 @@ realm_ini_config_write_file (RealmIniConfig *self,
 	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-	if (filename == NULL)
+	if (filename == NULL) {
+		g_return_val_if_fail (self->filename != NULL, FALSE);
 		filename = self->filename;
-	g_return_val_if_fail (filename != NULL, FALSE);
+	}
 
 	bytes = realm_ini_config_write_bytes (self);
 	g_return_val_if_fail (bytes != NULL, FALSE);
@@ -679,6 +684,9 @@ realm_ini_config_write_file (RealmIniConfig *self,
 		ret = g_file_set_contents (filename, contents, length, error);
 
 	g_bytes_unref (bytes);
+
+	if (ret)
+		realm_ini_config_set_filename (self, filename);
 	return ret;
 }
 
@@ -974,7 +982,7 @@ realm_ini_config_changev (RealmIniConfig *self,
 	g_return_val_if_fail (parameters != NULL, FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-	if (!realm_ini_config_read_file (self, self->filename, error))
+	if (!realm_ini_config_read_file (self, NULL, error))
 		return FALSE;
 
 	realm_ini_config_set_all (self, section, parameters);
@@ -1038,7 +1046,7 @@ realm_ini_config_change_list (RealmIniConfig *self,
 	g_return_val_if_fail (delimiters != NULL, FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-	if (!realm_ini_config_read_file (self, self->filename, error))
+	if (!realm_ini_config_read_file (self, NULL, error))
 		return FALSE;
 
 	original = realm_ini_config_get_list (self, section, name, delimiters);
@@ -1072,7 +1080,7 @@ realm_ini_config_reload (RealmIniConfig *self)
 
 	self->reload_scheduled = 0;
 
-	realm_ini_config_read_file (self, self->filename, &error);
+	realm_ini_config_read_file (self, NULL, &error);
 	if (error != NULL) {
 		g_warning ("Couldn't reload config file: %s: %s",
 		           self->filename, error->message);

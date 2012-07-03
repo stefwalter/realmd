@@ -107,59 +107,31 @@ realm_info_to_realm_proxy (GVariant *realm_info)
 }
 
 static RealmDbusKerberos *
-realms_to_realm_proxy (GVariant *realms)
+realms_to_realm_proxy (GVariant *realms,
+                       const gchar *enrolled)
 {
 	RealmDbusKerberos *realm = NULL;
 	GVariant *realm_info;
 	GVariantIter iter;
+	const gchar *name;
 
 	g_variant_iter_init (&iter, realms);
 	while ((realm_info = g_variant_iter_next_value (&iter)) != NULL) {
 		realm = realm_info_to_realm_proxy (realm_info);
 		g_variant_unref (realm_info);
 
+		if (realm != NULL && enrolled &&
+		    !realm_dbus_kerberos_get_enrolled (realm)) {
+			name = realm_dbus_kerberos_get_name (realm);
+			if (name && g_ascii_strcasecmp (enrolled, name) == 0) {
+				g_object_unref (realm);
+				realm = NULL;
+			}
+		}
+
 		if (realm != NULL)
 			break;
 	}
-
-	return realm;
-}
-
-static RealmDbusKerberos *
-discover_realm_for_string (const gchar *string)
-{
-	RealmDbusKerberos *realm;
-	RealmDbusProvider *provider;
-	GError *error = NULL;
-	GVariant *realms;
-	gint relevance;
-
-	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-	                                                       G_DBUS_PROXY_FLAGS_NONE,
-	                                                       "org.freedesktop.realmd",
-	                                                       "/org/freedesktop/realmd",
-	                                                       NULL, &error);
-	if (error != NULL) {
-		handle_error (error, "couldn't connect to realm service");
-		return NULL;
-	}
-
-	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);
-	realm_dbus_provider_call_discover_sync (provider, string, operation_id,
-	                                        &relevance, &realms, NULL, &error);
-
-	g_object_unref (provider);
-
-	if (error != NULL) {
-		handle_error (error, "couldn't connect to realm service");
-		return NULL;
-	}
-
-	realm = realms_to_realm_proxy (realms);
-	g_variant_unref (realms);
-
-	if (realm == NULL)
-		handle_error (NULL, "no such realm found: %s", string);
 
 	return realm;
 }
@@ -316,23 +288,17 @@ on_complete_get_result (GObject *source,
 }
 
 static int
-realm_join_or_leave (const gchar *string,
+realm_join_or_leave (RealmDbusKerberos *realm,
                      const gchar *user_name,
                      gboolean verbose,
                      gboolean join)
 {
-	RealmDbusKerberos *realm;
 	GVariant *kerberos_cache;
 	const gchar *realm_name;
 	GError *error = NULL;
 	GVariant *options;
 	SyncClosure sync;
 	gchar *principal;
-
-	/* Discover the realm */
-	realm = discover_realm_for_string (string);
-	if (realm == NULL)
-		return 1;
 
 	if (user_name == NULL)
 		user_name = realm_dbus_kerberos_get_suggested_administrator (realm);
@@ -387,7 +353,6 @@ realm_join_or_leave (const gchar *string,
 
 	g_object_unref (sync.result);
 	g_main_loop_unref (sync.loop);
-	g_object_unref (realm);
 
 	if (error != NULL) {
 		handle_error (error, join ? "couldn't join realm" : "couldn't leave realm");
@@ -395,6 +360,91 @@ realm_join_or_leave (const gchar *string,
 	}
 
 	return 0;
+}
+
+static int
+realm_join (const gchar *string,
+            const gchar *user_name,
+            gboolean verbose)
+{
+	RealmDbusKerberos *realm;
+	RealmDbusProvider *provider;
+	GError *error = NULL;
+	GVariant *realms;
+	gint relevance;
+	gint ret;
+
+	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+	                                                       G_DBUS_PROXY_FLAGS_NONE,
+	                                                       "org.freedesktop.realmd",
+	                                                       "/org/freedesktop/realmd",
+	                                                       NULL, &error);
+	if (error != NULL) {
+		handle_error (error, "couldn't connect to realm service");
+		return 1;
+	}
+
+	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);
+	realm_dbus_provider_call_discover_sync (provider, string, operation_id,
+	                                        &relevance, &realms, NULL, &error);
+
+	g_object_unref (provider);
+
+	if (error != NULL) {
+		handle_error (error, "couldn't connect to realm service");
+		return 1;
+	}
+
+	realm = realms_to_realm_proxy (realms, FALSE);
+	g_variant_unref (realms);
+
+	if (realm == NULL) {
+		handle_error (NULL, "no such realm found: %s", string);
+		return 1;
+	}
+
+	ret = realm_join_or_leave (realm, user_name, verbose, TRUE);
+	g_object_unref (realm);
+
+	return ret;
+}
+
+static int
+realm_leave (const gchar *string,
+             const gchar *user_name,
+             gboolean verbose)
+{
+	RealmDbusKerberos *realm;
+	GError *error = NULL;
+	RealmDbusProvider *provider;
+	GVariant *realms;
+	gint ret;
+
+	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+	                                                       G_DBUS_PROXY_FLAGS_NONE,
+	                                                       "org.freedesktop.realmd",
+	                                                       "/org/freedesktop/realmd",
+	                                                       NULL, &error);
+	if (error != NULL) {
+		handle_error (error, "couldn't connect to realm service");
+		return 1;
+	}
+
+	/* Find the right realm, but only enrolled */
+	realms = realm_dbus_provider_get_realms (provider);
+	realm = realms_to_realm_proxy (realms, string);
+
+	g_object_unref (provider);
+
+	if (realm == NULL) {
+		handle_error (NULL, "no such realm found: %s", string);
+		return 1;
+	}
+
+	ret = realm_join_or_leave (realm, user_name, verbose, FALSE);
+	g_object_unref (realm);
+
+	return ret;
 }
 
 static int
@@ -473,7 +523,7 @@ main (int argc,
 			g_printerr ("%s: specify one realm to leave\n", g_get_prgname ());
 			ret = 2;
 		} else {
-			ret = realm_join_or_leave (argv[1], arg_user, arg_verbose, TRUE);
+			ret = realm_join (argv[1], arg_user, arg_verbose);
 		}
 
 	} else if (arg_leave) {
@@ -481,7 +531,7 @@ main (int argc,
 			g_printerr ("%s: specify one realm to leave\n", g_get_prgname ());
 			ret = 2;
 		} else {
-			ret = realm_join_or_leave (argv[1], arg_user, arg_verbose, FALSE);
+			ret = realm_leave (argv[1], arg_user, arg_verbose);
 		}
 
 	} else if (argc == 1) {

@@ -75,51 +75,59 @@ struct _RealmServiceClass {
 	                                         GError **error);
 };
 
-GType            realm_service_get_type                  (void) G_GNUC_CONST;
+GType            realm_service_get_type                   (void) G_GNUC_CONST;
 
-void             realm_service_new                       (const gchar *service_name,
-                                                   GDBusMethodInvocation *invocation,
-                                                   GAsyncReadyCallback callback,
-                                                   gpointer user_data);
+void             realm_service_new                        (const gchar *service_name,
+                                                           GDBusMethodInvocation *invocation,
+                                                           GAsyncReadyCallback callback,
+                                                           gpointer user_data);
 
-RealmService *   realm_service_new_finish         (GAsyncResult *result,
-                                                   GError **error);
+RealmService *   realm_service_new_finish                 (GAsyncResult *result,
+                                                           GError **error);
 
-void             realm_service_enable             (RealmService *service,
-                                                   GDBusMethodInvocation *invocation,
-                                                   GAsyncReadyCallback callback,
-                                                   gpointer user_data);
+void             realm_service_impl_enable                (RealmService *service,
+                                                           GDBusMethodInvocation *invocation,
+                                                           GAsyncReadyCallback callback,
+                                                           gpointer user_data);
 
-gboolean         realm_service_enable_finish      (RealmService *service,
-                                                   GAsyncResult *result,
-                                                   GError **error);
+gboolean         realm_service_impl_enable_finish         (RealmService *service,
+                                                           GAsyncResult *result,
+                                                           GError **error);
 
-void             realm_service_disable            (RealmService *service,
-                                                   GDBusMethodInvocation *invocation,
-                                                   GAsyncReadyCallback callback,
-                                                   gpointer user_data);
+void             realm_service_impl_disable               (RealmService *service,
+                                                           GDBusMethodInvocation *invocation,
+                                                           GAsyncReadyCallback callback,
+                                                           gpointer user_data);
 
-gboolean         realm_service_disable_finish     (RealmService *service,
-                                                   GAsyncResult *result,
-                                                   GError **error);
+gboolean         realm_service_impl_disable_finish        (RealmService *service,
+                                                           GAsyncResult *result,
+                                                           GError **error);
 
-void             realm_service_restart            (RealmService *service,
-                                                   GDBusMethodInvocation *invocation,
-                                                   GAsyncReadyCallback callback,
-                                                   gpointer user_data);
+void             realm_service_impl_restart               (RealmService *service,
+                                                           GDBusMethodInvocation *invocation,
+                                                           GAsyncReadyCallback callback,
+                                                           gpointer user_data);
 
-gboolean         realm_service_restart_finish     (RealmService *service,
-                                                   GAsyncResult *result,
-                                                   GError **error);
+gboolean         realm_service_impl_restart_finish        (RealmService *service,
+                                                           GAsyncResult *result,
+                                                           GError **error);
 
-void             realm_service_stop               (RealmService *service,
-                                                   GDBusMethodInvocation *invocation,
-                                                   GAsyncReadyCallback callback,
-                                                   gpointer user_data);
+void             realm_service_impl_stop                  (RealmService *service,
+                                                           GDBusMethodInvocation *invocation,
+                                                           GAsyncReadyCallback callback,
+                                                           gpointer user_data);
 
-gboolean         realm_service_stop_finish        (RealmService *service,
-                                                   GAsyncResult *result,
-                                                   GError **error);
+gboolean         realm_service_impl_stop_finish           (RealmService *service,
+                                                           GAsyncResult *result,
+                                                           GError **error);
+
+void             realm_service_restart                    (const gchar *service_name,
+                                                           GDBusMethodInvocation *invocation,
+                                                           GAsyncReadyCallback callback,
+                                                           gpointer user_data);
+
+gboolean         realm_service_restart_finish             (GAsyncResult *result,
+                                                           GError **error);
 
 void             realm_service_enable_and_restart         (const gchar *service_name,
                                                            GDBusMethodInvocation *invocation,

@@ -179,10 +179,10 @@ realm_service_new_finish (GAsyncResult *result,
 }
 
 void
-realm_service_enable (RealmService *self,
-                      GDBusMethodInvocation *invocation,
-                      GAsyncReadyCallback callback,
-                      gpointer user_data)
+realm_service_impl_enable (RealmService *self,
+                           GDBusMethodInvocation *invocation,
+                           GAsyncReadyCallback callback,
+                           gpointer user_data)
 {
 	RealmServiceClass *klass;
 
@@ -195,9 +195,9 @@ realm_service_enable (RealmService *self,
 }
 
 gboolean
-realm_service_enable_finish (RealmService *self,
-                             GAsyncResult *result,
-                             GError **error)
+realm_service_impl_enable_finish (RealmService *self,
+                                  GAsyncResult *result,
+                                  GError **error)
 {
 	RealmServiceClass *klass;
 
@@ -210,10 +210,10 @@ realm_service_enable_finish (RealmService *self,
 }
 
 void
-realm_service_disable (RealmService *self,
-                       GDBusMethodInvocation *invocation,
-                       GAsyncReadyCallback callback,
-                       gpointer user_data)
+realm_service_impl_disable (RealmService *self,
+                            GDBusMethodInvocation *invocation,
+                            GAsyncReadyCallback callback,
+                            gpointer user_data)
 {
 	RealmServiceClass *klass;
 
@@ -226,9 +226,9 @@ realm_service_disable (RealmService *self,
 }
 
 gboolean
-realm_service_disable_finish (RealmService *self,
-                              GAsyncResult *result,
-                              GError **error)
+realm_service_impl_disable_finish (RealmService *self,
+                                   GAsyncResult *result,
+                                   GError **error)
 {
 	RealmServiceClass *klass;
 
@@ -241,10 +241,10 @@ realm_service_disable_finish (RealmService *self,
 }
 
 void
-realm_service_restart (RealmService *self,
-                       GDBusMethodInvocation *invocation,
-                       GAsyncReadyCallback callback,
-                       gpointer user_data)
+realm_service_impl_restart (RealmService *self,
+                            GDBusMethodInvocation *invocation,
+                            GAsyncReadyCallback callback,
+                            gpointer user_data)
 {
 	RealmServiceClass *klass;
 
@@ -257,9 +257,9 @@ realm_service_restart (RealmService *self,
 }
 
 gboolean
-realm_service_restart_finish (RealmService *self,
-                              GAsyncResult *result,
-                              GError **error)
+realm_service_impl_restart_finish (RealmService *self,
+                                   GAsyncResult *result,
+                                   GError **error)
 {
 	RealmServiceClass *klass;
 
@@ -272,10 +272,10 @@ realm_service_restart_finish (RealmService *self,
 }
 
 void
-realm_service_stop (RealmService *self,
-                    GDBusMethodInvocation *invocation,
-                    GAsyncReadyCallback callback,
-                    gpointer user_data)
+realm_service_impl_stop (RealmService *self,
+                         GDBusMethodInvocation *invocation,
+                         GAsyncReadyCallback callback,
+                         gpointer user_data)
 {
 	RealmServiceClass *klass;
 
@@ -288,9 +288,9 @@ realm_service_stop (RealmService *self,
 }
 
 gboolean
-realm_service_stop_finish (RealmService *self,
-                           GAsyncResult *result,
-                           GError **error)
+realm_service_impl_stop_finish (RealmService *self,
+                                GAsyncResult *result,
+                                GError **error)
 {
 	RealmServiceClass *klass;
 
@@ -303,6 +303,86 @@ realm_service_stop_finish (RealmService *self,
 }
 
 static void
+on_restart_restarted (GObject *source,
+                      GAsyncResult *result,
+                      gpointer user_data)
+{
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	RealmService *service = REALM_SERVICE (source);
+	GError *error = NULL;
+
+	realm_service_impl_restart_finish (service, result, &error);
+	if (error != NULL)
+		g_simple_async_result_take_error (async, error);
+	g_simple_async_result_complete (async);
+
+	g_object_unref (async);
+}
+
+static void
+on_restart_created (GObject *source,
+                    GAsyncResult *result,
+                    gpointer user_data)
+{
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	GDBusMethodInvocation *invocation;
+	RealmService *service;
+	GError *error = NULL;
+
+	service = realm_service_new_finish (result, &error);
+	if (error == NULL) {
+		invocation = g_simple_async_result_get_op_res_gpointer (async);
+		realm_service_impl_restart (service, invocation, on_restart_restarted,
+		                            g_object_ref (async));
+		g_object_unref (service);
+	} else {
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete (async);
+	}
+
+	g_object_unref (async);
+}
+
+void
+realm_service_restart (const gchar *service_name,
+                       GDBusMethodInvocation *invocation,
+                       GAsyncReadyCallback callback,
+                       gpointer user_data)
+{
+	GSimpleAsyncResult *async;
+
+	async = g_simple_async_result_new (NULL, callback, user_data,
+	                                   realm_service_restart);
+	if (invocation) {
+		g_simple_async_result_set_op_res_gpointer (async,
+		                                           g_object_ref (invocation),
+		                                           g_object_unref);
+	}
+
+	realm_service_new (service_name, invocation,
+	                   on_restart_created, g_object_ref (async));
+
+	g_object_unref (async);
+}
+
+gboolean
+realm_service_restart_finish (GAsyncResult *result,
+                              GError **error)
+{
+	GSimpleAsyncResult *async;
+
+	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
+	                      realm_service_restart), FALSE);
+	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+	async = G_SIMPLE_ASYNC_RESULT (result);
+	if (g_simple_async_result_propagate_error (async, error))
+		return FALSE;
+
+	return TRUE;
+}
+
+static void
 on_enable_restarted (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
@@ -311,7 +391,7 @@ on_enable_restarted (GObject *source,
 	RealmService *service = REALM_SERVICE (source);
 	GError *error = NULL;
 
-	realm_service_restart_finish (service, result, &error);
+	realm_service_impl_restart_finish (service, result, &error);
 	if (error != NULL)
 		g_simple_async_result_take_error (async, error);
 	g_simple_async_result_complete (async);
@@ -330,11 +410,11 @@ on_enable_enabled (GObject *source,
 	GDBusMethodInvocation *invocation;
 	GError *error = NULL;
 
-	realm_service_enable_finish (service, result, &error);
+	realm_service_impl_enable_finish (service, result, &error);
 	if (error == NULL) {
 		invocation = g_simple_async_result_get_op_res_gpointer (async);
-		realm_service_restart (service, invocation, on_enable_restarted,
-		                       g_object_ref (async));
+		realm_service_impl_restart (service, invocation, on_enable_restarted,
+		                            g_object_ref (async));
 	} else {
 		g_simple_async_result_take_error (async, error);
 		g_simple_async_result_complete (async);
@@ -356,8 +436,8 @@ on_enable_created (GObject *source,
 	service = realm_service_new_finish (result, &error);
 	if (error == NULL) {
 		invocation = g_simple_async_result_get_op_res_gpointer (async);
-		realm_service_enable (service, invocation, on_enable_enabled,
-		                      g_object_ref (async));
+		realm_service_impl_enable (service, invocation, on_enable_enabled,
+		                           g_object_ref (async));
 		g_object_unref (service);
 	} else {
 		g_simple_async_result_take_error (async, error);
@@ -415,7 +495,7 @@ on_disable_stopped (GObject *source,
 	RealmService *service = REALM_SERVICE (source);
 	GError *error = NULL;
 
-	realm_service_stop_finish (service, result, &error);
+	realm_service_impl_stop_finish (service, result, &error);
 	if (error != NULL)
 		g_simple_async_result_take_error (async, error);
 	g_simple_async_result_complete (async);
@@ -434,11 +514,11 @@ on_disable_disabled (GObject *source,
 	GDBusMethodInvocation *invocation;
 	GError *error = NULL;
 
-	realm_service_disable_finish (service, result, &error);
+	realm_service_impl_disable_finish (service, result, &error);
 	if (error == NULL) {
 		invocation = g_simple_async_result_get_op_res_gpointer (async);
-		realm_service_stop (service, invocation, on_disable_stopped,
-		                    g_object_ref (async));
+		realm_service_impl_stop (service, invocation, on_disable_stopped,
+		                         g_object_ref (async));
 	} else {
 		g_simple_async_result_take_error (async, error);
 		g_simple_async_result_complete (async);
@@ -460,8 +540,8 @@ on_disable_created (GObject *source,
 	service = realm_service_new_finish (result, &error);
 	if (error == NULL) {
 		invocation = g_simple_async_result_get_op_res_gpointer (async);
-		realm_service_disable (service, invocation, on_disable_disabled,
-		                       g_object_ref (async));
+		realm_service_impl_disable (service, invocation, on_disable_disabled,
+		                            g_object_ref (async));
 		g_object_unref (service);
 	} else {
 		g_simple_async_result_take_error (async, error);

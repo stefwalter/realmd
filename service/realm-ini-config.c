@@ -894,6 +894,60 @@ realm_ini_config_set_list (RealmIniConfig *self,
 	g_free (value);
 }
 
+void
+realm_ini_config_set_list_diff (RealmIniConfig *self,
+                                const gchar *section,
+                                const gchar *name,
+                                const gchar *delimiter,
+                                const gchar **add,
+                                const gchar **remove)
+{
+	GPtrArray *changed;
+	gchar *value;
+	gint i, j;
+	gchar **original;
+	gchar *delim;
+
+	g_return_if_fail (REALM_IS_INI_CONFIG (self));
+	g_return_if_fail (section != NULL);
+	g_return_if_fail (name != NULL);
+
+	original = realm_ini_config_get_list (self, section, name, delimiter);
+	changed = g_ptr_array_new ();
+
+	/* Filter the remove values */
+	for (i = 0; original != NULL && original[i] != NULL; i++) {
+		value = g_strstrip (g_strdup (original[i]));
+		for (j = 0; remove != NULL && remove[j] != NULL; j++) {
+			if (g_ascii_strcasecmp (remove[j], value) == 0)
+				break;
+		}
+		if ((remove == NULL || remove[j] == NULL) && !g_str_equal (value, ""))
+			g_ptr_array_add (changed, value);
+		else
+			g_free (value);
+	}
+
+	/* Add new values */
+	for (j = 0; add != NULL && add[j] != NULL; j++) {
+		for (i = 0; original != NULL && original[i] != NULL; i++) {
+			if (g_ascii_strcasecmp (add[j], original[i]) == 0)
+				break;
+		}
+		if (original == NULL || original[i] == NULL)
+			g_ptr_array_add (changed, g_strdup (add[j]));
+	}
+
+	g_ptr_array_add (changed, NULL);
+	g_strfreev (original);
+
+	delim = g_strdup_printf ("%c ", delimiter[0]);
+	realm_ini_config_set_list (self, section, name, delim,
+	                           (const gchar **)changed->pdata);
+	g_ptr_array_free (changed, TRUE);
+	g_free (delim);
+}
+
 gboolean
 realm_ini_config_have_section (RealmIniConfig *self,
                                const gchar *section)
@@ -989,44 +1043,6 @@ realm_ini_config_changev (RealmIniConfig *self,
 	return realm_ini_config_write_file (self, NULL, error);
 }
 
-static gchar **
-update_lists_for_changes (const gchar **original,
-                          const gchar **add,
-                          const gchar **remove)
-{
-	GPtrArray *changed;
-	gchar *value;
-	gint i, j;
-
-	changed = g_ptr_array_new ();
-
-	/* Filter the remove values */
-	for (i = 0; original != NULL && original[i] != NULL; i++) {
-		value = g_strstrip (g_strdup (original[i]));
-		for (j = 0; remove != NULL && remove[j] != NULL; j++) {
-			if (g_ascii_strcasecmp (remove[j], value) == 0)
-				break;
-		}
-		if ((remove == NULL || remove[j] == NULL) && !g_str_equal (value, ""))
-			g_ptr_array_add (changed, value);
-		else
-			g_free (value);
-	}
-
-	/* Add new values */
-	for (j = 0; add != NULL && add[j] != NULL; j++) {
-		for (i = 0; original != NULL && original[i] != NULL; i++) {
-			if (g_ascii_strcasecmp (add[j], original[i]) == 0)
-				break;
-		}
-		if (original == NULL || original[i] == NULL)
-			g_ptr_array_add (changed, g_strdup (add[j]));
-	}
-
-	g_ptr_array_add (changed, NULL);
-	return (gchar **)g_ptr_array_free (changed, FALSE);
-}
-
 gboolean
 realm_ini_config_change_list (RealmIniConfig *self,
                               const gchar *section,
@@ -1036,10 +1052,6 @@ realm_ini_config_change_list (RealmIniConfig *self,
                               const gchar **remove,
                               GError **error)
 {
-	gchar **original;
-	gchar **changed;
-	gchar *delim;
-
 	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), FALSE);
 	g_return_val_if_fail (section != NULL, FALSE);
 	g_return_val_if_fail (name != NULL, FALSE);
@@ -1049,16 +1061,7 @@ realm_ini_config_change_list (RealmIniConfig *self,
 	if (!realm_ini_config_read_file (self, NULL, error))
 		return FALSE;
 
-	original = realm_ini_config_get_list (self, section, name, delimiters);
-	changed = update_lists_for_changes ((const gchar **)original, add, remove);
-	g_strfreev (original);
-
-	delim = g_strdup_printf ("%c ", delimiters[0]);
-	realm_ini_config_set_list (self, section, name, delim,
-	                           (const gchar **)changed);
-	g_strfreev (changed);
-	g_free (delim);
-
+	realm_ini_config_set_list_diff (self, section, name, delimiters, add, remove);
 	return realm_ini_config_write_file (self, NULL, error);
 }
 

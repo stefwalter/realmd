@@ -474,15 +474,15 @@ test_change (Test *test,
 	gchar *output;
 
 	/* Setup this file as the system smb.conf */
-	realm_settings_add ("paths", "smb.conf", "/tmp/test-samba-config.conf");
 	g_file_set_contents ("/tmp/test-samba-config.conf", data, -1, &error);
 	g_assert_no_error (error);
 
-	realm_samba_config_change ("section", &error,
-	                           "1", "the number one",
-	                           "3", NULL,
-	                           "4", "four",
-	                           NULL);
+	realm_ini_config_set_filename (test->config, "/tmp/test-samba-config.conf");
+	realm_ini_config_change (test->config, "section", &error,
+	                         "1", "the number one",
+	                         "3", NULL,
+	                         "4", "four",
+	                         NULL);
 	g_assert_no_error (error);
 
 	g_file_get_contents ("/tmp/test-samba-config.conf", &output, NULL, &error);

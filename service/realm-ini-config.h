@@ -82,6 +82,13 @@ void                realm_ini_config_set_list                 (RealmIniConfig *s
                                                                const gchar *delimiter,
                                                                const gchar **values);
 
+void                realm_ini_config_set_list_diff            (RealmIniConfig *self,
+                                                               const gchar *section,
+                                                               const gchar *name,
+                                                               const gchar *delimiter,
+                                                               const gchar **add,
+                                                               const gchar **remove);
+
 GHashTable *        realm_ini_config_get_all                  (RealmIniConfig *self,
                                                                const gchar *section);
 

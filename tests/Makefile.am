@@ -15,6 +15,7 @@ LDADD = \
 
 TEST_PROGS = \
 	test-ini-config \
+	test-sssd-config \
 	test-login-name \
 	$(NULL)
 
@@ -29,6 +30,13 @@ test_ini_config_SOURCES = \
 	test-ini-config.c \
 	$(top_srcdir)/service/realm-ini-config.c \
 	$(top_srcdir)/service/realm-samba-config.c \
+	$(top_srcdir)/service/realm-settings.c \
+	$(NULL)
+
+test_sssd_config_SOURCES = \
+	test-sssd-config.c \
+	$(top_srcdir)/service/realm-ini-config.c \
+	$(top_srcdir)/service/realm-sssd-config.c \
 	$(top_srcdir)/service/realm-settings.c \
 	$(NULL)
 

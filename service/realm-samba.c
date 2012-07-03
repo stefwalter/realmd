@@ -167,17 +167,40 @@ on_join_do_winbind (GObject *source,
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
+	RealmSamba *self = REALM_SAMBA (g_async_result_get_source_object (result));
+	GHashTable *settings = NULL;
 	GError *error = NULL;
+	gchar *workgroup = NULL;
 
-	realm_samba_enroll_join_finish (result, &error);
+	realm_samba_enroll_join_finish (result, &settings, &error);
 	if (error == NULL) {
-		realm_samba_winbind_configure_async (enroll->invocation,
+		workgroup = g_hash_table_lookup (settings, "workgroup");
+		if (workgroup == NULL) {
+			g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
+			             "Failed to calculate domain workgroup");
+		}
+	}
+
+	if (error == NULL) {
+		realm_ini_config_change (self->config, REALM_SAMBA_CONFIG_GLOBAL, &error,
+		                         "security", "ads",
+		                         "realm", enroll->realm_name,
+		                         "workgroup", workgroup,
+		                         NULL);
+	}
+
+	if (error == NULL) {
+		realm_samba_winbind_configure_async (self->config, enroll->invocation,
 		                                     on_winbind_done, g_object_ref (res));
 	} else {
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete (res);
 	}
 
+	if (settings)
+		g_hash_table_unref (settings);
+	g_free (workgroup);
+	g_object_unref (self);
 	g_object_unref (res);
 }
 
@@ -316,14 +339,29 @@ on_leave_do_winbind (GObject *source,
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	UnenrollClosure *unenroll = g_simple_async_result_get_op_res_gpointer (res);
-
-	realm_samba_enroll_leave_finish (result, NULL);
+	RealmSamba *self = REALM_SAMBA (g_async_result_get_source_object (user_data));
+	GError *error = NULL;
 
 	/* We don't care if we can leave or not, just continue with other steps */
-	realm_samba_winbind_deconfigure_async (unenroll->invocation,
-	                                       on_remove_winbind_done,
-	                                       g_object_ref (res));
+	realm_samba_enroll_leave_finish (result, NULL);
 
+	realm_ini_config_change (self->config, REALM_SAMBA_CONFIG_GLOBAL, &error,
+	                         "workgroup", NULL,
+	                         "realm", NULL,
+	                         "security", "user",
+	                         NULL);
+
+	if (error == NULL) {
+		realm_samba_winbind_deconfigure_async (self->config,
+		                                       unenroll->invocation,
+		                                       on_remove_winbind_done,
+		                                       g_object_ref (res));
+	} else {
+		g_simple_async_result_take_error (res, error);
+		g_simple_async_result_complete (res);
+	}
+
+	g_object_unref (self);
 	g_object_unref (res);
 }
 

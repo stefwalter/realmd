@@ -33,6 +33,7 @@ typedef struct {
 	GCancellable *cancellable;
 	GDBusMethodInvocation *invocation;
 	gchar *kerberos_cache_filename;
+	GHashTable *settings;
 	gchar **environ;
 	gchar *realm;
 } JoinClosure;
@@ -54,6 +55,8 @@ join_closure_free (gpointer data)
 
 	g_free (join->realm);
 	g_strfreev (join->environ);
+	if (join->settings)
+		g_hash_table_unref (join->settings);
 	g_clear_object (&join->invocation);
 
 	g_slice_free (JoinClosure, join);
@@ -189,7 +192,6 @@ on_list_complete (GObject *source,
 	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
 	GString *output = NULL;
 	RealmIniConfig *config;
-	gchar *workgroup;
 	GError *error = NULL;
 	gint status;
 
@@ -202,16 +204,12 @@ on_list_complete (GObject *source,
 		/* Read the command output as a samba config */
 		config = realm_ini_config_new (REALM_INI_LINE_CONTINUATIONS);
 		realm_ini_config_read_string (config, output->str);
-		workgroup = realm_ini_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup");
-		g_object_unref (config);
+		join->settings = realm_ini_config_get_all (config, REALM_SAMBA_CONFIG_GLOBAL);
+		g_hash_table_insert (join->settings,
+		                     g_strdup ("kerberos method"),
+		                     g_strdup ("secrets and keytab"));
 
-		/* Write the workgroup parameter to the smb.conf */
-		realm_samba_config_change (REALM_SAMBA_CONFIG_GLOBAL, &error,
-		                           "security", "ads",
-		                           "realm", join->realm,
-		                           "workgroup", workgroup,
-		                           NULL);
-		g_free (workgroup);
+		g_object_unref (config);
 	}
 
 	if (error != NULL)
@@ -294,11 +292,6 @@ on_join_do_keytab (GObject *source,
 	}
 	g_string_free (output, TRUE);
 
-	if (error == NULL)
-		realm_samba_config_change (REALM_SAMBA_CONFIG_GLOBAL, &error,
-		                           "kerberos method", "secrets and keytab",
-		                           NULL);
-
 	if (error == NULL) {
 		begin_net_process (join, on_keytab_do_list, g_object_ref (res),
 		                   "ads", "keytab", "create", NULL);
@@ -342,13 +335,25 @@ realm_samba_enroll_join_async (const gchar *realm,
 
 gboolean
 realm_samba_enroll_join_finish (GAsyncResult *result,
+                                GHashTable **settings,
                                 GError **error)
 {
+	JoinClosure *join;
+
 	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
 	                      realm_samba_enroll_join_async), FALSE);
 
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
 		return FALSE;
+
+	if (settings != NULL) {
+		join = g_simple_async_result_get_op_res_gpointer (G_SIMPLE_ASYNC_RESULT (result));
+		if (join->settings)
+			*settings = g_hash_table_ref (join->settings);
+		else
+			*settings = NULL;
+	}
+
 	return TRUE;
 }
 
@@ -366,14 +371,6 @@ on_leave_complete (GObject *source,
 	if (error == NULL && status != 0)
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Leaving the domain %s failed", join->realm);
-
-	/* Deconfigure the domain anyway, even if its not successful */
-	realm_samba_config_change (REALM_SAMBA_CONFIG_GLOBAL,
-	                           error ? NULL : &error,
-	                           "workgroup", NULL,
-	                           "realm",	 NULL,
-	                           "security", "user",
-	                           NULL);
 
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);

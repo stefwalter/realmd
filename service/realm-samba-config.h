@@ -28,21 +28,6 @@ RealmIniConfig *    realm_samba_config_new                      (GError **error)
 RealmIniConfig *    realm_samba_config_new_with_flags           (RealmIniFlags flags,
                                                                  GError **error);
 
-gboolean            realm_samba_config_change                   (const gchar *section,
-                                                                 GError **error,
-                                                                 ...) G_GNUC_NULL_TERMINATED;
-
-gboolean            realm_samba_config_changev                  (const gchar *section,
-                                                                 GHashTable *parameters,
-                                                                 GError **error);
-
-gboolean            realm_samba_config_change_list              (const gchar *section,
-                                                                 const gchar *name,
-                                                                 const gchar *delimiters,
-                                                                 const gchar **add,
-                                                                 const gchar **remove,
-                                                                 GError **error);
-
 G_END_DECLS
 
 #endif /* __REALM_SAMBA_CONFIG_H__ */

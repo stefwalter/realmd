@@ -21,14 +21,16 @@
 
 G_BEGIN_DECLS
 
-void       realm_samba_winbind_configure_async      (GDBusMethodInvocation *invocation,
+void       realm_samba_winbind_configure_async      (RealmIniConfig *config,
+                                                     GDBusMethodInvocation *invocation,
                                                      GAsyncReadyCallback callback,
                                                      gpointer user_data);
 
 gboolean   realm_samba_winbind_configure_finish     (GAsyncResult *result,
                                                      GError **error);
 
-void       realm_samba_winbind_deconfigure_async    (GDBusMethodInvocation *invocation,
+void       realm_samba_winbind_deconfigure_async    (RealmIniConfig *config,
+                                                     GDBusMethodInvocation *invocation,
                                                      GAsyncReadyCallback callback,
                                                      gpointer user_data);
 

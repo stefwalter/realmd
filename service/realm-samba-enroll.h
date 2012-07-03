@@ -28,6 +28,7 @@ void               realm_samba_enroll_join_async     (const gchar *realm,
                                                       gpointer user_data);
 
 gboolean           realm_samba_enroll_join_finish    (GAsyncResult *result,
+                                                      GHashTable **settings,
                                                       GError **error);
 
 void               realm_samba_enroll_leave_async    (const gchar *realm,

@@ -70,7 +70,8 @@ on_enable_do_nss (GObject *source,
 }
 
 void
-realm_samba_winbind_configure_async (GDBusMethodInvocation *invocation,
+realm_samba_winbind_configure_async (RealmIniConfig *config,
+                                     GDBusMethodInvocation *invocation,
                                      GAsyncReadyCallback callback,
                                      gpointer user_data)
 {
@@ -78,6 +79,7 @@ realm_samba_winbind_configure_async (GDBusMethodInvocation *invocation,
 	GError *error = NULL;
 	const gchar *service;
 
+	g_return_if_fail (config != NULL);
 	g_return_if_fail (invocation != NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
 	res = g_simple_async_result_new (NULL, callback, user_data,
@@ -88,15 +90,15 @@ realm_samba_winbind_configure_async (GDBusMethodInvocation *invocation,
 
 	/* TODO: need to use autorid mapping */
 
-	realm_samba_config_change (REALM_SAMBA_CONFIG_GLOBAL, &error,
-	                           "idmap uid", "10000-20000",
-	                           "idmap gid", "10000-20000",
-	                           "winbind enum users", "no",
-	                           "winbind enum groups", "no",
-	                           "template shell", realm_settings_string ("user", "shell"),
-	                           "winbind offline logon", "yes",
-	                           "winbind refresh tickets", "yes",
-	                           NULL);
+	realm_ini_config_change (config, REALM_SAMBA_CONFIG_GLOBAL, &error,
+	                         "idmap uid", "10000-20000",
+	                         "idmap gid", "10000-20000",
+	                         "winbind enum users", "no",
+	                         "winbind enum groups", "no",
+	                         "template shell", realm_settings_string ("user", "shell"),
+	                         "winbind offline logon", "yes",
+	                         "winbind refresh tickets", "yes",
+	                         NULL);
 
 	if (error == NULL) {
 		service = realm_settings_string ("services", "winbind");
@@ -163,12 +165,14 @@ on_nss_do_disable (GObject *source,
 }
 
 void
-realm_samba_winbind_deconfigure_async (GDBusMethodInvocation *invocation,
+realm_samba_winbind_deconfigure_async (RealmIniConfig *config,
+                                       GDBusMethodInvocation *invocation,
                                        GAsyncReadyCallback callback,
                                        gpointer user_data)
 {
 	GSimpleAsyncResult *res;
 
+	g_return_if_fail (config != NULL);
 	g_return_if_fail (invocation != NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
 	res = g_simple_async_result_new (NULL, callback, user_data,

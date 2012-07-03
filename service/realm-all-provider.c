@@ -44,8 +44,10 @@ typedef struct {
 	RealmProviderClass parent_class;
 } RealmAllProviderClass;
 
-static guint provider_owner_id = 0;
 static guint operation_unique_id = 0;
+
+#define   REALM_DBUS_ALL_PROVIDER_NAME             "org.freedesktop.realmd"
+#define   REALM_DBUS_ALL_PROVIDER_PATH             "/org/freedesktop/realmd"
 
 static void realm_all_provider_async_initable_iface (GAsyncInitableIface *iface);
 
@@ -385,6 +387,9 @@ realm_all_provider_class_init (RealmAllProviderClass *klass)
 
 	object_class->finalize = realm_all_provider_finalize;
 
+	provider_class->dbus_name = REALM_DBUS_ALL_PROVIDER_NAME;
+	provider_class->dbus_path = REALM_DBUS_ALL_PROVIDER_PATH;
+
 	provider_class->discover_async = realm_all_provider_discover_async;
 	provider_class->discover_finish = realm_all_provider_discover_finish;
 }
@@ -557,73 +562,4 @@ realm_all_provider_async_initable_iface (GAsyncInitableIface *iface)
 {
 	iface->init_async = realm_all_provider_init_async;
 	iface->init_finish = realm_all_provider_init_finish;
-}
-
-static void
-on_name_acquired (GDBusConnection *connection,
-                  const gchar     *name,
-                  gpointer         user_data)
-{
-	realm_daemon_poke ();
-}
-
-static void
-on_name_lost (GDBusConnection *connection,
-              const gchar     *name,
-              gpointer         user_data)
-{
-	g_warning ("couldn't claim service name on DBus bus: %s",
-	           REALM_DBUS_ALL_PROVIDER_NAME);
-}
-
-static void
-on_all_provider_inited (GObject *source,
-                        GAsyncResult *result,
-                        gpointer user_data)
-{
-	GDBusConnection *connection = G_DBUS_CONNECTION (user_data);
-	GError *error = NULL;
-	GObject *self;
-
-	self = g_async_initable_new_finish (G_ASYNC_INITABLE (source),
-	                                    result, &error);
-
-	if (error == NULL) {
-		g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (self),
-		                                  connection, REALM_DBUS_ALL_PROVIDER_PATH,
-		                                  &error);
-	}
-
-	if (error == NULL) {
-		provider_owner_id = g_bus_own_name_on_connection (connection,
-		                                                  REALM_DBUS_ALL_PROVIDER_NAME,
-		                                                  G_BUS_NAME_OWNER_FLAGS_NONE,
-		                                                  on_name_acquired, on_name_lost,
-		                                                  g_object_ref (self), g_object_unref);
-
-	} else {
-		g_warning ("Couldn't create new realm provider: %s", error->message);
-		g_clear_error (&error);
-	}
-
-	if (self != NULL)
-		g_object_unref (self);
-	g_object_unref (connection);
-}
-
-void
-realm_all_provider_start (GDBusConnection *connection)
-{
-	g_return_if_fail (provider_owner_id == 0);
-
-	g_async_initable_new_async (REALM_TYPE_ALL_PROVIDER, G_PRIORITY_DEFAULT, NULL,
-	                            on_all_provider_inited, g_object_ref (connection),
-	                            NULL);
-}
-
-void
-realm_all_provider_stop (void)
-{
-	if (provider_owner_id != 0)
-		g_bus_unown_name (provider_owner_id);
 }

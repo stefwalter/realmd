@@ -47,7 +47,8 @@ enum {
 	PROP_SAMBA_CONFIG,
 };
 
-static guint provider_owner_id = 0;
+#define   REALM_DBUS_SAMBA_NAME                    "org.freedesktop.realmd.Samba"
+#define   REALM_DBUS_SAMBA_PATH                    "/org/freedesktop/realmd/Samba"
 
 G_DEFINE_TYPE (RealmSambaProvider, realm_samba_provider, REALM_TYPE_PROVIDER);
 
@@ -61,23 +62,18 @@ realm_samba_provider_init (RealmSambaProvider *self)
 }
 
 static void
-ensure_local_realm (RealmSambaProvider *self)
+realm_samba_provider_constructed (GObject *obj)
 {
-	RealmIniConfig *config;
-	GError *error = NULL;
+	RealmSambaProvider *self;
 	gchar *name = NULL;
 	gchar *security;
 
-	config = realm_samba_config_new (&error);
-	if (error != NULL) {
-		g_warning ("Couldn't read samba global configuration file: %s", error->message);
-		g_error_free (error);
-		return;
-	}
+	G_OBJECT_CLASS (realm_samba_provider_parent_class)->constructed (obj);
 
-	security = realm_ini_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "security");
+	self = REALM_SAMBA_PROVIDER (obj);
+	security = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "security");
 	if (security != NULL && g_ascii_strcasecmp (security, "ADS") == 0)
-		name = realm_ini_config_get (config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
+		name = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
 
 	if (name != NULL) {
 		realm_provider_lookup_or_register_realm (REALM_PROVIDER (self),
@@ -86,7 +82,6 @@ ensure_local_realm (RealmSambaProvider *self)
 
 	g_free (name);
 	g_free (security);
-	g_object_unref (config);
 }
 
 static void
@@ -171,9 +166,13 @@ realm_samba_provider_class_init (RealmSambaProviderClass *klass)
 	RealmProviderClass *provider_class = REALM_PROVIDER_CLASS (klass);
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+	provider_class->dbus_name = REALM_DBUS_SAMBA_NAME;
+	provider_class->dbus_path = REALM_DBUS_SAMBA_PATH;
+
 	provider_class->discover_async = realm_samba_provider_discover_async;
 	provider_class->discover_finish = realm_samba_provider_discover_finish;
 
+	object_class->constructed = realm_samba_provider_constructed;
 	object_class->get_property = realm_samba_provider_get_property;
 	object_class->finalize = realm_samba_provider_finalize;
 
@@ -181,57 +180,4 @@ realm_samba_provider_class_init (RealmSambaProviderClass *klass)
 	            g_param_spec_object ("samba-config", "Samba Config", "Samba Config",
 	                                 REALM_TYPE_INI_CONFIG, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 
-}
-
-static void
-on_name_acquired (GDBusConnection *connection,
-                  const gchar     *name,
-                  gpointer         user_data)
-{
-	realm_daemon_poke ();
-}
-
-static void
-on_name_lost (GDBusConnection *connection,
-              const gchar     *name,
-              gpointer         user_data)
-{
-	g_warning ("couldn't claim provider name on DBus bus: %s", REALM_DBUS_SAMBA_NAME);
-}
-
-void
-realm_samba_provider_start (GDBusConnection *connection)
-{
-	RealmSambaProvider *provider;
-	GError *error = NULL;
-
-	g_return_if_fail (provider_owner_id == 0);
-
-	provider = g_object_new (REALM_TYPE_SAMBA_PROVIDER, NULL);
-
-	g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (provider),
-	                                  connection, REALM_DBUS_SAMBA_PATH,
-	                                  &error);
-
-	if (error != NULL) {
-		g_warning ("couldn't export RealmSambaProvider on dbus connection: %s",
-		           error->message);
-		return;
-	}
-
-	ensure_local_realm (provider);
-
-	provider_owner_id = g_bus_own_name_on_connection (connection,
-	                                                  REALM_DBUS_SAMBA_NAME,
-	                                                  G_BUS_NAME_OWNER_FLAGS_NONE,
-	                                                  on_name_acquired,
-	                                                  on_name_lost,
-	                                                  provider, g_object_unref);
-}
-
-void
-realm_samba_provider_stop (void)
-{
-	if (provider_owner_id != 0)
-		g_bus_unown_name (provider_owner_id);
 }

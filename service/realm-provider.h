@@ -42,6 +42,9 @@ struct _RealmProvider {
 struct _RealmProviderClass {
 	RealmDbusProviderSkeletonClass parent_class;
 
+	const gchar *dbus_name;
+	const gchar *dbus_path;
+
 	void         (* discover_async)  (RealmProvider *provider,
 	                                  const gchar *string,
 	                                  GDBusMethodInvocation *invocation,
@@ -55,6 +58,11 @@ struct _RealmProviderClass {
 };
 
 GType                    realm_provider_get_type                 (void) G_GNUC_CONST;
+
+void                     realm_provider_start                    (GDBusConnection *connection,
+                                                                  GType type);
+
+void                     realm_provider_stop_all                 (void);
 
 GVariant *               realm_provider_new_realm_info           (const gchar *bus_name,
                                                                   const gchar *object_path,

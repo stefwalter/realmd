@@ -238,8 +238,8 @@ on_bus_get_connection (GObject *source,
 		g_dbus_connection_add_filter (*connection, on_connection_filter, NULL, NULL);
 
 		realm_diagnostics_initialize (*connection);
-		realm_samba_provider_start (*connection);
-		realm_all_provider_start (*connection);
+		realm_provider_start (*connection, REALM_TYPE_SAMBA_PROVIDER);
+		realm_provider_start (*connection, REALM_TYPE_ALL_PROVIDER);
 	}
 
 	/* Matches the hold() in main() */
@@ -285,8 +285,7 @@ main (int argc,
 	g_main_loop_run (main_loop);
 
 	if (connection != NULL) {
-		realm_all_provider_stop ();
-		realm_samba_provider_stop ();
+		realm_provider_stop_all ();
 		g_object_unref (connection);
 	}
 

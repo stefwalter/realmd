@@ -136,8 +136,8 @@ discover_realm_for_string (const gchar *string)
 
 	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
 	                                                       G_DBUS_PROXY_FLAGS_NONE,
-	                                                       REALM_DBUS_ALL_PROVIDER_NAME,
-	                                                       REALM_DBUS_ALL_PROVIDER_PATH,
+	                                                       "org.freedesktop.realmd",
+	                                                       "/org/freedesktop/realmd",
 	                                                       NULL, &error);
 	if (error != NULL) {
 		handle_error (error, "couldn't connect to realm service");
@@ -410,8 +410,8 @@ realm_list (gboolean verbose)
 
 	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
 	                                                       G_DBUS_PROXY_FLAGS_NONE,
-	                                                       REALM_DBUS_ALL_PROVIDER_NAME,
-	                                                       REALM_DBUS_ALL_PROVIDER_PATH,
+	                                                       "org.freedesktop.realmd",
+	                                                       "/org/freedesktop/realmd",
 	                                                       NULL, &error);
 	if (error != NULL) {
 		handle_error (error, "couldn't connect to realm service");

@@ -29,10 +29,6 @@ typedef struct _RealmAllProvider RealmAllProvider;
 
 GType               realm_all_provider_get_type                 (void) G_GNUC_CONST;
 
-void                realm_all_provider_start                    (GDBusConnection *connection);
-
-void                realm_all_provider_stop                     (void);
-
 G_END_DECLS
 
 #endif /* __REALM_ALL_PROVIDER_H__ */

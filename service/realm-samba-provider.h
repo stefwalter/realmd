@@ -31,10 +31,6 @@ typedef struct _RealmSambaProvider RealmSambaProvider;
 
 GType               realm_samba_provider_get_type                 (void) G_GNUC_CONST;
 
-void                realm_samba_provider_start                    (GDBusConnection *connection);
-
-void                realm_samba_provider_stop                     (void);
-
 G_END_DECLS
 
 #endif /* __REALM_SAMBA_PROVIDER_H__ */

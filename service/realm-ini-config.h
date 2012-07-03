@@ -105,7 +105,7 @@ void                realm_ini_config_remove_section           (RealmIniConfig *s
 gboolean            realm_ini_config_change                   (RealmIniConfig *self,
                                                                const gchar *section,
                                                                GError **error,
-                                                               ...);
+                                                               ...) G_GNUC_NULL_TERMINATED;
 
 gboolean            realm_ini_config_changev                  (RealmIniConfig *self,
                                                                const gchar *section,

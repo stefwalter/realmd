@@ -21,6 +21,7 @@
 #include "realm-diagnostics.h"
 #include "realm-samba-provider.h"
 #include "realm-settings.h"
+#include "realm-sssd-ad-provider.h"
 
 #include <glib.h>
 
@@ -238,6 +239,7 @@ on_bus_get_connection (GObject *source,
 		g_dbus_connection_add_filter (*connection, on_connection_filter, NULL, NULL);
 
 		realm_diagnostics_initialize (*connection);
+		realm_provider_start (*connection, REALM_TYPE_SSSD_AD_PROVIDER);
 		realm_provider_start (*connection, REALM_TYPE_SAMBA_PROVIDER);
 		realm_provider_start (*connection, REALM_TYPE_ALL_PROVIDER);
 	}

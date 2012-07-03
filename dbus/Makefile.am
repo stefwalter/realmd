@@ -6,12 +6,14 @@ dbusservice_DATA = \
 
 providerdir = $(privatedir)/provider.d
 provider_DATA = \
-	org.freedesktop.realmd.Samba.provider
+	org.freedesktop.realmd.Samba.provider \
+	org.freedesktop.realmd.SssdAd.provider
 
 servicedir       = $(DBUS_SERVICES_DIR)
 service_in_files = \
 	org.freedesktop.realmd.service.in \
-	org.freedesktop.realmd.Samba.service.in
+	org.freedesktop.realmd.Samba.service.in \
+	org.freedesktop.realmd.SssdAd.service.in
 service_DATA     = $(service_in_files:.service.in=.service)
 
 noinst_LIBRARIES = \

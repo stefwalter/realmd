@@ -40,6 +40,8 @@ realmd_SOURCES = \
 	realm-service-systemd.c realm-service-systemd.h \
 	realm-service-upstart.c realm-service-upstart.h \
 	realm-settings.c realm-settings.h \
+	realm-sssd-ad.c realm-sssd-ad.h \
+	realm-sssd-ad-provider.c realm-sssd-ad-provider.h \
 	realm-sssd-config.c realm-sssd-config.h \
 	$(NULL)
 

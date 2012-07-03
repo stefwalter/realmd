@@ -565,15 +565,13 @@ realm_ini_config_read_bytes (RealmIniConfig *self,
 	parse_config_bytes (self, bytes);
 }
 
-GBytes *
-realm_ini_config_write_bytes (RealmIniConfig *self)
+static GString *
+write_to_string (RealmIniConfig *self)
 {
 	ConfigLine *line;
 	GString *result;
 	const gchar *data;
 	gsize len;
-
-	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), NULL);
 
 	result = g_string_sized_new (4096);
 	for (line = self->head; line != NULL; line = line->next) {
@@ -589,6 +587,29 @@ realm_ini_config_write_bytes (RealmIniConfig *self)
 		g_string_append_len (result, data, len);
 	}
 
+	return result;
+}
+
+gchar *
+realm_ini_config_write_string (RealmIniConfig *self)
+{
+	GString *result;
+
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), NULL);
+
+	result = write_to_string (self);
+	return g_string_free (result, FALSE);
+}
+
+GBytes *
+realm_ini_config_write_bytes (RealmIniConfig *self)
+{
+	GString *result;
+	gsize len;
+
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), NULL);
+
+	result = write_to_string (self);
 	len = result->len;
 	return g_bytes_new_take (g_string_free (result, FALSE), len);
 }

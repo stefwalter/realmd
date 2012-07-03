@@ -47,6 +47,8 @@ void                realm_ini_config_reload                   (RealmIniConfig *s
 void                realm_ini_config_read_string              (RealmIniConfig *self,
                                                                const gchar *data);
 
+gchar *             realm_ini_config_write_string             (RealmIniConfig *self);
+
 void                realm_ini_config_read_bytes               (RealmIniConfig *self,
                                                                GBytes *data);
 

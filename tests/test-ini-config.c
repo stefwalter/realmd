@@ -21,71 +21,6 @@
 
 #include <string.h>
 
-#define assert_cmpmem(a, na, cmp, b, nb) \
-	do { gconstpointer __p1 = (a), __p2 = (b); gsize __n1 = (na), __n2 = (nb); \
-	     if (__n1 cmp __n2 && memcmp (__p1, __p2, __n1) cmp 0) ; else \
-	       assertion_message_cmpmem (G_LOG_DOMAIN, __FILE__, __LINE__, \
-	            G_STRFUNC, #a "[" #na"] " #cmp " " #b "[" #nb "]", \
-	            __p1, __n1, #cmp, __p2, __n2); } while (0)
-
-static const char HEXC[] = "0123456789ABCDEF";
-
-static gchar *
-escape_data (const guchar *data,
-                  gsize n_data)
-{
-	GString *result;
-	gchar c;
-	gsize i;
-	guchar j;
-
-	g_assert (data != NULL);
-
-	result = g_string_sized_new (n_data * 2 + 1);
-	for (i = 0; i < n_data; ++i) {
-		c = data[i];
-		if (c == '\n') {
-			g_string_append (result, "\\n");
-		} else if (c == '\r') {
-			g_string_append (result, "\\r");
-		} else if (c == '\v') {
-			g_string_append (result, "\\v");
-		} else if (g_ascii_isprint (c)) {
-			g_string_append_c (result, c);
-		} else {
-			g_string_append (result, "\\x");
-			j = c >> 4 & 0xf;
-			g_string_append_c (result, HEXC[j]);
-			j = c & 0xf;
-			g_string_append_c (result, HEXC[j]);
-		}
-	}
-
-	return g_string_free (result, FALSE);
-}
-
-static void
-assertion_message_cmpmem (const char *domain,
-                              const char *file,
-                              int line,
-                              const char *func,
-                              const char *expr,
-                              gconstpointer arg1,
-                              gsize n_arg1,
-                              const char *cmp,
-                              gconstpointer arg2,
-                              gsize n_arg2)
-{
-	char *a1, *a2, *s;
-	a1 = arg1 ? escape_data (arg1, n_arg1) : g_strdup ("NULL");
-	a2 = arg2 ? escape_data (arg2, n_arg2) : g_strdup ("NULL");
-	s = g_strdup_printf ("assertion failed (%s): (%s %s %s)", expr, a1, cmp, a2);
-	g_free (a1);
-	g_free (a2);
-	g_assertion_message (domain, file, line, func, s);
-	g_free (s);
-}
-
 typedef struct {
 	RealmIniConfig *config;
 } Test;
@@ -240,7 +175,8 @@ test_write_exact (Test *test,
 
 	bytes = realm_ini_config_write_bytes (test->config);
 	output = g_bytes_get_data (bytes, &written);
-	assert_cmpmem (contents, length, ==, output, written);
+	g_assert_cmpuint (length, ==, written);
+	g_assert (memcmp (contents, output, length) == 0);
 	g_bytes_unref (bytes);
 
 	g_free (contents);
@@ -272,7 +208,8 @@ test_write_file (Test *test,
 	g_file_get_contents (TESTFILE_DIR "/smb-one.conf", &output, &written, &error);
 	g_assert_no_error (error);
 
-	assert_cmpmem (contents, length, ==, output, written);
+	g_assert_cmpuint (length, ==, written);
+	g_assert (memcmp (contents, output, length) == 0);
 
 	g_free (contents);
 	g_free (output);
@@ -357,14 +294,9 @@ test_set (Test *test,
 	const gchar *data = "[section]\n\t1= one\r\n2=two\n3=three";
 	const gchar *check = "[section]\n1 = the number one\n2=two\n4 = four\n";
 	gboolean changed = FALSE;
-	const gchar *output;
-	gsize n_check;
-	gsize n_output;
-	GBytes *bytes;
+	gchar *output;
 
-	bytes = g_bytes_new_static (data, strlen (data));
-	realm_ini_config_read_bytes (test->config, bytes);
-	g_bytes_unref (bytes);
+	realm_ini_config_read_string (test->config, data);
 
 	g_signal_connect (test->config, "changed", G_CALLBACK (on_config_changed), &changed);
 
@@ -374,11 +306,9 @@ test_set (Test *test,
 
 	g_assert (changed == TRUE);
 
-	bytes = realm_ini_config_write_bytes (test->config);
-	output = g_bytes_get_data (bytes, &n_output);
-	n_check = strlen (check);
-	assert_cmpmem (check, n_check, ==, output, n_output);
-	g_bytes_unref (bytes);
+	output = realm_ini_config_write_string (test->config);
+	g_assert_cmpstr (check, ==, output);
+	g_free (output);
 }
 
 static void
@@ -387,22 +317,15 @@ test_set_middle (Test *test,
 {
 	const gchar *data = "[section]\n1=one\n2=two\n\n[another]\n4=four";
 	const gchar *check = "[section]\n1=one\n2=two\n3 = three\n\n[another]\n4=four";
-	const gchar *output;
-	gsize n_check;
-	gsize n_output;
-	GBytes *bytes;
+	gchar *output;
 
-	bytes = g_bytes_new_static (data, strlen (data));
-	realm_ini_config_read_bytes (test->config, bytes);
-	g_bytes_unref (bytes);
+	realm_ini_config_read_string (test->config, data);
 
 	realm_ini_config_set (test->config, "section", "3", "three");
 
-	bytes = realm_ini_config_write_bytes (test->config);
-	output = g_bytes_get_data (bytes, &n_output);
-	n_check = strlen (check);
-	assert_cmpmem (check, n_check, ==, output, n_output);
-	g_bytes_unref (bytes);
+	output = realm_ini_config_write_string (test->config);
+	g_assert_cmpstr (check, ==, output);
+	g_free (output);
 }
 
 static void
@@ -411,23 +334,16 @@ test_set_section (Test *test,
 {
 	const gchar *data = "[section]\n1=one\n2=two";
 	const gchar *check = "[section]\n1=one\n2=two\n\n[happy]\n4 = four\n";
-	const gchar *output;
-	gsize n_check;
-	gsize n_output;
-	GBytes *bytes;
+	gchar *output;
 
-	bytes = g_bytes_new_static (data, strlen (data));
-	realm_ini_config_read_bytes (test->config, bytes);
-	g_bytes_unref (bytes);
+	realm_ini_config_read_string (test->config, data);
 
 	realm_ini_config_set (test->config, "happy", "4", "four");
 	realm_ini_config_set (test->config, "nope", "6", NULL);
 
-	bytes = realm_ini_config_write_bytes (test->config);
-	output = g_bytes_get_data (bytes, &n_output);
-	n_check = strlen (check);
-	assert_cmpmem (check, n_check, ==, output, n_output);
-	g_bytes_unref (bytes);
+	output = realm_ini_config_write_string (test->config);
+	g_assert_cmpstr (check, ==, output);
+	g_free (output);
 }
 
 static void
@@ -437,15 +353,10 @@ test_set_all (Test *test,
 	const gchar *data = "[section]\n\t1= one\r\n2=two\n3=three";
 	const gchar *check = "[section]\n1 = the number one\n2=two\n4 = four\n";
 	gboolean changed = FALSE;
-	const gchar *output;
+	gchar *output;
 	GHashTable *parameters;
-	gsize n_check;
-	gsize n_output;
-	GBytes *bytes;
 
-	bytes = g_bytes_new_static (data, strlen (data));
-	realm_ini_config_read_bytes (test->config, bytes);
-	g_bytes_unref (bytes);
+	realm_ini_config_read_string (test->config, data);
 
 	g_signal_connect (test->config, "changed", G_CALLBACK (on_config_changed), &changed);
 
@@ -458,11 +369,9 @@ test_set_all (Test *test,
 
 	g_assert (changed == TRUE);
 
-	bytes = realm_ini_config_write_bytes (test->config);
-	output = g_bytes_get_data (bytes, &n_output);
-	n_check = strlen (check);
-	assert_cmpmem (check, n_check, ==, output, n_output);
-	g_bytes_unref (bytes);
+	output = realm_ini_config_write_string (test->config);
+	g_assert_cmpstr (check, ==, output);
+	g_free (output);
 }
 
 static void

@@ -427,6 +427,9 @@ insert_config_line (RealmIniConfig *self,
 	if (after->next)
 		after->next->prev = line;
 	after->next = line;
+
+	if (after == self->tail)
+		self->tail = line;
 }
 
 static void

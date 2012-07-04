@@ -65,6 +65,7 @@ realm_sssd_ad_provider_constructed (GObject *obj)
 	RealmSssdAdProvider *self;
 	gchar **domains;
 	gchar *section;
+	gchar *realm;
 	gchar *type;
 	gint i;
 
@@ -76,12 +77,16 @@ realm_sssd_ad_provider_constructed (GObject *obj)
 	for (i = 0; domains && domains[i] != 0; i++) {
 		section = realm_sssd_config_domain_to_section (domains[i]);
 		type = realm_ini_config_get (self->config, section, "realmd_type");
+		realm = realm_ini_config_get (self->config, section, "krb5_realm");
 		g_free (section);
 
 		if (g_strcmp0 (type, "ad") == 0) {
 			realm_provider_lookup_or_register_realm (REALM_PROVIDER (self),
-			                                         REALM_TYPE_SSSD_AD, domains[i]);
+			                                         REALM_TYPE_SSSD_AD,
+			                                         realm ? realm : domains[i]);
 		}
+
+		g_free (realm);
 		g_free (type);
 	}
 	g_strfreev (domains);

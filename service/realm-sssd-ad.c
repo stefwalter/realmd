@@ -15,6 +15,7 @@
 #include "config.h"
 
 #include "realm-ad-discover.h"
+#include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
@@ -104,17 +105,44 @@ enroll_closure_free (gpointer data)
 }
 
 static void
-on_sssd_done (GObject *source,
-              GAsyncResult *result,
-              gpointer user_data)
+on_enable_nss_done (GObject *source,
+                    GAsyncResult *result,
+                    gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
+	gint status;
 
-	realm_service_enable_and_restart_finish (result, &error);
+	status = realm_command_run_finish (result, NULL, &error);
+	if (error == NULL && status != 0)
+		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
+		             "Enabling sssd in nsswitch.conf and pam failed");
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
+
 	g_simple_async_result_complete (res);
+	g_object_unref (res);
+}
+
+static void
+on_sssd_enable_nss (GObject *source,
+                    GAsyncResult *result,
+                    gpointer user_data)
+{
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
+	GError *error = NULL;
+
+	realm_service_enable_and_restart_finish (result, &error);
+
+	if (error == NULL) {
+		realm_command_run_known_async ("sssd-enable-logins", NULL, enroll->invocation,
+		                               NULL, on_enable_nss_done, g_object_ref (res));
+
+	} else {
+		g_simple_async_result_take_error (res, error);
+		g_simple_async_result_complete (res);
+	}
 
 	g_object_unref (res);
 }
@@ -204,7 +232,7 @@ on_join_do_sssd (GObject *source,
 
 	if (error == NULL) {
 		realm_service_enable_and_restart ("sssd", enroll->invocation,
-		                                  on_sssd_done, g_object_ref (res));
+		                                  on_sssd_enable_nss, g_object_ref (res));
 
 	} else {
 		g_simple_async_result_take_error (res, error);

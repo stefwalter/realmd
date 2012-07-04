@@ -423,6 +423,7 @@ on_leave_do_sssd (GObject *source,
 			realm_service_restart ("sssd", unenroll->invocation,
 			                       on_service_restart_done, g_object_ref (res));
 		}
+		g_strfreev (domains);
 	}
 
 	g_object_unref (self);

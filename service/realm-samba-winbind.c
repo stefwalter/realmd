@@ -39,7 +39,7 @@ on_nss_complete (GObject *source,
 	status = realm_command_run_finish (result, NULL, &error);
 	if (error == NULL && status != 0)
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Enabling winbind in /etc/nsswitch.conf failed");
+		             "Enabling winbind in nsswitch.conf and pam failed");
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 	g_simple_async_result_complete (res);

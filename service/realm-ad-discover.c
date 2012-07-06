@@ -25,42 +25,140 @@
 #include <glib/gi18n.h>
 
 typedef struct {
+	gchar *string;
 	GDBusMethodInvocation *invocation;
-	GHashTable *discovery;
+} Key;
+
+typedef struct _Callback {
+	GAsyncReadyCallback function;
+	gpointer user_data;
+	struct _Callback *next;
+} Callback;
+
+typedef struct {
+	GObject parent;
+	Key key;
 	gchar *domain;
 	GVariant *servers;
 	gboolean found_kerberos;
 	gboolean finished_kerberos;
 	gboolean found_msdcs;
 	gboolean finished_msdcs;
-} DiscoverClosure;
+	gboolean completed;
+	GError *error;
+	Callback *callback;
+} RealmAdDiscover;
+
+typedef struct {
+	GObjectClass parent;
+} RealmAdDiscoverClass;
+
+#define REALM_TYPE_AD_DISCOVER  (realm_ad_discover_get_type ())
+#define REALM_AD_DISCOVER(inst)  (G_TYPE_CHECK_INSTANCE_CAST ((inst), REALM_TYPE_AD_DISCOVER, RealmAdDiscover))
+#define REALM_IS_AD_DISCOVER(inst)  (G_TYPE_CHECK_INSTANCE_TYPE ((inst), REALM_TYPE_AD_DISCOVER))
+
+static GHashTable *discover_cache = NULL;
+
+GType realm_ad_discover_get_type (void) G_GNUC_CONST;
+
+void  realm_ad_discover_async_result_init (GAsyncResultIface *iface);
+
+G_DEFINE_TYPE_WITH_CODE (RealmAdDiscover, realm_ad_discover, G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (G_TYPE_ASYNC_RESULT, realm_ad_discover_async_result_init);
+);
 
 static void
-discover_closure_free (gpointer data)
+realm_ad_discover_init (RealmAdDiscover *self)
 {
-	DiscoverClosure *discover = data;
 
-	g_object_unref (discover->invocation);
-	g_hash_table_unref (discover->discovery);
-	g_free (discover->domain);
-	if (discover->servers)
-		g_variant_unref (discover->servers);
-	g_slice_free (DiscoverClosure, discover);
 }
 
 static void
-maybe_complete_discover (GSimpleAsyncResult *res,
-                         DiscoverClosure *discover)
+realm_ad_discover_finalize (GObject *obj)
 {
-	if (!discover->finished_kerberos || !discover->finished_msdcs)
+	RealmAdDiscover *self = REALM_AD_DISCOVER (obj);
+
+	g_object_unref (self->key.invocation);
+	g_free (self->key.string);
+	g_free (self->domain);
+	if (self->servers)
+		g_variant_unref (self->servers);
+	g_clear_error (&self->error);
+	g_assert (self->callback == NULL);
+
+	G_OBJECT_CLASS (realm_ad_discover_parent_class)->finalize (obj);
+}
+
+static void
+realm_ad_discover_class_init (RealmAdDiscoverClass *klass)
+{
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+	object_class->finalize = realm_ad_discover_finalize;
+}
+
+static GObject *
+realm_ad_discover_get_source_object (GAsyncResult *result)
+{
+	return g_object_ref (result);
+}
+
+static gpointer
+realm_ad_discover_get_user_data (GAsyncResult *result)
+{
+	/* What does this do? */
+	g_return_val_if_reached (NULL);
+}
+
+void
+realm_ad_discover_async_result_init (GAsyncResultIface *iface)
+{
+	iface->get_source_object = realm_ad_discover_get_source_object;
+	iface->get_user_data = realm_ad_discover_get_user_data;
+}
+
+
+
+typedef struct {
+	Callback *clinger;
+} DiscoverClosure;
+
+static void
+ad_discover_complete (RealmAdDiscover *self)
+{
+	Callback *call, *next;
+
+	g_object_ref (self);
+
+	self->completed = TRUE;
+	call = self->callback;
+	self->callback = NULL;
+
+	while (call != NULL) {
+		next = call->next;
+		if (call->function)
+			(call->function) (NULL, G_ASYNC_RESULT (self), call->user_data);
+		g_slice_free (Callback, call);
+		call = next;
+	}
+
+	g_object_unref (self);
+}
+
+static void
+maybe_complete_discover (RealmAdDiscover *self)
+{
+	GDBusMethodInvocation *invocation = self->key.invocation;
+
+	if (!self->finished_kerberos || !self->finished_msdcs)
 		return;
 
-	if (discover->found_kerberos && discover->found_msdcs)
-		realm_diagnostics_info (discover->invocation, "Found AD style DNS records on domain");
+	if (self->found_kerberos && self->found_msdcs)
+		realm_diagnostics_info (invocation, "Found AD style DNS records on domain");
 	else
-		realm_diagnostics_info (discover->invocation, "Couldn't find AD style DNS records on domain");
+		realm_diagnostics_info (invocation, "Couldn't find AD style DNS records on domain");
 
-	g_simple_async_result_complete (res);
+	ad_discover_complete (self);
 }
 
 static void
@@ -68,8 +166,8 @@ on_resolve_kerberos (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	DiscoverClosure *discover = g_simple_async_result_get_op_res_gpointer (res);
+	RealmAdDiscover *self = REALM_AD_DISCOVER (user_data);
+	GDBusMethodInvocation *invocation = self->key.invocation;
 	GError *error = NULL;
 	GPtrArray *servers;
 	GString *info;
@@ -89,7 +187,7 @@ on_resolve_kerberos (GObject *source,
 		servers = g_ptr_array_new ();
 
 		for (l = targets; l != NULL; l = g_list_next (l)) {
-			discover->found_kerberos = TRUE;
+			self->found_kerberos = TRUE;
 			server = g_strdup_printf ("%s:%d", g_srv_target_get_hostname (l->data),
 			                          (int)g_srv_target_get_port (l->data));
 			g_ptr_array_add (servers, g_variant_new_string (server));
@@ -100,28 +198,29 @@ on_resolve_kerberos (GObject *source,
 
 		g_list_free (targets);
 
-		if (discover->found_kerberos)
-			realm_diagnostics_info (discover->invocation, "%s", info->str);
+		if (self->found_kerberos)
+			realm_diagnostics_info (invocation, "%s", info->str);
 		else
-			realm_diagnostics_info (discover->invocation, "No kerberos SRV records");
+			realm_diagnostics_info (invocation, "No kerberos SRV records");
 
 		g_string_free (info, TRUE);
 
-		discover->servers = g_variant_new_array (G_VARIANT_TYPE_STRING,
-		                                         (GVariant * const*)servers->pdata,
-		                                         servers->len);
+		self->servers = g_variant_new_array (G_VARIANT_TYPE_STRING,
+		                                     (GVariant * const*)servers->pdata,
+		                                     servers->len);
 
-		g_variant_ref_sink (discover->servers);
+		g_variant_ref_sink (self->servers);
 		g_ptr_array_free (servers, TRUE);
 
 	} else {
-		realm_diagnostics_error (discover->invocation, error, "Couldn't lookup SRV records for domain");
-		g_simple_async_result_take_error (res, error);
+		realm_diagnostics_error (invocation, error, "Couldn't lookup SRV records for domain");
+		g_clear_error (&self->error);
+		self->error = error;
 	}
 
-	discover->finished_kerberos = TRUE;
-	maybe_complete_discover (res, discover);
-	g_object_unref (res);
+	self->finished_kerberos = TRUE;
+	maybe_complete_discover (self);
+	g_object_unref (self);
 }
 
 static void
@@ -129,53 +228,54 @@ on_resolve_msdcs (GObject *source,
                   GAsyncResult *result,
                   gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	DiscoverClosure *discover = g_simple_async_result_get_op_res_gpointer (res);
+	RealmAdDiscover *self = REALM_AD_DISCOVER (user_data);
+	GDBusMethodInvocation *invocation = self->key.invocation;
 	GResolver *resolver = G_RESOLVER (source);
 	GError *error = NULL;
 	GList *records;
 
 	records = g_resolver_lookup_records_finish (resolver, result, &error);
 	if (error == NULL || g_error_matches (error, G_RESOLVER_ERROR, G_RESOLVER_ERROR_NOT_FOUND)) {
-		discover->found_msdcs = (records != NULL);
+		self->found_msdcs = (records != NULL);
 		g_list_free_full (records, (GDestroyNotify)g_variant_unref);
 
 	} else {
-		realm_diagnostics_error (discover->invocation, error, "Failure to lookup domain MSDCS records");
-		g_simple_async_result_take_error (res, error);
+		realm_diagnostics_error (invocation, error, "Failure to lookup domain MSDCS records");
+		g_clear_error (&self->error);
+		self->error = error;
 	}
 
-	discover->finished_msdcs = TRUE;
-	maybe_complete_discover (res, discover);
-	g_object_unref (res);
+	self->finished_msdcs = TRUE;
+	maybe_complete_discover (self);
+	g_object_unref (self);
 }
 
 static void
-ad_discover_domain_begin (GSimpleAsyncResult *res,
-                          DiscoverClosure *discover)
+ad_discover_domain_begin (RealmAdDiscover *self)
 {
+	GDBusMethodInvocation *invocation = self->key.invocation;
 	GResolver *resolver;
 	gchar *msdcs;
 
-	g_assert (discover->domain != NULL);
+	g_assert (self->domain != NULL);
 
-	realm_diagnostics_info (discover->invocation,
+	realm_diagnostics_info (invocation,
 	                        "Searching for kerberos SRV records for domain: _kerberos._udp.%s",
-	                        discover->domain);
+	                        self->domain);
 
 	resolver = g_resolver_get_default ();
-	g_resolver_lookup_service_async (resolver, "kerberos", "udp", discover->domain, NULL,
-	                                 on_resolve_kerberos, g_object_ref (res));
+	g_resolver_lookup_service_async (resolver, "kerberos", "udp", self->domain, NULL,
+	                                 on_resolve_kerberos, g_object_ref (self));
 
 	/* Active Directory DNS zones have this subzone */
-	msdcs = g_strdup_printf ("dc._msdcs.%s", discover->domain);
+	msdcs = g_strdup_printf ("dc._msdcs.%s", self->domain);
 
-	realm_diagnostics_info (discover->invocation,
+	realm_diagnostics_info (invocation,
 	                        "Searching for MSDCS SRV records on domain: _kerberos._tcp.%s",
 	                        msdcs);
 
 	g_resolver_lookup_service_async (resolver, "kerberos", "tcp", msdcs, NULL,
-	                                 on_resolve_msdcs, g_object_ref (res));
+	                                 on_resolve_msdcs, g_object_ref (self));
 
 	g_free (msdcs);
 
@@ -187,20 +287,80 @@ on_get_dhcp_domain (GObject *source,
                     GAsyncResult *result,
                     gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	DiscoverClosure *discover = g_simple_async_result_get_op_res_gpointer (res);
+	RealmAdDiscover *self = REALM_AD_DISCOVER (user_data);
+	GDBusMethodInvocation *invocation = self->key.invocation;
 	GError *error = NULL;
 
-	discover->domain = realm_network_get_dhcp_domain_finish (result, &error);
+	self->domain = realm_network_get_dhcp_domain_finish (result, &error);
 	if (error != NULL) {
-		realm_diagnostics_error (discover->invocation, error, "Failure to lookup DHCP domain");
+		realm_diagnostics_error (invocation, error, "Failure to lookup DHCP domain");
 		g_error_free (error);
 	}
 
-	if (discover->domain)
-		ad_discover_domain_begin (res, discover);
-	else
-		g_simple_async_result_complete (res);
+	if (self->domain) {
+		realm_diagnostics_info (invocation, "Discovering for DHCP domain: %s", self->domain);
+		ad_discover_domain_begin (self);
+	} else {
+		realm_diagnostics_info (invocation, "No DHCP domain available");
+		ad_discover_complete (self);
+	}
+
+	g_object_unref (self);
+}
+
+static inline guint
+str_hash0 (gconstpointer p)
+{
+	return p == NULL ? 0 : g_str_hash (p);
+}
+
+static guint
+discover_key_hash (gconstpointer p)
+{
+	const Key *key = p;
+
+	return str_hash0 (key->string) ^
+	       str_hash0 (realm_diagnostics_get_operation (key->invocation)) ^
+	       str_hash0 (g_dbus_method_invocation_get_sender (key->invocation));
+}
+
+static gboolean
+discover_key_equal (gconstpointer v1,
+                    gconstpointer v2)
+{
+	const Key *k1 = v1;
+	const Key *k2 = v2;
+
+	return g_strcmp0 (k1->string, k2->string) == 0 &&
+	       g_strcmp0 (realm_diagnostics_get_operation (k1->invocation),
+	                  realm_diagnostics_get_operation (k2->invocation)) == 0 &&
+	       g_strcmp0 (g_dbus_method_invocation_get_sender (k1->invocation),
+	                  g_dbus_method_invocation_get_sender (k2->invocation)) == 0;
+}
+
+static gboolean
+on_timeout_remove_cache (gpointer user_data)
+{
+	Key *key = user_data;
+
+	if (discover_cache != NULL) {
+		g_hash_table_remove (discover_cache, key);
+		if (g_hash_table_size (discover_cache) == 0) {
+			g_hash_table_destroy (discover_cache);
+			discover_cache = NULL;
+		}
+	}
+
+	return FALSE;
+}
+
+static gboolean
+on_idle_complete (gpointer user_data)
+{
+	RealmAdDiscover *self = REALM_AD_DISCOVER (user_data);
+	g_assert (self->completed);
+	ad_discover_complete (self);
+	return FALSE;
 }
 
 void
@@ -209,36 +369,57 @@ realm_ad_discover_async (const gchar *string,
                          GAsyncReadyCallback callback,
                          gpointer user_data)
 {
-	GSimpleAsyncResult *res;
-	DiscoverClosure *discover;
 	GDBusConnection *connection;
+	RealmAdDiscover *self;
+	Callback *call;
 	gchar *domain;
+	Key key;
 
 	g_return_if_fail (string != NULL);
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
-	res = g_simple_async_result_new (NULL, callback, user_data,
-	                                 realm_ad_discover_async);
-	discover = g_slice_new0 (DiscoverClosure);
-	discover->invocation = g_object_ref (invocation);
-	discover->discovery = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                                             g_free, (GDestroyNotify)g_variant_unref);
-	g_simple_async_result_set_op_res_gpointer (res, discover, discover_closure_free);
+	key.string = (gchar *)string;
+	key.invocation = invocation;
 
-	if (g_str_equal (string, "")) {
-		connection = g_dbus_method_invocation_get_connection (invocation);
-		realm_diagnostics_info (invocation, "Looking up our DHCP domain");
-		realm_network_get_dhcp_domain_async (connection, on_get_dhcp_domain,
-		                                     g_object_ref (res));
-
-	} else {
-		domain = g_ascii_strdown (string, -1);
-		g_strstrip (domain);
-		discover->domain = domain;
-		ad_discover_domain_begin (res, discover);
+	if (!discover_cache) {
+		discover_cache = g_hash_table_new_full (discover_key_hash, discover_key_equal,
+		                                        NULL, g_object_unref);
 	}
 
-	g_object_unref (res);
+	self = g_hash_table_lookup (discover_cache, &key);
+
+	if (self == NULL) {
+		self = g_object_new (REALM_TYPE_AD_DISCOVER, NULL);
+		self->key.string = g_strdup (string);
+		self->key.invocation = g_object_ref (invocation);
+
+		if (g_str_equal (string, "")) {
+			connection = g_dbus_method_invocation_get_connection (invocation);
+			realm_diagnostics_info (invocation, "Looking up our DHCP domain");
+			realm_network_get_dhcp_domain_async (connection, on_get_dhcp_domain,
+			                                     g_object_ref (self));
+
+		} else {
+			domain = g_ascii_strdown (string, -1);
+			g_strstrip (domain);
+			self->domain = domain;
+			ad_discover_domain_begin (self);
+		}
+
+		g_hash_table_insert (discover_cache, &self->key, self);
+		g_timeout_add_seconds (5, on_timeout_remove_cache, &self->key);
+		g_assert (!self->completed);
+
+	} else if (self->completed) {
+		g_idle_add_full (G_PRIORITY_DEFAULT, on_idle_complete,
+		                 g_object_ref (self), g_object_unref);
+	}
+
+	call = g_slice_new0 (Callback);
+	call->function = callback;
+	call->user_data = user_data;
+	call->next = self->callback;
+	self->callback = call;
 }
 
 gchar *
@@ -246,45 +427,46 @@ realm_ad_discover_finish (GAsyncResult *result,
                           GHashTable **discovery,
                           GError **error)
 {
-	GSimpleAsyncResult *res;
-	DiscoverClosure *discover;
+	RealmAdDiscover *self;
 	gchar *realm;
 
-	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      realm_ad_discover_async), NULL);
+	g_return_val_if_fail (REALM_IS_AD_DISCOVER (result), NULL);
 	g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
-	res = G_SIMPLE_ASYNC_RESULT (result);
-	if (g_simple_async_result_propagate_error (res, error))
-		return NULL;
+	self = REALM_AD_DISCOVER (result);
 
-	discover = g_simple_async_result_get_op_res_gpointer (res);
+	/* A failure */
+	if (self->error) {
+		if (error)
+			*error = g_error_copy (self->error);
+		return NULL;
+	}
 
 	/* Didn't find a valid domain */
-	if (!discover->found_kerberos || !discover->found_msdcs)
+	if (!self->found_kerberos || !self->found_msdcs)
 		return NULL;
 
-	realm = g_ascii_strup (discover->domain, -1);
+	realm = g_ascii_strup (self->domain, -1);
 
 	if (discovery) {
 		*discovery = realm_discovery_new ();
 
 		/* The domain */
 		realm_discovery_add_string (*discovery, REALM_DBUS_DISCOVERY_DOMAIN,
-		                            discover->domain);
+		                            self->domain);
 
 		/* The realm */
 		realm_discovery_add_string (*discovery, REALM_DBUS_DISCOVERY_REALM, realm);
 
 		/* The servers */
 		realm_discovery_add_variant (*discovery, REALM_DBUS_DISCOVERY_KDCS,
-		                             discover->servers);
+		                             self->servers);
 
 		/* The type */
 		realm_discovery_add_string (*discovery, REALM_DBUS_DISCOVERY_TYPE,
 		                            "kerberos-ad");
 	}
 
-	realm_diagnostics_info (discover->invocation, "Successfully discovered realm: %s", realm);
+	realm_diagnostics_info (self->key.invocation, "Successfully discovered realm: %s", realm);
 	return realm;
 }

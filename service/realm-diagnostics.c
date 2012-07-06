@@ -41,6 +41,12 @@ realm_diagnostics_initialize (GDBusConnection *connection)
 	operation_id_quark = g_quark_from_static_string ("realm-diagnostics-operation-id");
 }
 
+const gchar *
+realm_diagnostics_get_operation (GDBusMethodInvocation *invocation)
+{
+	return g_object_get_qdata (G_OBJECT (invocation), operation_id_quark);
+}
+
 void
 realm_diagnostics_mark_operation (GDBusMethodInvocation *invocation,
                                   const gchar *operation_id)

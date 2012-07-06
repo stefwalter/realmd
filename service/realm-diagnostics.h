@@ -26,6 +26,8 @@ void          realm_diagnostics_initialize            (GDBusConnection *connecti
 void          realm_diagnostics_mark_operation        (GDBusMethodInvocation *invocation,
                                                        const gchar *operation_id);
 
+const gchar * realm_diagnostics_get_operation         (GDBusMethodInvocation *invocation);
+
 void          realm_diagnostics_info                  (GDBusMethodInvocation *invocation,
                                                        const gchar *format,
                                                        ...) G_GNUC_PRINTF (2, 3);

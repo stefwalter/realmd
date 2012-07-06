@@ -1,11 +1,12 @@
 include $(top_srcdir)/Makefile.decl
 
 bin_PROGRAMS = \
-	realm-discover \
-	realm-enroll
+	realm
 
-realm_enroll_SOURCES = \
+realm_SOURCES = \
+	realm.c \
 	realm-enroll.c \
+	realm-discover.c \
 	$(NULL)
 
 AM_CFLAGS = \
@@ -20,4 +21,3 @@ LDADD = \
 	$(GLIB_LIBS) \
 	$(KRB5_LIBS) \
 	$(NULL)
-	

@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "realm.h"
 #include "realm-dbus-constants.h"
 #include "realm-dbus-generated.h"
 
@@ -361,9 +362,9 @@ realm_join_or_leave (RealmDbusKerberos *realm,
 }
 
 static int
-realm_join (const gchar *string,
-            const gchar *user_name,
-            gboolean verbose)
+perform_join (const gchar *string,
+              const gchar *user_name,
+              gboolean verbose)
 {
 	RealmDbusKerberos *realm;
 	RealmDbusProvider *provider;
@@ -408,9 +409,9 @@ realm_join (const gchar *string,
 }
 
 static int
-realm_leave (const gchar *string,
-             const gchar *user_name,
-             gboolean verbose)
+perform_leave (const gchar *string,
+               const gchar *user_name,
+               gboolean verbose)
 {
 	RealmDbusKerberos *realm;
 	GError *error = NULL;
@@ -446,7 +447,7 @@ realm_leave (const gchar *string,
 }
 
 static int
-realm_list (gboolean verbose)
+perform_list (gboolean verbose)
 {
 	RealmDbusProvider *provider;
 	RealmDbusKerberos *realm;
@@ -487,26 +488,21 @@ realm_list (gboolean verbose)
 }
 
 int
-main (int argc,
-      char *argv[])
+realm_join (int argc,
+            char *argv[])
 {
 	GOptionContext *context;
 	gchar *arg_user = NULL;
-	gboolean arg_join = FALSE;
-	gboolean arg_leave = FALSE;
 	gboolean arg_verbose = FALSE;
 	GError *error = NULL;
+	const gchar *realm_name;
 	gint ret = 0;
 
 	GOptionEntry option_entries[] = {
-		{ "join", 'j', 0, G_OPTION_ARG_NONE, &arg_join, "Join a realm", NULL },
-		{ "leave", 'l', 0, G_OPTION_ARG_NONE, &arg_leave, "Leave the realm", NULL },
 		{ "user", 'U', 0, G_OPTION_ARG_STRING, &arg_user, "User name to use for enrollment", NULL },
 		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, "Verbose output", NULL },
 		{ NULL, }
 	};
-
-	g_type_init ();
 
 	context = g_option_context_new ("realm");
 	g_option_context_add_main_entries (context, option_entries, NULL);
@@ -516,31 +512,89 @@ main (int argc,
 		g_error_free (error);
 		ret = 2;
 
-	} else if (arg_join) {
-		if (argc != 2) {
-			g_printerr ("%s: specify one realm to leave\n", g_get_prgname ());
-			ret = 2;
-		} else {
-			ret = realm_join (argv[1], arg_user, arg_verbose);
-		}
-
-	} else if (arg_leave) {
-		if (argc != 2) {
-			g_printerr ("%s: specify one realm to leave\n", g_get_prgname ());
-			ret = 2;
-		} else {
-			ret = realm_leave (argv[1], arg_user, arg_verbose);
-		}
-
-	} else if (argc == 1) {
-		ret = realm_list (arg_verbose);
+	} else if (argc > 2) {
+		g_printerr ("%s: specify one realm to join\n", g_get_prgname ());
+		ret = 2;
 
 	} else {
-		g_printerr ("%s: invalid options\n", g_get_prgname ());
-		ret = 2;
+		realm_name = argc < 2 ? "" : argv[1];
+		ret = perform_join (realm_name, arg_user, arg_verbose);
 	}
 
 	g_free (arg_user);
+	g_option_context_free (context);
+	return ret;
+}
+
+int
+realm_leave (int argc,
+            char *argv[])
+{
+	GOptionContext *context;
+	gchar *arg_user = NULL;
+	gboolean arg_verbose = FALSE;
+	GError *error = NULL;
+	const gchar *realm_name;
+	gint ret = 0;
+
+	GOptionEntry option_entries[] = {
+		{ "user", 'U', 0, G_OPTION_ARG_STRING, &arg_user, "User name to use for enrollment", NULL },
+		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, "Verbose output", NULL },
+		{ NULL, }
+	};
+
+	context = g_option_context_new ("realm");
+	g_option_context_add_main_entries (context, option_entries, NULL);
+
+	if (!g_option_context_parse (context, &argc, &argv, &error)) {
+		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
+		g_error_free (error);
+		ret = 2;
+
+	} else if (argc < 2) {
+		g_printerr ("%s: specify one realm to join\n", g_get_prgname ());
+		ret = 2;
+
+	} else {
+		realm_name = argc < 2 ? NULL : argv[1];
+		ret = perform_leave (realm_name, arg_user, arg_verbose);
+	}
+
+	g_free (arg_user);
+	g_option_context_free (context);
+	return ret;
+}
+
+int
+realm_list (int argc,
+            char *argv[])
+{
+	GOptionContext *context;
+	gboolean arg_verbose = FALSE;
+	GError *error = NULL;
+	gint ret = 0;
+
+	GOptionEntry option_entries[] = {
+		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, "Verbose output", NULL },
+		{ NULL, }
+	};
+
+	context = g_option_context_new ("realm");
+	g_option_context_add_main_entries (context, option_entries, NULL);
+
+	if (!g_option_context_parse (context, &argc, &argv, &error)) {
+		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
+		g_error_free (error);
+		ret = 2;
+
+	} else if (argc == 0) {
+		g_printerr ("%s: no arguments necessary\n", g_get_prgname ());
+		ret = 2;
+
+	} else {
+		ret = perform_list (arg_verbose);
+	}
+
 	g_option_context_free (context);
 	return ret;
 }

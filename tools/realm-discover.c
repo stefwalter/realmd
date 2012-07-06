@@ -14,6 +14,8 @@
 
 #include "config.h"
 
+#include "realm.h"
+
 #include "realm-dbus-constants.h"
 #include "realm-dbus-generated.h"
 
@@ -143,8 +145,8 @@ on_complete_get_result (GObject *source,
 }
 
 static int
-realm_discover (const gchar *string,
-                gboolean verbose)
+perform_discover (const gchar *string,
+                  gboolean verbose)
 {
 	RealmDbusProvider *provider;
 	GVariant *realm_info;
@@ -208,8 +210,8 @@ realm_discover (const gchar *string,
 }
 
 int
-main (int argc,
-      char *argv[])
+realm_discover (int argc,
+                char *argv[])
 {
 	GOptionContext *context;
 	gboolean arg_verbose = FALSE;
@@ -236,12 +238,12 @@ main (int argc,
 
 	/* The default realm? */
 	if (argc == 1) {
-		ret = realm_discover ("", arg_verbose);
+		ret = perform_discover ("", arg_verbose);
 
 	/* Specific realms */
 	} else {
 		for (i = 1; i < argc; i++) {
-			ret = realm_discover (argv[i], arg_verbose);
+			ret = perform_discover (argv[i], arg_verbose);
 			if (ret != 0)
 				result = ret;
 		}

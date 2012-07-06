@@ -54,5 +54,6 @@ temp.txt
 /tests/test-login-name
 /tests/test-sssd-config
 
+/tools/realm
 /tools/realm-enroll
 /tools/realm-discover

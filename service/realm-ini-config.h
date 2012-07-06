@@ -23,6 +23,7 @@ typedef enum {
 	REALM_INI_NONE = 0,
 	REALM_INI_LINE_CONTINUATIONS = 1 << 1,
 	REALM_INI_NO_WATCH = 1 << 2,
+	REALM_INI_PRIVATE = 1 << 3,
 } RealmIniFlags;
 
 #define REALM_TYPE_INI_CONFIG            (realm_ini_config_get_type ())

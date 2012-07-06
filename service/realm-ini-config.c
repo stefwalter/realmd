@@ -17,6 +17,9 @@
 #include "realm-settings.h"
 #include "realm-ini-config.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <string.h>
 
 #define REALM_INI_CONFIG_CLASS(klass)       (G_TYPE_CHECK_CLASS_CAST ((klass), REALM_TYPE_INI_CONFIG, RealmIniConfigClass))
@@ -661,6 +664,7 @@ realm_ini_config_write_file (RealmIniConfig *self,
 	GBytes *bytes;
 	gboolean ret = TRUE;
 	const gchar *contents;
+	mode_t mask;
 	gsize length;
 
 	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), FALSE);
@@ -677,11 +681,19 @@ realm_ini_config_write_file (RealmIniConfig *self,
 	contents = g_bytes_get_data (bytes, &length);
 
 	/*
-	 * If not writing any data, and the no file is present, don't
+	 * If not writing any data, and no file is present, don't
 	 * write an empty file.
 	 */
-	if (length > 0 || g_file_test (filename, G_FILE_TEST_EXISTS))
+	if (length > 0 || g_file_test (filename, G_FILE_TEST_EXISTS)) {
+
+		if (self->flags & REALM_INI_PRIVATE)
+			mask = umask (S_IRUSR | S_IWUSR);
+
 		ret = g_file_set_contents (filename, contents, length, error);
+
+		if (self->flags & REALM_INI_PRIVATE)
+			umask (mask);
+	}
 
 	g_bytes_unref (bytes);
 

@@ -310,10 +310,8 @@ realm_join_or_leave (RealmDbusKerberos *realm,
 	principal = g_strdup_printf ("%s@%s", user_name, realm_name);
 	kerberos_cache = kinit_to_kerberos_cache (principal);
 	g_free (principal);
-	if (kerberos_cache == NULL) {
-		g_object_unref (realm);
+	if (kerberos_cache == NULL)
 		return 1;
-	}
 
 	sync.result = NULL;
 	sync.loop = g_main_loop_new (NULL, FALSE);

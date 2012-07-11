@@ -370,7 +370,7 @@ on_service_restart_done (GObject *source,
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
 
-	realm_service_enable_and_restart_finish (result, &error);
+	realm_service_restart_finish (result, &error);
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 	g_simple_async_result_complete (res);

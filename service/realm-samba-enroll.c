@@ -294,7 +294,7 @@ on_join_do_keytab (GObject *source,
 
 	if (error == NULL) {
 		begin_net_process (join, on_keytab_do_list, g_object_ref (res),
-		                   "ads", "keytab", "create", NULL);
+		                   "-k", "ads", "keytab", "create", NULL);
 	} else {
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete (res);
@@ -327,7 +327,7 @@ realm_samba_enroll_join_async (const gchar *realm,
 	} else {
 		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
 		begin_net_process (join,  on_join_do_keytab, g_object_ref (res),
-		                   "ads", "join", "-k", join->realm, NULL);
+		                   "-k", "ads", "join", join->realm, NULL);
 	}
 
 	g_object_unref (res);
@@ -395,7 +395,7 @@ on_flush_do_leave (GObject *source,
 	g_clear_error (&error);
 
 	begin_net_process (join, on_leave_complete, g_object_ref (res),
-	                   "ads", "leave", "-k", NULL);
+	                   "-k", "ads", "leave", NULL);
 	g_object_unref (res);
 }
 
@@ -417,7 +417,7 @@ realm_samba_enroll_leave_async (const gchar *realm,
 	if (error == NULL) {
 		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
 		begin_net_process (join, on_flush_do_leave, g_object_ref (res),
-		                   "ads", "keytab", "flush", NULL);
+		                   "-k", "ads", "keytab", "flush", NULL);
 
 	} else {
 		g_simple_async_result_take_error (res, error);

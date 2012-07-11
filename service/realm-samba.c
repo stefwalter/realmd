@@ -167,7 +167,7 @@ on_join_do_winbind (GObject *source,
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
-	RealmSamba *self = REALM_SAMBA (g_async_result_get_source_object (result));
+	RealmSamba *self = REALM_SAMBA (g_async_result_get_source_object (G_ASYNC_RESULT (res)));
 	GHashTable *settings = NULL;
 	GError *error = NULL;
 	gchar *workgroup = NULL;

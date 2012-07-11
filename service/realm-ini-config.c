@@ -687,7 +687,7 @@ realm_ini_config_write_file (RealmIniConfig *self,
 	if (length > 0 || g_file_test (filename, G_FILE_TEST_EXISTS)) {
 
 		if (self->flags & REALM_INI_PRIVATE)
-			mask = umask (S_IRUSR | S_IWUSR);
+			mask = umask (S_IRWXG | S_IRWXO);
 
 		ret = g_file_set_contents (filename, contents, length, error);
 

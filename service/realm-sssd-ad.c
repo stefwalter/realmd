@@ -394,7 +394,7 @@ on_leave_do_sssd (GObject *source,
 
 	/* We don't care if we can leave or not, just continue with other steps */
 	config = realm_sssd_get_config (sssd);
-	realm_sssd_config_remove_domain (config, realm_sssd_get_config_section (sssd), &error);
+	realm_sssd_config_remove_domain (config, realm_sssd_get_config_domain (sssd), &error);
 
 	if (error != NULL) {
 		g_simple_async_result_take_error (res, error);

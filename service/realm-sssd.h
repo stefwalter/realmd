@@ -49,6 +49,8 @@ RealmIniConfig *    realm_sssd_get_config          (RealmSssd *self);
 
 const gchar *       realm_sssd_get_config_section  (RealmSssd *self);
 
+const gchar *       realm_sssd_get_config_domain   (RealmSssd *self);
+
 G_END_DECLS
 
 #endif /* __REALM_SSSD_H__ */

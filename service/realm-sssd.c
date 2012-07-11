@@ -376,3 +376,10 @@ realm_sssd_get_config_section (RealmSssd *self)
 	g_return_val_if_fail (REALM_IS_SSSD (self), NULL);
 	return self->pv->section;
 }
+
+const gchar *
+realm_sssd_get_config_domain (RealmSssd *self)
+{
+	g_return_val_if_fail (REALM_IS_SSSD (self), NULL);
+	return self->pv->domain;
+}

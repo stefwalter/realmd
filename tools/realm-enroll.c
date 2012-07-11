@@ -47,6 +47,7 @@ handle_error (GError *error,
 	va_end (va);
 
 	if (error) {
+		g_dbus_error_strip_remote_error (error);
 		g_string_append (message, ": ");
 		g_string_append (message, error->message);
 		g_error_free (error);

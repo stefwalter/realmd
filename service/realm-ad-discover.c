@@ -39,7 +39,7 @@ typedef struct {
 	GObject parent;
 	Key key;
 	gchar *domain;
-	GVariant *servers;
+	GList *servers;
 	gboolean found_kerberos;
 	gboolean finished_kerberos;
 	gboolean found_msdcs;
@@ -82,7 +82,7 @@ realm_ad_discover_finalize (GObject *obj)
 	g_free (self->key.string);
 	g_free (self->domain);
 	if (self->servers)
-		g_variant_unref (self->servers);
+		g_list_free_full (self->servers, (GDestroyNotify)g_srv_target_free);
 	g_clear_error (&self->error);
 	g_assert (self->callback == NULL);
 
@@ -169,14 +169,11 @@ on_resolve_kerberos (GObject *source,
 	RealmAdDiscover *self = REALM_AD_DISCOVER (user_data);
 	GDBusMethodInvocation *invocation = self->key.invocation;
 	GError *error = NULL;
-	GPtrArray *servers;
 	GString *info;
-	GList *targets;
-	gchar *server;
 	GList *l;
 
-	targets = g_resolver_lookup_service_finish (G_RESOLVER (source),
-	                                            result, &error);
+	self->servers = g_resolver_lookup_service_finish (G_RESOLVER (source),
+	                                                  result, &error);
 
 	/* We don't treat 'host not found' as an error */
 	if (g_error_matches (error, G_RESOLVER_ERROR, G_RESOLVER_ERROR_NOT_FOUND))
@@ -184,19 +181,12 @@ on_resolve_kerberos (GObject *source,
 
 	if (error == NULL) {
 		info = g_string_new ("");
-		servers = g_ptr_array_new ();
 
-		for (l = targets; l != NULL; l = g_list_next (l)) {
+		for (l = self->servers; l != NULL; l = g_list_next (l)) {
 			self->found_kerberos = TRUE;
-			server = g_strdup_printf ("%s:%d", g_srv_target_get_hostname (l->data),
-			                          (int)g_srv_target_get_port (l->data));
-			g_ptr_array_add (servers, g_variant_new_string (server));
-			g_string_append_printf (info, "%s\n", server);
-			g_free (server);
-			g_srv_target_free (l->data);
+			g_string_append_printf (info, "%s:%d\n", g_srv_target_get_hostname (l->data),
+			                        (int)g_srv_target_get_port (l->data));
 		}
-
-		g_list_free (targets);
 
 		if (self->found_kerberos)
 			realm_diagnostics_info (invocation, "%s", info->str);
@@ -204,13 +194,6 @@ on_resolve_kerberos (GObject *source,
 			realm_diagnostics_info (invocation, "No kerberos SRV records");
 
 		g_string_free (info, TRUE);
-
-		self->servers = g_variant_new_array (G_VARIANT_TYPE_STRING,
-		                                     (GVariant * const*)servers->pdata,
-		                                     servers->len);
-
-		g_variant_ref_sink (self->servers);
-		g_ptr_array_free (servers, TRUE);
 
 	} else {
 		realm_diagnostics_error (invocation, error, "Couldn't lookup SRV records for domain");
@@ -459,8 +442,8 @@ realm_ad_discover_finish (GAsyncResult *result,
 		realm_discovery_add_string (*discovery, REALM_DBUS_DISCOVERY_REALM, realm);
 
 		/* The servers */
-		realm_discovery_add_variant (*discovery, REALM_DBUS_DISCOVERY_KDCS,
-		                             self->servers);
+		realm_discovery_add_srv_targets (*discovery, REALM_DBUS_DISCOVERY_KDCS,
+		                                 self->servers);
 
 		/* The type */
 		realm_discovery_add_string (*discovery, REALM_DBUS_DISCOVERY_TYPE,

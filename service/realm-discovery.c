@@ -16,6 +16,8 @@
 
 #include "realm-discovery.h"
 
+#include <gio/gio.h>
+
 GHashTable *
 realm_discovery_new (void)
 {
@@ -45,6 +47,33 @@ realm_discovery_add_variant (GHashTable *discovery,
 
 	if (discovery != NULL)
 		g_hash_table_insert (discovery, g_strdup (type), g_variant_ref_sink (value));
+}
+
+void
+realm_discovery_add_srv_targets (GHashTable *discovery,
+                                 const gchar *type,
+                                 GList *targets)
+{
+	GPtrArray *servers;
+	gchar *server;
+	GList *l;
+
+	g_return_if_fail (type != NULL);
+
+	servers = g_ptr_array_new ();
+
+	for (l = targets; l != NULL; l = g_list_next (l)) {
+		server = g_strdup_printf ("%s:%d", g_srv_target_get_hostname (l->data),
+		                          (int)g_srv_target_get_port (l->data));
+		g_ptr_array_add (servers, g_variant_new_string (server));
+	}
+
+	realm_discovery_add_variant (discovery, type,
+	                             g_variant_new_array (G_VARIANT_TYPE_STRING,
+	                                                  (GVariant * const*)servers->pdata,
+	                                                  servers->len));
+
+	g_ptr_array_free (servers, TRUE);
 }
 
 GVariant *

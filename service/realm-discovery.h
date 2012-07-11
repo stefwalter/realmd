@@ -31,6 +31,10 @@ void           realm_discovery_add_variant      (GHashTable *discovery,
                                                  const gchar *type,
                                                  GVariant *value);
 
+void           realm_discovery_add_srv_targets  (GHashTable *discovery,
+                                                 const gchar *type,
+                                                 GList *targets);
+
 GVariant *     realm_discovery_to_variant       (GHashTable *discovery);
 
 G_END_DECLS

@@ -32,9 +32,6 @@ typedef struct _RealmSssdAd RealmSssdAd;
 
 GType                    realm_sssd_ad_get_type    (void) G_GNUC_CONST;
 
-RealmKerberos *          realm_sssd_ad_new         (const gchar *name,
-                                                    RealmProvider *provider);
-
 G_END_DECLS
 
 #endif /* __REALM_SSSD_AD_H__ */

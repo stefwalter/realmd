@@ -26,6 +26,7 @@ realmd_SOURCES = \
 	realm-discovery.c realm-discovery.h \
 	realm-errors.c realm-errors.h \
 	realm-ini-config.c realm-ini-config.h \
+	realm-ipa-discover.c realm-ipa-discover.h \
 	realm-kerberos.c realm-kerberos.h \
 	realm-login-name.c realm-login-name.h \
 	realm-network.c realm-network.h \
@@ -44,6 +45,8 @@ realmd_SOURCES = \
 	realm-sssd-ad.c realm-sssd-ad.h \
 	realm-sssd-ad-provider.c realm-sssd-ad-provider.h \
 	realm-sssd-config.c realm-sssd-config.h \
+	realm-sssd-ipa.c realm-sssd-ipa.h \
+	realm-sssd-ipa-provider.c realm-sssd-ipa-provider.h \
 	$(NULL)
 
 realmd_CFLAGS = \

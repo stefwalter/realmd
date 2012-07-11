@@ -22,6 +22,7 @@
 #include "realm-samba-provider.h"
 #include "realm-settings.h"
 #include "realm-sssd-ad-provider.h"
+#include "realm-sssd-ipa-provider.h"
 
 #include <glib.h>
 
@@ -240,6 +241,7 @@ on_bus_get_connection (GObject *source,
 
 		realm_diagnostics_initialize (*connection);
 		realm_provider_start (*connection, REALM_TYPE_SSSD_AD_PROVIDER);
+		realm_provider_start (*connection, REALM_TYPE_SSSD_IPA_PROVIDER);
 		realm_provider_start (*connection, REALM_TYPE_SAMBA_PROVIDER);
 		realm_provider_start (*connection, REALM_TYPE_ALL_PROVIDER);
 	}

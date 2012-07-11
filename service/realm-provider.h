@@ -72,6 +72,9 @@ GDBusInterfaceSkeleton * realm_provider_lookup_or_register_realm (RealmProvider 
                                                                   GType realm_type,
                                                                   const gchar *realm_name);
 
+gboolean                 realm_provider_is_default               (const gchar *type,
+                                                                  const gchar *name);
+
 G_END_DECLS
 
 #endif /* __REALM_KERBEROS_PROVIDER_H__ */

@@ -23,6 +23,7 @@
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-provider.h"
+#include "realm-settings.h"
 
 #include <glib/gi18n.h>
 #include <gio/gio.h>
@@ -430,4 +431,18 @@ realm_provider_stop_all (void)
 		g_bus_unown_name (owner_id);
 	}
 	g_hash_table_destroy (owner_ids);
+}
+
+gboolean
+realm_provider_is_default (const gchar *type,
+                           const gchar *name)
+{
+	gboolean result;
+	gchar *client;
+
+	client = g_ascii_strdown (realm_settings_string (type, "default-client"), -1);
+	result = client != NULL && strstr (client, name);
+	g_free (client);
+
+	return result;
 }

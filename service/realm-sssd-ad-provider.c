@@ -137,7 +137,9 @@ realm_sssd_ad_provider_discover_finish (RealmProvider *provider,
 	g_variant_ref_sink (*realms);
 
 	g_hash_table_unref (discovery);
-	return 100;
+
+	/* Return a higher priority if we're the default */
+	return realm_provider_is_default ("active-directory", "sssd") ? 100 : 50;
 }
 
 static void

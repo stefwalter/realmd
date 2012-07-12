@@ -76,7 +76,7 @@ realm_sssd_ad_provider_constructed (GObject *obj)
 	domains = realm_sssd_config_get_domains (self->config);
 	for (i = 0; domains && domains[i] != 0; i++) {
 		section = realm_sssd_config_domain_to_section (domains[i]);
-		type = realm_ini_config_get (self->config, section, "realmd_type");
+		type = realm_ini_config_get (self->config, section, "id_provider");
 		realm = realm_ini_config_get (self->config, section, "krb5_realm");
 		g_free (section);
 

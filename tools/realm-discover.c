@@ -30,32 +30,6 @@
 #include <fcntl.h>
 
 static void
-handle_error (GError *error,
-              const gchar *format,
-              ...)
-{
-	GString *message;
-	va_list va;
-
-	message = g_string_new ("");
-	g_string_append_printf (message, "%s: ", g_get_prgname ());
-
-	va_start (va, format);
-	g_string_append_vprintf (message, format, va);
-	va_end (va);
-
-	if (error) {
-		g_dbus_error_strip_remote_error (error);
-		g_string_append (message, ": ");
-		g_string_append (message, error->message);
-		g_error_free (error);
-	}
-
-	g_printerr ("%s\n", message->str);
-	g_string_free (message, TRUE);
-}
-
-static void
 print_details_for_realm_info (GVariant *realm_info)
 {
 	RealmDbusKerberos *realm = NULL;
@@ -164,7 +138,7 @@ perform_discover (const gchar *string,
 	                                                       "/org/freedesktop/realmd",
 	                                                       NULL, &error);
 	if (error != NULL) {
-		handle_error (error, "couldn't connect to realm service");
+		realm_handle_error (error, "couldn't connect to realm service");
 		return 2;
 	}
 
@@ -189,7 +163,7 @@ perform_discover (const gchar *string,
 	g_main_loop_unref (sync.loop);
 
 	if (error != NULL) {
-		handle_error (error, "couldn't discover realm");
+		realm_handle_error (error, "couldn't discover realm");
 		return 2;
 	}
 
@@ -203,7 +177,7 @@ perform_discover (const gchar *string,
 	g_variant_unref (realms);
 
 	if (!found) {
-		handle_error (NULL, "no such realm found: %s", string);
+		realm_handle_error (NULL, "no such realm found: %s", string);
 		return 1;
 	}
 

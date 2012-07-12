@@ -32,32 +32,6 @@
 static const gchar *operation_id = "realm-enroll";
 
 static void
-handle_error (GError *error,
-              const gchar *format,
-              ...)
-{
-	GString *message;
-	va_list va;
-
-	message = g_string_new ("");
-	g_string_append_printf (message, "%s: ", g_get_prgname ());
-
-	va_start (va, format);
-	g_string_append_vprintf (message, format, va);
-	va_end (va);
-
-	if (error) {
-		g_dbus_error_strip_remote_error (error);
-		g_string_append (message, ": ");
-		g_string_append (message, error->message);
-		g_error_free (error);
-	}
-
-	g_printerr ("%s\n", message->str);
-	g_string_free (message, TRUE);
-}
-
-static void
 handle_krb5_error (krb5_error_code code,
                    krb5_context context,
                    const gchar *format,
@@ -80,32 +54,6 @@ handle_krb5_error (krb5_error_code code,
 
 	g_printerr ("%s\n", message->str);
 	g_string_free (message, TRUE);
-}
-
-static RealmDbusKerberos *
-realm_info_to_realm_proxy (GVariant *realm_info)
-{
-	RealmDbusKerberos *realm = NULL;
-	const gchar *bus_name;
-	const gchar *object_path;
-	const gchar *interface_name;
-	GError *error = NULL;
-
-	g_variant_get (realm_info, "(&s&o&s)", &bus_name, &object_path, &interface_name);
-
-	if (g_str_equal (interface_name, REALM_DBUS_KERBEROS_REALM_INTERFACE)) {
-		realm = realm_dbus_kerberos_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-		                                                    G_DBUS_PROXY_FLAGS_NONE,
-		                                                    bus_name, object_path,
-		                                                    NULL, &error);
-	}
-
-	if (error != NULL)
-		handle_error (error, "couldn't use realm service");
-	else if (realm == NULL)
-		handle_error (NULL, "unsupported realm type: %s", interface_name);
-
-	return realm;
 }
 
 static RealmDbusKerberos *
@@ -148,7 +96,7 @@ read_file_into_variant (const gchar *filename)
 
 	g_file_get_contents (filename, &contents, &length, &error);
 	if (error != NULL) {
-		handle_error (error, "couldn't read credential cache");
+		realm_handle_error (error, "couldn't read credential cache");
 		return NULL;
 	}
 
@@ -193,7 +141,7 @@ kinit_to_kerberos_cache (const gchar *name)
 	filename = g_build_filename (g_get_user_runtime_dir (), "realmd-krb5-cache.XXXXXX", NULL);
 	temp_fd = g_mkstemp_full (filename, O_RDWR, S_IRUSR | S_IWUSR);
 	if (temp_fd == -1) {
-		handle_error (NULL, "couldn't create credential cache file: %s", g_strerror (errno));
+		realm_handle_error (NULL, "couldn't create credential cache file: %s", g_strerror (errno));
 		goto cleanup;
 	}
 	close (temp_fd);
@@ -355,7 +303,7 @@ realm_join_or_leave (RealmDbusKerberos *realm,
 	g_main_loop_unref (sync.loop);
 
 	if (error != NULL) {
-		handle_error (error, join ? "couldn't join realm" : "couldn't leave realm");
+		realm_handle_error (error, join ? "couldn't join realm" : "couldn't leave realm");
 		return 1;
 	}
 
@@ -380,7 +328,7 @@ perform_join (const gchar *string,
 	                                                       "/org/freedesktop/realmd",
 	                                                       NULL, &error);
 	if (error != NULL) {
-		handle_error (error, "couldn't connect to realm service");
+		realm_handle_error (error, "couldn't connect to realm service");
 		return 1;
 	}
 
@@ -391,7 +339,7 @@ perform_join (const gchar *string,
 	g_object_unref (provider);
 
 	if (error != NULL) {
-		handle_error (error, "couldn't connect to realm service");
+		realm_handle_error (error, "couldn't connect to realm service");
 		return 1;
 	}
 
@@ -399,7 +347,7 @@ perform_join (const gchar *string,
 	g_variant_unref (realms);
 
 	if (realm == NULL) {
-		handle_error (NULL, "no such realm found: %s", string);
+		realm_handle_error (NULL, "no such realm found: %s", string);
 		return 1;
 	}
 
@@ -426,7 +374,7 @@ perform_leave (const gchar *string,
 	                                                       "/org/freedesktop/realmd",
 	                                                       NULL, &error);
 	if (error != NULL) {
-		handle_error (error, "couldn't connect to realm service");
+		realm_handle_error (error, "couldn't connect to realm service");
 		return 1;
 	}
 
@@ -437,7 +385,7 @@ perform_leave (const gchar *string,
 	g_object_unref (provider);
 
 	if (realm == NULL) {
-		handle_error (NULL, "no such realm found: %s", string);
+		realm_handle_error (NULL, "no such realm found: %s", string);
 		return 1;
 	}
 
@@ -464,7 +412,7 @@ perform_list (gboolean verbose)
 	                                                       "/org/freedesktop/realmd",
 	                                                       NULL, &error);
 	if (error != NULL) {
-		handle_error (error, "couldn't connect to realm service");
+		realm_handle_error (error, "couldn't connect to realm service");
 		return 1;
 	}
 

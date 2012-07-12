@@ -30,7 +30,7 @@
 #include <fcntl.h>
 
 static void
-print_details_for_realm_info (GVariant *realm_info)
+print_realm_info (GVariant *realm_info)
 {
 	RealmDbusKerberos *realm = NULL;
 	const gchar *bus_name;
@@ -41,6 +41,8 @@ print_details_for_realm_info (GVariant *realm_info)
 	GVariant *details;
 	const gchar *name;
 	const gchar *value;
+	gboolean enrolled;
+	gchar *string;
 
 	g_variant_get (realm_info, "(&s&o&s)", &bus_name, &object_path, &interface_name);
 
@@ -58,14 +60,23 @@ print_details_for_realm_info (GVariant *realm_info)
 		return;
 	}
 
+	enrolled = realm_dbus_kerberos_get_enrolled (realm);
 	g_print ("%s\n", realm_dbus_kerberos_get_name (realm));
-	g_print ("domain: %s\n", realm_dbus_kerberos_get_domain (realm));
+	g_print ("  domain: %s\n", realm_dbus_kerberos_get_domain (realm));
+	g_print ("  enrolled: %s\n", enrolled ? "yes" : "no");
 
 	details = realm_dbus_kerberos_get_details (realm);
 	if (details) {
 		g_variant_iter_init (&iter, details);
 		while (g_variant_iter_loop (&iter, "{&s&s}", &name, &value))
-			g_print ("%s: %s\n", name, value);
+			g_print ("  %s: %s\n", name, value);
+	}
+
+	if (enrolled) {
+		g_print ("  login-format: %s\n", realm_dbus_kerberos_get_login_format (realm));
+		string = g_strjoinv (", ", (gchar **)realm_dbus_kerberos_get_permitted_logins (realm));
+		g_print ("  permitted-logins: %s\n", string);
+		g_free (string);
 	}
 
 	g_object_unref (realm);
@@ -150,7 +161,8 @@ perform_discover (const gchar *string,
 	sync.loop = g_main_loop_new (NULL, FALSE);
 
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);
-	realm_dbus_provider_call_discover (provider, string, "unused-operation-id",
+	realm_dbus_provider_call_discover (provider, string ? string : "",
+	                                   "unused-operation-id",
 	                                   NULL, on_complete_get_result, &sync);
 
 	/* This mainloop is quit by on_complete_get_result */
@@ -169,7 +181,7 @@ perform_discover (const gchar *string,
 
 	g_variant_iter_init (&iter, realms);
 	while ((realm_info = g_variant_iter_next_value (&iter)) != NULL) {
-		print_details_for_realm_info (realm_info);
+		print_realm_info (realm_info);
 		g_variant_unref (realm_info);
 		found = TRUE;
 	}
@@ -177,7 +189,10 @@ perform_discover (const gchar *string,
 	g_variant_unref (realms);
 
 	if (!found) {
-		realm_handle_error (NULL, "no such realm found: %s", string);
+		if (string == NULL)
+			realm_handle_error (NULL, "no default domain discovered");
+		else
+			realm_handle_error (NULL, "no such realm found: %s", string);
 		return 1;
 	}
 
@@ -213,7 +228,7 @@ realm_discover (int argc,
 
 	/* The default realm? */
 	if (argc == 1) {
-		ret = perform_discover ("", arg_verbose);
+		ret = perform_discover (NULL, arg_verbose);
 
 	/* Specific realms */
 	} else {
@@ -226,4 +241,72 @@ realm_discover (int argc,
 
 	g_option_context_free (context);
 	return result;
+}
+
+static int
+perform_list (gboolean verbose)
+{
+	RealmDbusProvider *provider;
+	GVariant *realms;
+	GVariant *realm_info;
+	GError *error = NULL;
+	GVariantIter iter;
+	gboolean printed = FALSE;
+
+	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+	                                                       G_DBUS_PROXY_FLAGS_NONE,
+	                                                       "org.freedesktop.realmd",
+	                                                       "/org/freedesktop/realmd",
+	                                                       NULL, &error);
+	if (error != NULL) {
+		realm_handle_error (error, "couldn't connect to realm service");
+		return 1;
+	}
+
+	realms = realm_dbus_provider_get_realms (provider);
+	g_variant_iter_init (&iter, realms);
+	while (g_variant_iter_loop (&iter, "@(sos)", &realm_info)) {
+		print_realm_info (realm_info);
+		printed = TRUE;
+	}
+
+	if (verbose && !printed)
+		g_printerr ("No known realms\n");
+
+	g_object_unref (provider);
+	return 0;
+}
+
+int
+realm_list (int argc,
+            char *argv[])
+{
+	GOptionContext *context;
+	gboolean arg_verbose = FALSE;
+	GError *error = NULL;
+	gint ret = 0;
+
+	GOptionEntry option_entries[] = {
+		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, "Verbose output", NULL },
+		{ NULL, }
+	};
+
+	context = g_option_context_new ("realm");
+	g_option_context_add_main_entries (context, option_entries, NULL);
+
+	if (!g_option_context_parse (context, &argc, &argv, &error)) {
+		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
+		g_error_free (error);
+		ret = 2;
+
+	} else if (argc == 0) {
+		g_printerr ("%s: no arguments necessary\n", g_get_prgname ());
+		ret = 2;
+
+	} else {
+		ret = perform_list (arg_verbose);
+	}
+
+	g_option_context_free (context);
+	return ret;
 }

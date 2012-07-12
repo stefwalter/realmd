@@ -395,47 +395,6 @@ perform_leave (const gchar *string,
 	return ret;
 }
 
-static int
-perform_list (gboolean verbose)
-{
-	RealmDbusProvider *provider;
-	RealmDbusKerberos *realm;
-	GVariant *realms;
-	GVariant *realm_info;
-	GError *error = NULL;
-	GVariantIter iter;
-	gboolean printed = FALSE;
-
-	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-	                                                       G_DBUS_PROXY_FLAGS_NONE,
-	                                                       "org.freedesktop.realmd",
-	                                                       "/org/freedesktop/realmd",
-	                                                       NULL, &error);
-	if (error != NULL) {
-		realm_handle_error (error, "couldn't connect to realm service");
-		return 1;
-	}
-
-	realms = realm_dbus_provider_get_realms (provider);
-	g_variant_iter_init (&iter, realms);
-	while (g_variant_iter_loop (&iter, "@(sos)", &realm_info)) {
-		realm = realm_info_to_realm_proxy (realm_info);
-		if (realm != NULL) {
-			g_print ("%s: %s\n",
-			         realm_dbus_kerberos_get_name (realm),
-			         realm_dbus_kerberos_get_enrolled (realm) ? "enrolled" : "not enrolled");
-			g_object_unref (realm);
-		}
-		printed = TRUE;
-	}
-
-	if (verbose && !printed)
-		g_printerr ("No known realms\n");
-
-	g_object_unref (provider);
-	return 0;
-}
-
 int
 realm_join (int argc,
             char *argv[])
@@ -510,40 +469,6 @@ realm_leave (int argc,
 	}
 
 	g_free (arg_user);
-	g_option_context_free (context);
-	return ret;
-}
-
-int
-realm_list (int argc,
-            char *argv[])
-{
-	GOptionContext *context;
-	gboolean arg_verbose = FALSE;
-	GError *error = NULL;
-	gint ret = 0;
-
-	GOptionEntry option_entries[] = {
-		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, "Verbose output", NULL },
-		{ NULL, }
-	};
-
-	context = g_option_context_new ("realm");
-	g_option_context_add_main_entries (context, option_entries, NULL);
-
-	if (!g_option_context_parse (context, &argc, &argv, &error)) {
-		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
-		g_error_free (error);
-		ret = 2;
-
-	} else if (argc == 0) {
-		g_printerr ("%s: no arguments necessary\n", g_get_prgname ());
-		ret = 2;
-
-	} else {
-		ret = perform_list (arg_verbose);
-	}
-
 	g_option_context_free (context);
 	return ret;
 }

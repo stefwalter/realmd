@@ -49,6 +49,16 @@
 		</method>
 	</interface>
 
+	<interface name="org.freedesktop.realmd.Daemon">
+		<!--
+		 * Normally realmd waits until all clients have disconnected
+		 * before exiting. For long lived clients, they can call
+		 * Release() allow realmd to quit.
+		-->
+		<method name="ReleaseDaemon">
+		</method>
+	</interface>
+
 	<!--
 	 * This interface is implemented by Providers and Realms to provide
 	 * additional information when an long running operation is happening

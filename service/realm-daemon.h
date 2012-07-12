@@ -25,9 +25,9 @@ gboolean             realm_daemon_lock_for_action            (GDBusMethodInvocat
 
 void                 realm_daemon_unlock_for_action          (GDBusMethodInvocation *invocation);
 
-void                 realm_daemon_hold                       (void);
+void                 realm_daemon_hold                       (const gchar *identifier);
 
-void                 realm_daemon_release                    (void);
+void                 realm_daemon_release                    (const gchar *identifier);
 
 void                 realm_daemon_poke                       (void);
 

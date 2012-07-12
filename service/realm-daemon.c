@@ -28,13 +28,14 @@
 
 #include <polkit/polkit.h>
 
-#define TIMEOUT   5 * 60
+#define TIMEOUT        10 /* seconds */
+#define HOLD_INTERNAL  (GUINT_TO_POINTER (~0))
 
 static GObject *current_invocation = NULL;
 static GMainLoop *main_loop = NULL;
 
 static gboolean service_persist = FALSE;
-static gint service_holds = 0;
+static GHashTable *service_holds = NULL;
 static gint64 service_quit_at = 0;
 static guint service_timeout_id = 0;
 
@@ -64,7 +65,7 @@ realm_daemon_lock_for_action (GDBusMethodInvocation *invocation)
 	g_object_weak_ref (current_invocation, on_invocation_gone, NULL);
 
 	/* Hold the daemon up while action */
-	realm_daemon_hold ();
+	realm_daemon_hold ("current-invocation");
 
 	return TRUE;
 }
@@ -84,7 +85,7 @@ realm_daemon_unlock_for_action (GDBusMethodInvocation *invocation)
 	current_invocation = NULL;
 
 	/* Matches the hold in realm_daemon_lock_for_action() */
-	realm_daemon_release ();
+	realm_daemon_release ("current-invocation");
 }
 
 gboolean
@@ -149,22 +150,22 @@ realm_daemon_check_dbus_action (const gchar *sender,
 }
 
 void
-realm_daemon_hold (void)
+realm_daemon_hold (const gchar *hold)
 {
-	g_return_if_fail (service_holds >= 0);
+	g_assert (hold != NULL);
 
-	service_holds++;
+	if (g_hash_table_lookup (service_holds, hold))
+		g_critical ("realm_daemon_hold: already have hold: %s", hold);
+	g_hash_table_insert (service_holds, g_strdup (hold), HOLD_INTERNAL);
 }
 
 void
-realm_daemon_release (void)
+realm_daemon_release (const gchar *hold)
 {
-	g_return_if_fail (service_holds > 0);
+	g_assert (hold != NULL);
 
-	if ((--service_holds) > 0)
-		return;
-
-	realm_daemon_poke ();
+	if (!g_hash_table_remove (service_holds, hold))
+		g_critical ("realm_daemon_release: don't have hold: %s", hold);
 }
 
 static gboolean
@@ -175,7 +176,7 @@ on_service_timeout (gpointer data)
 
 	service_timeout_id = 0;
 
-	if (service_holds > 0)
+	if (g_hash_table_size (service_holds) > 0)
 		return FALSE;
 
 	now = g_get_monotonic_time ();
@@ -196,10 +197,55 @@ realm_daemon_poke (void)
 {
 	if (service_persist)
 		return;
-
+	if (g_hash_table_size (service_holds) > 0)
+		return;
 	service_quit_at = g_get_monotonic_time () + (TIMEOUT * G_TIME_SPAN_SECOND);
 	if (service_timeout_id == 0)
 		on_service_timeout (NULL);
+}
+
+static void
+on_client_vanished (GDBusConnection *connection,
+                    const gchar *name,
+                    gpointer user_data)
+{
+	g_hash_table_remove (service_holds, name);
+}
+
+static void
+unwatch_if_watched (gpointer data)
+{
+	if (data != HOLD_INTERNAL)
+		g_bus_unwatch_name (GPOINTER_TO_UINT (data));
+	realm_daemon_poke ();
+}
+
+static gboolean
+on_idle_hold_for_message (gpointer user_data)
+{
+	GDBusMessage *message = user_data;
+	const gchar *sender = g_dbus_message_get_sender (message);
+	guint watch;
+
+	if (!g_hash_table_lookup (service_holds, sender)) {
+		watch = g_bus_watch_name (G_BUS_TYPE_SYSTEM, sender,
+		                          G_BUS_NAME_WATCHER_FLAGS_NONE,
+		                          NULL, on_client_vanished, NULL, NULL);
+		g_hash_table_insert (service_holds, g_strdup (sender),
+		                     GUINT_TO_POINTER (watch));
+	}
+
+	return FALSE; /* don't call again */
+}
+
+static gboolean
+on_idle_release_for_message (gpointer user_data)
+{
+	GDBusMessage *message = user_data;
+	const gchar *sender = g_dbus_message_get_sender (message);
+
+	g_hash_table_remove (service_holds, sender);
+	return FALSE; /* don't call again */
 }
 
 static GDBusMessage *
@@ -208,13 +254,46 @@ on_connection_filter (GDBusConnection *connection,
                       gboolean incoming,
                       gpointer user_data)
 {
+	const gchar *own_name = user_data;
 	GDBusMessageType type;
+	GDBusMessage *reply;
+	GError *error = NULL;
 
 	/* Each time we see an incoming function call, keep the service alive */
 	if (incoming) {
 		type = g_dbus_message_get_message_type (message);
-		if (type == G_DBUS_MESSAGE_TYPE_METHOD_CALL)
-			realm_daemon_poke();
+		if (type == G_DBUS_MESSAGE_TYPE_METHOD_CALL) {
+
+			/* Is a client calling to release from the daemon? */
+			if (g_strcmp0 (g_dbus_message_get_path (message), "/org/freedesktop/realmd") == 0 &&
+			    g_strcmp0 (g_dbus_message_get_member (message), "ReleaseDaemon") == 0 &&
+			    g_strcmp0 (g_dbus_message_get_interface (message), "org.freedesktop.realmd.Daemon") == 0) {
+				g_idle_add_full (G_PRIORITY_DEFAULT,
+				                 on_idle_release_for_message,
+				                 g_object_ref (message),
+				                 g_object_unref);
+
+				/* Reply to this message */
+				reply = g_dbus_message_new_method_reply (message);
+				g_dbus_message_set_body (reply, g_variant_new ("()"));
+				g_dbus_connection_send_message (connection, reply,
+				                                G_DBUS_SEND_MESSAGE_FLAGS_NONE,
+				                                NULL, &error);
+				if (error != NULL) {
+					g_critical ("Couldn't send ReleaseDaemon reply message: %s", error->message);
+					g_error_free (error);
+				}
+				g_object_unref (message);
+				return NULL;
+
+			/* Another method call, watch the client and don't go away until they do, or release */
+			} else if (g_strcmp0 (own_name, g_dbus_message_get_sender (message)) != 0) {
+				g_idle_add_full (G_PRIORITY_DEFAULT,
+				                 on_idle_hold_for_message,
+				                 g_object_ref (message),
+				                 g_object_unref);
+			}
+		}
 	}
 
 	return message;
@@ -227,6 +306,7 @@ on_bus_get_connection (GObject *source,
 {
 	GError *error = NULL;
 	GDBusConnection **connection = (GDBusConnection **)user_data;
+	const gchar *self_name;
 
 	*connection = g_bus_get_finish (result, &error);
 	if (error != NULL) {
@@ -237,7 +317,9 @@ on_bus_get_connection (GObject *source,
 		realm_debug ("connected to bus");
 
 		/* Add a filter which keeps service alive */
-		g_dbus_connection_add_filter (*connection, on_connection_filter, NULL, NULL);
+		self_name = g_dbus_connection_get_unique_name (*connection);
+		g_dbus_connection_add_filter (*connection, on_connection_filter,
+		                              (gchar *)self_name, NULL);
 
 		realm_diagnostics_initialize (*connection);
 		realm_provider_start (*connection, REALM_TYPE_SSSD_AD_PROVIDER);
@@ -247,7 +329,7 @@ on_bus_get_connection (GObject *source,
 	}
 
 	/* Matches the hold() in main() */
-	realm_daemon_release ();
+	realm_daemon_release ("main");
 }
 
 static GOptionEntry option_entries[] = {
@@ -276,7 +358,9 @@ main (int argc,
 		service_persist = 1;
 
 	realm_debug_init ();
-	realm_daemon_hold ();
+	service_holds = g_hash_table_new_full (g_str_hash, g_str_equal,
+	                                       g_free, unwatch_if_watched);
+	realm_daemon_hold ("main");
 
 	/* Load the platform specific data */
 	realm_settings_init ();
@@ -297,10 +381,11 @@ main (int argc,
 	g_clear_object (&polkit_authority);
 	G_UNLOCK (polkit_authority);
 
+	realm_debug ("stopping service");
 	realm_settings_uninit ();
-
 	g_main_loop_unref (main_loop);
 	g_option_context_free (context);
-	realm_debug ("stopping service");
+
+	g_hash_table_unref (service_holds);
 	return 0;
 }

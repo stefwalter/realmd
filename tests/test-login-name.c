@@ -76,6 +76,7 @@ static void
 test_parse_all (Test *test,
                 gconstpointer unused)
 {
+	const gchar *failed = NULL;
 	const gchar *original[] = {
 		"Domain\\User",
 		"Domain\\Two",
@@ -85,15 +86,37 @@ test_parse_all (Test *test,
 
 	gchar **changed;
 
-	changed = realm_login_name_parse_all ("Domain\\%s", FALSE, original);
+	changed = realm_login_name_parse_all ("Domain\\%s", FALSE, original, &failed);
 	g_assert (changed != NULL);
 	g_assert_cmpstr (changed[0], ==, "User");
 	g_assert_cmpstr (changed[1], ==, "Two");
 	g_assert_cmpstr (changed[2], ==, "Three");
 	g_assert (changed[3] == NULL);
+	g_assert (failed == NULL);
 
 	g_strfreev (changed);
 }
+
+static void
+test_parse_all_failed (Test *test,
+                       gconstpointer unused)
+{
+	const gchar *failed = NULL;
+	const gchar *original[] = {
+		"Domain\\User",
+		"Wheeee",
+		NULL,
+	};
+
+	gchar **changed;
+
+	changed = realm_login_name_parse_all ("Domain\\%s", FALSE, original, &failed);
+	g_assert (changed == NULL);
+	g_assert_cmpstr (failed, ==, "Wheeee");
+
+	g_strfreev (changed);
+}
+
 
 int
 main (int argc,
@@ -134,7 +157,8 @@ main (int argc,
 		g_free (name);
 	}
 
-	g_test_add ("/realmd/login-name/parse_all", Test, NULL, setup, test_parse_all, teardown);
+	g_test_add ("/realmd/login-name/parse-all", Test, NULL, setup, test_parse_all, teardown);
+	g_test_add ("/realmd/login-name/parse-all-failed", Test, NULL, setup, test_parse_all_failed, teardown);
 
 	return g_test_run ();
 }

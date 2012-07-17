@@ -82,7 +82,8 @@ realm_login_name_parse (const gchar *format,
 gchar **
 realm_login_name_parse_all (const gchar *format,
                             gboolean lower,
-                            const gchar **logins)
+                            const gchar **logins,
+                            const gchar **failed)
 {
 	GPtrArray *names;
 	gchar *login;
@@ -93,6 +94,8 @@ realm_login_name_parse_all (const gchar *format,
 	for (i = 0; logins != NULL && logins[i] != NULL; i++) {
 		login = realm_login_name_parse (format, lower, logins[i]);
 		if (login == NULL) {
+			if (failed)
+				*failed = logins[i];
 			g_ptr_array_free (names, TRUE);
 			return NULL;
 		}

@@ -26,10 +26,12 @@ struct {
 	const char *usage;
 	const char *description;
 } realm_commands[] = {
+	{ "discover", realm_discover, "realm discover -v [realm-name]", "Discover available realm" },
 	{ "join", realm_join, "realm join -v [-U user] realm-name", "Enroll this machine in a realm" },
 	{ "leave", realm_leave, "realm leave -v [-U user] [realm-name]", "Unenroll this machine from a realm" },
-	{ "discover", realm_discover, "realm discover -v [realm-name]", "Discover available realm" },
 	{ "list", realm_list, "realm list", "List known realms" },
+	{ "permit", realm_permit, "realm permit [-a] [-R realm] user ...", "Permit user logins" },
+	{ "deny", realm_deny, "realm deny [-a] [-R realm] user ...", "Deny user logins" },
 };
 
 void
@@ -80,6 +82,92 @@ realm_info_to_realm_proxy (GVariant *realm_info)
 		realm_handle_error (error, "couldn't use realm service");
 	else if (realm == NULL)
 		realm_handle_error (NULL, "unsupported realm type: %s", interface_name);
+
+	return realm;
+}
+
+static RealmDbusKerberos *
+find_enrolled_in_realms (GVariant *realms,
+                         const gchar *realm_name)
+{
+	RealmDbusKerberos *result = NULL;
+	RealmDbusKerberos *realm;
+	GVariant *realm_info;
+	GVariantIter iter;
+	const gchar *name;
+
+	g_variant_iter_init (&iter, realms);
+	while ((realm_info = g_variant_iter_next_value (&iter)) != NULL) {
+		realm = realm_info_to_realm_proxy (realm_info);
+		g_variant_unref (realm_info);
+		if (realm == NULL)
+			continue;
+
+		if (realm_dbus_kerberos_get_enrolled (realm)) {
+
+			/* Searching for any enrolled realm */
+			if (realm_name == NULL) {
+				if (result == NULL) {
+					result = realm;
+					realm = NULL;
+				} else {
+					realm_handle_error (NULL, "more than one enrolled realm, please specify the realm name");
+					g_object_unref (realm);
+					g_object_unref (result);
+					return NULL;
+				}
+
+			/* Searching for a specific enrolled realm */
+			} else {
+				name = realm_dbus_kerberos_get_name (realm);
+				if (name != NULL && g_ascii_strcasecmp (name, realm_name) == 0) {
+					return realm;
+				}
+			}
+		}
+
+		if (realm != NULL)
+			g_object_unref (realm);
+	}
+
+	if (realm_name == NULL) {
+		if (result == NULL)
+			realm_handle_error (NULL, "no enrolled realms found");
+		return result;
+	}
+
+	realm_handle_error (NULL, "enrolled realm not found: %s", realm_name);
+	return NULL;
+}
+
+
+RealmDbusKerberos *
+realm_name_to_enrolled (const gchar *realm_name)
+{
+	RealmDbusKerberos *realm;
+	RealmDbusProvider *provider;
+	GError *error = NULL;
+	GVariant *realms;
+
+	if (realm_name != NULL && g_str_equal (realm_name, ""))
+		realm_name = NULL;
+
+	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+	                                                       G_DBUS_PROXY_FLAGS_NONE,
+	                                                       "org.freedesktop.realmd",
+	                                                       "/org/freedesktop/realmd",
+	                                                       NULL, &error);
+	if (error != NULL) {
+		realm_handle_error (error, "couldn't connect to realm service");
+		return NULL;
+	}
+
+	/* Find the right realm, but only enrolled */
+	realms = realm_dbus_provider_get_realms (provider);
+	g_return_val_if_fail (realms != NULL, NULL);
+
+	realm = find_enrolled_in_realms (realms, realm_name);
+	g_object_unref (provider);
 
 	return realm;
 }

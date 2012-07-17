@@ -28,6 +28,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 
 static void
 print_realm_info (GVariant *realm_info)
@@ -43,6 +44,7 @@ print_realm_info (GVariant *realm_info)
 	const gchar *value;
 	gboolean enrolled;
 	gchar *string;
+	const gchar *policy;
 
 	g_variant_get (realm_info, "(&s&o&s)", &bus_name, &object_path, &interface_name);
 
@@ -74,9 +76,13 @@ print_realm_info (GVariant *realm_info)
 
 	if (enrolled) {
 		g_print ("  login-format: %s\n", realm_dbus_kerberos_get_login_format (realm));
-		string = g_strjoinv (", ", (gchar **)realm_dbus_kerberos_get_permitted_logins (realm));
-		g_print ("  permitted-logins: %s\n", string);
-		g_free (string);
+		policy = realm_dbus_kerberos_get_login_policy (realm);
+		g_print ("  login-policy: %s\n", policy);
+		if (strstr (policy, REALM_DBUS_LOGIN_POLICY_PERMITTED)) {
+			string = g_strjoinv (", ", (gchar **)realm_dbus_kerberos_get_permitted_logins (realm));
+			g_print ("  permitted-logins: %s\n", string);
+			g_free (string);
+		}
 	}
 
 	g_object_unref (realm);

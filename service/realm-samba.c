@@ -78,6 +78,7 @@ realm_samba_init (RealmSamba *self)
 	g_object_set (self,
 	              "details", details,
 	              "suggested-administrator", "Administrator",
+	              "login-policy", REALM_DBUS_LOGIN_POLICY_ANY,
 	              NULL);
 
 	g_variant_unref (details);
@@ -427,14 +428,9 @@ realm_samba_change_logins (RealmKerberos *realm,
 		return FALSE;
 	}
 
-	add_names = realm_kerberos_parse_logins (realm, TRUE, add);
+	add_names = realm_kerberos_parse_logins (realm, TRUE, add, error);
 	if (add_names != NULL)
-		remove_names = realm_kerberos_parse_logins (realm, TRUE, add);
-
-	if (add_names == NULL || remove_names == NULL) {
-		g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-		             "Invalid login argument");
-	}
+		remove_names = realm_kerberos_parse_logins (realm, TRUE, add, error);
 
 	if (add_names && remove_names) {
 		ret = realm_ini_config_change_list (self->config,
@@ -454,6 +450,7 @@ realm_samba_change_logins (RealmKerberos *realm,
 static void
 realm_samba_logins_async (RealmKerberos *realm,
                           GDBusMethodInvocation *invocation,
+                          RealmKerberosLoginPolicy login_policy,
                           const gchar **add,
                           const gchar **remove,
                           GAsyncReadyCallback callback,
@@ -465,8 +462,16 @@ realm_samba_logins_async (RealmKerberos *realm,
 	async = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
 	                                   realm_samba_logins_async);
 
-	if (!realm_samba_change_logins (realm, invocation, add, remove, &error))
+	/* Sadly we don't support this option */
+	if (login_policy != REALM_KERBEROS_ALLOW_ANY_LOGIN &&
+	    login_policy != REALM_KERBEROS_POLICY_NOT_SET) {
+		g_simple_async_result_set_error (async, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
+		                                 "The Samba provider cannot restrict permitted logins.");
+
+	/* Make note of the permitted logins, so we can return them in the property */
+	} else if (!realm_samba_change_logins (realm, invocation, add, remove, &error)) {
 		g_simple_async_result_take_error (async, error);
+	}
 
 	g_simple_async_result_complete_in_idle (async);
 	g_object_unref (async);

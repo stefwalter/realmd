@@ -23,6 +23,13 @@
 
 G_BEGIN_DECLS
 
+typedef enum {
+	REALM_KERBEROS_POLICY_NOT_SET = 0,
+	REALM_KERBEROS_ALLOW_ANY_LOGIN = 1,
+	REALM_KERBEROS_ALLOW_PERMITTED_LOGINS = 2,
+	REALM_KERBEROS_DENY_ANY_LOGIN = 3,
+} RealmKerberosLoginPolicy;
+
 #define REALM_TYPE_KERBEROS            (realm_kerberos_get_type ())
 #define REALM_KERBEROS(inst)           (G_TYPE_CHECK_INSTANCE_CAST ((inst), REALM_TYPE_KERBEROS, RealmKerberos))
 #define REALM_IS_KERBEROS(inst)        (G_TYPE_CHECK_INSTANCE_TYPE ((inst), REALM_TYPE_KERBEROS))
@@ -64,8 +71,9 @@ struct _RealmKerberosClass {
 
 	void       (* logins_async)    (RealmKerberos *realm,
 	                                GDBusMethodInvocation *invocation,
-	                                const gchar **add,
-	                                const gchar **remove,
+	                                RealmKerberosLoginPolicy login_policy,
+	                                const gchar **permitted_add,
+	                                const gchar **permitted_remove,
 	                                GAsyncReadyCallback callback,
 	                                gpointer user_data);
 
@@ -88,7 +96,8 @@ gchar *             realm_kerberos_parse_login           (RealmKerberos *self,
 
 gchar **            realm_kerberos_parse_logins          (RealmKerberos *self,
                                                           gboolean lower,
-                                                          const gchar **logins);
+                                                          const gchar **logins,
+                                                          GError **error);
 
 gchar *             realm_kerberos_format_login          (RealmKerberos *self,
                                                           const gchar *user);

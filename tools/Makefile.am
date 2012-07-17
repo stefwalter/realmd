@@ -7,6 +7,7 @@ realm_SOURCES = \
 	realm.c \
 	realm-enroll.c \
 	realm-discover.c \
+	realm-logins.c \
 	$(NULL)
 
 AM_CFLAGS = \

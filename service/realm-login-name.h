@@ -27,7 +27,8 @@ gchar *        realm_login_name_parse     (const gchar *format,
 
 gchar **       realm_login_name_parse_all (const gchar *format,
                                            gboolean lower,
-                                           const gchar **logins);
+                                           const gchar **logins,
+                                           const gchar **failed);
 
 gchar *        realm_login_name_format    (const gchar *format,
                                            const gchar *user);

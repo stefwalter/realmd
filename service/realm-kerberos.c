@@ -459,17 +459,51 @@ on_logins_complete (GObject *source,
 }
 
 static gboolean
-handle_change_permitted_logins (RealmDbusKerberos *realm,
-                                GDBusMethodInvocation *invocation,
-                                const gchar *const *add,
-                                const gchar *const *remove,
-                                const gchar *operation_id)
+handle_change_login_policy (RealmDbusKerberos *realm,
+                            GDBusMethodInvocation *invocation,
+                            const gchar *login_policy,
+                            const gchar *const *add,
+                            const gchar *const *remove,
+                            const gchar *operation_id)
 {
+	RealmKerberosLoginPolicy policy = REALM_KERBEROS_POLICY_NOT_SET;
 	RealmKerberos *self = REALM_KERBEROS (realm);
 	RealmKerberosClass *klass;
+	gchar **policies;
+	gint policies_set = 0;
+	gint i;
 
 	/* Make note of the current operation id, for diagnostics */
 	realm_diagnostics_mark_operation (invocation, operation_id);
+
+	policies = g_strsplit_set (login_policy, ", \t", -1);
+	for (i = 0; policies[i] != NULL; i++) {
+		if (g_str_equal (policies[i], REALM_DBUS_LOGIN_POLICY_ANY)) {
+			policy = REALM_KERBEROS_ALLOW_ANY_LOGIN;
+			policies_set++;
+		} else if (g_str_equal (policies[i], REALM_DBUS_LOGIN_POLICY_PERMITTED)) {
+			policy = REALM_KERBEROS_ALLOW_PERMITTED_LOGINS;
+			policies_set++;
+		} else if (g_str_equal (policies[i], REALM_DBUS_LOGIN_POLICY_DENY)) {
+			policy = REALM_KERBEROS_DENY_ANY_LOGIN;
+			policies_set++;
+		} else {
+			g_strfreev (policies);
+			g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR,
+			                                       G_DBUS_ERROR_INVALID_ARGS,
+			                                       "Invalid or unknown login_policy argument");
+			return TRUE;
+		}
+	}
+
+	g_strfreev (policies);
+
+	if (policies_set > 1) {
+		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR,
+		                                       G_DBUS_ERROR_INVALID_ARGS,
+		                                       "Conflicting flags in login_policy argument");
+		return TRUE;
+	}
 
 	if (!realm_daemon_lock_for_action (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
@@ -480,7 +514,7 @@ handle_change_permitted_logins (RealmDbusKerberos *realm,
 	klass = REALM_KERBEROS_GET_CLASS (self);
 	g_return_val_if_fail (klass->logins_async != NULL, FALSE);
 
-	(klass->logins_async) (self, invocation, (const gchar **)add,
+	(klass->logins_async) (self, invocation, policy, (const gchar **)add,
 	                       (const gchar **)remove, on_logins_complete,
 	                       method_closure_new (self, invocation));
 
@@ -506,7 +540,7 @@ realm_kerberos_authorize_method (GDBusInterfaceSkeleton *skeleton,
 		           g_str_equal (method, "UnenrollWithPassword")) {
 			action_id = "org.freedesktop.realmd.unenroll-machine";
 
-		} else if (g_str_equal (method, "ChangePermittedLogins")) {
+		} else if (g_str_equal (method, "ChangeLoginPolicy")) {
 		        action_id = "org.freedesktop.realmd.login-policy";
 
 		} else {
@@ -613,7 +647,7 @@ realm_kerberos_iface_init (RealmDbusKerberosIface *iface)
 	iface->handle_unenroll_with_password = handle_unenroll_with_password;
 	iface->handle_enroll_with_credential_cache = handle_enroll_with_credential_cache;
 	iface->handle_unenroll_with_credential_cache = handle_unenroll_with_credential_cache;
-	iface->handle_change_permitted_logins = handle_change_permitted_logins;
+	iface->handle_change_login_policy = handle_change_login_policy;
 }
 
 void
@@ -658,17 +692,32 @@ realm_kerberos_parse_login (RealmKerberos *self,
 gchar **
 realm_kerberos_parse_logins (RealmKerberos *self,
                              gboolean lower,
-                             const gchar **logins)
+                             const gchar **logins,
+                             GError **error)
 {
+	const gchar *failed = NULL;
 	const gchar *format;
+	gchar **result;
 
 	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
 
 	format = realm_dbus_kerberos_get_login_format (REALM_DBUS_KERBEROS (self));
-	if (format == NULL)
+	if (format == NULL) {
+		g_set_error (error, REALM_ERROR,
+		             REALM_ERROR_NOT_ENROLLED,
+		             "The realm does not allow specifying logins");
 		return NULL;
+	}
 
-	return realm_login_name_parse_all (format, lower, logins);
+	result = realm_login_name_parse_all (format, lower, logins, &failed);
+	if (result == NULL) {
+		g_set_error (error, G_DBUS_ERROR,
+		             G_DBUS_ERROR_INVALID_ARGS,
+		             "Invalid login argument%s%s%s does not match the login format '%s'",
+		             failed ? " '" : "", failed, failed ? "'" : "", format);
+	}
+
+	return result;
 }
 
 gchar *

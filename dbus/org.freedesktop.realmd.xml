@@ -160,17 +160,24 @@
 		<property name="LoginFormat" type="s" access="read"/>
 
 		<!--
+		 * The policy for logins using this realm.
+		 * 'allow-any-login' 'allow-permitted-logins' 'deny-any-login'
+		-->
+		<property name="LoginPolicy" type="s" access="read"/>
+
+		<!--
 		 * The list of permitted logins in the LoginFormat style
 		-->
 		<property name="PermittedLogins" type="as" access="read"/>
 
 		<!--
 		 * Change the PermittedLogins property. Should take effect
-		 * immediately. Some providers may not enforce this :S
+		 * immediately.
 		-->
-		<method name="ChangePermittedLogins">
-			<arg name="add" type="as" direction="in"/>
-			<arg name="remove" type="as" direction="in"/>
+		<method name="ChangeLoginPolicy">
+			<arg name="login_policy" type="s" direction="in"/>
+			<arg name="permitted_add" type="as" direction="in"/>
+			<arg name="permitted_remove" type="as" direction="in"/>
 			<arg name="operation_id" type="s" direction="in"/>
 		</method>
 

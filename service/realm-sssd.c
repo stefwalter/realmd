@@ -16,6 +16,7 @@
 
 #include "realm-command.h"
 #include "realm-daemon.h"
+#include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
 #include "realm-packages.h"
@@ -65,9 +66,28 @@ on_logins_restarted (GObject *source,
 	g_object_unref (async);
 }
 
+static gboolean
+sssd_config_change_login_policy (RealmIniConfig *config,
+                                 const gchar *section,
+                                 const gchar *access_provider,
+                                 const gchar **add_names,
+                                 const gchar **remove_names,
+                                 GError **error)
+{
+	if (!realm_ini_config_begin_change (config, error))
+		return FALSE;
+
+	if (access_provider)
+		realm_ini_config_set (config, section, "access_provider", access_provider);
+	realm_ini_config_set_list_diff (config, section, "simple_allow_users", ",",
+	                                add_names, remove_names);
+	return realm_ini_config_finish_change (config, error);
+}
+
 static void
 realm_sssd_logins_async (RealmKerberos *realm,
                          GDBusMethodInvocation *invocation,
+                         RealmKerberosLoginPolicy login_policy,
                          const gchar **add,
                          const gchar **remove,
                          GAsyncReadyCallback callback,
@@ -79,6 +99,7 @@ realm_sssd_logins_async (RealmKerberos *realm,
 	gchar **add_names = NULL;
 	gboolean ret = FALSE;
 	GError *error = NULL;
+	const gchar *access_provider;
 
 	if (!self->pv->section) {
 		async = g_simple_async_result_new_error (G_OBJECT (realm), callback, user_data,
@@ -92,24 +113,41 @@ realm_sssd_logins_async (RealmKerberos *realm,
 	async = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
 	                                   realm_sssd_logins_async);
 
-	add_names = realm_kerberos_parse_logins (realm, TRUE, add);
+	switch (login_policy) {
+	case REALM_KERBEROS_POLICY_NOT_SET:
+		access_provider = NULL;
+		break;
+	case REALM_KERBEROS_ALLOW_ANY_LOGIN:
+		access_provider = "permit";
+		break;
+	case REALM_KERBEROS_ALLOW_PERMITTED_LOGINS:
+		access_provider = "simple";
+		break;
+	case REALM_KERBEROS_DENY_ANY_LOGIN:
+		access_provider = "deny";
+		break;
+	default:
+		g_return_if_reached ();
+	}
+
+	add_names = realm_kerberos_parse_logins (realm, TRUE, add, &error);
 	if (add_names != NULL)
-		remove_names = realm_kerberos_parse_logins (realm, TRUE, add);
+		remove_names = realm_kerberos_parse_logins (realm, TRUE, remove, &error);
 
 	if (add_names == NULL || remove_names == NULL) {
-		g_simple_async_result_set_error (async, G_DBUS_ERROR,
-		                                 G_DBUS_ERROR_INVALID_ARGS,
-		                                 "Invalid login argument");
+		g_simple_async_result_take_error (async, error);
 		g_simple_async_result_complete_in_idle (async);
+		g_object_unref (async);
+		return;
 	}
 
 	if (add_names && remove_names) {
-		ret = realm_ini_config_change_list (self->pv->config,
-		                                    self->pv->section,
-		                                    "simple_allow_users", ",",
-		                                    (const gchar **)add_names,
-		                                    (const gchar **)remove_names,
-		                                    &error);
+		ret = sssd_config_change_login_policy (self->pv->config,
+		                                       self->pv->section,
+		                                       access_provider,
+		                                       (const gchar **)add_names,
+		                                       (const gchar **)remove_names,
+		                                       &error);
 
 		if (ret) {
 			realm_service_restart ("sssd", invocation,
@@ -200,8 +238,9 @@ update_login_format (RealmSssd *self)
 }
 
 static void
-update_permitted_logins (RealmSssd *self)
+update_login_policy (RealmSssd *self)
 {
+	const gchar *policy = NULL;
 	GPtrArray *permitted;
 	gchar *access = NULL;
 	gchar **values;
@@ -217,10 +256,22 @@ update_permitted_logins (RealmSssd *self)
 			g_ptr_array_add (permitted, realm_kerberos_format_login (REALM_KERBEROS (self), values[i]));
 		g_strfreev (values);
 		g_free (access);
+		policy = REALM_DBUS_LOGIN_POLICY_PERMITTED;
+	} else if (g_strcmp0 (access, "permit") == 0) {
+		policy = REALM_DBUS_LOGIN_POLICY_ANY;
+	} else if (g_strcmp0 (access, "deny") == 0) {
+		policy = REALM_DBUS_LOGIN_POLICY_DENY;
+	} else {
+		policy = NULL;
 	}
+
 	g_ptr_array_add (permitted, NULL);
 
-	g_object_set (self, "permitted-logins", (gchar **)permitted->pdata, NULL);
+	g_object_set (self,
+	              "login-policy", policy,
+	              "permitted-logins", (gchar **)permitted->pdata,
+	              NULL);
+
 	g_ptr_array_free (permitted, TRUE);
 }
 
@@ -260,7 +311,7 @@ update_properties (RealmSssd *self)
 	update_enrolled (self);
 	update_domain (self);
 	update_login_format (self);
-	update_permitted_logins (self);
+	update_login_policy (self);
 
 	g_object_thaw_notify (obj);
 }

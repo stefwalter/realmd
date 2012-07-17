@@ -363,31 +363,14 @@ perform_leave (const gchar *string,
                gboolean verbose)
 {
 	RealmDbusKerberos *realm;
-	GError *error = NULL;
-	RealmDbusProvider *provider;
-	GVariant *realms;
 	gint ret;
 
-	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-	                                                       G_DBUS_PROXY_FLAGS_NONE,
-	                                                       "org.freedesktop.realmd",
-	                                                       "/org/freedesktop/realmd",
-	                                                       NULL, &error);
-	if (error != NULL) {
-		realm_handle_error (error, "couldn't connect to realm service");
-		return 1;
-	}
-
 	/* Find the right realm, but only enrolled */
-	realms = realm_dbus_provider_get_realms (provider);
-	realm = realms_to_realm_proxy (realms, string);
+	realm = realm_name_to_enrolled (string);
 
-	g_object_unref (provider);
-
-	if (realm == NULL) {
-		realm_handle_error (NULL, "no such realm found: %s", string);
+	/* Message already printed */
+	if (realm == NULL)
 		return 1;
-	}
 
 	ret = realm_join_or_leave (realm, user_name, verbose, FALSE);
 	g_object_unref (realm);

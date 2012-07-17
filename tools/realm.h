@@ -22,6 +22,8 @@
 
 G_BEGIN_DECLS
 
+#define               realm_operation_id           "realm-enroll"
+
 int                   realm_join                   (int argc,
                                                     char *argv[]);
 
@@ -34,11 +36,19 @@ int                   realm_discover               (int argc,
 int                   realm_list                   (int argc,
                                                     char *argv[]);
 
+int                   realm_permit                 (int argc,
+                                                    char *argv[]);
+
+int                   realm_deny                   (int argc,
+                                                    char *argv[]);
+
 void                  realm_handle_error           (GError *error,
                                                     const gchar *format,
                                                     ...) G_GNUC_PRINTF (2, 3);
 
 RealmDbusKerberos *   realm_info_to_realm_proxy    (GVariant *realm_info);
+
+RealmDbusKerberos *   realm_name_to_enrolled       (const gchar *realm_name);
 
 G_END_DECLS
 

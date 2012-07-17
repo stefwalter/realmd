@@ -38,6 +38,14 @@ RealmIniConfig *    realm_ini_config_new                      (RealmIniFlags fla
 
 void                realm_ini_config_reset                    (RealmIniConfig *self);
 
+gboolean            realm_ini_config_begin_change             (RealmIniConfig *self,
+                                                               GError **error);
+
+void                realm_ini_config_abort_change             (RealmIniConfig *self);
+
+gboolean            realm_ini_config_finish_change            (RealmIniConfig *self,
+                                                               GError **error);
+
 const gchar *       realm_ini_config_get_filename             (RealmIniConfig *self);
 
 void                realm_ini_config_set_filename             (RealmIniConfig *self,

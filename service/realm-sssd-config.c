@@ -112,11 +112,12 @@ realm_sssd_config_add_domain (RealmIniConfig *config,
 	g_return_val_if_fail (domain != NULL, FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-	if (!realm_ini_config_read_file (config, NULL, error))
+	if (!realm_ini_config_begin_change (config, error))
 		return FALSE;
 
 	section = realm_sssd_config_domain_to_section (domain);
 	if (realm_ini_config_have_section (config, section)) {
+		realm_ini_config_abort_change (config);
 		g_set_error (error, G_FILE_ERROR, G_FILE_ERROR_EXIST,
 		             "Already have domain %s in sssd.conf config file", domain);
 		g_free (section);
@@ -145,7 +146,7 @@ realm_sssd_config_add_domain (RealmIniConfig *config,
 	g_hash_table_unref (parameters);
 	g_free (section);
 
-	return realm_ini_config_write_file (config, NULL, error);
+	return realm_ini_config_finish_change (config, error);
 }
 
 gboolean
@@ -160,7 +161,7 @@ realm_sssd_config_remove_domain (RealmIniConfig *config,
 	g_return_val_if_fail (domain != NULL, FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-	if (!realm_ini_config_read_file (config, NULL, error))
+	if (!realm_ini_config_begin_change (config, error))
 		return FALSE;
 
 	section = realm_sssd_config_domain_to_section (domain);
@@ -171,5 +172,5 @@ realm_sssd_config_remove_domain (RealmIniConfig *config,
 	realm_ini_config_remove_section (config, section);
 	g_free (section);
 
-	return realm_ini_config_write_file (config, NULL, error);
+	return realm_ini_config_finish_change (config, error);
 }

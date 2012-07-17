@@ -45,6 +45,7 @@ struct _RealmIniConfig {
 	GHashTable *sections;
 	ConfigLine *head;
 	ConfigLine *tail;
+	gboolean changing;
 
 	gchar *filename;
 	GFileMonitor *monitor;
@@ -542,7 +543,8 @@ parse_config_bytes (RealmIniConfig *self,
 		from = at;
 	}
 
-	g_signal_emit (self, signals[CHANGED], 0);
+	if (!self->changing)
+		g_signal_emit (self, signals[CHANGED], 0);
 }
 
 void
@@ -788,7 +790,8 @@ realm_ini_config_set (RealmIniConfig *self,
 	g_return_if_fail (section != NULL);
 
 	config_set_value (self, section, name, value);
-	g_signal_emit (self, signals[CHANGED], 0);
+	if (!self->changing)
+		g_signal_emit (self, signals[CHANGED], 0);
 }
 
 gchar *
@@ -857,7 +860,8 @@ realm_ini_config_set_all (RealmIniConfig *self,
 	while (g_hash_table_iter_next (&iter, (gpointer *)&name, (gpointer *)&value))
 		config_set_value (self, section, name, value);
 
-	g_signal_emit (self, signals[CHANGED], 0);
+	if (!self->changing)
+		g_signal_emit (self, signals[CHANGED], 0);
 }
 
 gchar **
@@ -1048,11 +1052,11 @@ realm_ini_config_changev (RealmIniConfig *self,
 	g_return_val_if_fail (parameters != NULL, FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-	if (!realm_ini_config_read_file (self, NULL, error))
+	if (!realm_ini_config_begin_change (self, error))
 		return FALSE;
 
 	realm_ini_config_set_all (self, section, parameters);
-	return realm_ini_config_write_file (self, NULL, error);
+	return realm_ini_config_finish_change (self, error);
 }
 
 gboolean
@@ -1070,11 +1074,11 @@ realm_ini_config_change_list (RealmIniConfig *self,
 	g_return_val_if_fail (delimiters != NULL, FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-	if (!realm_ini_config_read_file (self, NULL, error))
+	if (!realm_ini_config_begin_change (self, error))
 		return FALSE;
 
 	realm_ini_config_set_list_diff (self, section, name, delimiters, add, remove);
-	return realm_ini_config_write_file (self, NULL, error);
+	return realm_ini_config_finish_change (self, error);
 }
 
 void
@@ -1083,7 +1087,8 @@ realm_ini_config_reset (RealmIniConfig *self)
 	g_return_if_fail (REALM_IS_INI_CONFIG (self));
 
 	reset_config_data (self);
-	g_signal_emit (self, signals[CHANGED], 0);
+	if (!self->changing)
+		g_signal_emit (self, signals[CHANGED], 0);
 }
 
 void
@@ -1109,4 +1114,56 @@ realm_ini_config_new (RealmIniFlags flags)
 	return g_object_new (REALM_TYPE_INI_CONFIG,
 	                     "flags", flags,
 	                     NULL);
+}
+
+gboolean
+realm_ini_config_begin_change (RealmIniConfig *self,
+                               GError **error)
+{
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), FALSE);
+	g_return_val_if_fail (self->changing == FALSE, FALSE);
+
+	self->changing = TRUE;
+
+	if (!realm_ini_config_read_file (self, NULL, error)) {
+		self->changing = FALSE;
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+void
+realm_ini_config_abort_change (RealmIniConfig *self)
+{
+	if (!self->changing) {
+		g_warning ("A realm_ini_config_begin_change() was not matched "
+		           "correctly with realm_ini_config_abort_change()");
+		return;
+	}
+
+	self->changing = FALSE;
+	g_signal_emit (self, signals[CHANGED], 0);
+}
+
+gboolean
+realm_ini_config_finish_change (RealmIniConfig *self,
+                                GError **error)
+{
+	gboolean ret;
+
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), FALSE);
+
+	if (!self->changing) {
+		g_warning ("A realm_ini_config_begin_change() was not matched "
+		           "correctly with realm_ini_config_finish_change()");
+		return FALSE;
+	}
+
+	self->changing = FALSE;
+	ret = realm_ini_config_write_file (self, NULL, error);
+
+	g_signal_emit (self, signals[CHANGED], 0);
+
+	return ret;
 }

@@ -28,7 +28,7 @@
 
 #include <polkit/polkit.h>
 
-#define TIMEOUT        10 /* seconds */
+#define TIMEOUT        60 /* seconds */
 #define HOLD_INTERNAL  (GUINT_TO_POINTER (~0))
 
 static GObject *current_invocation = NULL;

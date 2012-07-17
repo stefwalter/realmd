@@ -110,9 +110,11 @@ main (int argc,
 
 	/* Find/remove the first non-flag argument: the command */
 	for (i = 1; i < argc; i++) {
-		if (argv[i][0] != '-') {
-			command = argv[i];
-			argc--;
+		if (command == NULL) {
+			if (argv[i][0] != '-') {
+				command = argv[i];
+				argc--;
+			}
 		}
 		if (command != NULL)
 			argv[i] = argv[i + 1];

@@ -506,7 +506,7 @@ on_connect_to_host (GObject *source,
 		                       on_write_http_request, g_object_ref (self));
 
 	} else {
-		ipa_discover_take_error (self, "Couldn't connect to host", error);
+		ipa_discover_take_error (self, "Couldn't connect to check for IPA domain", error);
 		ipa_discover_step (self);
 	}
 

@@ -666,7 +666,7 @@ realm_ini_config_write_file (RealmIniConfig *self,
 	GBytes *bytes;
 	gboolean ret = TRUE;
 	const gchar *contents;
-	mode_t mask;
+	mode_t mask = 0;
 	gsize length;
 
 	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), FALSE);

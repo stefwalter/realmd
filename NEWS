@@ -1,3 +1,13 @@
+0.5
+ * Implement login policy concept
+ * Make the daemon exit-after-timeout work better
+ * Implement an AD provider based on sssd
+ * Fix accidental corruption of config files
+ * New 'realm' command with various sub-commands
+ * Display errors correctly in command line tools
+ * Add discovery of IPA servers
+ * Various bug fixes
+
 0.4
  * Fix up license headers
  * Don't use SOA for MSDCS subdomain, use SRV record directly

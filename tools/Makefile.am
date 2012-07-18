@@ -4,7 +4,7 @@ bin_PROGRAMS = \
 	realm
 
 realm_SOURCES = \
-	realm.c \
+	realm.c realm.h \
 	realm-enroll.c \
 	realm-discover.c \
 	realm-logins.c \

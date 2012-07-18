@@ -88,9 +88,11 @@ on_discover_complete (GObject *source,
 		g_dbus_method_invocation_return_value (closure->invocation, retval);
 		g_variant_unref (realms);
 	} else {
-		if (error->domain == REALM_ERROR) {
+		if (error->domain == REALM_ERROR || error->domain == G_DBUS_ERROR) {
+			g_dbus_error_strip_remote_error (error);
 			realm_diagnostics_error (closure->invocation, error, NULL);
 			g_dbus_method_invocation_return_gerror (closure->invocation, error);
+
 		} else {
 			realm_diagnostics_error (closure->invocation, error, "Failed to discover realm");
 			g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_DISCOVERY_FAILED,

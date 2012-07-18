@@ -19,6 +19,7 @@
 #define DEBUG_FLAG REALM_DEBUG_SERVICE
 #include "realm-debug.h"
 #include "realm-diagnostics.h"
+#include "realm-errors.h"
 #include "realm-samba-provider.h"
 #include "realm-settings.h"
 #include "realm-sssd-ad-provider.h"
@@ -38,6 +39,9 @@ static gboolean service_persist = FALSE;
 static GHashTable *service_holds = NULL;
 static gint64 service_quit_at = 0;
 static guint service_timeout_id = 0;
+
+/* We use this for registering the dbus errors */
+GQuark realm_error = 0;
 
 /* We use a lock here because it's called from dbus threads */
 G_LOCK_DEFINE(polkit_authority);
@@ -358,6 +362,7 @@ main (int argc,
 		service_persist = 1;
 
 	realm_debug_init ();
+	realm_error = realm_error_quark ();
 	service_holds = g_hash_table_new_full (g_str_hash, g_str_equal,
 	                                       g_free, unwatch_if_watched);
 	realm_daemon_hold ("main");

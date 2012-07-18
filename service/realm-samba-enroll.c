@@ -303,6 +303,34 @@ on_join_do_keytab (GObject *source,
 	g_object_unref (res);
 }
 
+static void
+on_conf_do_join (GObject *source,
+                 GAsyncResult *result,
+                 gpointer user_data)
+{
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
+	GError *error = NULL;
+	gint status;
+
+	status = realm_command_run_finish (result, NULL, &error);
+	if (error == NULL && status != 0) {
+		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
+		             "Configuring samba failed");
+	}
+
+	if (error == NULL) {
+		begin_net_process (join,  on_join_do_keytab, g_object_ref (res),
+		                   "-k", "ads", "join", join->realm, NULL);
+
+	} else {
+		g_simple_async_result_take_error (res, error);
+		g_simple_async_result_complete (res);
+	}
+
+	g_object_unref (res);
+}
+
 void
 realm_samba_enroll_join_async (const gchar *realm,
                                GBytes *admin_kerberos_cache,
@@ -326,8 +354,9 @@ realm_samba_enroll_join_async (const gchar *realm,
 		g_simple_async_result_complete_in_idle (res);
 	} else {
 		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
-		begin_net_process (join,  on_join_do_keytab, g_object_ref (res),
-		                   "-k", "ads", "join", join->realm, NULL);
+		begin_net_process (join, on_conf_do_join, g_object_ref (res),
+		                   "conf", "setparm", REALM_SAMBA_CONFIG_GLOBAL,
+		                   "realm", join->realm, NULL);
 	}
 
 	g_object_unref (res);

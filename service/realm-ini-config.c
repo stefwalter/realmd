@@ -759,6 +759,8 @@ config_set_value (RealmIniConfig *self,
 			g_assert (sect->head != line);
 
 			remove_config_line (self, line);
+			if (!g_hash_table_remove (sect->parameters, line->name))
+				g_assert_not_reached ();
 			config_line_free (line);
 		}
 		return;

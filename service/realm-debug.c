@@ -43,6 +43,7 @@ static GDebugKey keys[] = {
 	{ "daemon", REALM_DEBUG_SERVICE },
 	{ "packages", REALM_DEBUG_PACKAGES },
 	{ "provider", REALM_DEBUG_PROVIDER },
+	{ "leave-temp-files", REALM_DEBUG_LEAVE_TEMP_FILES },
 	{ 0, }
 };
 

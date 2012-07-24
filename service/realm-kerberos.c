@@ -152,7 +152,8 @@ kinit_to_kerberos_cache (GDBusMethodInvocation *invocation,
 
 cleanup:
 	if (filename) {
-		g_unlink (filename);
+		if (!realm_debug_flag_is_set (REALM_DEBUG_LEAVE_TEMP_FILES))
+			g_unlink (filename);
 		g_free (filename);
 	}
 

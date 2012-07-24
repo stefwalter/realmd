@@ -16,6 +16,7 @@
 
 #include "realm-command.h"
 #include "realm-daemon.h"
+#include "realm-debug.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
 #include "realm-samba-config.h"
@@ -46,7 +47,8 @@ join_closure_free (gpointer data)
 	g_clear_object (&join->cancellable);
 
 	if (join->kerberos_cache_filename) {
-		if (g_unlink (join->kerberos_cache_filename) < 0) {
+		if (!realm_debug_flag_is_set (REALM_DEBUG_LEAVE_TEMP_FILES) &&
+		    g_unlink (join->kerberos_cache_filename) < 0) {
 			g_warning ("couldn't remove kerberos cache file: %s: %s",
 			           join->kerberos_cache_filename, g_strerror (errno));
 		}

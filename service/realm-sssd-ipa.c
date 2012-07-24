@@ -41,13 +41,6 @@ typedef struct {
 	RealmSssdClass parent_class;
 } RealmSssdIpaClass;
 
-enum {
-	PROP_0,
-	PROP_NAME,
-	PROP_DOMAIN,
-	PROP_PROVIDER,
-};
-
 G_DEFINE_TYPE (RealmSssdIpa, realm_sssd_ipa, REALM_TYPE_SSSD);
 
 static void

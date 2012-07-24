@@ -35,7 +35,6 @@
 
 struct _RealmSamba {
 	RealmKerberos parent;
-	gchar *name;
 	RealmIniConfig *config;
 	gulong config_sig;
 };
@@ -46,8 +45,6 @@ typedef struct {
 
 enum {
 	PROP_0,
-	PROP_NAME,
-	PROP_DOMAIN,
 	PROP_PROVIDER,
 };
 
@@ -114,12 +111,16 @@ lookup_enrolled_realm (RealmSamba *self)
 static gboolean
 lookup_is_enrolled (RealmSamba *self)
 {
+	const gchar *name;
 	gchar *enrolled;
-	gboolean ret;
+	gboolean ret = FALSE;
 
 	enrolled = lookup_enrolled_realm (self);
-	ret = g_strcmp0 (self->name, enrolled) == 0;
-	g_free (enrolled);
+	if (enrolled != NULL) {
+		name = realm_dbus_kerberos_get_name (REALM_DBUS_KERBEROS (self));
+		ret = g_strcmp0 (name, enrolled) == 0;
+		g_free (enrolled);
+	}
 
 	return ret;
 }
@@ -279,7 +280,7 @@ realm_samba_enroll_async (RealmKerberos *realm,
 	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
 	                                 realm_samba_enroll_async);
 	enroll = g_slice_new0 (EnrollClosure);
-	enroll->realm_name = g_strdup (self->name);
+	g_object_get (realm, "name", &enroll->realm_name, NULL);
 	enroll->invocation = g_object_ref (invocation);
 	g_simple_async_result_set_op_res_gpointer (res, enroll, enroll_closure_free);
 
@@ -399,18 +400,21 @@ realm_samba_unenroll_async (RealmKerberos *realm,
 	RealmSamba *self = REALM_SAMBA (realm);
 	GSimpleAsyncResult *res;
 	UnenrollClosure *unenroll;
+	const gchar *realm_name;
 	gchar *enrolled;
+
+	realm_name = realm_dbus_kerberos_get_name (REALM_DBUS_KERBEROS (self));
 
 	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
 	                                 realm_samba_unenroll_async);
 	unenroll = g_slice_new0 (UnenrollClosure);
-	unenroll->realm_name = g_strdup (self->name);
+	unenroll->realm_name = g_strdup (realm_name);
 	unenroll->invocation = g_object_ref (invocation);
 	g_simple_async_result_set_op_res_gpointer (res, unenroll, unenroll_closure_free);
 
 	/* Check that enrolled in this realm */
 	enrolled = lookup_enrolled_realm (self);
-	if (g_strcmp0 (enrolled, self->name) == 0) {
+	if (g_strcmp0 (enrolled, realm_name) == 0) {
 		realm_kerberos_kinit_ccache_async (realm, name, password, REALM_SAMBA_ENROLL_ENC_TYPES,
 		                                   invocation, on_kinit_do_leave, g_object_ref (res));
 
@@ -421,17 +425,6 @@ realm_samba_unenroll_async (RealmKerberos *realm,
 	}
 
 	g_object_unref (res);
-}
-
-static gboolean
-realm_samba_generic_finish (RealmKerberos *realm,
-                            GAsyncResult *result,
-                            GError **error)
-{
-	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
-		return FALSE;
-
-	return TRUE;
 }
 
 static gboolean
@@ -506,9 +499,18 @@ update_properties (RealmSamba *self)
 {
 	GPtrArray *permitted;
 	gchar *login_format;
+	const gchar *name;
+	gchar *domain;
 	gchar **values;
 	gchar *prefix;
 	gint i;
+
+	g_object_freeze_notify (G_OBJECT (self));
+
+	name = realm_dbus_kerberos_get_name (REALM_DBUS_KERBEROS (self));
+	domain = name ? g_ascii_strdown (name, -1) : NULL;
+	g_object_set (self, "domain", domain, NULL);
+	g_free (domain);
 
 	g_object_set (self, "enrolled", lookup_is_enrolled (self), NULL);
 
@@ -534,6 +536,8 @@ update_properties (RealmSamba *self)
 	g_object_set (self, "permitted-logins", (gchar **)permitted->pdata, NULL);
 	g_ptr_array_free (permitted, TRUE);
 	g_strfreev (values);
+
+	g_object_thaw_notify (G_OBJECT (self));
 }
 
 static void
@@ -543,22 +547,16 @@ on_config_changed (RealmIniConfig *config,
 	update_properties (REALM_SAMBA (user_data));
 }
 
-static void
-realm_samba_get_property (GObject *obj,
-                          guint prop_id,
-                          GValue *value,
-                          GParamSpec *pspec)
+static gboolean
+realm_samba_generic_finish (RealmKerberos *realm,
+                            GAsyncResult *result,
+                            GError **error)
 {
-	RealmSamba *self = REALM_SAMBA (obj);
+	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
+		return FALSE;
 
-	switch (prop_id) {
-	case PROP_NAME:
-		g_value_set_string (value, self->name);
-		break;
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
-		break;
-	}
+	update_properties (REALM_SAMBA (realm));
+	return TRUE;
 }
 
 static void
@@ -569,15 +567,8 @@ realm_samba_set_property (GObject *obj,
 {
 	RealmSamba *self = REALM_SAMBA (obj);
 	RealmProvider *provider;
-	gchar *domain;
 
 	switch (prop_id) {
-	case PROP_NAME:
-		self->name = g_value_dup_string (value);
-		domain = g_ascii_strdown (self->name, -1);
-		g_object_set (self, "domain", domain, NULL);
-		g_free (domain);
-		break;
 	case PROP_PROVIDER:
 		provider = g_value_get_object (value);
 		g_object_get (provider, "samba-config", &self->config, NULL);
@@ -592,13 +583,11 @@ realm_samba_set_property (GObject *obj,
 }
 
 static void
-realm_samba_consructed (GObject *obj)
+realm_samba_notify (GObject *obj,
+                    GParamSpec *spec)
 {
-	RealmSamba *self = REALM_SAMBA (obj);
-
-	G_OBJECT_CLASS (realm_samba_parent_class)->constructed (obj);
-
-	update_properties (self);
+	if (g_str_equal (spec->name, "name"))
+		update_properties (REALM_SAMBA (obj));
 }
 
 static void
@@ -606,7 +595,6 @@ realm_samba_finalize (GObject *obj)
 {
 	RealmSamba  *self = REALM_SAMBA (obj);
 
-	g_free (self->name);
 	if (self->config)
 		g_object_unref (self->config);
 
@@ -626,14 +614,9 @@ realm_samba_class_init (RealmSambaClass *klass)
 	kerberos_class->logins_async = realm_samba_logins_async;
 	kerberos_class->logins_finish = realm_samba_generic_finish;
 
-	object_class->constructed = realm_samba_consructed;
-	object_class->get_property = realm_samba_get_property;
 	object_class->set_property = realm_samba_set_property;
+	object_class->notify = realm_samba_notify;
 	object_class->finalize = realm_samba_finalize;
-
-	g_object_class_install_property (object_class, PROP_NAME,
-	            g_param_spec_string ("name", "Name", "Realm Name",
-	                                 "", G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 
 	g_object_class_install_property (object_class, PROP_PROVIDER,
 	            g_param_spec_object ("provider", "Provider", "Samba Provider",

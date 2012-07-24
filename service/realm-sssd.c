@@ -28,7 +28,6 @@
 #include <glib/gstdio.h>
 
 struct _RealmSssdPrivate {
-	gchar *realm;
 	gchar *domain;
 	gchar *section;
 	RealmIniConfig *config;
@@ -37,8 +36,6 @@ struct _RealmSssdPrivate {
 
 enum {
 	PROP_0,
-	PROP_NAME,
-	PROP_DOMAIN,
 	PROP_PROVIDER,
 };
 
@@ -186,12 +183,15 @@ update_enrolled (RealmSssd *self)
 static void
 update_domain (RealmSssd *self)
 {
+	const char *name;
 	gchar *domain = NULL;
 
 	if (self->pv->section != NULL)
 		domain = realm_ini_config_get (self->pv->config, self->pv->section, "dns_discovery_domain");
-	if (domain == NULL)
-		domain = g_ascii_strdown (self->pv->realm, -1);
+	if (domain == NULL) {
+		name = realm_dbus_kerberos_get_name (REALM_DBUS_KERBEROS (self));
+		domain = name ? g_ascii_strdown (name, -1) : NULL;
+	}
 	g_object_set (self, "domain", domain, NULL);
 	g_free (domain);
 }
@@ -279,6 +279,7 @@ static void
 update_properties (RealmSssd *self)
 {
 	GObject *obj = G_OBJECT (self);
+	const gchar *name;
 	gchar *section = NULL;
 	gchar *domain = NULL;
 	gchar **domains;
@@ -289,10 +290,11 @@ update_properties (RealmSssd *self)
 
 	/* Find the config domain with our realm */
 	domains = realm_sssd_config_get_domains (self->pv->config);
+	name = realm_dbus_kerberos_get_name (REALM_DBUS_KERBEROS (self));
 	for (i = 0; domains && domains[i]; i++) {
 		section = realm_sssd_config_domain_to_section (domains[i]);
 		realm = realm_ini_config_get (self->pv->config, section, "krb5_realm");
-		if (g_strcmp0 (realm, self->pv->realm) == 0) {
+		if (g_strcmp0 (realm, name) == 0) {
 			domain = g_strdup (domains[i]);
 			break;
 		} else {
@@ -324,24 +326,6 @@ on_config_changed (RealmIniConfig *config,
 }
 
 static void
-realm_sssd_get_property (GObject *obj,
-                         guint prop_id,
-                         GValue *value,
-                         GParamSpec *pspec)
-{
-	RealmSssd *self = REALM_SSSD (obj);
-
-	switch (prop_id) {
-	case PROP_NAME:
-		g_value_set_string (value, self->pv->realm);
-		break;
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
-		break;
-	}
-}
-
-static void
 realm_sssd_set_property (GObject *obj,
                          guint prop_id,
                          const GValue *value,
@@ -351,9 +335,6 @@ realm_sssd_set_property (GObject *obj,
 	RealmProvider *provider;
 
 	switch (prop_id) {
-	case PROP_NAME:
-		self->pv->realm = g_value_dup_string (value);
-		break;
 	case PROP_PROVIDER:
 		provider = g_value_get_object (value);
 		g_object_get (provider, "sssd-config", &self->pv->config, NULL);
@@ -368,13 +349,11 @@ realm_sssd_set_property (GObject *obj,
 }
 
 static void
-realm_sssd_consructed (GObject *obj)
+realm_sssd_notify (GObject *obj,
+                   GParamSpec *spec)
 {
-	RealmSssd *self = REALM_SSSD (obj);
-
-	G_OBJECT_CLASS (realm_sssd_parent_class)->constructed (obj);
-
-	update_properties (self);
+	if (g_str_equal (spec->name, "name"))
+		update_properties (REALM_SSSD (obj));
 }
 
 static void
@@ -398,14 +377,9 @@ realm_sssd_class_init (RealmSssdClass *klass)
 	kerberos_class->logins_async = realm_sssd_logins_async;
 	kerberos_class->logins_finish = realm_sssd_generic_finish;
 
-	object_class->constructed = realm_sssd_consructed;
-	object_class->get_property = realm_sssd_get_property;
 	object_class->set_property = realm_sssd_set_property;
+	object_class->notify = realm_sssd_notify;
 	object_class->finalize = realm_sssd_finalize;
-
-	g_object_class_install_property (object_class, PROP_NAME,
-	            g_param_spec_string ("name", "Name", "Realm Name",
-	                                 "", G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 
 	g_object_class_install_property (object_class, PROP_PROVIDER,
 	            g_param_spec_object ("provider", "Provider", "SssdAd Provider",

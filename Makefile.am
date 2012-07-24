@@ -33,4 +33,4 @@ check-memory:
 
 upload-release: $(DIST_ARCHIVES)
 	gpg --detach-sign --local-user 'stef@thewalter.net' $(DIST_ARCHIVES)
-	scp $(DIST_ARCHIVES) $(DIST_ARCHIVES).sig people.freedesktop.org:/home/stefw/public_html/source
+	scp $(DIST_ARCHIVES) $(DIST_ARCHIVES).sig anarchy.freedesktop.org:stefw@annarchy:/srv/www.freedesktop.org/www/software/realmd/releases

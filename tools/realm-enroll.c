@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 
 /* Only one operation at a time per process, so fine to do this */
 static const gchar *operation_id = "realm-enroll";
@@ -108,7 +109,8 @@ read_file_into_variant (const gchar *filename)
 }
 
 static GVariant *
-kinit_to_kerberos_cache (const gchar *name)
+kinit_to_kerberos_cache (const gchar *name,
+                         const gchar *realm)
 {
 	krb5_get_init_creds_opt *options = NULL;
 	krb5_context context = NULL;
@@ -130,6 +132,12 @@ kinit_to_kerberos_cache (const gchar *name)
 	if (code != 0) {
 		handle_krb5_error (code, context, "couldn't parse user name");
 		goto cleanup;
+	}
+
+	/* Use our realm as the default */
+	if (strchr (name, '@') == NULL) {
+		code = krb5_set_principal_realm (context, principal, realm);
+		g_return_val_if_fail (code == 0, NULL);
 	}
 
 	code = krb5_get_init_creds_opt_alloc (context, &options);
@@ -237,18 +245,50 @@ on_complete_get_result (GObject *source,
 	g_main_loop_quit (sync->loop);
 }
 
-static int
-realm_join_or_leave (RealmDbusKerberos *realm,
-                     const gchar *user_name,
-                     gboolean verbose,
-                     gboolean join)
+static const gchar *
+find_appropriate_cred_type (RealmDbusKerberos *realm,
+                            gboolean join,
+                            const gchar **owner)
 {
-	GVariant *kerberos_cache;
+	GVariant *supported;
+	GVariantIter iter;
+	const gchar *cred_owner;
+	const gchar *cred_type;
+
+	if (join)
+		supported = realm_dbus_kerberos_get_supported_enroll_credentials (realm);
+	else
+		supported = realm_dbus_kerberos_get_supported_unenroll_credentials (realm);
+
+	g_variant_iter_init (&iter, supported);
+	while (g_variant_iter_loop (&iter, "(&s&s)", &cred_type, &cred_owner)) {
+		if (g_str_equal (cred_type, "ccache") || g_str_equal (cred_type, "password")) {
+			*owner = g_intern_string (cred_owner);
+			return g_intern_string (cred_type);
+		}
+	}
+
+	return NULL;
+}
+
+static GVariant *
+build_ccache_or_password_creds (RealmDbusKerberos *realm,
+                                const gchar *user_name,
+                                gboolean join)
+{
+	GVariant *contents;
+	const gchar *cred_type;
+	const gchar *cred_owner;
+	GVariant *creds = NULL;
 	const gchar *realm_name;
-	GError *error = NULL;
-	GVariant *options;
-	SyncClosure sync;
-	gchar *principal;
+	gchar *password;
+	gchar *prompt;
+
+	cred_type = find_appropriate_cred_type (realm, join, &cred_owner);
+	if (cred_type == NULL) {
+		realm_handle_error (NULL, "realm has no supported way to authenticate");
+		return NULL;
+	}
 
 	if (user_name == NULL)
 		user_name = realm_dbus_kerberos_get_suggested_administrator (realm);
@@ -257,18 +297,54 @@ realm_join_or_leave (RealmDbusKerberos *realm,
 
 	/* Do a kinit for the given realm */
 	realm_name = realm_dbus_kerberos_get_name (realm);
-	principal = g_strdup_printf ("%s@%s", user_name, realm_name);
-	kerberos_cache = kinit_to_kerberos_cache (principal);
-	g_free (principal);
-	if (kerberos_cache == NULL)
-		return 1;
+	if (g_str_equal (cred_type, "ccache")) {
+		contents = kinit_to_kerberos_cache (user_name, realm_name);
 
-	sync.result = NULL;
-	sync.loop = g_main_loop_new (NULL, FALSE);
+	} else if (g_str_equal (cred_type, "password")) {
+		prompt = g_strdup_printf ("Password for %s: ", user_name);
+		password = getpass (prompt);
+		g_free (prompt);
+
+		if (password == NULL) {
+			realm_print_error ("couldn't prompt for password: %s", g_strerror (errno));
+			contents = NULL;
+		} else {
+			contents = g_variant_new ("(ss)", user_name, password);
+			memset (password, 0, strlen (password));
+		}
+
+	} else {
+		g_assert_not_reached ();
+	}
+
+	if (contents) {
+		creds = g_variant_new ("(ss@v)", cred_type, cred_owner,
+		                       g_variant_new_variant (contents));
+		g_variant_ref_sink (creds);
+	}
+
+	return creds;
+}
+
+static int
+realm_join_or_leave (RealmDbusKerberos *realm,
+                     const gchar *user_name,
+                     gboolean verbose,
+                     gboolean join)
+{
+	GError *error = NULL;
+	GVariant *options;
+	GVariant *creds;
+	SyncClosure sync;
 
 	/* Setup diagnostics */
 	if (verbose)
 		connect_to_diagnostics (G_DBUS_PROXY (realm));
+
+	creds = build_ccache_or_password_creds (realm, user_name, join);
+
+	sync.result = NULL;
+	sync.loop = g_main_loop_new (NULL, FALSE);
 
 	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
 	g_variant_ref_sink (options);
@@ -276,28 +352,22 @@ realm_join_or_leave (RealmDbusKerberos *realm,
 	/* Start actual operation */
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (realm), G_MAXINT);
 	if (join)
-		realm_dbus_kerberos_call_enroll_with_credential_cache (realm, kerberos_cache, options,
-		                                                       operation_id, NULL,
-		                                                       on_complete_get_result, &sync);
+		realm_dbus_kerberos_call_enroll (realm, creds, options, operation_id,
+		                                 NULL, on_complete_get_result, &sync);
 	else
-		realm_dbus_kerberos_call_unenroll_with_credential_cache (realm, kerberos_cache, options,
-		                                                         operation_id, NULL,
-		                                                         on_complete_get_result, &sync);
+		realm_dbus_kerberos_call_unenroll (realm, creds, options, operation_id,
+		                                   NULL, on_complete_get_result, &sync);
 
 	g_variant_unref (options);
-	g_variant_unref (kerberos_cache);
+	g_variant_unref (creds);
 
 	/* This mainloop is quit by on_complete_get_result */
 	g_main_loop_run (sync.loop);
 
 	if (join)
-		realm_dbus_kerberos_call_enroll_with_credential_cache_finish (realm,
-		                                                              sync.result,
-		                                                              &error);
+		realm_dbus_kerberos_call_enroll_finish (realm, sync.result, &error);
 	else
-		realm_dbus_kerberos_call_unenroll_with_credential_cache_finish (realm,
-		                                                                sync.result,
-		                                                                &error);
+		realm_dbus_kerberos_call_unenroll_finish (realm, sync.result, &error);
 
 	g_object_unref (sync.result);
 	g_main_loop_unref (sync.loop);

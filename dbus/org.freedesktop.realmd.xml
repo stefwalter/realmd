@@ -104,49 +104,23 @@
 		<property name="Enrolled" type="b" access="read"/>
 
 		<!--
-		 * Enroll the machine in this realm using an administrative
-		 * account and a password.
+		 * Credentials: (ssv)
+		 *  type: 'ccache', 'password', 'automatic'
+		 *  who: 'administrator', 'user', 'computer', 'secret'
+		 *  contents: ay, ss, b
 		-->
-		<method name="EnrollWithPassword">
-			<arg name="principal" type="s" direction="in"/>
-			<arg name="password" type="s" direction="in"/>
+		<property name="SupportedEnrollCredentials" type="a(ss)" access="read"/>
+
+		<property name="SupportedUnenrollCredentials" type="a(ss)" access="read"/>
+
+		<method name="Enroll">
+			<arg name="credentials" type="(ssv)" direction="in"/>
 			<arg name="options" type="a{sv}" direction="in"/>
 			<arg name="operation_id" type="s" direction="in"/>
 		</method>
 
-		<!--
-		 * Enroll the machine in this realm using kerberos cached
-		 * administrative credentials.
-		-->
-		<method name="EnrollWithCredentialCache">
-			<!-- The contents of a kerberos cache file containing administrative credentials -->
-			<arg name="kerberos_cache" type="ay" direction="in">
-				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="yup"/>
-			</arg>
-			<arg name="options" type="a{sv}" direction="in"/>
-			<arg name="operation_id" type="s" direction="in"/>
-		</method>
-
-		<!--
-		 * Unenroll the machine from this realm using an administrative
-		 * account and a password.
-		-->
-		<method name="UnenrollWithPassword">
-			<arg name="principal" type="s" direction="in"/>
-			<arg name="password" type="s" direction="in"/>
-			<arg name="options" type="a{sv}" direction="in"/>
-			<arg name="operation_id" type="s" direction="in"/>
-		</method>
-
-		<!--
-		 * Unenroll the machine from this realm using a kerberos cached
-		 * administrative credentials.
-		-->
-		<method name="UnenrollWithCredentialCache">
-			<!-- The contents of a kerberos cache file containing administrative credentials -->
-			<arg name="kerberos_cache" type="ay" direction="in">
-				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="yup"/>
-			</arg>
+		<method name="Unenroll">
+			<arg name="credentials" type="(ssv)" direction="in"/>
 			<arg name="options" type="a{sv}" direction="in"/>
 			<arg name="operation_id" type="s" direction="in"/>
 		</method>

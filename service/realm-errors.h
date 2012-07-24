@@ -37,6 +37,10 @@ typedef enum {
 	_NUM_REALM_ERRORS
 } RealmErrorCodes;
 
+#define       REALM_KRB5_ERROR          (realm_krb5_error_quark ())
+
+GQuark        realm_krb5_error_quark    (void) G_GNUC_CONST;
+
 G_END_DECLS
 
 #endif /* __REALM_ERRORS_H__ */

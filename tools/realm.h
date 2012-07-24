@@ -42,6 +42,9 @@ int                   realm_permit                 (int argc,
 int                   realm_deny                   (int argc,
                                                     char *argv[]);
 
+void                  realm_print_error            (const gchar *format,
+                                                    ...) G_GNUC_PRINTF (1, 2);
+
 void                  realm_handle_error           (GError *error,
                                                     const gchar *format,
                                                     ...) G_GNUC_PRINTF (2, 3);

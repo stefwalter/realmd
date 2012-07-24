@@ -35,6 +35,26 @@ struct {
 };
 
 void
+realm_print_error (const gchar *format,
+                   ...)
+{
+	GString *message;
+	va_list va;
+
+	va_start (va, format);
+
+	message = g_string_new ("");
+	g_string_append_printf (message, "%s: ", g_get_prgname ());
+
+	va_start (va, format);
+	g_string_append_vprintf (message, format, va);
+	va_end (va);
+
+	g_printerr ("%s\n", message->str);
+	g_string_free (message, TRUE);
+}
+
+void
 realm_handle_error (GError *error,
                     const gchar *format,
                     ...)

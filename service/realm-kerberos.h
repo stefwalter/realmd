@@ -19,6 +19,8 @@
 
 #include <gio/gio.h>
 
+#include <krb5/krb5.h>
+
 #include "realm-dbus-generated.h"
 
 G_BEGIN_DECLS
@@ -29,6 +31,19 @@ typedef enum {
 	REALM_KERBEROS_ALLOW_PERMITTED_LOGINS = 2,
 	REALM_KERBEROS_DENY_ANY_LOGIN = 3,
 } RealmKerberosLoginPolicy;
+
+typedef enum {
+	REALM_KERBEROS_CREDENTIAL_ADMIN = 1 << 1,
+	REALM_KERBEROS_CREDENTIAL_USER = 1 << 2,
+	REALM_KERBEROS_CREDENTIAL_COMPUTER = 1 << 3,
+	REALM_KERBEROS_CREDENTIAL_SECRET = 1 << 4,
+} RealmKerberosFlags;
+
+typedef enum {
+	REALM_KERBEROS_CREDENTIAL_CCACHE = 1,
+	REALM_KERBEROS_CREDENTIAL_PASSWORD,
+	REALM_KERBEROS_CREDENTIAL_AUTOMATIC,
+} RealmKerberosCredential;
 
 #define REALM_TYPE_KERBEROS            (realm_kerberos_get_type ())
 #define REALM_KERBEROS(inst)           (G_TYPE_CHECK_INSTANCE_CAST ((inst), REALM_TYPE_KERBEROS, RealmKerberos))
@@ -49,37 +64,67 @@ struct _RealmKerberos {
 struct _RealmKerberosClass {
 	RealmDbusKerberosSkeletonClass parent_class;
 
-	void       (* enroll_async)    (RealmKerberos *realm,
-	                                GBytes *admin_kerberos_cache,
-	                                GDBusMethodInvocation *invocation,
-	                                GAsyncReadyCallback callback,
-	                                gpointer user_data);
+	void       (* enroll_password_async)    (RealmKerberos *realm,
+	                                         const char *name,
+	                                         const char *password,
+	                                         RealmKerberosFlags flags,
+	                                         GDBusMethodInvocation *invocation,
+	                                         GAsyncReadyCallback callback,
+	                                         gpointer user_data);
 
-	gboolean   (* enroll_finish)   (RealmKerberos *realm,
-	                                GAsyncResult *result,
-	                                GError **error);
+	void       (* enroll_ccache_async)      (RealmKerberos *realm,
+	                                         GBytes *ccache,
+	                                         RealmKerberosFlags flags,
+	                                         GDBusMethodInvocation *invocation,
+	                                         GAsyncReadyCallback callback,
+	                                         gpointer user_data);
 
-	void       (* unenroll_async)  (RealmKerberos *realm,
-	                                GBytes *admin_kerberos_cache,
-	                                GDBusMethodInvocation *invocation,
-	                                GAsyncReadyCallback callback,
-	                                gpointer user_data);
+	void       (* enroll_automatic_async)   (RealmKerberos *realm,
+	                                         RealmKerberosFlags flags,
+	                                         GDBusMethodInvocation *invocation,
+	                                         GAsyncReadyCallback callback,
+	                                         gpointer user_data);
 
-	gboolean   (* unenroll_finish) (RealmKerberos *realm,
-	                                GAsyncResult *result,
-	                                GError **error);
+	gboolean   (* enroll_finish)            (RealmKerberos *realm,
+	                                         GAsyncResult *result,
+	                                         GError **error);
 
-	void       (* logins_async)    (RealmKerberos *realm,
-	                                GDBusMethodInvocation *invocation,
-	                                RealmKerberosLoginPolicy login_policy,
-	                                const gchar **permitted_add,
-	                                const gchar **permitted_remove,
-	                                GAsyncReadyCallback callback,
-	                                gpointer user_data);
+	void       (* unenroll_password_async)  (RealmKerberos *realm,
+	                                         const char *name,
+	                                         const char *password,
+	                                         RealmKerberosFlags flags,
+	                                         GDBusMethodInvocation *invocation,
+	                                         GAsyncReadyCallback callback,
+	                                         gpointer user_data);
 
-	gboolean   (* logins_finish)   (RealmKerberos *realm,
-	                                GAsyncResult *result,
-	                                GError **error);
+	void       (* unenroll_ccache_async)    (RealmKerberos *realm,
+	                                         GBytes *ccache,
+	                                         RealmKerberosFlags flags,
+	                                         GDBusMethodInvocation *invocation,
+	                                         GAsyncReadyCallback callback,
+	                                         gpointer user_data);
+
+	void       (* unenroll_automatic_async) (RealmKerberos *realm,
+	                                         RealmKerberosFlags flags,
+	                                         GDBusMethodInvocation *invocation,
+	                                         GAsyncReadyCallback callback,
+	                                         gpointer user_data);
+
+	gboolean   (* unenroll_finish)          (RealmKerberos *realm,
+	                                         GAsyncResult *result,
+	                                         GError **error);
+
+	void       (* logins_async)             (RealmKerberos *realm,
+	                                         GDBusMethodInvocation *invocation,
+	                                         RealmKerberosLoginPolicy login_policy,
+	                                         const gchar **permitted_add,
+	                                         const gchar **permitted_remove,
+	                                         GAsyncReadyCallback callback,
+	                                         gpointer user_data);
+
+	gboolean   (* logins_finish)            (RealmKerberos *realm,
+	                                         GAsyncResult *result,
+	                                         GError **error);
 
 };
 
@@ -101,6 +146,22 @@ gchar **            realm_kerberos_parse_logins          (RealmKerberos *self,
 
 gchar *             realm_kerberos_format_login          (RealmKerberos *self,
                                                           const gchar *user);
+
+GVariant *          realm_kerberos_build_supported_credentials (RealmKerberosCredential cred_type,
+                                                                RealmKerberosFlags cred_owner,
+                                                                ...);
+
+void                realm_kerberos_kinit_ccache_async    (RealmKerberos *self,
+                                                          const gchar *name,
+                                                          const gchar *password,
+                                                          const krb5_enctype *enctypes,
+                                                          GDBusMethodInvocation *invocation,
+                                                          GAsyncReadyCallback callback,
+                                                          gpointer user_data);
+
+GBytes *            realm_kerberos_kinit_ccache_finish   (RealmKerberos *self,
+                                                          GAsyncResult *result,
+                                                          GError **error);
 
 G_END_DECLS
 

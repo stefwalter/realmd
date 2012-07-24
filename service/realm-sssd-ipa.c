@@ -56,6 +56,7 @@ realm_sssd_ipa_init (RealmSssdIpa *self)
 	GPtrArray *entries;
 	GVariant *entry;
 	GVariant *details;
+	GVariant *supported;
 
 	entries = g_ptr_array_new ();
 
@@ -72,9 +73,17 @@ realm_sssd_ipa_init (RealmSssdIpa *self)
 	                               entries->len);
 	g_variant_ref_sink (details);
 
+	/*
+	 * Each line is a combination of owner and what kind of credentials are supported,
+	 * same for enroll/unenroll. Enroll is not currently implemented: empty.
+	 */
+	supported = realm_kerberos_build_supported_credentials (0, 0);
+
 	g_object_set (self,
 	              "details", details,
 	              "suggested-administrator", "admin",
+	              "supported-enroll-credentials", supported,
+	              "supported-unenroll-credentials", supported,
 	              NULL);
 
 	g_variant_unref (details);
@@ -84,6 +93,7 @@ realm_sssd_ipa_init (RealmSssdIpa *self)
 static void
 realm_sssd_ipa_enroll_async (RealmKerberos *realm,
                              GBytes *admin_kerberos_cache,
+                             RealmKerberosFlags flags,
                              GDBusMethodInvocation *invocation,
                              GAsyncReadyCallback callback,
                              gpointer user_data)
@@ -101,6 +111,7 @@ realm_sssd_ipa_enroll_async (RealmKerberos *realm,
 static void
 realm_sssd_ipa_unenroll_async (RealmKerberos *realm,
                                GBytes *admin_kerberos_cache,
+                               RealmKerberosFlags flags,
                                GDBusMethodInvocation *invocation,
                                GAsyncReadyCallback callback,
                                gpointer user_data)
@@ -130,8 +141,8 @@ realm_sssd_ipa_class_init (RealmSssdIpaClass *klass)
 {
 	RealmKerberosClass *kerberos_class = REALM_KERBEROS_CLASS (klass);
 
-	kerberos_class->enroll_async = realm_sssd_ipa_enroll_async;
+	kerberos_class->enroll_ccache_async = realm_sssd_ipa_enroll_async;
 	kerberos_class->enroll_finish = realm_sssd_ipa_generic_finish;
-	kerberos_class->unenroll_async = realm_sssd_ipa_unenroll_async;
+	kerberos_class->unenroll_ccache_async = realm_sssd_ipa_unenroll_async;
 	kerberos_class->unenroll_finish = realm_sssd_ipa_generic_finish;
 }

@@ -19,7 +19,16 @@
 
 #include <gio/gio.h>
 
+#include <krb5.h>
+
 G_BEGIN_DECLS
+
+const static krb5_enctype REALM_SAMBA_ENROLL_ENC_TYPES[] = {
+	ENCTYPE_ARCFOUR_HMAC,
+	ENCTYPE_DES_CBC_MD5,
+	ENCTYPE_DES_CBC_CRC,
+	0
+};
 
 void               realm_samba_enroll_join_async     (const gchar *realm,
                                                       GBytes *admin_kerberos_cache,

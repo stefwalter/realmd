@@ -17,7 +17,6 @@
 #include "realm-ad-discover.h"
 #include "realm-command.h"
 #include "realm-diagnostics.h"
-#include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-packages.h"
 #include "realm-samba-enroll.h"
@@ -47,6 +46,7 @@ realm_sssd_ad_init (RealmSssdAd *self)
 	GPtrArray *entries;
 	GVariant *entry;
 	GVariant *details;
+	GVariant *supported;
 
 	entries = g_ptr_array_new ();
 
@@ -63,20 +63,32 @@ realm_sssd_ad_init (RealmSssdAd *self)
 	                               entries->len);
 	g_variant_ref_sink (details);
 
+	/*
+	 * Each line is a combination of owner and what kind of credentials are supported,
+	 * same for enroll/unenroll. We can't accept a ccache, because samba3 needs
+	 * to have credentials limited to RC4.
+	 */
+	supported = realm_kerberos_build_supported_credentials (
+			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_ADMIN,
+			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_USER,
+			0);
+
 	g_object_set (self,
 	              "details", details,
 	              "suggested-administrator", "Administrator",
+	              "supported-enroll-credentials", supported,
+	              "supported-unenroll-credentials", supported,
 	              NULL);
 
 	g_variant_unref (details);
+	g_variant_unref (supported);
 	g_ptr_array_free (entries, TRUE);
 }
 
 typedef struct {
 	GDBusMethodInvocation *invocation;
-	GBytes *admin_kerberos_cache;
+	GBytes *ccache;
 	gchar *realm_name;
-	GHashTable *discovery;
 } EnrollClosure;
 
 static void
@@ -85,8 +97,7 @@ enroll_closure_free (gpointer data)
 	EnrollClosure *enroll = data;
 	g_free (enroll->realm_name);
 	g_object_unref (enroll->invocation);
-	g_bytes_unref (enroll->admin_kerberos_cache);
-	g_hash_table_unref (enroll->discovery);
+	g_bytes_unref (enroll->ccache);
 	g_slice_free (EnrollClosure, enroll);
 }
 
@@ -235,7 +246,7 @@ on_install_do_join (GObject *source,
 
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
-		realm_samba_enroll_join_async (enroll->realm_name, enroll->admin_kerberos_cache,
+		realm_samba_enroll_join_async (enroll->realm_name, enroll->ccache,
 		                               enroll->invocation, on_join_do_sssd,
 		                               g_object_ref (res));
 
@@ -248,24 +259,18 @@ on_install_do_join (GObject *source,
 }
 
 static void
-on_discover_do_install (GObject *source,
-                        GAsyncResult *result,
-                        gpointer user_data)
+on_kinit_do_install (GObject *source,
+                     GAsyncResult *result,
+                     gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
-	GHashTable *discovery = NULL;
 	GError *error = NULL;
 
-	if (realm_ad_discover_finish (result, &discovery, &error)) {
-		enroll->discovery = discovery;
-		realm_packages_install_async ("sssd_ad-packages", enroll->invocation,
+	enroll->ccache = realm_kerberos_kinit_ccache_finish (REALM_KERBEROS (source), result, &error);
+	if (error == NULL) {
+		realm_packages_install_async ("sssd-ad-packages", enroll->invocation,
 		                              on_install_do_join, g_object_ref (res));
-
-	} else if (error == NULL) {
-		g_simple_async_result_set_error (res, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-		                                 "Invalid or unusable realm argument");
-		g_simple_async_result_complete (res);
 
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -273,12 +278,13 @@ on_discover_do_install (GObject *source,
 	}
 
 	g_object_unref (res);
-
 }
 
 static void
 realm_sssd_ad_enroll_async (RealmKerberos *realm,
-                            GBytes *admin_kerberos_cache,
+                            const char *name,
+                            const char *password,
+                            RealmKerberosFlags flags,
                             GDBusMethodInvocation *invocation,
                             GAsyncReadyCallback callback,
                             gpointer user_data)
@@ -292,12 +298,7 @@ realm_sssd_ad_enroll_async (RealmKerberos *realm,
 	enroll = g_slice_new0 (EnrollClosure);
 	g_object_get (sssd, "name", &enroll->realm_name, NULL);
 	enroll->invocation = g_object_ref (invocation);
-	enroll->admin_kerberos_cache = g_bytes_ref (admin_kerberos_cache);
 	g_simple_async_result_set_op_res_gpointer (res, enroll, enroll_closure_free);
-
-	enroll->discovery = realm_kerberos_get_discovery (realm);
-	if (enroll->discovery)
-		g_hash_table_ref (enroll->discovery);
 
 	/* Make sure not already enrolled in a realm */
 	if (realm_sssd_get_config_section (sssd) != NULL) {
@@ -310,15 +311,10 @@ realm_sssd_ad_enroll_async (RealmKerberos *realm,
 		                                 "This domain is already configured");
 		g_simple_async_result_complete_in_idle (res);
 
-	/* Caller didn't discover first time around, so do that now */
-	} else if (enroll->discovery == NULL) {
-		realm_ad_discover_async (enroll->realm_name, invocation,
-		                         on_discover_do_install, g_object_ref (res));
-
 	/* Already have discovery info, so go straight to install */
 	} else {
-		realm_packages_install_async ("sssd-ad-packages", invocation,
-		                              on_install_do_join, g_object_ref (res));
+		realm_kerberos_kinit_ccache_async (realm, name, password, REALM_SAMBA_ENROLL_ENC_TYPES,
+		                                   invocation, on_kinit_do_install, g_object_ref (res));
 	}
 
 	g_object_unref (res);
@@ -413,8 +409,35 @@ on_leave_do_sssd (GObject *source,
 }
 
 static void
+on_kinit_do_leave (GObject *source,
+                   GAsyncResult *result,
+                   gpointer user_data)
+{
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	UnenrollClosure *unenroll = g_simple_async_result_get_op_res_gpointer (async);
+	RealmSssd *self = REALM_SSSD (source);
+	GError *error = NULL;
+	GBytes *ccache;
+
+	ccache = realm_kerberos_kinit_ccache_finish (REALM_KERBEROS (self), result, &error);
+	if (error == NULL) {
+		realm_samba_enroll_leave_async (unenroll->realm_name, ccache, unenroll->invocation,
+		                                on_leave_do_sssd, g_object_ref (async));
+		g_bytes_unref (ccache);
+
+	} else {
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete (async);
+	}
+
+	g_object_unref (async);
+}
+
+static void
 realm_sssd_ad_unenroll_async (RealmKerberos *realm,
-                              GBytes *admin_kerberos_cache,
+                              const gchar *name,
+                              const gchar *password,
+                              RealmKerberosFlags flags,
                               GDBusMethodInvocation *invocation,
                               GAsyncReadyCallback callback,
                               gpointer user_data)
@@ -432,8 +455,9 @@ realm_sssd_ad_unenroll_async (RealmKerberos *realm,
 
 	/* Check that enrolled in this realm */
 	if (realm_sssd_get_config_section (sssd)) {
-		realm_samba_enroll_leave_async (unenroll->realm_name, admin_kerberos_cache, invocation,
-		                                on_leave_do_sssd, g_object_ref (res));
+		realm_kerberos_kinit_ccache_async (realm, name, password, REALM_SAMBA_ENROLL_ENC_TYPES,
+		                                   invocation, on_kinit_do_leave, g_object_ref (res));
+
 	} else {
 		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_NOT_ENROLLED,
 		                                 "Not currently enrolled in the realm");
@@ -459,8 +483,8 @@ realm_sssd_ad_class_init (RealmSssdAdClass *klass)
 {
 	RealmKerberosClass *kerberos_class = REALM_KERBEROS_CLASS (klass);
 
-	kerberos_class->enroll_async = realm_sssd_ad_enroll_async;
+	kerberos_class->enroll_password_async = realm_sssd_ad_enroll_async;
 	kerberos_class->enroll_finish = realm_sssd_ad_generic_finish;
-	kerberos_class->unenroll_async = realm_sssd_ad_unenroll_async;
+	kerberos_class->unenroll_password_async = realm_sssd_ad_unenroll_async;
 	kerberos_class->unenroll_finish = realm_sssd_ad_generic_finish;
 }

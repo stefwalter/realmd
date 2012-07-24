@@ -48,3 +48,14 @@ realm_error_quark (void)
 
 	return (GQuark)quark_volatile;
 }
+
+GQuark
+realm_krb5_error_quark (void)
+{
+	static volatile gsize quark_volatile = 0;
+
+	if (quark_volatile == 0)
+		quark_volatile = g_quark_from_static_string ("krb5-error");
+
+	return (GQuark)quark_volatile;
+}

@@ -25,11 +25,10 @@
 		<!--
 		 * A list of known, enrolled or discovered realms.
 		 * Each realm is a DBus object and is represeted by a:
-		 *   s: DBus bus name of the realm
 		 *   o: DBus object path of the realm
 		 *   s: DBus interface name, like 'ofr.Kerberos' (below)
 		-->
-		<property name="Realms" type="a(sos)" access="read"/>
+		<property name="Realms" type="a(os)" access="read"/>
 
 		<!--
 		 * Discover whether a string represents a realm that a provider
@@ -45,7 +44,7 @@
 			<arg name="relevance" type="i" direction="out"/>
 
 			<!-- The realm objects: bus name, object path, interface -->
-			<arg name="realm" type="a(sos)" direction="out"/>
+			<arg name="realm" type="a(os)" direction="out"/>
 		</method>
 	</interface>
 

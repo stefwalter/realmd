@@ -84,17 +84,16 @@ RealmDbusKerberos *
 realm_info_to_realm_proxy (GVariant *realm_info)
 {
 	RealmDbusKerberos *realm = NULL;
-	const gchar *bus_name;
 	const gchar *object_path;
 	const gchar *interface_name;
 	GError *error = NULL;
 
-	g_variant_get (realm_info, "(&s&o&s)", &bus_name, &object_path, &interface_name);
+	g_variant_get (realm_info, "(&o&s)", &object_path, &interface_name);
 
 	if (g_str_equal (interface_name, REALM_DBUS_KERBEROS_REALM_INTERFACE)) {
 		realm = realm_dbus_kerberos_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
 		                                                    G_DBUS_PROXY_FLAGS_NONE,
-		                                                    bus_name, object_path,
+		                                                    REALM_DBUS_BUS_NAME, object_path,
 		                                                    NULL, &error);
 	}
 

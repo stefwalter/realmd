@@ -19,6 +19,8 @@
 
 #include <gio/gio.h>
 
+#include "realm-provider.h"
+
 G_BEGIN_DECLS
 
 #define REALM_TYPE_ALL_PROVIDER            (realm_all_provider_get_type ())
@@ -28,6 +30,9 @@ G_BEGIN_DECLS
 typedef struct _RealmAllProvider RealmAllProvider;
 
 GType               realm_all_provider_get_type                 (void) G_GNUC_CONST;
+
+void                realm_all_provider_register                 (RealmProvider *all_provider,
+                                                                 RealmProvider *provider);
 
 G_END_DECLS
 

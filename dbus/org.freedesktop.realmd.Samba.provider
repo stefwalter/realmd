@@ -1,4 +1,0 @@
-[provider]
-name = org.freedesktop.realmd.Samba
-type = org.freedesktop.realmd.Kerberos
-path = /org/freedesktop/realmd/Samba

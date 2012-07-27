@@ -21,6 +21,8 @@
 
 G_BEGIN_DECLS
 
+#define   REALM_DBUS_BUS_NAME                      "org.freedesktop.realmd"
+
 #define   DBUS_PEER_INTERFACE                      "org.freedesktop.DBus.Peer"
 #define   DBUS_PROPERTIES_INTERFACE                "org.freedesktop.DBus.Properties"
 #define   DBUS_INTROSPECTABLE_INTERFACE            "org.freedesktop.DBus.Introspectable"

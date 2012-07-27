@@ -28,8 +28,6 @@
 #include <glib/gi18n.h>
 #include <gio/gio.h>
 
-static GHashTable *provider_owner_ids = NULL;
-
 static void realm_provider_iface_init (RealmDbusProviderIface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (RealmProvider, realm_provider, REALM_DBUS_TYPE_PROVIDER_SKELETON,
@@ -69,22 +67,14 @@ on_discover_complete (GObject *source,
                       gpointer user_data)
 {
 	MethodClosure *closure = user_data;
-	RealmProviderClass *klass;
 	GVariant *retval;
 	GError *error = NULL;
 	GVariant *realms = NULL;
 	gint relevance;
 
-	klass = REALM_PROVIDER_GET_CLASS (closure->self);
-	g_return_if_fail (klass->discover_finish != NULL);
-
-	relevance = (klass->discover_finish) (closure->self, result, &realms, &error);
+	relevance = realm_provider_discover_finish (closure->self, result, &realms, &error);
 	if (error == NULL) {
-		if (realms == NULL) {
-			realms =  g_variant_new_array (G_VARIANT_TYPE ("(sos)"), NULL, 0);
-			g_variant_ref_sink (realms);
-		}
-		retval = g_variant_new ("(i@a(sos))", relevance, realms);
+		retval = g_variant_new ("(i@a(os))", relevance, realms);
 		g_dbus_method_invocation_return_value (closure->invocation, retval);
 		g_variant_unref (realms);
 	} else {
@@ -111,16 +101,11 @@ realm_provider_handle_discover (RealmDbusProvider *provider,
                                 const gchar *operation_id)
 {
 	RealmProvider *self = REALM_PROVIDER (provider);
-	RealmProviderClass *klass;
 
 	/* Make note of the current operation id, for diagnostics */
 	realm_diagnostics_mark_operation (invocation, operation_id);
 
-	klass = REALM_PROVIDER_GET_CLASS (self);
-	g_return_val_if_fail (klass->discover_async != NULL, FALSE);
-	g_return_val_if_fail (klass->discover_finish != NULL, FALSE);
-
-	(klass->discover_async) (self, string, invocation, on_discover_complete,
+	realm_provider_discover (self, string, invocation, on_discover_complete,
 	                         method_closure_new (self, invocation));
 
 	return TRUE;
@@ -177,23 +162,18 @@ realm_provider_init (RealmProvider *self)
 static void
 update_realms_property (RealmProvider *self)
 {
-	RealmProviderClass *provider_class;
 	GHashTableIter iter;
 	GDBusInterfaceSkeleton *realm;
 	GVariantBuilder builder;
 	const gchar *path;
 	GVariant *variant;
 
-	g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sos)"));
-
-	provider_class = REALM_PROVIDER_GET_CLASS (self);
-	g_assert (provider_class->dbus_name);
+	g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(os)"));
 
 	g_hash_table_iter_init (&iter, self->pv->realms);
 	while (g_hash_table_iter_next (&iter, NULL, (gpointer)&realm)) {
 		path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
-		g_variant_builder_add (&builder, "(sos)", provider_class->dbus_name, path,
-		                       REALM_DBUS_KERBEROS_REALM_INTERFACE);
+		g_variant_builder_add (&builder, "(os)", path, REALM_DBUS_KERBEROS_REALM_INTERFACE);
 	}
 
 	variant = g_variant_builder_end (&builder);
@@ -231,14 +211,12 @@ realm_provider_iface_init (RealmDbusProviderIface *iface)
 }
 
 GVariant *
-realm_provider_new_realm_info (const gchar *bus_name,
-                               const gchar *object_path,
+realm_provider_new_realm_info (const gchar *object_path,
                                const gchar *interface)
 {
-	g_return_val_if_fail (g_dbus_is_name (bus_name), NULL);
 	g_return_val_if_fail (g_variant_is_object_path (object_path), NULL);
 	g_return_val_if_fail (g_dbus_is_interface_name (interface), NULL);
-	return g_variant_new ("(sos)", bus_name, object_path, interface);
+	return g_variant_new ("(os)", object_path, interface);
 }
 
 static void
@@ -302,23 +280,6 @@ realm_provider_lookup_or_register_realm (RealmProvider *self,
 }
 
 static void
-on_name_acquired (GDBusConnection *connection,
-                  const gchar *name,
-                  gpointer user_data)
-{
-	realm_debug ("claimed name on bus: %s", name);
-	realm_daemon_poke ();
-}
-
-static void
-on_name_lost (GDBusConnection *connection,
-              const gchar *name,
-              gpointer user_data)
-{
-	g_warning ("couldn't claim service name on DBus bus: %s", name);
-}
-
-static void
 provider_object_start (GDBusConnection *connection,
                        RealmProvider *self)
 {
@@ -326,10 +287,8 @@ provider_object_start (GDBusConnection *connection,
 	RealmProviderClass *provider_class;
 	GError *error = NULL;
 	GHashTableIter iter;
-	guint owner_id;
 
 	provider_class = REALM_PROVIDER_GET_CLASS (self);
-	g_assert (provider_class->dbus_name);
 
 	g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (self),
 	                                  connection, provider_class->dbus_path,
@@ -344,95 +303,35 @@ provider_object_start (GDBusConnection *connection,
 	g_hash_table_iter_init (&iter, self->pv->realms);
 	while (g_hash_table_iter_next (&iter, NULL, (gpointer *)&realm))
 		export_realm_if_possible (self, realm);
-
-	owner_id = g_bus_own_name_on_connection (connection,
-	                                         provider_class->dbus_name,
-	                                         G_BUS_NAME_OWNER_FLAGS_NONE,
-	                                         on_name_acquired, on_name_lost,
-	                                         g_object_ref (self), g_object_unref);
-
-	if (provider_owner_ids == NULL)
-		provider_owner_ids = g_hash_table_new (g_direct_hash, g_direct_equal);
-	g_hash_table_add (provider_owner_ids, GUINT_TO_POINTER (owner_id));
 }
 
-static void
-on_provider_inited (GObject *source,
-                    GAsyncResult *result,
-                    gpointer user_data)
-{
-	GDBusConnection *connection = G_DBUS_CONNECTION (user_data);
-	GObject *provider;
-	GError *error = NULL;
-
-	provider = g_async_initable_new_finish (G_ASYNC_INITABLE (source),
-	                                        result, &error);
-	if (error == NULL) {
-		provider_object_start (connection, REALM_PROVIDER (provider));
-		g_object_unref (provider);
-
-	} else {
-		g_warning ("Couldn't initialize realm provider: %s: %s",
-		           G_OBJECT_TYPE_NAME (source), error->message);
-		g_error_free (error);
-	}
-
-	g_object_unref (connection);
-}
-
-void
+RealmProvider *
 realm_provider_start (GDBusConnection *connection,
                       GType type)
 {
 	RealmProvider *provider;
 	GError *error = NULL;
-	g_return_if_fail (G_IS_DBUS_CONNECTION (connection));
-	g_return_if_fail (g_type_is_a (type, REALM_TYPE_PROVIDER));
+	g_return_val_if_fail (G_IS_DBUS_CONNECTION (connection), NULL);
+	g_return_val_if_fail (g_type_is_a (type, REALM_TYPE_PROVIDER), NULL);
 
-	if (g_type_is_a (type, G_TYPE_ASYNC_INITABLE)) {
-		g_async_initable_new_async (type, G_PRIORITY_DEFAULT, NULL,
-		                            on_provider_inited, g_object_ref (connection),
-		                            NULL);
-
-	} else if (g_type_is_a (type, G_TYPE_INITABLE)) {
+	if (g_type_is_a (type, G_TYPE_INITABLE)) {
 		provider = g_initable_new (type, NULL, &error, NULL);
 		if (error == NULL) {
 			provider_object_start (connection, provider);
-			g_object_unref (provider);
+			return provider;
 
 		} else {
 			g_warning ("Failed to initialize realm provider: %s: %s",
 			           g_type_name (type), error->message);
 			g_error_free (error);
+			return NULL;
 		}
 
 	} else {
 		provider = g_object_new (type, NULL);
 		provider_object_start (connection, provider);
-		g_object_unref (provider);
+		return provider;
 	}
-}
-
-void
-realm_provider_stop_all (void)
-{
-	GHashTableIter iter;
-	GHashTable *owner_ids;
-	guint owner_id;
-	gpointer key;
-
-	if (!provider_owner_ids)
-		return;
-
-	owner_ids = provider_owner_ids;
-	provider_owner_ids = NULL;
-
-	g_hash_table_iter_init (&iter, owner_ids);
-	while (g_hash_table_iter_next (&iter, &key, NULL)) {
-		owner_id = GPOINTER_TO_UINT (key);
-		g_bus_unown_name (owner_id);
-	}
-	g_hash_table_destroy (owner_ids);
 }
 
 gboolean
@@ -447,4 +346,47 @@ realm_provider_is_default (const gchar *type,
 	g_free (client);
 
 	return result;
+}
+
+void
+realm_provider_discover (RealmProvider *self,
+                         const gchar *string,
+                         GDBusMethodInvocation *invocation,
+                         GAsyncReadyCallback callback,
+                         gpointer user_data)
+{
+	RealmProviderClass *klass;
+
+	klass = REALM_PROVIDER_GET_CLASS (self);
+	g_return_if_fail (klass->discover_async != NULL);
+
+	(klass->discover_async) (self, string, invocation, callback, user_data);
+}
+
+gint
+realm_provider_discover_finish (RealmProvider *self,
+                                GAsyncResult *result,
+                                GVariant **realms,
+                                GError **error)
+{
+	RealmProviderClass *klass;
+	gint relevance;
+	GError *sub_error = NULL;
+
+	klass = REALM_PROVIDER_GET_CLASS (self);
+	g_return_val_if_fail (klass->discover_finish != NULL, -1);
+
+	*realms = NULL;
+
+	relevance = (klass->discover_finish) (self, result, realms, &sub_error);
+	if (sub_error == NULL) {
+		if (realms != NULL && *realms == NULL) {
+			*realms =  g_variant_new_array (G_VARIANT_TYPE ("(os)"), NULL, 0);
+			g_variant_ref_sink (*realms);
+		}
+	} else {
+		g_propagate_error (error, sub_error);
+	}
+
+	return relevance;
 }

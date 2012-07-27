@@ -1,4 +1,0 @@
-[provider]
-name = org.freedesktop.realmd.SssdIpa
-type = org.freedesktop.realmd.Kerberos
-path = /org/freedesktop/realmd/SssdIpa

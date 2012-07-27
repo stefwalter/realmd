@@ -16,6 +16,7 @@
 
 #include "realm-all-provider.h"
 #include "realm-daemon.h"
+#include "realm-dbus-constants.h"
 #define DEBUG_FLAG REALM_DEBUG_SERVICE
 #include "realm-debug.h"
 #include "realm-diagnostics.h"
@@ -39,6 +40,8 @@ static gboolean service_persist = FALSE;
 static GHashTable *service_holds = NULL;
 static gint64 service_quit_at = 0;
 static guint service_timeout_id = 0;
+static guint service_bus_name_owner_id = 0;
+static gboolean service_bus_name_claimed = FALSE;
 
 /* We use this for registering the dbus errors */
 GQuark realm_error = 0;
@@ -304,6 +307,27 @@ on_connection_filter (GDBusConnection *connection,
 }
 
 static void
+on_name_acquired (GDBusConnection *connection,
+                  const gchar *name,
+                  gpointer user_data)
+{
+	service_bus_name_claimed = TRUE;
+	realm_debug ("claimed name on bus: %s", name);
+	realm_daemon_poke ();
+}
+
+static void
+on_name_lost (GDBusConnection *connection,
+              const gchar *name,
+              gpointer user_data)
+{
+	if (!service_bus_name_claimed)
+		g_printerr ("couldn't claim service name on DBus bus: %s", name);
+	else
+		g_warning ("lost service name on DBus bus: %s", name);
+}
+
+static void
 on_bus_get_connection (GObject *source,
                        GAsyncResult *result,
                        gpointer user_data)
@@ -311,12 +335,16 @@ on_bus_get_connection (GObject *source,
 	GError *error = NULL;
 	GDBusConnection **connection = (GDBusConnection **)user_data;
 	const gchar *self_name;
+	RealmProvider *all_provider;
+	RealmProvider *provider;
+	guint owner_id;
 
 	*connection = g_bus_get_finish (result, &error);
 	if (error != NULL) {
 		g_warning ("couldn't connect to bus: %s", error->message);
 		g_main_loop_quit (main_loop);
 		g_error_free (error);
+
 	} else {
 		realm_debug ("connected to bus");
 
@@ -326,10 +354,26 @@ on_bus_get_connection (GObject *source,
 		                              (gchar *)self_name, NULL);
 
 		realm_diagnostics_initialize (*connection);
-		realm_provider_start (*connection, REALM_TYPE_SSSD_AD_PROVIDER);
-		realm_provider_start (*connection, REALM_TYPE_SSSD_IPA_PROVIDER);
-		realm_provider_start (*connection, REALM_TYPE_SAMBA_PROVIDER);
-		realm_provider_start (*connection, REALM_TYPE_ALL_PROVIDER);
+		all_provider = realm_provider_start (*connection, REALM_TYPE_ALL_PROVIDER);
+
+		provider = realm_provider_start (*connection, REALM_TYPE_SSSD_AD_PROVIDER);
+		realm_all_provider_register (all_provider, provider);
+		g_object_unref (provider);
+
+		provider = realm_provider_start (*connection, REALM_TYPE_SSSD_IPA_PROVIDER);
+		realm_all_provider_register (all_provider, provider);
+		g_object_unref (provider);
+
+		provider = realm_provider_start (*connection, REALM_TYPE_SAMBA_PROVIDER);
+		realm_all_provider_register (all_provider, provider);
+		g_object_unref (provider);
+
+		owner_id = g_bus_own_name_on_connection (*connection,
+		                                         REALM_DBUS_BUS_NAME,
+		                                         G_BUS_NAME_OWNER_FLAGS_NONE,
+		                                         on_name_acquired, on_name_lost,
+		                                         all_provider, g_object_unref);
+		service_bus_name_owner_id = owner_id;
 	}
 
 	/* Matches the hold() in main() */
@@ -377,10 +421,10 @@ main (int argc,
 
 	g_main_loop_run (main_loop);
 
-	if (connection != NULL) {
-		realm_provider_stop_all ();
+	if (service_bus_name_owner_id != 0)
+		g_bus_unown_name (service_bus_name_owner_id);
+	if (connection != NULL)
 		g_object_unref (connection);
-	}
 
 	G_LOCK (polkit_authority);
 	g_clear_object (&polkit_authority);

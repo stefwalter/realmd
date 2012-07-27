@@ -1,4 +1,0 @@
-[provider]
-name = org.freedesktop.realmd.SssdAd
-type = org.freedesktop.realmd.Kerberos
-path = /org/freedesktop/realmd/SssdAd

@@ -4,12 +4,6 @@ dbusservicedir = $(DBUS_POLICY_DIR)
 dbusservice_DATA = \
 	org.freedesktop.realmd.conf
 
-providerdir = $(privatedir)/provider.d
-provider_DATA = \
-	org.freedesktop.realmd.Samba.provider \
-	org.freedesktop.realmd.SssdAd.provider \
-	org.freedesktop.realmd.SssdIpa.provider
-
 servicedir       = $(DBUS_SERVICES_DIR)
 service_in_files = \
 	org.freedesktop.realmd.service.in \

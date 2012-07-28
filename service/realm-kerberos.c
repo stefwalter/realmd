@@ -88,7 +88,7 @@ enroll_method_reply (GDBusMethodInvocation *invocation,
 	} else {
 		realm_diagnostics_error (invocation, error, "Failed to enroll machine in realm");
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_ENROLL_FAILED,
-		                                       "Failed to enroll machine in realm. See diagnostics.");
+		                                       _("Failed to enroll machine in realm. See diagnostics."));
 	}
 
 	realm_daemon_unlock_for_action (invocation);
@@ -128,7 +128,7 @@ unenroll_method_reply (GDBusMethodInvocation *invocation,
 	} else {
 		realm_diagnostics_error (invocation, error, "Failed to unenroll machine from realm");
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_UNENROLL_FAILED,
-		                                       "Failed to unenroll machine from domain. See diagnostics.");
+		                                       _("Failed to unenroll machine from domain. See diagnostics."));
 	}
 
 	realm_daemon_unlock_for_action (invocation);
@@ -169,21 +169,21 @@ enroll_or_unenroll_with_ccache (RealmKerberos *self,
 	    (!enroll && klass->unenroll_ccache_async == NULL)) {
 		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
 		                                       enroll ?
-		                                            "Enrolling this realm using a credential cache is not supported" :
-		                                            "Unenrolling this realm using a credential cache is not supported");
+		                                            _("Enrolling this realm using a credential cache is not supported") :
+		                                            _("Unenrolling this realm using a credential cache is not supported"));
 		return;
 	}
 
 	data = g_variant_get_fixed_array (ccache, &length, 1);
 	if (length == 0) {
 		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-		                                       "Invalid zero length credential cache argument");
+		                                       _("Invalid zero length credential cache argument"));
 		return;
 	}
 
 	if (!realm_daemon_lock_for_action (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
-		                                       "Already running another action");
+		                                       _("Already running another action"));
 		return;
 	}
 
@@ -217,14 +217,14 @@ enroll_or_unenroll_with_password (RealmKerberos *self,
 	if (enroll && klass->enroll_password_async == NULL) {
 		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
 		                                       enroll ?
-		                                           "Enrolling this realm using a password is not supported" :
-		                                           "Unenrolling this realm using a password is not supported");
+		                                           _("Enrolling this realm using a password is not supported") :
+		                                           _("Unenrolling this realm using a password is not supported"));
 		return;
 	}
 
 	if (!realm_daemon_lock_for_action (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
-		                                       "Already running another action");
+		                                       _("Already running another action"));
 		return;
 	}
 
@@ -253,14 +253,14 @@ enroll_or_unenroll_with_automatic (RealmKerberos *self,
 	    (!enroll && klass->unenroll_automatic_async == NULL)) {
 		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
 		                                       enroll ?
-		                                            "Enrolling this realm without credentials is not supported" :
-		                                            "Unenrolling this realm without credentials is not supported");
+		                                            _("Enrolling this realm without credentials is not supported") :
+		                                            _("Unenrolling this realm without credentials is not supported"));
 		return;
 	}
 
 	if (!realm_daemon_lock_for_action (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
-		                                       "Already running another action");
+		                                       _("Already running another action"));
 		return;
 	}
 
@@ -432,7 +432,7 @@ on_logins_complete (GObject *source,
 	} else {
 		realm_diagnostics_error (closure->invocation, error, "Failed to change permitted logins");
 		g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_INTERNAL,
-		                                       "Failed to change permitted logins. See diagnostics.");
+		                                       _("Failed to change permitted logins. See diagnostics."));
 		g_error_free (error);
 	}
 
@@ -489,7 +489,7 @@ handle_change_login_policy (RealmDbusKerberos *realm,
 
 	if (!realm_daemon_lock_for_action (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
-		                                       "Already running another action");
+		                                       _("Already running another action"));
 		return TRUE;
 	}
 
@@ -540,7 +540,7 @@ realm_kerberos_authorize_method (GDBusInterfaceSkeleton *skeleton,
 		realm_debug ("rejecting access to: %s.%s method on %s",
 		             interface, method, g_dbus_method_invocation_get_object_path (invocation));
 		g_dbus_method_invocation_return_dbus_error (invocation, REALM_DBUS_ERROR_NOT_AUTHORIZED,
-		                                            "Not authorized to perform this action");
+		                                            _("Not authorized to perform this action"));
 	}
 
 	return ret;
@@ -683,7 +683,7 @@ realm_kerberos_parse_logins (RealmKerberos *self,
 	if (format == NULL) {
 		g_set_error (error, REALM_ERROR,
 		             REALM_ERROR_NOT_ENROLLED,
-		             "The realm does not allow specifying logins");
+		             _("The realm does not allow specifying logins"));
 		return NULL;
 	}
 
@@ -691,7 +691,7 @@ realm_kerberos_parse_logins (RealmKerberos *self,
 	if (result == NULL) {
 		g_set_error (error, G_DBUS_ERROR,
 		             G_DBUS_ERROR_INVALID_ARGS,
-		             "Invalid login argument%s%s%s does not match the login format '%s'",
+		             _("Invalid login argument%s%s%s does not match the login format '%s'"),
 		             failed ? " '" : "", failed, failed ? "'" : "", format);
 	}
 

@@ -86,7 +86,7 @@ on_discover_complete (GObject *source,
 		} else {
 			realm_diagnostics_error (closure->invocation, error, "Failed to discover realm");
 			g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_DISCOVERY_FAILED,
-			                                       "Failed to discover realm. See diagnostics.");
+			                                       _("Failed to discover realm. See diagnostics."));
 		}
 		g_error_free (error);
 	}
@@ -141,7 +141,7 @@ realm_provider_authorize_method (GDBusInterfaceSkeleton *skeleton,
 		realm_debug ("rejecting access to: %s.%s method on %s",
 		             interface, method, g_dbus_method_invocation_get_object_path (invocation));
 		g_dbus_method_invocation_return_dbus_error (invocation, REALM_DBUS_ERROR_NOT_AUTHORIZED,
-		                                            "Not authorized to perform this action");
+		                                            _("Not authorized to perform this action"));
 	}
 
 	return ret;

@@ -19,6 +19,8 @@
 #include "realm-sssd-config.h"
 #include "realm-settings.h"
 
+#include <glib/gi18n.h>
+
 #include <string.h>
 
 RealmIniConfig *
@@ -119,7 +121,7 @@ realm_sssd_config_add_domain (RealmIniConfig *config,
 	if (realm_ini_config_have_section (config, section)) {
 		realm_ini_config_abort_change (config);
 		g_set_error (error, G_FILE_ERROR, G_FILE_ERROR_EXIST,
-		             "Already have domain %s in sssd.conf config file", domain);
+		             _("Already have domain %s in sssd.conf config file"), domain);
 		g_free (section);
 		return FALSE;
 	}

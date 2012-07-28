@@ -55,6 +55,7 @@ realmd_CFLAGS = \
 	-DPRIVATE_DIR="\"$(privatedir)\"" \
 	-DSYSCONF_DIR="\"$(sysconfdir)\"" \
 	-DPROVIDER_DIR="\"$(privatedir)/provider.d\"" \
+	-DLOCALEDIR=\""$(datadir)/locale"\" \
 	$(PACKAGEKIT_CFLAGS) \
 	$(POLKIT_CFLAGS) \
 	$(GLIB_CFLAGS) \

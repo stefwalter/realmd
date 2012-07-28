@@ -18,7 +18,10 @@
 #include "realm-dbus-constants.h"
 
 #include <glib.h>
+#include <glib/gi18n.h>
 #include <glib-object.h>
+
+#include <locale.h>
 
 struct {
 	const char *name;
@@ -26,12 +29,12 @@ struct {
 	const char *usage;
 	const char *description;
 } realm_commands[] = {
-	{ "discover", realm_discover, "realm discover -v [realm-name]", "Discover available realm" },
-	{ "join", realm_join, "realm join -v [-U user] realm-name", "Enroll this machine in a realm" },
-	{ "leave", realm_leave, "realm leave -v [-U user] [realm-name]", "Unenroll this machine from a realm" },
-	{ "list", realm_list, "realm list", "List known realms" },
-	{ "permit", realm_permit, "realm permit [-a] [-R realm] user ...", "Permit user logins" },
-	{ "deny", realm_deny, "realm deny [-a] [-R realm] user ...", "Deny user logins" },
+	{ "discover", realm_discover, "realm discover -v [realm-name]", N_("Discover available realm") },
+	{ "join", realm_join, "realm join -v [-U user] realm-name", N_("Enroll this machine in a realm") },
+	{ "leave", realm_leave, "realm leave -v [-U user] [realm-name]", N_("Unenroll this machine from a realm") },
+	{ "list", realm_list, "realm list", N_("List known realms") },
+	{ "permit", realm_permit, "realm permit [-a] [-R realm] user ...", N_("Permit user logins") },
+	{ "deny", realm_deny, "realm deny [-a] [-R realm] user ...", N_("Deny user logins") },
 };
 
 void
@@ -98,9 +101,9 @@ realm_info_to_realm_proxy (GVariant *realm_info)
 	}
 
 	if (error != NULL)
-		realm_handle_error (error, "couldn't use realm service");
+		realm_handle_error (error, _("Couldn't use realm service"));
 	else if (realm == NULL)
-		realm_handle_error (NULL, "unsupported realm type: %s", interface_name);
+		realm_handle_error (NULL, _("Unsupported realm type: %s"), interface_name);
 
 	return realm;
 }
@@ -130,7 +133,7 @@ find_enrolled_in_realms (GVariant *realms,
 					result = realm;
 					realm = NULL;
 				} else {
-					realm_handle_error (NULL, "more than one enrolled realm, please specify the realm name");
+					realm_handle_error (NULL, N_("More than one enrolled realm, please specify the realm name"));
 					g_object_unref (realm);
 					g_object_unref (result);
 					return NULL;
@@ -151,11 +154,11 @@ find_enrolled_in_realms (GVariant *realms,
 
 	if (realm_name == NULL) {
 		if (result == NULL)
-			realm_handle_error (NULL, "no enrolled realms found");
+			realm_handle_error (NULL, _("No enrolled realms found"));
 		return result;
 	}
 
-	realm_handle_error (NULL, "enrolled realm not found: %s", realm_name);
+	realm_handle_error (NULL, _("Enrolled realm not found: %s"), realm_name);
 	return NULL;
 }
 
@@ -178,7 +181,7 @@ realm_name_to_enrolled (GDBusConnection *connection,
 	                                               REALM_DBUS_SERVICE_PATH,
 	                                               NULL, &error);
 	if (error != NULL) {
-		realm_handle_error (error, "couldn't connect to realm service");
+		realm_handle_error (error, _("Couldn't connect to realm service"));
 		return NULL;
 	}
 
@@ -226,7 +229,7 @@ realm_get_connection (gboolean verbose)
 		}
 
 	} else {
-		realm_handle_error (error, "couldn't connect to system bus");
+		realm_handle_error (error, _("Couldn't connect to system bus"));
 	}
 
 	return connection;
@@ -253,6 +256,14 @@ main (int argc,
 {
 	const gchar *command = NULL;
 	gint i;
+
+	setlocale (LC_ALL, "");
+
+#ifdef ENABLE_NLS
+	bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+	bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+	textdomain (GETTEXT_PACKAGE);
+#endif
 
 	g_type_init ();
 

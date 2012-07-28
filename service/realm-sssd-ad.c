@@ -26,6 +26,7 @@
 #include "realm-sssd-config.h"
 
 #include <glib/gstdio.h>
+#include <glib/gi18n.h>
 
 #include <errno.h>
 #include <string.h>
@@ -113,7 +114,7 @@ on_enable_nss_done (GObject *source,
 	status = realm_command_run_finish (result, NULL, &error);
 	if (error == NULL && status != 0)
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Enabling sssd in nsswitch.conf and pam failed");
+		             _("Enabling SSSD in nsswitch.conf and PAM failed."));
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 
@@ -161,7 +162,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	workgroup = g_hash_table_lookup (settings, "workgroup");
 	if (workgroup == NULL) {
 		g_set_error (error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Failed to calculate domain workgroup");
+		             _("Failed to calculate domain workgroup"));
 		return FALSE;
 	}
 
@@ -303,12 +304,12 @@ realm_sssd_ad_enroll_async (RealmKerberos *realm,
 	/* Make sure not already enrolled in a realm */
 	if (realm_sssd_get_config_section (sssd) != NULL) {
 		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_ALREADY_ENROLLED,
-		                                 "Already enrolled in this realm");
+		                                 _("Already enrolled in this realm"));
 		g_simple_async_result_complete_in_idle (res);
 
 	} else if (realm_sssd_config_have_domain (realm_sssd_get_config (sssd), enroll->realm_name)) {
 		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_ALREADY_ENROLLED,
-		                                 "This domain is already configured");
+		                                 _("This domain is already configured"));
 		g_simple_async_result_complete_in_idle (res);
 
 	/* Already have discovery info, so go straight to install */
@@ -460,7 +461,7 @@ realm_sssd_ad_unenroll_async (RealmKerberos *realm,
 
 	} else {
 		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_NOT_ENROLLED,
-		                                 "Not currently enrolled in the realm");
+		                                 _("Not currently enrolled in the realm"));
 		g_simple_async_result_complete_in_idle (res);
 	}
 

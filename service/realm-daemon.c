@@ -17,6 +17,7 @@
 #include "realm-all-provider.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
+#include "realm-dbus-generated.h"
 #define DEBUG_FLAG REALM_DEBUG_SERVICE
 #include "realm-debug.h"
 #include "realm-diagnostics.h"
@@ -27,6 +28,7 @@
 #include "realm-sssd-ipa-provider.h"
 
 #include <glib.h>
+#include <glib/gi18n.h>
 
 #include <polkit/polkit.h>
 
@@ -37,11 +39,16 @@ static GObject *current_invocation = NULL;
 static GMainLoop *main_loop = NULL;
 
 static gboolean service_persist = FALSE;
-static GHashTable *service_holds = NULL;
+static GHashTable *service_clients = NULL;
 static gint64 service_quit_at = 0;
 static guint service_timeout_id = 0;
 static guint service_bus_name_owner_id = 0;
 static gboolean service_bus_name_claimed = FALSE;
+
+typedef struct {
+	guint watch;
+	gchar *locale;
+} RealmClient;
 
 /* We use this for registering the dbus errors */
 GQuark realm_error = 0;
@@ -93,6 +100,12 @@ realm_daemon_unlock_for_action (GDBusMethodInvocation *invocation)
 
 	/* Matches the hold in realm_daemon_lock_for_action() */
 	realm_daemon_release ("current-invocation");
+}
+
+void
+realm_daemon_set_locale_until_loop (GDBusMethodInvocation *invocation)
+{
+	/* TODO: Not yet implemented, need threadsafe implementation */
 }
 
 gboolean
@@ -156,22 +169,55 @@ realm_daemon_check_dbus_action (const gchar *sender,
 	return ret;
 }
 
+static void
+on_client_vanished (GDBusConnection *connection,
+                    const gchar *name,
+                    gpointer user_data)
+{
+	g_hash_table_remove (service_clients, name);
+}
+
+static RealmClient *
+lookup_or_register_client (const gchar *sender)
+{
+	RealmClient *client;
+
+	client = g_hash_table_lookup (service_clients, sender);
+	if (!client) {
+		client = g_slice_new0 (RealmClient);
+		client->watch = g_bus_watch_name (G_BUS_TYPE_SYSTEM, sender,
+		                                  G_BUS_NAME_WATCHER_FLAGS_NONE,
+		                                  NULL, on_client_vanished, NULL, NULL);
+		g_hash_table_insert (service_clients, g_strdup (sender), client);
+	}
+
+	return client;
+}
+
 void
 realm_daemon_hold (const gchar *hold)
 {
-	g_assert (hold != NULL);
+	/*
+	 * We register these holds in the same table as the clients
+	 * so need to make sure they don't colide with them.
+	 */
 
-	if (g_hash_table_lookup (service_holds, hold))
+	g_assert (hold != NULL);
+	g_assert (!g_dbus_is_unique_name (hold));
+
+
+	if (g_hash_table_lookup (service_clients, hold))
 		g_critical ("realm_daemon_hold: already have hold: %s", hold);
-	g_hash_table_insert (service_holds, g_strdup (hold), HOLD_INTERNAL);
+	g_hash_table_insert (service_clients, g_strdup (hold), g_slice_new0 (RealmClient));
 }
 
 void
 realm_daemon_release (const gchar *hold)
 {
 	g_assert (hold != NULL);
+	g_assert (!g_dbus_is_unique_name (hold));
 
-	if (!g_hash_table_remove (service_holds, hold))
+	if (!g_hash_table_remove (service_clients, hold))
 		g_critical ("realm_daemon_release: don't have hold: %s", hold);
 }
 
@@ -183,7 +229,7 @@ on_service_timeout (gpointer data)
 
 	service_timeout_id = 0;
 
-	if (g_hash_table_size (service_holds) > 0)
+	if (g_hash_table_size (service_clients) > 0)
 		return FALSE;
 
 	now = g_get_monotonic_time ();
@@ -204,7 +250,7 @@ realm_daemon_poke (void)
 {
 	if (service_persist)
 		return;
-	if (g_hash_table_size (service_holds) > 0)
+	if (g_hash_table_size (service_clients) > 0)
 		return;
 	service_quit_at = g_get_monotonic_time () + (TIMEOUT * G_TIME_SPAN_SECOND);
 	if (service_timeout_id == 0)
@@ -212,18 +258,16 @@ realm_daemon_poke (void)
 }
 
 static void
-on_client_vanished (GDBusConnection *connection,
-                    const gchar *name,
-                    gpointer user_data)
+realm_client_unwatch_and_free (gpointer data)
 {
-	g_hash_table_remove (service_holds, name);
-}
+	RealmClient *client = data;
 
-static void
-unwatch_if_watched (gpointer data)
-{
-	if (data != HOLD_INTERNAL)
-		g_bus_unwatch_name (GPOINTER_TO_UINT (data));
+	g_assert (data != NULL);
+	if (client->watch)
+		g_bus_unwatch_name (client->watch);
+	g_free (client->locale);
+	g_slice_free (RealmClient, client);
+
 	realm_daemon_poke ();
 }
 
@@ -232,26 +276,7 @@ on_idle_hold_for_message (gpointer user_data)
 {
 	GDBusMessage *message = user_data;
 	const gchar *sender = g_dbus_message_get_sender (message);
-	guint watch;
-
-	if (!g_hash_table_lookup (service_holds, sender)) {
-		watch = g_bus_watch_name (G_BUS_TYPE_SYSTEM, sender,
-		                          G_BUS_NAME_WATCHER_FLAGS_NONE,
-		                          NULL, on_client_vanished, NULL, NULL);
-		g_hash_table_insert (service_holds, g_strdup (sender),
-		                     GUINT_TO_POINTER (watch));
-	}
-
-	return FALSE; /* don't call again */
-}
-
-static gboolean
-on_idle_release_for_message (gpointer user_data)
-{
-	GDBusMessage *message = user_data;
-	const gchar *sender = g_dbus_message_get_sender (message);
-
-	g_hash_table_remove (service_holds, sender);
+	lookup_or_register_client (sender);
 	return FALSE; /* don't call again */
 }
 
@@ -263,38 +288,17 @@ on_connection_filter (GDBusConnection *connection,
 {
 	const gchar *own_name = user_data;
 	GDBusMessageType type;
-	GDBusMessage *reply;
-	GError *error = NULL;
 
 	/* Each time we see an incoming function call, keep the service alive */
 	if (incoming) {
 		type = g_dbus_message_get_message_type (message);
 		if (type == G_DBUS_MESSAGE_TYPE_METHOD_CALL) {
 
-			/* Is a client calling to release from the daemon? */
-			if (g_strcmp0 (g_dbus_message_get_path (message), REALM_DBUS_SERVICE_PATH) == 0 &&
-			    g_strcmp0 (g_dbus_message_get_member (message), "Release") == 0 &&
-			    g_strcmp0 (g_dbus_message_get_interface (message), REALM_DBUS_SERVICE_INTERFACE) == 0) {
-				g_idle_add_full (G_PRIORITY_DEFAULT,
-				                 on_idle_release_for_message,
-				                 g_object_ref (message),
-				                 g_object_unref);
-
-				/* Reply to this message */
-				reply = g_dbus_message_new_method_reply (message);
-				g_dbus_message_set_body (reply, g_variant_new ("()"));
-				g_dbus_connection_send_message (connection, reply,
-				                                G_DBUS_SEND_MESSAGE_FLAGS_NONE,
-				                                NULL, &error);
-				if (error != NULL) {
-					g_critical ("Couldn't send Release reply message: %s", error->message);
-					g_error_free (error);
-				}
-				g_object_unref (message);
-				return NULL;
-
-			/* Another method call, watch the client and don't go away until they do, or release */
-			} else if (g_strcmp0 (own_name, g_dbus_message_get_sender (message)) != 0) {
+			/* All methods besides 'Release' on the Service interface cause us to watch client */
+			if (g_str_equal (own_name , g_dbus_message_get_sender (message)) &&
+			    (!g_str_equal (g_dbus_message_get_path (message), REALM_DBUS_SERVICE_PATH) ||
+			     !g_str_equal (g_dbus_message_get_member (message), "Release") ||
+			     !g_str_equal (g_dbus_message_get_interface (message), REALM_DBUS_SERVICE_INTERFACE))) {
 				g_idle_add_full (G_PRIORITY_DEFAULT,
 				                 on_idle_hold_for_message,
 				                 g_object_ref (message),
@@ -304,6 +308,36 @@ on_connection_filter (GDBusConnection *connection,
 	}
 
 	return message;
+}
+
+static gboolean
+on_service_release (RealmDbusService *object,
+                    GDBusMethodInvocation *invocation)
+{
+	const char *sender;
+
+	sender = g_dbus_method_invocation_get_sender (invocation);
+	g_hash_table_remove (service_clients, sender);
+
+	return TRUE;
+}
+
+static gboolean
+on_service_set_locale (RealmDbusService *object,
+                       GDBusMethodInvocation *invocation,
+                       const gchar *arg_locale)
+{
+	RealmClient *client;
+	const gchar *sender;
+
+	sender = g_dbus_method_invocation_get_sender (invocation);
+	client = lookup_or_register_client (sender);
+
+	g_free (client->locale);
+	client->locale = g_strdup (arg_locale);
+
+	realm_dbus_service_complete_set_locale (object, invocation);
+	return TRUE;
 }
 
 static void
@@ -389,8 +423,16 @@ main (int argc,
       char *argv[])
 {
 	GDBusConnection *connection = NULL;
+	RealmDbusService *service;
 	GOptionContext *context;
 	GError *error = NULL;
+
+#ifdef ENABLE_NLS
+	bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+	bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+	textdomain (GETTEXT_PACKAGE);
+#endif
+
 	g_type_init ();
 
 	context = g_option_context_new ("realmd");
@@ -407,12 +449,16 @@ main (int argc,
 
 	realm_debug_init ();
 	realm_error = realm_error_quark ();
-	service_holds = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                                       g_free, unwatch_if_watched);
+	service_clients = g_hash_table_new_full (g_str_hash, g_str_equal,
+	                                         g_free, realm_client_unwatch_and_free);
 	realm_daemon_hold ("main");
 
 	/* Load the platform specific data */
 	realm_settings_init ();
+
+	service = realm_dbus_service_skeleton_new ();
+	g_signal_connect (service, "handle-release", G_CALLBACK (on_service_release), NULL);
+	g_signal_connect (service, "handle-set-locale", G_CALLBACK (on_service_set_locale), NULL);
 
 	realm_debug ("starting service");
 	g_bus_get (G_BUS_TYPE_SYSTEM, NULL, on_bus_get_connection, &connection);
@@ -435,6 +481,7 @@ main (int argc,
 	g_main_loop_unref (main_loop);
 	g_option_context_free (context);
 
-	g_hash_table_unref (service_holds);
+	g_object_unref (service);
+	g_hash_table_unref (service_clients);
 	return 0;
 }

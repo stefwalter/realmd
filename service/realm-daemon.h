@@ -25,9 +25,15 @@ gboolean             realm_daemon_lock_for_action            (GDBusMethodInvocat
 
 void                 realm_daemon_unlock_for_action          (GDBusMethodInvocation *invocation);
 
+void                 realm_daemon_set_locale_until_loop      (GDBusMethodInvocation *invocation);
+
 void                 realm_daemon_hold                       (const gchar *identifier);
 
 void                 realm_daemon_release                    (const gchar *identifier);
+
+void                 realm_daemon_set_locale                 (const gchar *sender,
+                                                              const gchar *locale,
+                                                              const gchar *operation_id);
 
 void                 realm_daemon_poke                       (void);
 

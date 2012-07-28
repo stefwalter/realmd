@@ -21,6 +21,7 @@
 #include <krb5/krb5.h>
 
 #include <glib.h>
+#include <glib/gi18n.h>
 #include <glib/gstdio.h>
 
 #include <sys/types.h>
@@ -97,7 +98,7 @@ read_file_into_variant (const gchar *filename)
 
 	g_file_get_contents (filename, &contents, &length, &error);
 	if (error != NULL) {
-		realm_handle_error (error, "couldn't read credential cache");
+		realm_handle_error (error, _("Couldn't read credential cache"));
 		return NULL;
 	}
 
@@ -124,13 +125,13 @@ kinit_to_kerberos_cache (const gchar *name,
 
 	code = krb5_init_context (&context);
 	if (code != 0) {
-		handle_krb5_error (code, NULL, "couldn't initialize kerberos");
+		handle_krb5_error (code, NULL, _("Couldn't initialize kerberos"));
 		goto cleanup;
 	}
 
 	code = krb5_parse_name (context, name, &principal);
 	if (code != 0) {
-		handle_krb5_error (code, context, "couldn't parse user name");
+		handle_krb5_error (code, context, _("Couldn't parse user name: %s"), name);
 		goto cleanup;
 	}
 
@@ -142,34 +143,34 @@ kinit_to_kerberos_cache (const gchar *name,
 
 	code = krb5_get_init_creds_opt_alloc (context, &options);
 	if (code != 0) {
-		handle_krb5_error (code, context, "couldn't setup options");
+		handle_krb5_error (code, context, _("Couldn't setup kerberos options"));
 		goto cleanup;
 	}
 
 	filename = g_build_filename (g_get_user_runtime_dir (), "realmd-krb5-cache.XXXXXX", NULL);
 	temp_fd = g_mkstemp_full (filename, O_RDWR, S_IRUSR | S_IWUSR);
 	if (temp_fd == -1) {
-		realm_handle_error (NULL, "couldn't create credential cache file: %s", g_strerror (errno));
+		realm_handle_error (NULL, _("Couldn't create credential cache file: %s"), g_strerror (errno));
 		goto cleanup;
 	}
 	close (temp_fd);
 
 	code = krb5_cc_resolve (context, filename, &ccache);
 	if (code != 0) {
-		handle_krb5_error (code, context, "couldn't resolve credential cache");
+		handle_krb5_error (code, context, _("Couldn't resolve credential cache"));
 		goto cleanup;
 	}
 
 	code = krb5_get_init_creds_opt_set_out_ccache (context, options, ccache);
 	if (code != 0) {
-		handle_krb5_error (code, context, "couldn't setup credential cache");
+		handle_krb5_error (code, context, _("Couldn't setup credential cache"));
 		goto cleanup;
 	}
 
 	code = krb5_get_init_creds_password (context, &my_creds, principal, NULL,
 	                                     krb5_prompter_posix, 0, 0, NULL, options);
 	if (code != 0) {
-		handle_krb5_error (code, context, "couldn't authenticate as %s", name);
+		handle_krb5_error (code, context, _("Couldn't authenticate as %s"), name);
 		goto cleanup;
 	}
 
@@ -252,7 +253,7 @@ build_ccache_or_password_creds (RealmDbusKerberos *realm,
 
 	cred_type = find_appropriate_cred_type (realm, join, &cred_owner);
 	if (cred_type == NULL) {
-		realm_handle_error (NULL, "realm has no supported way to authenticate");
+		realm_handle_error (NULL, _("Realm has no supported way to authenticate"));
 		return NULL;
 	}
 
@@ -267,12 +268,12 @@ build_ccache_or_password_creds (RealmDbusKerberos *realm,
 		contents = kinit_to_kerberos_cache (user_name, realm_name);
 
 	} else if (g_str_equal (cred_type, "password")) {
-		prompt = g_strdup_printf ("Password for %s: ", user_name);
+		prompt = g_strdup_printf (_("Password for %s: "), user_name);
 		password = getpass (prompt);
 		g_free (prompt);
 
 		if (password == NULL) {
-			realm_print_error ("couldn't prompt for password: %s", g_strerror (errno));
+			realm_print_error (_("Couldn't prompt for password: %s"), g_strerror (errno));
 			contents = NULL;
 		} else {
 			contents = g_variant_new ("(ss)", user_name, password);
@@ -334,7 +335,7 @@ realm_join_or_leave (RealmDbusKerberos *realm,
 	g_main_loop_unref (sync.loop);
 
 	if (error != NULL) {
-		realm_handle_error (error, join ? "couldn't join realm" : "couldn't leave realm");
+		realm_handle_error (error, join ? _("Couldn't join realm") : _("Couldn't leave realm"));
 		return 1;
 	}
 
@@ -358,7 +359,7 @@ perform_join (GDBusConnection *connection,
 	                                               REALM_DBUS_SERVICE_PATH,
 	                                               NULL, &error);
 	if (error != NULL) {
-		realm_handle_error (error, "couldn't connect to realm service");
+		realm_handle_error (error, _("Couldn't connect to realm service"));
 		return 1;
 	}
 
@@ -369,7 +370,7 @@ perform_join (GDBusConnection *connection,
 	g_object_unref (provider);
 
 	if (error != NULL) {
-		realm_handle_error (error, "couldn't connect to realm service");
+		realm_handle_error (error, _("Couldn't connect to realm service"));
 		return 1;
 	}
 
@@ -377,7 +378,7 @@ perform_join (GDBusConnection *connection,
 	g_variant_unref (realms);
 
 	if (realm == NULL) {
-		realm_handle_error (NULL, "no such realm found: %s", string);
+		realm_handle_error (NULL, _("No such realm found: %s"), string);
 		return 1;
 	}
 
@@ -421,12 +422,13 @@ realm_join (int argc,
 	gint ret = 0;
 
 	GOptionEntry option_entries[] = {
-		{ "user", 'U', 0, G_OPTION_ARG_STRING, &arg_user, "User name to use for enrollment", NULL },
-		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, "Verbose output", NULL },
+		{ "user", 'U', 0, G_OPTION_ARG_STRING, &arg_user, N_("User name to use for enrollment"), NULL },
+		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
 		{ NULL, }
 	};
 
 	context = g_option_context_new ("realm");
+	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
 	g_option_context_add_main_entries (context, option_entries, NULL);
 
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
@@ -435,7 +437,7 @@ realm_join (int argc,
 		ret = 2;
 
 	} else if (argc > 2) {
-		g_printerr ("%s: specify one realm to join\n", g_get_prgname ());
+		g_printerr ("%s: %s\n", _("Specify one realm to join"), g_get_prgname ());
 		ret = 2;
 
 	} else {
@@ -467,12 +469,13 @@ realm_leave (int argc,
 	gint ret = 0;
 
 	GOptionEntry option_entries[] = {
-		{ "user", 'U', 0, G_OPTION_ARG_STRING, &arg_user, "User name to use for enrollment", NULL },
-		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, "Verbose output", NULL },
+		{ "user", 'U', 0, G_OPTION_ARG_STRING, &arg_user, N_("User name to use for enrollment"), NULL },
+		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
 		{ NULL, }
 	};
 
 	context = g_option_context_new ("realm");
+	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
 	g_option_context_add_main_entries (context, option_entries, NULL);
 
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
@@ -481,7 +484,7 @@ realm_leave (int argc,
 		ret = 2;
 
 	} else if (argc < 2) {
-		g_printerr ("%s: specify one realm to join\n", g_get_prgname ());
+		g_printerr ("%s: %s\n", _("Specify one realm to leave"), g_get_prgname ());
 		ret = 2;
 
 	} else {

@@ -23,6 +23,7 @@
 
 #include <glib.h>
 #include <glib/gstdio.h>
+#include <glib/gi18n.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -121,7 +122,7 @@ perform_discover (GDBusConnection *connection,
 	                                                       REALM_DBUS_SERVICE_PATH,
 	                                                       NULL, &error);
 	if (error != NULL) {
-		realm_handle_error (error, "couldn't connect to realm service");
+		realm_handle_error (error, _("Couldn't connect to realmd service"));
 		return 2;
 	}
 
@@ -143,7 +144,7 @@ perform_discover (GDBusConnection *connection,
 	g_main_loop_unref (sync.loop);
 
 	if (error != NULL) {
-		realm_handle_error (error, "couldn't discover realm");
+		realm_handle_error (error, _("Couldn't discover realm"));
 		return 2;
 	}
 
@@ -158,9 +159,9 @@ perform_discover (GDBusConnection *connection,
 
 	if (!found) {
 		if (string == NULL)
-			realm_handle_error (NULL, "no default domain discovered");
+			realm_handle_error (NULL, _("No default realm discovered"));
 		else
-			realm_handle_error (NULL, "no such realm found: %s", string);
+			realm_handle_error (NULL, _("No such realm found: %s"), string);
 		return 1;
 	}
 
@@ -180,13 +181,14 @@ realm_discover (int argc,
 	gint i;
 
 	GOptionEntry option_entries[] = {
-		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, "Verbose output", NULL },
+		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
 		{ NULL, }
 	};
 
 	g_type_init ();
 
 	context = g_option_context_new ("realm-or-domain");
+	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
 	g_option_context_add_main_entries (context, option_entries, NULL);
 
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
@@ -234,7 +236,7 @@ perform_list (GDBusConnection *connection,
 	                                               REALM_DBUS_SERVICE_PATH,
 	                                               NULL, &error);
 	if (error != NULL) {
-		realm_handle_error (error, "couldn't connect to realm service");
+		realm_handle_error (error, _("Couldn't connect to realmd service"));
 		return 1;
 	}
 
@@ -263,11 +265,12 @@ realm_list (int argc,
 	gint ret = 0;
 
 	GOptionEntry option_entries[] = {
-		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, "Verbose output", NULL },
+		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
 		{ NULL, }
 	};
 
 	context = g_option_context_new ("realm");
+	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
 	g_option_context_add_main_entries (context, option_entries, NULL);
 
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {

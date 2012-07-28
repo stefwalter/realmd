@@ -29,6 +29,7 @@
 #include "realm-samba-winbind.h"
 
 #include <glib/gstdio.h>
+#include <glib/gi18n.h>
 
 #include <errno.h>
 #include <string.h>
@@ -191,7 +192,7 @@ on_join_do_winbind (GObject *source,
 		workgroup = g_hash_table_lookup (settings, "workgroup");
 		if (workgroup == NULL) {
 			g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-			             "Failed to calculate domain workgroup");
+			             _("Failed to calculate domain workgroup"));
 		}
 	}
 
@@ -288,7 +289,7 @@ realm_samba_enroll_async (RealmKerberos *realm,
 	enrolled = lookup_enrolled_realm (self);
 	if (enrolled != NULL) {
 		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_ALREADY_ENROLLED,
-		                                 "Already enrolled in a realm");
+		                                 _("Already enrolled in a realm"));
 		g_simple_async_result_complete_in_idle (res);
 
 	} else {
@@ -420,7 +421,7 @@ realm_samba_unenroll_async (RealmKerberos *realm,
 
 	} else {
 		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_NOT_ENROLLED,
-		                                 "Not currently enrolled in the realm");
+		                                 _("Not currently enrolled in the realm"));
 		g_simple_async_result_complete_in_idle (res);
 	}
 
@@ -441,7 +442,7 @@ realm_samba_change_logins (RealmKerberos *realm,
 
 	if (!lookup_is_enrolled (self)) {
 		g_set_error (error, REALM_ERROR, REALM_ERROR_NOT_ENROLLED,
-		             "Not enrolled in this realm");
+		             _("Not enrolled in this realm"));
 		return FALSE;
 	}
 
@@ -483,7 +484,7 @@ realm_samba_logins_async (RealmKerberos *realm,
 	if (login_policy != REALM_KERBEROS_ALLOW_ANY_LOGIN &&
 	    login_policy != REALM_KERBEROS_POLICY_NOT_SET) {
 		g_simple_async_result_set_error (async, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
-		                                 "The Samba provider cannot restrict permitted logins.");
+		                                 _("The Samba provider cannot restrict permitted logins."));
 
 	/* Make note of the permitted logins, so we can return them in the property */
 	} else if (!realm_samba_change_logins (realm, invocation, add, remove, &error)) {

@@ -49,6 +49,10 @@
 	</interface>
 
 	<interface name="org.freedesktop.realmd.Service">
+		<method name="SetLocale">
+			<arg name="locale" type="s" direction="in"/>
+		</method>
+
 		<signal name="Diagnostics">
 			<arg name="data" type="s"/>
 			<arg name="operation_id" type="s"/>

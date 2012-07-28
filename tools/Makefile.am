@@ -13,6 +13,7 @@ realm_SOURCES = \
 AM_CFLAGS = \
 	-I$(top_srcdir)/dbus \
 	-I$(top_builddir)/dbus \
+	-DLOCALEDIR=\""$(datadir)/locale"\" \
 	$(GLIB_CFLAGS) \
 	$(KRB5_CFLAGS) \
 	$(NULL)

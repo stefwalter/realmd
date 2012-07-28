@@ -19,6 +19,7 @@
 #include "realm-dbus-generated.h"
 
 #include <glib.h>
+#include <glib/gi18n.h>
 
 #include <string.h>
 
@@ -79,8 +80,8 @@ perform_permit_or_deny_logins (GDBusConnection *connection,
 	g_main_loop_unref (sync.loop);
 
 	if (error != NULL) {
-		realm_handle_error (error, "couldn't %s logins",
-		                    permit ? "permit" : "deny");
+		realm_handle_error (error,
+		                    permit ? _("Couldn't permit logins") : _("Couldn't deny logins"));
 		return 1;
 	}
 
@@ -132,13 +133,14 @@ realm_permit_or_deny (gboolean permit,
 
 	GOptionEntry option_entries[] = {
 		{ "all", 'a', 0, G_OPTION_ARG_NONE, &arg_all,
-		  permit ? "Permit any domain user login" : "Deny any domain user login", NULL },
-		{ "realm", 'R', 0, G_OPTION_ARG_STRING, &realm_name, "Realm to permit/deny logins for", NULL },
-		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, "Verbose output", NULL },
+		  permit ? N_("Permit any domain user login") : N_("Deny any domain user login"), NULL },
+		{ "realm", 'R', 0, G_OPTION_ARG_STRING, &realm_name, N_("Realm to permit/deny logins for"), NULL },
+		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
 		{ NULL, }
 	};
 
 	context = g_option_context_new ("realm");
+	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
 	g_option_context_add_main_entries (context, option_entries, NULL);
 
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
@@ -149,7 +151,7 @@ realm_permit_or_deny (gboolean permit,
 
 	if (arg_all) {
 		if (argc != 1) {
-			g_printerr ("%s: no users should be specified with -a or --all\n", g_get_prgname ());
+			g_printerr ("%s: %s\n", _("No users should be specified with -a or --all"), g_get_prgname ());
 			ret = 2;
 		} else {
 			connection = realm_get_connection (arg_verbose);
@@ -161,7 +163,8 @@ realm_permit_or_deny (gboolean permit,
 			}
 		}
 	} else if (argc < 2) {
-		g_printerr ("%s: specify users to %s\n", g_get_prgname (), permit ? "permit" : "deny");
+		g_printerr ("%s: %s\n", g_get_prgname (),
+		            permit ? _("Specify users to permit") : _("Specify users to deny"));
 		ret = 2;
 
 	} else {

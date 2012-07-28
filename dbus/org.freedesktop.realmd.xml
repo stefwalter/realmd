@@ -48,6 +48,10 @@
 	</interface>
 
 	<interface name="org.freedesktop.realmd.Service">
+		<method name="Cancel">
+			<arg name="operation_id" type="s" direction="in"/>
+		</method>
+
 		<method name="SetLocale">
 			<arg name="locale" type="s" direction="in"/>
 		</method>

@@ -323,6 +323,16 @@ on_service_release (RealmDbusService *object,
 }
 
 static gboolean
+on_service_cancel (RealmDbusService *object,
+                   GDBusMethodInvocation *invocation,
+                   const gchar *operation_id)
+{
+	/* TODO: Needs implementation */
+	realm_dbus_service_complete_cancel (object, invocation);
+	return TRUE;
+}
+
+static gboolean
 on_service_set_locale (RealmDbusService *object,
                        GDBusMethodInvocation *invocation,
                        const gchar *arg_locale)
@@ -459,6 +469,7 @@ main (int argc,
 	service = realm_dbus_service_skeleton_new ();
 	g_signal_connect (service, "handle-release", G_CALLBACK (on_service_release), NULL);
 	g_signal_connect (service, "handle-set-locale", G_CALLBACK (on_service_set_locale), NULL);
+	g_signal_connect (service, "handle-cancel", G_CALLBACK (on_service_cancel), NULL);
 
 	realm_debug ("starting service");
 	g_bus_get (G_BUS_TYPE_SYSTEM, NULL, on_bus_get_connection, &connection);

@@ -30,9 +30,6 @@
 #include <fcntl.h>
 #include <string.h>
 
-/* Only one operation at a time per process, so fine to do this */
-static const gchar *operation_id = "realm-enroll";
-
 static void
 handle_krb5_error (krb5_error_code code,
                    krb5_context context,
@@ -314,10 +311,10 @@ realm_join_or_leave (RealmDbusKerberos *realm,
 	/* Start actual operation */
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (realm), G_MAXINT);
 	if (join)
-		realm_dbus_kerberos_call_enroll (realm, creds, options, operation_id,
+		realm_dbus_kerberos_call_enroll (realm, creds, options,
 		                                 NULL, on_complete_get_result, &sync);
 	else
-		realm_dbus_kerberos_call_unenroll (realm, creds, options, operation_id,
+		realm_dbus_kerberos_call_unenroll (realm, creds, options,
 		                                   NULL, on_complete_get_result, &sync);
 
 	g_variant_unref (options);
@@ -349,6 +346,7 @@ perform_join (GDBusConnection *connection,
 {
 	RealmDbusKerberos *realm;
 	RealmDbusProvider *provider;
+	GVariant *options;
 	GError *error = NULL;
 	GVariant *realms;
 	gint relevance;
@@ -363,11 +361,15 @@ perform_join (GDBusConnection *connection,
 		return 1;
 	}
 
+	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
+	g_variant_ref_sink (options);
+
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);
-	realm_dbus_provider_call_discover_sync (provider, string, operation_id,
+	realm_dbus_provider_call_discover_sync (provider, string, options,
 	                                        &relevance, &realms, NULL, &error);
 
 	g_object_unref (provider);
+	g_variant_unref (options);
 
 	if (error != NULL) {
 		realm_handle_error (error, _("Couldn't connect to realm service"));

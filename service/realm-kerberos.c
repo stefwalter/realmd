@@ -335,8 +335,7 @@ static gboolean
 handle_enroll (RealmDbusKerberos *realm,
                GDBusMethodInvocation *invocation,
                GVariant *credentials,
-               GVariant *options,
-               const gchar *operation_id)
+               GVariant *options)
 {
 	RealmKerberos *self = REALM_KERBEROS (realm);
 	const char *name, *password;
@@ -345,7 +344,7 @@ handle_enroll (RealmDbusKerberos *realm,
 	RealmKerberosCredential cred_type;
 
 	/* Make note of the current operation id, for diagnostics */
-	realm_diagnostics_mark_operation (invocation, operation_id);
+	realm_diagnostics_setup_options (invocation, options);
 
 	if (!validate_and_parse_credentials (invocation, credentials, &flags, &cred_type, &creds))
 		return TRUE;
@@ -373,8 +372,7 @@ static gboolean
 handle_unenroll (RealmDbusKerberos *realm,
                  GDBusMethodInvocation *invocation,
                  GVariant *credentials,
-                 GVariant *options,
-                 const gchar *operation_id)
+                 GVariant *options)
 {
 	RealmKerberos *self = REALM_KERBEROS (realm);
 	const char *name, *password;
@@ -383,7 +381,7 @@ handle_unenroll (RealmDbusKerberos *realm,
 	RealmKerberosCredential cred_type;
 
 	/* Make note of the current operation id, for diagnostics */
-	realm_diagnostics_mark_operation (invocation, operation_id);
+	realm_diagnostics_setup_options (invocation, options);
 
 	if (!validate_and_parse_credentials (invocation, credentials, &flags, &cred_type, &creds))
 		return TRUE;
@@ -446,7 +444,7 @@ handle_change_login_policy (RealmDbusKerberos *realm,
                             const gchar *login_policy,
                             const gchar *const *add,
                             const gchar *const *remove,
-                            const gchar *operation_id)
+                            GVariant *options)
 {
 	RealmKerberosLoginPolicy policy = REALM_KERBEROS_POLICY_NOT_SET;
 	RealmKerberos *self = REALM_KERBEROS (realm);
@@ -456,7 +454,7 @@ handle_change_login_policy (RealmDbusKerberos *realm,
 	gint i;
 
 	/* Make note of the current operation id, for diagnostics */
-	realm_diagnostics_mark_operation (invocation, operation_id);
+	realm_diagnostics_setup_options (invocation, options);
 
 	policies = g_strsplit_set (login_policy, ", \t", -1);
 	for (i = 0; policies[i] != NULL; i++) {

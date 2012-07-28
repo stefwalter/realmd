@@ -115,6 +115,7 @@ perform_discover (GDBusConnection *connection,
 	SyncClosure sync;
 	GVariant *realms;
 	gint relevance;
+	GVariant *options;
 
 	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
 	                                                       G_DBUS_PROXY_FLAGS_NONE,
@@ -129,10 +130,14 @@ perform_discover (GDBusConnection *connection,
 	sync.result = NULL;
 	sync.loop = g_main_loop_new (NULL, FALSE);
 
+	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
+	g_variant_ref_sink (options);
+
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);
 	realm_dbus_provider_call_discover (provider, string ? string : "",
-	                                   "unused-operation-id",
-	                                   NULL, on_complete_get_result, &sync);
+	                                   options, NULL, on_complete_get_result, &sync);
+
+	g_variant_unref (options);
 
 	/* This mainloop is quit by on_complete_get_result */
 	g_main_loop_run (sync.loop);

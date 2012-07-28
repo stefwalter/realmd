@@ -50,6 +50,7 @@ perform_permit_or_deny_logins (GDBusConnection *connection,
 	gchar **add_or_remove;
 	GError *error = NULL;
 	const gchar *empty[] = { NULL };
+	GVariant *options;
 
 	realm = realm_name_to_enrolled (connection, realm_name);
 	if (realm == NULL)
@@ -65,11 +66,15 @@ perform_permit_or_deny_logins (GDBusConnection *connection,
 	/* Start actual operation */
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (realm), G_MAXINT);
 
+	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
+	g_variant_ref_sink (options);
+
 	realm_dbus_kerberos_call_change_login_policy (realm, REALM_DBUS_LOGIN_POLICY_PERMITTED,
 	                                              permit ? (const gchar * const*)add_or_remove : empty,
 	                                              permit ? empty : (const gchar * const*)add_or_remove,
-	                                              realm_operation_id,
-	                                              NULL, on_complete_get_result, &sync);
+	                                              options, NULL, on_complete_get_result, &sync);
+
+	g_variant_unref (options);
 
 	/* This mainloop is quit by on_complete_get_result */
 	g_main_loop_run (sync.loop);
@@ -97,17 +102,22 @@ perform_permit_or_deny_all (GDBusConnection *connection,
 	const gchar *policy;
 	const gchar *logins[] = { NULL };
 	GError *error = NULL;
+	GVariant *options;
 
 	realm = realm_name_to_enrolled (connection, realm_name);
 	if (realm == NULL)
 		return 1;
 
+	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
+	g_variant_ref_sink (options);
+
 	policy = permit ? REALM_DBUS_LOGIN_POLICY_ANY : REALM_DBUS_LOGIN_POLICY_DENY;
 	realm_dbus_kerberos_call_change_login_policy_sync (realm, policy,
 	                                                   (const gchar * const *)logins,
 	                                                   (const gchar * const *)logins,
-	                                                   realm_operation_id,
-	                                                   NULL, &error);
+	                                                   options, NULL, &error);
+
+	g_variant_unref (options);
 
 	if (error != NULL) {
 		realm_handle_error (error, "couldn't %s all logins",

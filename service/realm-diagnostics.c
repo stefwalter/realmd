@@ -42,20 +42,24 @@ realm_diagnostics_initialize (GDBusConnection *connection)
 }
 
 const gchar *
-realm_diagnostics_get_operation (GDBusMethodInvocation *invocation)
+realm_diagnostics_get_operation_id (GDBusMethodInvocation *invocation)
 {
 	return g_object_get_qdata (G_OBJECT (invocation), operation_id_quark);
 }
 
 void
-realm_diagnostics_mark_operation (GDBusMethodInvocation *invocation,
-                                  const gchar *operation_id)
+realm_diagnostics_setup_options (GDBusMethodInvocation *invocation,
+                                 GVariant *options)
 {
-	g_return_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation));
-	g_return_if_fail (operation_id != NULL);
+	gchar *operation_id;
 
-	g_object_set_qdata_full (G_OBJECT (invocation), operation_id_quark,
-	                         g_strdup (operation_id), g_free);
+	g_return_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation));
+	g_return_if_fail (options != NULL);
+
+	if (g_variant_lookup (options, "operation-id", "(s)", &operation_id)) {
+		g_object_set_qdata_full (G_OBJECT (invocation), operation_id_quark,
+		                         operation_id, g_free);
+	}
 }
 
 static void

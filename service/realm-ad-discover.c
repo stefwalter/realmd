@@ -303,7 +303,7 @@ discover_key_hash (gconstpointer p)
 	const Key *key = p;
 
 	return str_hash0 (key->string) ^
-	       str_hash0 (realm_diagnostics_get_operation (key->invocation)) ^
+	       str_hash0 (realm_diagnostics_get_operation_id (key->invocation)) ^
 	       str_hash0 (g_dbus_method_invocation_get_sender (key->invocation));
 }
 
@@ -315,8 +315,8 @@ discover_key_equal (gconstpointer v1,
 	const Key *k2 = v2;
 
 	return g_strcmp0 (k1->string, k2->string) == 0 &&
-	       g_strcmp0 (realm_diagnostics_get_operation (k1->invocation),
-	                  realm_diagnostics_get_operation (k2->invocation)) == 0 &&
+	       g_strcmp0 (realm_diagnostics_get_operation_id (k1->invocation),
+	                  realm_diagnostics_get_operation_id (k2->invocation)) == 0 &&
 	       g_strcmp0 (g_dbus_method_invocation_get_sender (k1->invocation),
 	                  g_dbus_method_invocation_get_sender (k2->invocation)) == 0;
 }

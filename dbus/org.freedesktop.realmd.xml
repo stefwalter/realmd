@@ -37,8 +37,7 @@
 		<method name="Discover">
 			<!-- The input string -->
 			<arg name="string" type="s" direction="in"/>
-
-			<arg name="operation_id" type="s" direction="in"/>
+			<arg name="options" type="a{sv}" direction="in"/>
 
 			<!-- Returned match relevance -->
 			<arg name="relevance" type="i" direction="out"/>
@@ -113,13 +112,11 @@
 		<method name="Enroll">
 			<arg name="credentials" type="(ssv)" direction="in"/>
 			<arg name="options" type="a{sv}" direction="in"/>
-			<arg name="operation_id" type="s" direction="in"/>
 		</method>
 
 		<method name="Unenroll">
 			<arg name="credentials" type="(ssv)" direction="in"/>
 			<arg name="options" type="a{sv}" direction="in"/>
-			<arg name="operation_id" type="s" direction="in"/>
 		</method>
 
 		<!--
@@ -149,7 +146,7 @@
 			<arg name="login_policy" type="s" direction="in"/>
 			<arg name="permitted_add" type="as" direction="in"/>
 			<arg name="permitted_remove" type="as" direction="in"/>
-			<arg name="operation_id" type="s" direction="in"/>
+			<arg name="options" type="a{sv}" direction="in"/>
 		</method>
 
 	</interface>

@@ -98,12 +98,12 @@ static gboolean
 realm_provider_handle_discover (RealmDbusProvider *provider,
                                 GDBusMethodInvocation *invocation,
                                 const gchar *string,
-                                const gchar *operation_id)
+                                GVariant *options)
 {
 	RealmProvider *self = REALM_PROVIDER (provider);
 
 	/* Make note of the current operation id, for diagnostics */
-	realm_diagnostics_mark_operation (invocation, operation_id);
+	realm_diagnostics_setup_options (invocation, options);
 
 	realm_provider_discover (self, string, invocation, on_discover_complete,
 	                         method_closure_new (self, invocation));

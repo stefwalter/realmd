@@ -196,40 +196,6 @@ cleanup:
 	return result;
 }
 
-static void
-on_diagnostics_signal (GDBusConnection *connection,
-                       const gchar *sender_name,
-                       const gchar *object_path,
-                       const gchar *interface_name,
-                       const gchar *signal_name,
-                       GVariant *parameters,
-                       gpointer user_data)
-{
-	const gchar *operation_id;
-	const gchar *data;
-
-	g_variant_get (parameters, "(&s&s)", &data, &operation_id);
-	g_printerr ("%s", data);
-}
-
-static void
-connect_to_diagnostics (GDBusProxy *proxy)
-{
-	GDBusConnection *connection;
-	const gchar *bus_name;
-	const gchar *object_path;
-
-	connection = g_dbus_proxy_get_connection (proxy);
-	bus_name = g_dbus_proxy_get_name (proxy);
-	object_path = g_dbus_proxy_get_object_path (proxy);
-
-	g_dbus_connection_signal_subscribe (connection, bus_name,
-	                                    REALM_DBUS_DIAGNOSTICS_INTERFACE,
-	                                    REALM_DBUS_DIAGNOSTICS_SIGNAL,
-	                                    object_path, NULL, G_DBUS_SIGNAL_FLAGS_NONE,
-	                                    on_diagnostics_signal, NULL, NULL);
-}
-
 typedef struct {
 	GAsyncResult *result;
 	GMainLoop *loop;
@@ -329,17 +295,12 @@ build_ccache_or_password_creds (RealmDbusKerberos *realm,
 static int
 realm_join_or_leave (RealmDbusKerberos *realm,
                      const gchar *user_name,
-                     gboolean verbose,
                      gboolean join)
 {
 	GError *error = NULL;
 	GVariant *options;
 	GVariant *creds;
 	SyncClosure sync;
-
-	/* Setup diagnostics */
-	if (verbose)
-		connect_to_diagnostics (G_DBUS_PROXY (realm));
 
 	creds = build_ccache_or_password_creds (realm, user_name, join);
 
@@ -381,9 +342,9 @@ realm_join_or_leave (RealmDbusKerberos *realm,
 }
 
 static int
-perform_join (const gchar *string,
-              const gchar *user_name,
-              gboolean verbose)
+perform_join (GDBusConnection *connection,
+              const gchar *string,
+              const gchar *user_name)
 {
 	RealmDbusKerberos *realm;
 	RealmDbusProvider *provider;
@@ -392,11 +353,10 @@ perform_join (const gchar *string,
 	gint relevance;
 	gint ret;
 
-	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-	                                                       G_DBUS_PROXY_FLAGS_NONE,
-	                                                       "org.freedesktop.realmd",
-	                                                       "/org/freedesktop/realmd",
-	                                                       NULL, &error);
+	provider = realm_dbus_provider_proxy_new_sync (connection, G_DBUS_PROXY_FLAGS_NONE,
+	                                               REALM_DBUS_BUS_NAME,
+	                                               REALM_DBUS_SERVICE_PATH,
+	                                               NULL, &error);
 	if (error != NULL) {
 		realm_handle_error (error, "couldn't connect to realm service");
 		return 1;
@@ -421,28 +381,28 @@ perform_join (const gchar *string,
 		return 1;
 	}
 
-	ret = realm_join_or_leave (realm, user_name, verbose, TRUE);
+	ret = realm_join_or_leave (realm, user_name, TRUE);
 	g_object_unref (realm);
 
 	return ret;
 }
 
 static int
-perform_leave (const gchar *string,
-               const gchar *user_name,
-               gboolean verbose)
+perform_leave (GDBusConnection *connection,
+               const gchar *string,
+               const gchar *user_name)
 {
 	RealmDbusKerberos *realm;
 	gint ret;
 
 	/* Find the right realm, but only enrolled */
-	realm = realm_name_to_enrolled (string);
+	realm = realm_name_to_enrolled (connection, string);
 
 	/* Message already printed */
 	if (realm == NULL)
 		return 1;
 
-	ret = realm_join_or_leave (realm, user_name, verbose, FALSE);
+	ret = realm_join_or_leave (realm, user_name, FALSE);
 	g_object_unref (realm);
 
 	return ret;
@@ -453,6 +413,7 @@ realm_join (int argc,
             char *argv[])
 {
 	GOptionContext *context;
+	GDBusConnection *connection;
 	gchar *arg_user = NULL;
 	gboolean arg_verbose = FALSE;
 	GError *error = NULL;
@@ -478,8 +439,14 @@ realm_join (int argc,
 		ret = 2;
 
 	} else {
-		realm_name = argc < 2 ? "" : argv[1];
-		ret = perform_join (realm_name, arg_user, arg_verbose);
+		connection = realm_get_connection (arg_verbose);
+		if (connection) {
+			realm_name = argc < 2 ? "" : argv[1];
+			ret = perform_join (connection, realm_name, arg_user);
+			g_object_unref (connection);
+		} else {
+			ret = 1;
+		}
 	}
 
 	g_free (arg_user);
@@ -491,6 +458,7 @@ int
 realm_leave (int argc,
             char *argv[])
 {
+	GDBusConnection *connection;
 	GOptionContext *context;
 	gchar *arg_user = NULL;
 	gboolean arg_verbose = FALSE;
@@ -517,8 +485,14 @@ realm_leave (int argc,
 		ret = 2;
 
 	} else {
-		realm_name = argc < 2 ? NULL : argv[1];
-		ret = perform_leave (realm_name, arg_user, arg_verbose);
+		connection = realm_get_connection (arg_verbose);
+		if (connection) {
+			realm_name = argc < 2 ? NULL : argv[1];
+			ret = perform_leave (connection, realm_name, arg_user);
+			g_object_unref (connection);
+		} else {
+			ret = 1;
+		}
 	}
 
 	g_free (arg_user);

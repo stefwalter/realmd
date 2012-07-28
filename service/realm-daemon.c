@@ -272,9 +272,9 @@ on_connection_filter (GDBusConnection *connection,
 		if (type == G_DBUS_MESSAGE_TYPE_METHOD_CALL) {
 
 			/* Is a client calling to release from the daemon? */
-			if (g_strcmp0 (g_dbus_message_get_path (message), "/org/freedesktop/realmd") == 0 &&
-			    g_strcmp0 (g_dbus_message_get_member (message), "ReleaseDaemon") == 0 &&
-			    g_strcmp0 (g_dbus_message_get_interface (message), "org.freedesktop.realmd.Daemon") == 0) {
+			if (g_strcmp0 (g_dbus_message_get_path (message), REALM_DBUS_SERVICE_PATH) == 0 &&
+			    g_strcmp0 (g_dbus_message_get_member (message), "Release") == 0 &&
+			    g_strcmp0 (g_dbus_message_get_interface (message), REALM_DBUS_SERVICE_INTERFACE) == 0) {
 				g_idle_add_full (G_PRIORITY_DEFAULT,
 				                 on_idle_release_for_message,
 				                 g_object_ref (message),
@@ -287,7 +287,7 @@ on_connection_filter (GDBusConnection *connection,
 				                                G_DBUS_SEND_MESSAGE_FLAGS_NONE,
 				                                NULL, &error);
 				if (error != NULL) {
-					g_critical ("Couldn't send ReleaseDaemon reply message: %s", error->message);
+					g_critical ("Couldn't send Release reply message: %s", error->message);
 					g_error_free (error);
 				}
 				g_object_unref (message);

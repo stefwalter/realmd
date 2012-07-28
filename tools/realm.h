@@ -42,6 +42,8 @@ int                   realm_permit                 (int argc,
 int                   realm_deny                   (int argc,
                                                     char *argv[]);
 
+GDBusConnection *     realm_get_connection         (gboolean verbose);
+
 void                  realm_print_error            (const gchar *format,
                                                     ...) G_GNUC_PRINTF (1, 2);
 
@@ -51,7 +53,8 @@ void                  realm_handle_error           (GError *error,
 
 RealmDbusKerberos *   realm_info_to_realm_proxy    (GVariant *realm_info);
 
-RealmDbusKerberos *   realm_name_to_enrolled       (const gchar *realm_name);
+RealmDbusKerberos *   realm_name_to_enrolled       (GDBusConnection *connection,
+                                                    const gchar *realm_name);
 
 G_END_DECLS
 

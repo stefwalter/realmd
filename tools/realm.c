@@ -161,7 +161,8 @@ find_enrolled_in_realms (GVariant *realms,
 
 
 RealmDbusKerberos *
-realm_name_to_enrolled (const gchar *realm_name)
+realm_name_to_enrolled (GDBusConnection *connection,
+                        const gchar *realm_name)
 {
 	RealmDbusKerberos *realm;
 	RealmDbusProvider *provider;
@@ -171,11 +172,11 @@ realm_name_to_enrolled (const gchar *realm_name)
 	if (realm_name != NULL && g_str_equal (realm_name, ""))
 		realm_name = NULL;
 
-	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-	                                                       G_DBUS_PROXY_FLAGS_NONE,
-	                                                       "org.freedesktop.realmd",
-	                                                       "/org/freedesktop/realmd",
-	                                                       NULL, &error);
+	provider = realm_dbus_provider_proxy_new_sync (connection,
+	                                               G_DBUS_PROXY_FLAGS_NONE,
+	                                               REALM_DBUS_BUS_NAME,
+	                                               REALM_DBUS_SERVICE_PATH,
+	                                               NULL, &error);
 	if (error != NULL) {
 		realm_handle_error (error, "couldn't connect to realm service");
 		return NULL;
@@ -189,6 +190,46 @@ realm_name_to_enrolled (const gchar *realm_name)
 	g_object_unref (provider);
 
 	return realm;
+}
+
+static void
+on_diagnostics_signal (GDBusConnection *connection,
+                       const gchar *sender_name,
+                       const gchar *object_path,
+                       const gchar *interface_name,
+                       const gchar *signal_name,
+                       GVariant *parameters,
+                       gpointer user_data)
+{
+	const gchar *operation_id;
+	const gchar *data;
+
+	g_variant_get (parameters, "(&s&s)", &data, &operation_id);
+	g_printerr ("%s", data);
+}
+
+GDBusConnection *
+realm_get_connection (gboolean verbose)
+{
+	GDBusConnection *connection;
+	GError *error = NULL;
+
+	connection = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, &error);
+	if (error == NULL) {
+		if (verbose) {
+			g_dbus_connection_signal_subscribe (connection, REALM_DBUS_BUS_NAME,
+			                                    REALM_DBUS_SERVICE_INTERFACE,
+			                                    REALM_DBUS_DIAGNOSTICS_SIGNAL,
+			                                    REALM_DBUS_SERVICE_PATH,
+			                                    NULL, G_DBUS_SIGNAL_FLAGS_NONE,
+			                                    on_diagnostics_signal, NULL, NULL);
+		}
+
+	} else {
+		realm_handle_error (error, "couldn't connect to system bus");
+	}
+
+	return connection;
 }
 
 static int

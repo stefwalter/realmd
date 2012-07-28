@@ -38,8 +38,6 @@ typedef struct {
 	RealmProviderClass parent_class;
 } RealmAllProviderClass;
 
-#define   REALM_DBUS_ALL_PROVIDER_PATH             "/org/freedesktop/realmd"
-
 G_DEFINE_TYPE (RealmAllProvider, realm_all_provider, REALM_TYPE_PROVIDER);
 
 static void
@@ -344,7 +342,7 @@ realm_all_provider_class_init (RealmAllProviderClass *klass)
 
 	object_class->finalize = realm_all_provider_finalize;
 
-	provider_class->dbus_path = REALM_DBUS_ALL_PROVIDER_PATH;
+	provider_class->dbus_path = REALM_DBUS_SERVICE_PATH;
 
 	provider_class->discover_async = realm_all_provider_discover_async;
 	provider_class->discover_finish = realm_all_provider_discover_finish;

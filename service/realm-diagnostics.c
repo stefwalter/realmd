@@ -205,10 +205,12 @@ realm_diagnostics_signal (GDBusMethodInvocation *invocation,
 	}
 
 	g_dbus_connection_emit_signal (the_connection, g_dbus_method_invocation_get_sender (invocation),
-	                               g_dbus_method_invocation_get_object_path (invocation),
-	                               REALM_DBUS_DIAGNOSTICS_INTERFACE, REALM_DBUS_DIAGNOSTICS_SIGNAL,
-	                               g_variant_new ("(ss)", data, operation_id), &error);
+	                               REALM_DBUS_SERVICE_PATH, REALM_DBUS_SERVICE_INTERFACE,
+	                               REALM_DBUS_DIAGNOSTICS_SIGNAL, g_variant_new ("(ss)", data, operation_id),
+	                               &error);
 
-	if (error != NULL)
-		g_warning ("couldn't emit the Diagnostics signal: %s", error->message);
+	if (error != NULL) {
+		g_warning ("couldn't emit the %s signal: %s", REALM_DBUS_DIAGNOSTICS_SIGNAL, error->message);
+		g_error_free (error);
+	}
 }

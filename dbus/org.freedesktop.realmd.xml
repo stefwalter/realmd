@@ -48,28 +48,22 @@
 		</method>
 	</interface>
 
-	<interface name="org.freedesktop.realmd.Daemon">
-		<!--
-		 * Normally realmd waits until all clients have disconnected
-		 * before exiting. For long lived clients, they can call
-		 * Release() allow realmd to quit.
-		-->
-		<method name="ReleaseDaemon">
-		</method>
-	</interface>
-
-	<!--
-	 * This interface is implemented by Providers and Realms to provide
-	 * additional information when an long running operation is happening
-	 *
-	 * In particular you can connect to the "Diagnostics" signal when
-	 * during an enroll or unenroll to get details.
-	-->
-	<interface name="org.freedesktop.realmd.Diagnostics">
+	<interface name="org.freedesktop.realmd.Service">
 		<signal name="Diagnostics">
 			<arg name="data" type="s"/>
 			<arg name="operation_id" type="s"/>
 		</signal>
+
+		<!--
+		 * Normally realmd waits until all clients have disconnected
+		 * before exiting. For long lived clients, they can call
+		 * Release() allow realmd to quit. This is an optimization.
+		 * The daemon will not exit immediately. It is safe to call
+		 * this multiple times.
+		-->
+		<method name="Release">
+			<!-- no arguments -->
+		</method>
 	</interface>
 
 	<!--

@@ -87,39 +87,6 @@ print_realm_info (GVariant *realm_info)
 	g_object_unref (realm);
 }
 
-static void
-on_diagnostics_signal (GDBusConnection *connection,
-                       const gchar *sender_name,
-                       const gchar *object_path,
-                       const gchar *interface_name,
-                       const gchar *signal_name,
-                       GVariant *parameters,
-                       gpointer user_data)
-{
-	const gchar *data;
-	const gchar *unused;
-	g_variant_get (parameters, "(&s&s)", &data, &unused);
-	g_printerr ("%s", data);
-}
-
-static void
-connect_to_diagnostics (GDBusProxy *proxy)
-{
-	GDBusConnection *connection;
-	const gchar *bus_name;
-	const gchar *object_path;
-
-	connection = g_dbus_proxy_get_connection (proxy);
-	bus_name = g_dbus_proxy_get_name (proxy);
-	object_path = g_dbus_proxy_get_object_path (proxy);
-
-	g_dbus_connection_signal_subscribe (connection, bus_name,
-	                                    REALM_DBUS_DIAGNOSTICS_INTERFACE,
-	                                    REALM_DBUS_DIAGNOSTICS_SIGNAL,
-	                                    object_path, NULL, G_DBUS_SIGNAL_FLAGS_NONE,
-	                                    on_diagnostics_signal, NULL, NULL);
-}
-
 typedef struct {
 	GAsyncResult *result;
 	GMainLoop *loop;
@@ -136,8 +103,8 @@ on_complete_get_result (GObject *source,
 }
 
 static int
-perform_discover (const gchar *string,
-                  gboolean verbose)
+perform_discover (GDBusConnection *connection,
+                  const gchar *string)
 {
 	RealmDbusProvider *provider;
 	GVariant *realm_info;
@@ -150,17 +117,13 @@ perform_discover (const gchar *string,
 
 	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
 	                                                       G_DBUS_PROXY_FLAGS_NONE,
-	                                                       "org.freedesktop.realmd",
-	                                                       "/org/freedesktop/realmd",
+	                                                       REALM_DBUS_BUS_NAME,
+	                                                       REALM_DBUS_SERVICE_PATH,
 	                                                       NULL, &error);
 	if (error != NULL) {
 		realm_handle_error (error, "couldn't connect to realm service");
 		return 2;
 	}
-
-	/* Setup diagnostics */
-	if (verbose)
-		connect_to_diagnostics (G_DBUS_PROXY (provider));
 
 	sync.result = NULL;
 	sync.loop = g_main_loop_new (NULL, FALSE);
@@ -208,6 +171,7 @@ int
 realm_discover (int argc,
                 char *argv[])
 {
+	GDBusConnection *connection;
 	GOptionContext *context;
 	gboolean arg_verbose = FALSE;
 	GError *error = NULL;
@@ -231,17 +195,23 @@ realm_discover (int argc,
 		ret = 2;
 	}
 
+	connection = realm_get_connection (arg_verbose);
+	if (!connection) {
+		ret = 1;
+
 	/* The default realm? */
-	if (argc == 1) {
-		ret = perform_discover (NULL, arg_verbose);
+	} else if (argc == 1) {
+		ret = perform_discover (connection, NULL);
+		g_object_unref (connection);
 
 	/* Specific realms */
 	} else {
 		for (i = 1; i < argc; i++) {
-			ret = perform_discover (argv[i], arg_verbose);
+			ret = perform_discover (connection, argv[i]);
 			if (ret != 0)
 				result = ret;
 		}
+		g_object_unref (connection);
 	}
 
 	g_option_context_free (context);
@@ -249,7 +219,8 @@ realm_discover (int argc,
 }
 
 static int
-perform_list (gboolean verbose)
+perform_list (GDBusConnection *connection,
+              gboolean verbose)
 {
 	RealmDbusProvider *provider;
 	GVariant *realms;
@@ -258,11 +229,10 @@ perform_list (gboolean verbose)
 	GVariantIter iter;
 	gboolean printed = FALSE;
 
-	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-	                                                       G_DBUS_PROXY_FLAGS_NONE,
-	                                                       "org.freedesktop.realmd",
-	                                                       "/org/freedesktop/realmd",
-	                                                       NULL, &error);
+	provider = realm_dbus_provider_proxy_new_sync (connection, G_DBUS_PROXY_FLAGS_NONE,
+	                                               REALM_DBUS_BUS_NAME,
+	                                               REALM_DBUS_SERVICE_PATH,
+	                                               NULL, &error);
 	if (error != NULL) {
 		realm_handle_error (error, "couldn't connect to realm service");
 		return 1;
@@ -286,6 +256,7 @@ int
 realm_list (int argc,
             char *argv[])
 {
+	GDBusConnection *connection;
 	GOptionContext *context;
 	gboolean arg_verbose = FALSE;
 	GError *error = NULL;
@@ -309,7 +280,13 @@ realm_list (int argc,
 		ret = 2;
 
 	} else {
-		ret = perform_list (arg_verbose);
+		connection = realm_get_connection (arg_verbose);
+		if (connection) {
+			ret = perform_list (connection, arg_verbose);
+			g_object_unref (connection);
+		} else {
+			ret = 1;
+		}
 	}
 
 	g_option_context_free (context);

@@ -22,6 +22,7 @@
 G_BEGIN_DECLS
 
 #define   REALM_DBUS_BUS_NAME                      "org.freedesktop.realmd"
+#define   REALM_DBUS_SERVICE_PATH                  "/org/freedesktop/realmd"
 
 #define   DBUS_PEER_INTERFACE                      "org.freedesktop.DBus.Peer"
 #define   DBUS_PROPERTIES_INTERFACE                "org.freedesktop.DBus.Properties"
@@ -29,7 +30,7 @@ G_BEGIN_DECLS
 
 #define   REALM_DBUS_PROVIDER_INTERFACE            "org.freedesktop.realmd.Provider"
 #define   REALM_DBUS_KERBEROS_REALM_INTERFACE      "org.freedesktop.realmd.Kerberos"
-#define   REALM_DBUS_DIAGNOSTICS_INTERFACE         "org.freedesktop.realmd.Diagnostics"
+#define   REALM_DBUS_SERVICE_INTERFACE             "org.freedesktop.realmd.Service"
 
 #define   REALM_DBUS_DIAGNOSTICS_SIGNAL            "Diagnostics"
 

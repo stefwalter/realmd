@@ -66,7 +66,7 @@ realm_samba_init (RealmSamba *self)
 	g_ptr_array_add (entries, entry);
 
 	entry = g_variant_new_dict_entry (g_variant_new_string ("client-software"),
-	                                  g_variant_new_string ("samba-winbind"));
+	                                  g_variant_new_string ("winbind"));
 	g_ptr_array_add (entries, entry);
 
 	details = g_variant_new_array (G_VARIANT_TYPE ("{ss}"),

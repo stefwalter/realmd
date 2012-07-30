@@ -203,10 +203,8 @@ realm_diagnostics_signal (GDBusMethodInvocation *invocation,
 		return;
 
 	operation_id = g_object_get_qdata (G_OBJECT (invocation), operation_id_quark);
-	if (operation_id == NULL) {
-		g_warning ("method invocation not marked with operation_id");
+	if (operation_id == NULL)
 		operation_id = "";
-	}
 
 	g_dbus_connection_emit_signal (the_connection, g_dbus_method_invocation_get_sender (invocation),
 	                               REALM_DBUS_SERVICE_PATH, REALM_DBUS_SERVICE_INTERFACE,

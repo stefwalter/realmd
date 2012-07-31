@@ -185,7 +185,7 @@ on_join_do_winbind (GObject *source,
 	RealmSamba *self = REALM_SAMBA (g_async_result_get_source_object (G_ASYNC_RESULT (res)));
 	GHashTable *settings = NULL;
 	GError *error = NULL;
-	gchar *workgroup = NULL;
+	const gchar *workgroup = NULL;
 
 	realm_samba_enroll_join_finish (result, &settings, &error);
 	if (error == NULL) {
@@ -214,7 +214,6 @@ on_join_do_winbind (GObject *source,
 
 	if (settings)
 		g_hash_table_unref (settings);
-	g_free (workgroup);
 	g_object_unref (self);
 	g_object_unref (res);
 }

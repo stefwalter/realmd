@@ -354,6 +354,8 @@ realm_sssd_notify (GObject *obj,
 {
 	if (g_str_equal (spec->name, "name"))
 		update_properties (REALM_SSSD (obj));
+
+	G_OBJECT_CLASS (realm_sssd_parent_class)->notify (obj, spec);
 }
 
 static void

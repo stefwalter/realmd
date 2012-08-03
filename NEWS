@@ -1,3 +1,11 @@
+0.6
+ * Switch default AD client to sssd
+ * Support building with automake 1.12.x
+ * Cleaner DBus API which handles password based authentication
+   required for samba3's net command.
+ * Remove support for out of process providers
+ * Lots of bug fixes
+
 0.5
  * Implement login policy concept
  * Make the daemon exit-after-timeout work better

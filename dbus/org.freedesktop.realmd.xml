@@ -106,7 +106,7 @@
 		<!--
 		 * Credentials: (ssv)
 		 *  type: 'ccache', 'password', 'automatic'
-		 *  who: 'administrator', 'user', 'computer', 'secret'
+		 *  owner: 'administrator', 'user', 'computer', 'secret'
 		 *  contents: ay, ss, b
 		-->
 		<property name="SupportedEnrollCredentials" type="a(ss)" access="read"/>

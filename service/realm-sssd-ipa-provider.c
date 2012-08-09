@@ -45,7 +45,6 @@ enum {
 	PROP_SSSD_CONFIG,
 };
 
-#define   REALM_DBUS_SSSD_IPA_NAME                    "org.freedesktop.realmd.SssdIpa"
 #define   REALM_DBUS_SSSD_IPA_PATH                    "/org/freedesktop/realmd/SssdIpa"
 
 G_DEFINE_TYPE (RealmSssdIpaProvider, realm_sssd_ipa_provider, REALM_TYPE_PROVIDER);

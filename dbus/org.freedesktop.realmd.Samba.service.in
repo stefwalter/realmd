@@ -1,4 +1,0 @@
-[D-BUS Service]
-Name=org.freedesktop.realmd.Samba
-Exec=@privatedir@/realmd
-User=root

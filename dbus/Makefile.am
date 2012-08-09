@@ -6,10 +6,7 @@ dbusservice_DATA = \
 
 servicedir       = $(DBUS_SERVICES_DIR)
 service_in_files = \
-	org.freedesktop.realmd.service.in \
-	org.freedesktop.realmd.Samba.service.in \
-	org.freedesktop.realmd.SssdAd.service.in \
-	org.freedesktop.realmd.SssdIpa.service.in
+	org.freedesktop.realmd.service.in
 service_DATA     = $(service_in_files:.service.in=.service)
 
 noinst_LIBRARIES = \

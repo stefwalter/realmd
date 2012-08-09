@@ -1,4 +1,0 @@
-[D-BUS Service]
-Name=org.freedesktop.realmd.SssdIpa
-Exec=@privatedir@/realmd
-User=root

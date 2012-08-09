@@ -17,7 +17,6 @@
 #include "realm-adcli-enroll.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
-#include "realm-debug.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
 #include "realm-ini-config.h"

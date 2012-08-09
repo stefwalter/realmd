@@ -15,8 +15,6 @@
 #include "config.h"
 
 #include "realm-daemon.h"
-#define DEBUG_FLAG REALM_DEBUG_SERVICE
-#include "realm-debug.h"
 #include "realm-dbus-constants.h"
 #include "realm-dbus-generated.h"
 #include "realm-diagnostics.h"
@@ -631,8 +629,8 @@ realm_kerberos_authorize_method (GDBusObjectSkeleton    *object,
 	}
 
 	if (ret == FALSE) {
-		realm_debug ("rejecting access to: %s.%s method on %s",
-		             interface, method, g_dbus_method_invocation_get_object_path (invocation));
+		g_debug ("rejecting access to: %s.%s method on %s",
+		         interface, method, g_dbus_method_invocation_get_object_path (invocation));
 		g_dbus_method_invocation_return_dbus_error (invocation, REALM_DBUS_ERROR_NOT_AUTHORIZED,
 		                                            _("Not authorized to perform this action"));
 	}
@@ -873,13 +871,7 @@ kinit_closure_free (gpointer data)
 	g_free (kinit->principal);
 	g_free (kinit->password);
 	g_free (kinit->enctypes);
-	if (kinit->ccache_file) {
-		if (g_unlink (kinit->ccache_file) < 0) {
-			g_warning ("couldn't remove kerberos cache file: %s: %s",
-			           kinit->ccache_file, g_strerror (errno));
-		}
-		g_free (kinit->ccache_file);
-	}
+	realm_keberos_ccache_delete_and_free (kinit->ccache_file);
 	g_slice_free (KinitClosure, kinit);
 }
 
@@ -1071,8 +1063,7 @@ realm_kerberos_kinit_ccache_finish (RealmKerberos *self,
 void
 realm_keberos_ccache_delete_and_free (gchar *ccache_file)
 {
-	if (!realm_debug_flag_is_set (REALM_DEBUG_LEAVE_TEMP_FILES) &&
-	    g_unlink (ccache_file) < 0) {
+	if (!realm_daemon_has_debug_flag () && g_unlink (ccache_file) < 0) {
 		g_warning ("couldn't remove kerberos cache file: %s: %s",
 		           ccache_file, g_strerror (errno));
 	}

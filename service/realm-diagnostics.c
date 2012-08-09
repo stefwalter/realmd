@@ -14,8 +14,6 @@
 
 #include "config.h"
 
-#define DEBUG_FLAG REALM_DEBUG_DIAGNOSTICS
-#include "realm-debug.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
 
@@ -75,13 +73,11 @@ log_syslog_and_debug (int log_level,
 		*ptr = '\0';
 		if (line_buffer && line_buffer->len > 0) {
 			syslog (log_level, "%s%s", line_buffer->str, at);
-			if (realm_debugging)
-				g_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s%s", line_buffer->str, at);
+			g_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s%s", line_buffer->str, at);
 			g_string_set_size (line_buffer, 0);
 		} else {
 			syslog (log_level, "%s", at);
-			if (realm_debugging)
-				g_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s", at);
+			g_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s", at);
 		}
 
 		*ptr = '\n';

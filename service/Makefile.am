@@ -21,7 +21,6 @@ realmd_SOURCES = \
 	realm-all-provider.c realm-all-provider.h \
 	realm-command.c realm-command.h \
 	realm-daemon.c realm-daemon.h \
-	realm-debug.c realm-debug.h \
 	realm-diagnostics.c realm-diagnostics.h \
 	realm-discovery.c realm-discovery.h \
 	realm-errors.c realm-errors.h \

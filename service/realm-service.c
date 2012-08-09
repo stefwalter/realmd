@@ -14,8 +14,6 @@
 
 #include "config.h"
 
-#define DEBUG_FLAG REALM_DEBUG_SERVICE
-#include "realm-debug.h"
 #include "realm-service.h"
 #include "realm-service-systemd.h"
 #include "realm-service-upstart.h"
@@ -75,7 +73,7 @@ on_service_new_upstart (GObject *source,
 		g_simple_async_result_take_error (async, error);
 
 	} else {
-		realm_debug ("Connected to Upstart, discovered the service manager");
+		g_debug ("Connected to Upstart, discovered the service manager");
 		discovered_service_new = realm_service_upstart_new;
 		discovered_service_new_finish = realm_service_upstart_new_finish;
 		init->service = service;
@@ -99,7 +97,7 @@ on_service_new_systemd (GObject *source,
 
 	/* If no such service, then try Upstart */
 	if (g_error_matches (error, G_DBUS_ERROR, G_DBUS_ERROR_SERVICE_UNKNOWN)) {
-		realm_debug ("Couldn't connect to systemd, trying Upstart");
+		g_debug ("Couldn't connect to systemd, trying Upstart");
 		realm_service_upstart_new (init->name, on_service_new_upstart,
 		                           g_object_ref (async));
 
@@ -110,7 +108,7 @@ on_service_new_systemd (GObject *source,
 
 	/* Success yay */
 	} else {
-		realm_debug ("Connected to systemd, discovered the service manager");
+		g_debug ("Connected to systemd, discovered the service manager");
 		discovered_service_new = realm_service_systemd_new;
 		discovered_service_new_finish = realm_service_systemd_new_finish;
 		init->service = service;
@@ -138,7 +136,7 @@ realm_service_new (const gchar *service_name,
 
 	/* Discover which service type works */
 	if (discovered_service_new == NULL) {
-		realm_debug ("No service manager discovered, trying systemd");
+		g_debug ("No service manager discovered, trying systemd");
 		async = g_simple_async_result_new (NULL, callback, user_data,
 		                                   realm_service_new);
 		init = g_slice_new0 (InitClosure);

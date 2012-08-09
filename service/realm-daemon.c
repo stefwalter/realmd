@@ -18,8 +18,6 @@
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-dbus-generated.h"
-#define DEBUG_FLAG REALM_DEBUG_SERVICE
-#include "realm-debug.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
 #include "realm-kerberos-provider.h"
@@ -32,6 +30,8 @@
 #include <glib/gi18n.h>
 
 #include <polkit/polkit.h>
+
+#include <stdio.h>
 
 #define TIMEOUT        60 /* seconds */
 #define HOLD_INTERNAL  (GUINT_TO_POINTER (~0))
@@ -46,6 +46,7 @@ static guint service_timeout_id = 0;
 static guint service_bus_name_owner_id = 0;
 static gboolean service_bus_name_claimed = FALSE;
 static GDBusObjectManagerServer *object_server = NULL;
+static gboolean service_debug = FALSE;
 
 typedef struct {
 	guint watch;
@@ -102,6 +103,12 @@ realm_daemon_unlock_for_action (GDBusMethodInvocation *invocation)
 
 	/* Matches the hold in realm_daemon_lock_for_action() */
 	realm_daemon_release ("current-invocation");
+}
+
+gboolean
+realm_daemon_has_debug_flag (void)
+{
+	return service_debug;
 }
 
 void
@@ -236,7 +243,7 @@ on_service_timeout (gpointer data)
 
 	now = g_get_monotonic_time ();
 	if (now >= service_quit_at) {
-		realm_debug ("quitting realmd service after timeout");
+		g_debug ("quitting realmd service after timeout");
 		g_main_loop_quit (main_loop);
 
 	} else {
@@ -358,7 +365,7 @@ on_name_acquired (GDBusConnection *connection,
                   gpointer user_data)
 {
 	service_bus_name_claimed = TRUE;
-	realm_debug ("claimed name on bus: %s", name);
+	g_debug ("claimed name on bus: %s", name);
 	realm_daemon_poke ();
 }
 
@@ -400,7 +407,7 @@ on_bus_get_connection (GObject *source,
 		g_error_free (error);
 
 	} else {
-		realm_debug ("connected to bus");
+		g_debug ("connected to bus");
 
 		/* Add a filter which keeps service alive */
 		self_name = g_dbus_connection_get_unique_name (connection);
@@ -448,9 +455,32 @@ on_bus_get_connection (GObject *source,
 	realm_daemon_release ("main");
 }
 
-static GOptionEntry option_entries[] = {
-	{ NULL }
-};
+static void
+on_realm_log_debug (const gchar *log_domain,
+                    GLogLevelFlags log_level,
+                    const gchar *message,
+                    gpointer user_data)
+{
+	GString *string;
+	const gchar *progname;
+	int ret;
+
+	string = g_string_new (NULL);
+
+	progname = g_get_prgname ();
+	g_string_append_printf (string, "(%s:%lu): %s%sDEBUG: %s\n",
+	                        progname ? progname : "process", (gulong)getpid (),
+	                        log_domain ? log_domain : "", log_domain ? "-" : "",
+	                        message ? message : "(NULL) message");
+
+	ret = write (1, string->str, string->len);
+
+	/* Yes this is dumb, but gets around compiler warning */
+	if (ret < 0)
+		fprintf (stderr, "couldn't write debug output");
+
+	g_string_free (string, TRUE);
+}
 
 int
 main (int argc,
@@ -459,6 +489,12 @@ main (int argc,
 	RealmDbusService *service;
 	GOptionContext *context;
 	GError *error = NULL;
+
+	GOptionEntry option_entries[] = {
+		{ "debug", 'd', 0, G_OPTION_ARG_NONE, &service_debug,
+		  "Turn on debug output, prevent timeout exit", NULL },
+		{ NULL }
+	};
 
 #ifdef ENABLE_NLS
 	bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
@@ -477,10 +513,16 @@ main (int argc,
 		return 2;
 	}
 
-	if (g_getenv ("REALM_PERSIST"))
-		service_persist = 1;
+	if (g_getenv ("REALM_DEBUG"))
+		service_debug = TRUE;
+	if (g_getenv ("REALM_PERSIST") || service_debug)
+		service_persist = TRUE;
 
-	realm_debug_init ();
+	if (service_debug) {
+		g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,
+		                   on_realm_log_debug, NULL);
+	}
+
 	realm_error = realm_error_quark ();
 	service_clients = g_hash_table_new_full (g_str_hash, g_str_equal,
 	                                         g_free, realm_client_unwatch_and_free);
@@ -494,7 +536,7 @@ main (int argc,
 	g_signal_connect (service, "handle-set-locale", G_CALLBACK (on_service_set_locale), NULL);
 	g_signal_connect (service, "handle-cancel", G_CALLBACK (on_service_cancel), NULL);
 
-	realm_debug ("starting service");
+	g_debug ("starting service");
 	g_bus_get (G_BUS_TYPE_SYSTEM, NULL, on_bus_get_connection, &object_server);
 
 	main_loop = g_main_loop_new (NULL, FALSE);
@@ -512,7 +554,7 @@ main (int argc,
 	g_clear_object (&polkit_authority);
 	G_UNLOCK (polkit_authority);
 
-	realm_debug ("stopping service");
+	g_debug ("stopping service");
 	realm_settings_uninit ();
 	g_main_loop_unref (main_loop);
 	g_option_context_free (context);

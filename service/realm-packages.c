@@ -14,8 +14,6 @@
 
 #include "config.h"
 
-#define DEBUG_FLAG REALM_DEBUG_PACKAGES
-#include "realm-debug.h"
 #include "realm-diagnostics.h"
 #include "realm-daemon.h"
 #include "realm-packages.h"
@@ -66,33 +64,33 @@ on_install_progress (PkProgress *progress,
 	switch (type) {
 	case PK_PROGRESS_TYPE_PACKAGE_ID:
 		g_object_get (progress, "package-id", &string, NULL);
-		realm_debug ("package-id: %s", string);
+		g_debug ("package-id: %s", string);
 		g_free (string);
 		break;
 	case PK_PROGRESS_TYPE_TRANSACTION_ID:
 		g_object_get (progress, "transaction-id", &string, NULL);
-		realm_debug ("transaction-id: %s", string);
+		g_debug ("transaction-id: %s", string);
 		g_free (string);
 		break;
 	case PK_PROGRESS_TYPE_PERCENTAGE:
 		g_object_get (progress, "percentage", &number, NULL);
-		realm_debug ("percentage: %d", number);
+		g_debug ("percentage: %d", number);
 		break;
 	case PK_PROGRESS_TYPE_STATUS:
 		g_object_get (progress, "status", &unumber, NULL);
-		realm_debug ("status: %s", pk_status_enum_to_string (unumber));
+		g_debug ("status: %s", pk_status_enum_to_string (unumber));
 		break;
 	case PK_PROGRESS_TYPE_ELAPSED_TIME:
 		g_object_get (progress, "elapsed-time", &unumber, NULL);
-		realm_debug ("elapsed-time: %u", unumber);
+		g_debug ("elapsed-time: %u", unumber);
 		break;
 	case PK_PROGRESS_TYPE_REMAINING_TIME:
 		g_object_get (progress, "remaining-time", &unumber, NULL);
-		realm_debug ("remaining-time: %u", unumber);
+		g_debug ("remaining-time: %u", unumber);
 		break;
 	case PK_PROGRESS_TYPE_SPEED:
 		g_object_get (progress, "speed", &unumber, NULL);
-		realm_debug ("speed: %u", unumber);
+		g_debug ("speed: %u", unumber);
 		break;
 	case PK_PROGRESS_TYPE_INVALID:
 	case PK_PROGRESS_TYPE_ALLOW_CANCEL:

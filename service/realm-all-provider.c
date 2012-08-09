@@ -16,8 +16,6 @@
 
 #include "realm-all-provider.h"
 #include "realm-daemon.h"
-#define DEBUG_FLAG REALM_DEBUG_PROVIDER
-#include "realm-debug.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
 #include "realm-dbus-constants.h"

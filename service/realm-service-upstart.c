@@ -14,8 +14,6 @@
 
 #include "config.h"
 
-#define DEBUG_FLAG REALM_DEBUG_SERVICE
-#include "realm-debug.h"
 #include "realm-diagnostics.h"
 #include "realm-service.h"
 #include "realm-service-upstart.h"
@@ -50,7 +48,7 @@ realm_service_upstart_dbus_finish (RealmService *service,
 		g_variant_unref (retval);
 
 	if (lerror != NULL) {
-		realm_debug ("Service call failed: %s: %s", self->name, lerror->message);
+		g_debug ("Service call failed: %s: %s", self->name, lerror->message);
 		g_propagate_error (error, lerror);
 	}
 
@@ -77,7 +75,7 @@ realm_service_upstart_enable (RealmService *service,
 	GSimpleAsyncResult *async;
 
 	/* TODO: Not sure what to do here for upstart */
-	realm_debug ("Enabling Upstart service '%s' is not implemented", self->name);
+	g_debug ("Enabling Upstart service '%s' is not implemented", self->name);
 
 	async = g_simple_async_result_new (G_OBJECT (service), callback, user_data,
 	                                   realm_service_upstart_stub_finish);
@@ -96,7 +94,7 @@ realm_service_upstart_disable (RealmService *service,
 	GSimpleAsyncResult *async;
 
 	/* TODO: Not sure what to do here for upstart */
-	realm_debug ("Disabling Upstart service '%s' is not implemented", self->name);
+	g_debug ("Disabling Upstart service '%s' is not implemented", self->name);
 
 	async = g_simple_async_result_new (G_OBJECT (service), callback, user_data,
 	                                   realm_service_upstart_stub_finish);
@@ -242,11 +240,11 @@ on_upstart_created (GObject *source,
 	                                                   result, &error));
 
 	if (error == NULL) {
-		realm_debug ("Connected to Upstart job for service: %s", upstart->name);
+		g_debug ("Connected to Upstart job for service: %s", upstart->name);
 		upstart->service = self;
 
 	} else {
-		realm_debug ("Failed to create proxy for Upstart job: %s", error->message);
+		g_debug ("Failed to create proxy for Upstart job: %s", error->message);
 		g_simple_async_result_take_error (async, error);
 	}
 
@@ -268,7 +266,7 @@ on_upstart_get_job (GObject *source,
 	retval = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), result, &error);
 	if (error == NULL) {
 		g_variant_get (retval, "(&o)", &job_path);
-		realm_debug ("GetJobByName returned object path '%s', creating proxy", job_path);
+		g_debug ("GetJobByName returned object path '%s', creating proxy", job_path);
 
 		g_async_initable_new_async (REALM_TYPE_SERVICE_UPSTART,
 		                            G_PRIORITY_DEFAULT, NULL,
@@ -282,7 +280,7 @@ on_upstart_get_job (GObject *source,
 		                            NULL);
 		g_variant_unref (retval);
 	} else {
-		realm_debug ("GetJobByName failed: %s", error->message);
+		g_debug ("GetJobByName failed: %s", error->message);
 		g_simple_async_result_take_error (async, error);
 		g_simple_async_result_complete (async);
 	}
@@ -302,7 +300,7 @@ on_upstart_bus (GObject *source,
 
 	conn = g_bus_get_finish (result, &error);
 	if (error == NULL) {
-		realm_debug ("Calling Upstart GetJobByName for service: %s", upstart->name);
+		g_debug ("Calling Upstart GetJobByName for service: %s", upstart->name);
 		g_dbus_connection_call (conn, "com.ubuntu.Upstart",
 		                        "/com/ubuntu/Upstart",
 		                        "com.ubuntu.Upstart0_6",
@@ -313,7 +311,7 @@ on_upstart_bus (GObject *source,
 		                        -1, NULL, on_upstart_get_job,
 		                        g_object_ref (async));
 	} else {
-		realm_debug ("Failed to connect to system bus: %s", error->message);
+		g_debug ("Failed to connect to system bus: %s", error->message);
 		g_simple_async_result_take_error (async, error);
 		g_simple_async_result_complete (async);
 	}
@@ -329,7 +327,7 @@ realm_service_upstart_new (const gchar *service_name,
 	GSimpleAsyncResult *async;
 	UpstartClosure *upstart;
 
-	realm_debug ("Connecting to Upstart for service: %s", service_name);
+	g_debug ("Connecting to Upstart for service: %s", service_name);
 
 	async = g_simple_async_result_new (NULL, callback, user_data,
 	                                   realm_service_upstart_new);

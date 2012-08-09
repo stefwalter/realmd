@@ -15,8 +15,6 @@
 #include "config.h"
 
 #include "realm-daemon.h"
-#define DEBUG_FLAG REALM_DEBUG_SERVICE
-#include "realm-debug.h"
 #include "realm-dbus-constants.h"
 #include "realm-dbus-generated.h"
 #include "realm-diagnostics.h"
@@ -138,7 +136,7 @@ realm_provider_authorize_method (GDBusObjectSkeleton *skeleton,
 	}
 
 	if (ret == FALSE) {
-		realm_debug ("rejecting access to: %s.%s method on %s",
+		g_debug ("rejecting access to: %s.%s method on %s",
 		             interface, method, g_dbus_method_invocation_get_object_path (invocation));
 		g_dbus_method_invocation_return_dbus_error (invocation, REALM_DBUS_ERROR_NOT_AUTHORIZED,
 		                                            _("Not authorized to perform this action"));

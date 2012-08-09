@@ -16,7 +16,6 @@
 
 #include "realm-command.h"
 #include "realm-daemon.h"
-#include "realm-debug.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
 #include "realm-discovery.h"

@@ -15,8 +15,6 @@
 #include "config.h"
 
 #include "realm-daemon.h"
-#define DEBUG_FLAG REALM_DEBUG_PROCESS
-#include "realm-debug.h"
 #include "realm-command.h"
 #include "realm-diagnostics.h"
 #include "realm-settings.h"
@@ -76,7 +74,7 @@ command_closure_free (gpointer data)
 static void
 complete_source_is_done (ProcessSource *process_source)
 {
-	realm_debug ("all fds closed and process exited, completing");
+	g_debug ("all fds closed and process exited, completing");
 
 	g_assert (process_source->child_sig == 0);
 
@@ -97,7 +95,7 @@ close_fd (int *fd)
 {
 	g_assert (fd);
 	if (*fd >= 0) {
-		realm_debug ("closing fd: %d", *fd);
+		g_debug ("closing fd: %d", *fd);
 		close (*fd);
 	}
 	*fd = -1;
@@ -323,7 +321,7 @@ on_unix_process_child_exited (GPid pid,
 	gint code;
 	guint i;
 
-	realm_debug ("process exited: %d", (int)pid);
+	g_debug ("process exited: %d", (int)pid);
 
 	g_spawn_close_pid (process_source->child_pid);
 	process_source->child_pid = 0;
@@ -374,7 +372,7 @@ on_cancellable_cancelled (GCancellable *cancellable,
 {
 	ProcessSource *process_source = user_data;
 
-	realm_debug ("process cancelled");
+	g_debug ("process cancelled");
 
 	/* Set an error, which is respected when this actually completes. */
 	g_simple_async_result_set_error (process_source->res, G_IO_ERROR, G_IO_ERROR_CANCELLED,
@@ -383,7 +381,7 @@ on_cancellable_cancelled (GCancellable *cancellable,
 
 	/* Try and kill the child process */
 	if (process_source->child_pid) {
-		realm_debug ("sending term signal to process: %d",
+		g_debug ("sending term signal to process: %d",
 		            (int)process_source->child_pid);
 		kill (process_source->child_pid, SIGTERM);
 	}
@@ -455,15 +453,15 @@ realm_command_runv_async (gchar **argv,
 	child_fds[FD_OUTPUT] = 1;
 	child_fds[FD_ERROR] = 2;
 
-	if (realm_debugging) {
+	if (g_getenv ("G_MESSAGES_DEBUG")) {
 		gchar *command = g_strjoinv (" ", argv);
-		realm_debug ("running command: %s", command);
+		g_debug ("running command: %s", command);
 		realm_diagnostics_info (invocation, "%s", command);
 		g_free (command);
 
 		if (environ) {
 			gchar *environment = g_strjoinv (", ", (gchar**)environ);
-			realm_debug ("process environment: %s", environment);
+			g_debug ("process environment: %s", environment);
 			g_free (environment);
 		}
 	}
@@ -487,7 +485,7 @@ realm_command_runv_async (gchar **argv,
 		return;
 	}
 
-	realm_debug ("process started: %d", (int)pid);
+	g_debug ("process started: %d", (int)pid);
 
 	source = g_source_new (&process_source_funcs, sizeof (ProcessSource));
 

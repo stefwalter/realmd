@@ -14,8 +14,6 @@
 
 #include "config.h"
 
-#define DEBUG_FLAG REALM_DEBUG_PROVIDER
-#include "realm-debug.h"
 #include "realm-ipa-discover.h"
 #include "realm-command.h"
 #include "realm-dbus-constants.h"
@@ -396,7 +394,7 @@ on_read_http_response (GObject *source,
 	bytes = read_all_bytes_finish (G_INPUT_STREAM (source), result, &error);
 
 	if (!self->peer_certificate || !self->peer_identity) {
-		realm_debug ("No peer certificate or peer identity received.");
+		g_debug ("No peer certificate or peer identity received.");
 
 	} else if (error == NULL) {
 		bytes = strip_http_header (bytes);
@@ -490,7 +488,7 @@ on_connect_to_host (GObject *source,
 	           g_error_matches (error, G_IO_ERROR, G_IO_ERROR_HOST_UNREACHABLE) ||
 	           g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NETWORK_UNREACHABLE) ||
 	           g_error_matches (error, G_IO_ERROR, G_IO_ERROR_TIMED_OUT)) {
-		realm_debug ("Couldn't connect to check for IPA domain: %s", error->message);
+		g_debug ("Couldn't connect to check for IPA domain: %s", error->message);
 		ipa_discover_complete (self);
 
 	} else {

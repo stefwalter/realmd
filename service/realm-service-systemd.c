@@ -14,8 +14,6 @@
 
 #include "config.h"
 
-#define DEBUG_FLAG REALM_DEBUG_SERVICE
-#include "realm-debug.h"
 #include "realm-diagnostics.h"
 #include "realm-service.h"
 #include "realm-service-systemd.h"
@@ -50,7 +48,7 @@ realm_service_systemd_dbus_finish (RealmService *service,
 		g_variant_unref (retval);
 
 	if (lerror != NULL) {
-		realm_debug ("Service call failed: %s: %s", self->name, lerror->message);
+		g_debug ("Service call failed: %s: %s", self->name, lerror->message);
 		g_propagate_error (error, lerror);
 	}
 
@@ -215,10 +213,10 @@ on_systemd_ping (GObject *source,
 	retval = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source),
 	                                        result, &error);
 	if (error == NULL) {
-		realm_debug ("Pinged systemd successfully");
+		g_debug ("Pinged systemd successfully");
 		g_variant_unref (retval);
 	} else {
-		realm_debug ("Pinging systemd failed: %s", error->message);
+		g_debug ("Pinging systemd failed: %s", error->message);
 		g_simple_async_result_take_error (async, error);
 	}
 
@@ -239,7 +237,7 @@ on_systemd_created (GObject *source,
 	                                                  result, &error));
 
 	if (error == NULL) {
-		realm_debug ("Pinging systemd to make sure it's running");
+		g_debug ("Pinging systemd to make sure it's running");
 		g_simple_async_result_set_op_res_gpointer (async, self, g_object_unref);
 		g_dbus_connection_call (g_dbus_proxy_get_connection (self),
 		                        g_dbus_proxy_get_name (self),
@@ -249,7 +247,7 @@ on_systemd_created (GObject *source,
 		                        G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START,
 		                        -1, NULL, on_systemd_ping, g_object_ref (async));
 	} else {
-		realm_debug ("Failed to connect to systemd: %s", error->message);
+		g_debug ("Failed to connect to systemd: %s", error->message);
 		g_simple_async_result_take_error (async, error);
 		g_simple_async_result_complete (async);
 	}
@@ -265,7 +263,7 @@ realm_service_systemd_new (const gchar *service_name,
 	GSimpleAsyncResult *async;
 	gchar *service;
 
-	realm_debug ("Connecting to systemd for service: %s", service_name);
+	g_debug ("Connecting to systemd for service: %s", service_name);
 
 	service = g_strdup_printf ("%s.service", service_name);
 	async = g_simple_async_result_new (NULL, callback, user_data,

@@ -14,6 +14,8 @@
 
 #include "config.h"
 
+#define DEBUG_FLAG REALM_DEBUG_PROVIDER
+#include "realm-debug.h"
 #include "realm-ipa-discover.h"
 #include "realm-command.h"
 #include "realm-dbus-constants.h"
@@ -504,6 +506,14 @@ on_connect_to_host (GObject *source,
 		output = g_io_stream_get_output_stream (self->current_connection);
 		write_all_bytes_async (output, self->http_request,
 		                       on_write_http_request, g_object_ref (self));
+
+	/* Errors that mean no domain discovered */
+	} else if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CONNECTION_REFUSED) ||
+	           g_error_matches (error, G_IO_ERROR, G_IO_ERROR_HOST_UNREACHABLE) ||
+	           g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NETWORK_UNREACHABLE) ||
+	           g_error_matches (error, G_IO_ERROR, G_IO_ERROR_TIMED_OUT)) {
+		realm_debug ("Couldn't connect to check for IPA domain: %s", error->message);
+		ipa_discover_step (self);
 
 	} else {
 		ipa_discover_take_error (self, "Couldn't connect to check for IPA domain", error);

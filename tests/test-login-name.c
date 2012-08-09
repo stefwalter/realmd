@@ -26,7 +26,7 @@ typedef struct {
 } Test;
 
 typedef struct {
-	const gchar *format;
+	const gchar *const *formats;
 	const gchar *user;
 	const gchar *login;
 } Fixture;
@@ -52,7 +52,7 @@ test_format_login (Test *test,
 	const Fixture *fixture = data;
 	gchar *login;
 
-	login = realm_login_name_format (fixture->format, fixture->user);
+	login = realm_login_name_format (fixture->formats[0], fixture->user);
 	g_assert_cmpstr (login, ==, fixture->login);
 	g_free (login);
 }
@@ -64,7 +64,7 @@ test_parse_login (Test *test,
 	const Fixture *fixture = data;
 	gchar *user;
 
-	user = realm_login_name_parse (fixture->format, FALSE, fixture->login);
+	user = realm_login_name_parse (fixture->formats, FALSE, fixture->login);
 	if (fixture->user == NULL)
 		g_assert (user == NULL);
 	else
@@ -83,10 +83,14 @@ test_parse_all (Test *test,
 		"Domain\\Three",
 		NULL,
 	};
+	const gchar *const formats[] = {
+		"Domain\\%s",
+		NULL
+	};
 
 	gchar **changed;
 
-	changed = realm_login_name_parse_all ("Domain\\%s", FALSE, original, &failed);
+	changed = realm_login_name_parse_all (formats, FALSE, original, &failed);
 	g_assert (changed != NULL);
 	g_assert_cmpstr (changed[0], ==, "User");
 	g_assert_cmpstr (changed[1], ==, "Two");
@@ -107,10 +111,14 @@ test_parse_all_failed (Test *test,
 		"Wheeee",
 		NULL,
 	};
+	const gchar *const formats[] = {
+		"Domain\\%s",
+		NULL
+	};
 
 	gchar **changed;
 
-	changed = realm_login_name_parse_all ("Domain\\%s", FALSE, original, &failed);
+	changed = realm_login_name_parse_all (formats, FALSE, original, &failed);
 	g_assert (changed == NULL);
 	g_assert_cmpstr (failed, ==, "Wheeee");
 
@@ -122,26 +130,42 @@ int
 main (int argc,
       char **argv)
 {
+	static const gchar *const domain_formats[] = {
+		"Domain\\%s",
+		NULL
+	};
+
+	static const gchar *const prefix_suffix_formats[] = {
+		"prefix|%s|suffix",
+		NULL
+	};
+
+	static const gchar *const email_formats[] = {
+		"%s@domain",
+		NULL
+	};
+
+
 	static const Fixture format_fixtures[] = {
-		{ "Domain\\%s", "User", "Domain\\User" },
-		{ "prefix|%s|suffix", "User", "prefix|User|suffix" },
-		{ "%s@domain", "user", "user@domain" },
+		{ domain_formats, "User", "Domain\\User" },
+		{ prefix_suffix_formats, "User", "prefix|User|suffix" },
+		{ email_formats, "user", "user@domain" },
 	};
 
 	static const Fixture parse_fixtures[] = {
-		{ "Domain\\%s", "User", "Domain\\User" },
-		{ "prefix|%s|suffix", "User", "prefix|User|suffix" },
-		{ "%s@domain", "user", "user@domain" },
-		{ "Domain\\%s", NULL, "Another\\User" },
-		{ "prefix|%s|suffix", NULL, "different|User|suffix" },
-		{ "%s@domain", NULL, "user@another" },
+		{ domain_formats, "User", "Domain\\User" },
+		{ prefix_suffix_formats, "User", "prefix|User|suffix" },
+		{ email_formats, "user", "user@domain" },
+		{ domain_formats, NULL, "Another\\User" },
+		{ prefix_suffix_formats, NULL, "different|User|suffix" },
+		{ email_formats, NULL, "user@another" },
 	};
 
 	gchar *name;
 	gint i;
 
 	g_test_init (&argc, &argv, NULL);
-	g_set_prgname ("test-login-format");
+	g_set_prgname ("test-login-name");
 
 	for (i = 0; i < G_N_ELEMENTS (format_fixtures); i++) {
 		name = g_strdup_printf ("/realmd/login-name/format_%s", format_fixtures[i].login);

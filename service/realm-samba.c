@@ -498,7 +498,7 @@ static void
 update_properties (RealmSamba *self)
 {
 	GPtrArray *permitted;
-	gchar *login_format;
+	gchar *login_formats[2] = { NULL, NULL };
 	const gchar *name;
 	gchar *domain;
 	gchar **values;
@@ -517,12 +517,13 @@ update_properties (RealmSamba *self)
 	/* Setup the workgroup property */
 	prefix = lookup_login_prefix (self);
 	if (prefix != NULL) {
-		login_format = g_strdup_printf ("%s%%s", prefix);
-		g_object_set (self, "login-format", login_format, NULL);
-		g_free (login_format);
+		login_formats[0] = g_strdup_printf ("%s%%s", prefix);
+		g_object_set (self, "login-formats", login_formats, NULL);
+		g_free (login_formats[0]);
 		g_free (prefix);
 	} else {
-		g_object_set (self, "login-format", "%s", NULL);
+		login_formats[0] = "%s";
+		g_object_set (self, "login-formats", login_formats, NULL);
 	}
 
 	permitted = g_ptr_array_new_full (0, g_free);

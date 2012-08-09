@@ -21,11 +21,11 @@
 
 G_BEGIN_DECLS
 
-gchar *        realm_login_name_parse     (const gchar *format,
+gchar *        realm_login_name_parse     (const gchar *const *formats,
                                            gboolean lower,
                                            const gchar *login);
 
-gchar **       realm_login_name_parse_all (const gchar *format,
+gchar **       realm_login_name_parse_all (const gchar *const *formats,
                                            gboolean lower,
                                            const gchar **logins,
                                            const gchar **failed);

@@ -124,12 +124,12 @@
 		</method>
 
 		<!--
-		 * The format for user logins when this realm is enrolled.
+		 * The formats for user logins when this realm is enrolled.
 		 * This property may not be valid unless machine is enrolled
 		 * in this realm. The format contains a %s where the user name
 		 * goes eg: "DOMAIN\%s"
 		-->
-		<property name="LoginFormat" type="s" access="read"/>
+		<property name="LoginFormats" type="as" access="read"/>
 
 		<!--
 		 * The policy for logins using this realm.
@@ -138,7 +138,7 @@
 		<property name="LoginPolicy" type="s" access="read"/>
 
 		<!--
-		 * The list of permitted logins in the LoginFormat style
+		 * The list of permitted logins in the LoginFormats styles
 		-->
 		<property name="PermittedLogins" type="as" access="read"/>
 

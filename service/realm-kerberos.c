@@ -653,16 +653,16 @@ realm_kerberos_parse_login (RealmKerberos *self,
                             gboolean lower,
                             const gchar *login)
 {
-	const gchar *format;
+	const gchar *const *formats;
 
 	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
 	g_return_val_if_fail (login != NULL, NULL);
 
-	format = realm_dbus_kerberos_get_login_format (REALM_DBUS_KERBEROS (self));
-	if (format == NULL)
+	formats = realm_dbus_kerberos_get_login_formats (REALM_DBUS_KERBEROS (self));
+	if (formats == NULL)
 		return NULL;
 
-	return realm_login_name_parse (format, lower, login);
+	return realm_login_name_parse (formats, lower, login);
 }
 
 gchar **
@@ -672,25 +672,25 @@ realm_kerberos_parse_logins (RealmKerberos *self,
                              GError **error)
 {
 	const gchar *failed = NULL;
-	const gchar *format;
+	const gchar *const *formats;
 	gchar **result;
 
 	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
 
-	format = realm_dbus_kerberos_get_login_format (REALM_DBUS_KERBEROS (self));
-	if (format == NULL) {
+	formats = realm_dbus_kerberos_get_login_formats (REALM_DBUS_KERBEROS (self));
+	if (formats == NULL) {
 		g_set_error (error, REALM_ERROR,
 		             REALM_ERROR_NOT_ENROLLED,
 		             _("The realm does not allow specifying logins"));
 		return NULL;
 	}
 
-	result = realm_login_name_parse_all (format, lower, logins, &failed);
+	result = realm_login_name_parse_all (formats, lower, logins, &failed);
 	if (result == NULL) {
 		g_set_error (error, G_DBUS_ERROR,
 		             G_DBUS_ERROR_INVALID_ARGS,
-		             _("Invalid login argument%s%s%s does not match the login format '%s'"),
-		             failed ? " '" : "", failed, failed ? "'" : "", format);
+		             _("Invalid login argument%s%s%s does not match the login format."),
+		             failed ? " '" : "", failed, failed ? "'" : "");
 	}
 
 	return result;
@@ -700,16 +700,16 @@ gchar *
 realm_kerberos_format_login (RealmKerberos *self,
                              const gchar *user)
 {
-	const gchar *format;
+	const gchar *const *formats;
 
 	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
 	g_return_val_if_fail (user != NULL, NULL);
 
-	format = realm_dbus_kerberos_get_login_format (REALM_DBUS_KERBEROS (self));
-	if (format == NULL)
+	formats = realm_dbus_kerberos_get_login_formats (REALM_DBUS_KERBEROS (self));
+	if (formats == NULL || formats[0] == NULL)
 		return NULL;
 
-	return realm_login_name_format (format, user);
+	return realm_login_name_format (formats[0], user);
 }
 
 GVariant *

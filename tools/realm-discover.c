@@ -75,7 +75,9 @@ print_realm_info (GVariant *realm_info)
 	}
 
 	if (enrolled) {
-		g_print ("  login-format: %s\n", realm_dbus_kerberos_get_login_format (realm));
+		string = g_strjoinv (", ", (gchar **)realm_dbus_kerberos_get_login_formats (realm));
+		g_print ("  login-formats: %s\n", string);
+		g_free (string);
 		policy = realm_dbus_kerberos_get_login_policy (realm);
 		g_print ("  login-policy: %s\n", policy);
 		if (strstr (policy, REALM_DBUS_LOGIN_POLICY_PERMITTED)) {

@@ -47,7 +47,7 @@ split_login_format (const gchar *format,
 }
 
 gchar *
-realm_login_name_parse (const gchar *format,
+realm_login_name_parse (const gchar *const *formats,
                         gboolean lower,
                         const gchar *login)
 {
@@ -56,31 +56,36 @@ realm_login_name_parse (const gchar *format,
 	gchar length;
 	const gchar *user;
 	gsize user_len;
+	gint i;
 
-	g_return_val_if_fail (format != NULL, NULL);
+	g_return_val_if_fail (formats != NULL, NULL);
 	g_return_val_if_fail (login != NULL, NULL);
 
-	split_login_format (format, &prefix, &prefix_len, &suffix, &suffix_len);
-	length = strlen (login);
+	for (i = 0; formats[i]; i++) {
+		split_login_format (formats[i], &prefix, &prefix_len, &suffix, &suffix_len);
+		length = strlen (login);
 
-	if (prefix_len + suffix_len >= length)
-		return FALSE;
-	if (g_ascii_strncasecmp (login, prefix, prefix_len) != 0)
-		return FALSE;
-	if (g_ascii_strncasecmp (login + (length - suffix_len), suffix, suffix_len) != 0)
-		return FALSE;
+		if (prefix_len + suffix_len >= length)
+			continue;
+		if (g_ascii_strncasecmp (login, prefix, prefix_len) != 0)
+			continue;
+		if (g_ascii_strncasecmp (login + (length - suffix_len), suffix, suffix_len) != 0)
+			continue;
 
-	user = login + prefix_len;
-	user_len = length - (suffix_len + prefix_len);
+		user = login + prefix_len;
+		user_len = length - (suffix_len + prefix_len);
 
-	if (lower)
-		return g_utf8_strdown (user, user_len);
-	else
-		return g_strndup (user, user_len);
+		if (lower)
+			return g_utf8_strdown (user, user_len);
+		else
+			return g_strndup (user, user_len);
+	}
+
+	return NULL;
 }
 
 gchar **
-realm_login_name_parse_all (const gchar *format,
+realm_login_name_parse_all (const gchar *const *formats,
                             gboolean lower,
                             const gchar **logins,
                             const gchar **failed)
@@ -92,7 +97,7 @@ realm_login_name_parse_all (const gchar *format,
 	names = g_ptr_array_new_full (0, g_free);
 
 	for (i = 0; logins != NULL && logins[i] != NULL; i++) {
-		login = realm_login_name_parse (format, lower, logins[i]);
+		login = realm_login_name_parse (formats, lower, logins[i]);
 		if (login == NULL) {
 			if (failed)
 				*failed = logins[i];

@@ -217,23 +217,23 @@ build_login_format (const gchar *format,
 
 
 static void
-update_login_format (RealmSssd *self)
+update_login_formats (RealmSssd *self)
 {
-	gchar *login_format;
+	gchar *login_formats[2] = { NULL, NULL };
 	gchar *format = NULL;
 
 	if (self->pv->section == NULL) {
-		g_object_set (self, "login-format", "", NULL);
+		g_object_set (self, "login-formats", login_formats, NULL);
 		return;
 	}
 
-	/* Setup the login format */
+	/* Setup the login formats */
 	format = realm_ini_config_get (self->pv->config, self->pv->section, "full_name_format");
 
 	/* Here we place a '%s' in the place of the user in the format */
-	login_format = build_login_format (format, "%s", self->pv->domain);
-	g_object_set (self, "login-format", login_format, NULL);
-	g_free (login_format);
+	login_formats[0] = build_login_format (format, "%s", self->pv->domain);
+	g_object_set (self, "login-formats", login_formats, NULL);
+	g_free (login_formats[0]);
 	g_free (format);
 }
 
@@ -312,7 +312,7 @@ update_properties (RealmSssd *self)
 	/* Update all the other properties */
 	update_enrolled (self);
 	update_domain (self);
-	update_login_format (self);
+	update_login_formats (self);
 	update_login_policy (self);
 
 	g_object_thaw_notify (obj);

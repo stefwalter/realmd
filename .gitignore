@@ -32,6 +32,7 @@ stamp-h1
 stamp-it
 temp.txt
 
+/gtk-doc.make
 /realmd-*.*
 
 /build/coverage.info
@@ -41,7 +42,20 @@ temp.txt
 /dbus/realm-dbus-generated.h
 /dbus/realm-dbus-systemd.c
 /dbus/realm-dbus-systemd.h
+/dbus/realm-dbus-generated-*.xml
 
+/doc/version.xml
+/doc/*.stamp
+/doc/xml/
+/doc/html/
+/doc/*.txt
+/doc/*.args
+/doc/*.hierarchy
+/doc/*.interfaces
+/doc/*.prerequisites
+/doc/*.signals
+/doc/*.types
+/doc/tmpl/
 /po/realmd.pot
 
 /service/identity-config-service

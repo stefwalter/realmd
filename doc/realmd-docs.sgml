@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
+               "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
+[
+  <!ENTITY % local.common.attrib "xmlns:xi  CDATA  #FIXED 'http://www.w3.org/2003/XInclude'">
+  <!ENTITY version SYSTEM "version.xml">
+]>
+<book id="index">
+	<bookinfo>
+		<title>realmd</title>
+		<releaseinfo>for &version;</releaseinfo>
+	</bookinfo>
+
+	<chapter xml:id="dbus-interface">
+		<title>DBus Interface</title>
+		<xi:include href="../dbus/realm-dbus-generated-org.freedesktop.realmd.Kerberos.xml"/>
+		<xi:include href="../dbus/realm-dbus-generated-org.freedesktop.realmd.Provider.xml"/>
+		<xi:include href="../dbus/realm-dbus-generated-org.freedesktop.realmd.Service.xml"/>
+	</chapter>
+</book>

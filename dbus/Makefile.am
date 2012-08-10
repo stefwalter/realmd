@@ -30,10 +30,19 @@ librealm_dbus_a_CFLAGS = \
 DBUS_XML_DEFINITIONS = \
 	org.freedesktop.realmd.xml
 
-realm-dbus-generated.c: org.freedesktop.realmd.xml
+DBUS_GENERATED = \
+	realm-dbus-generated.c \
+	realm-dbus-generated.h \
+	realm-dbus-generated-org.freedesktop.realmd.Kerberos.xml \
+	realm-dbus-generated-org.freedesktop.realmd.Provider.xml \
+	realm-dbus-generated-org.freedesktop.realmd.Service.xml \
+	$(NULL)
+
+$(DBUS_GENERATED): org.freedesktop.realmd.xml
 	$(AM_V_GEN) gdbus-codegen --interface-prefix org.freedesktop.realmd. \
-		--generate-c-code realm-dbus-generated --c-namespace RealmDbus $<
-realm-dbus-generated.h: realm-dbus-generated.c
+		--generate-c-code realm-dbus-generated \
+		--generate-docbook realm-dbus-generated \
+		--c-namespace RealmDbus $<
 
 # ------------------------------------------------------------------
 
@@ -46,6 +55,7 @@ EXTRA_DIST = \
 
 CLEANFILES = \
 	$(BUILT_SOURCES) \
+	$(DBUS_GENERATED) \
 	$(service_DATA) \
 	*.gcno \
 	*.gcda \

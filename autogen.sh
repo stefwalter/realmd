@@ -69,6 +69,8 @@ $ACLOCAL $ACLOCAL_FLAGS || exit $?
 
 intltoolize --force --copy || exit $?
 
+gtkdocize || exit $?
+
 autoheader || exit $?
 
 $AUTOMAKE --add-missing || exit $?

@@ -68,6 +68,7 @@ PKG_CHECK_MODULES(GLIB,
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
 
+GTK_DOC_CHECK(1.9)
 
 # --------------------------------------------------------------------
 # PackageKit
@@ -260,6 +261,8 @@ AC_CONFIG_FILES([
 	Makefile
 	build/Makefile
 	dbus/Makefile
+	doc/Makefile
+	doc/version.xml
 	po/Makefile.in
 	po/Makefile
 	service/Makefile

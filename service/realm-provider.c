@@ -85,7 +85,7 @@ on_discover_complete (GObject *source,
 
 		} else {
 			realm_diagnostics_error (closure->invocation, error, "Failed to discover realm");
-			g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_DISCOVERY_FAILED,
+			g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_FAILED,
 			                                       _("Failed to discover realm. See diagnostics."));
 		}
 		g_error_free (error);

@@ -87,7 +87,7 @@ enroll_method_reply (GDBusMethodInvocation *invocation,
 
 	} else {
 		realm_diagnostics_error (invocation, error, "Failed to enroll machine in realm");
-		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_ENROLL_FAILED,
+		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_FAILED,
 		                                       _("Failed to enroll machine in realm. See diagnostics."));
 	}
 
@@ -127,7 +127,7 @@ unenroll_method_reply (GDBusMethodInvocation *invocation,
 
 	} else {
 		realm_diagnostics_error (invocation, error, "Failed to unenroll machine from realm");
-		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_UNENROLL_FAILED,
+		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_FAILED,
 		                                       _("Failed to unenroll machine from domain. See diagnostics."));
 	}
 

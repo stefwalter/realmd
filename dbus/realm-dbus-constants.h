@@ -35,14 +35,13 @@ G_BEGIN_DECLS
 #define   REALM_DBUS_DIAGNOSTICS_SIGNAL            "Diagnostics"
 
 #define   REALM_DBUS_ERROR_INTERNAL                "org.freedesktop.realmd.Error.Internal"
-#define   REALM_DBUS_ERROR_DISCOVERY_FAILED        "org.freedesktop.realmd.Error.DiscoveryFailed"
-#define   REALM_DBUS_ERROR_ENROLL_FAILED           "org.freedesktop.realmd.Error.EnrollFailed"
-#define   REALM_DBUS_ERROR_UNENROLL_FAILED         "org.freedesktop.realmd.Error.UnenrollFailed"
+#define   REALM_DBUS_ERROR_FAILED                  "org.freedesktop.realmd.Error.Failed"
 #define   REALM_DBUS_ERROR_BUSY                    "org.freedesktop.realmd.Error.Busy"
 #define   REALM_DBUS_ERROR_NOT_AUTHORIZED          "org.freedesktop.realmd.Error.NotAuthorized"
+#define   REALM_DBUS_ERROR_CANCELLED               "org.freedesktop.realmd.Error.Cancelled"
 #define   REALM_DBUS_ERROR_ALREADY_ENROLLED        "org.freedesktop.realmd.Error.AlreadyEnrolled"
 #define   REALM_DBUS_ERROR_NOT_ENROLLED            "org.freedesktop.realmd.Error.NotEnrolled"
-#define   REALM_DBUS_ERROR_AUTH_FAILED             "org.freedesktop.realmd.Error.AuthFailed"
+#define   REALM_DBUS_ERROR_AUTH_FAILED             "org.freedesktop.realmd.Error.AuthenicationFailed"
 
 #define   REALM_DBUS_DISCOVERY_TYPE                "type"
 #define   REALM_DBUS_DISCOVERY_DOMAIN              "domain"

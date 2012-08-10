@@ -20,12 +20,12 @@ DOC_SOURCE_DIR=.
 MKDB_OPTIONS=--sgml-mode --output-format=xml
 
 DBUS_INTERFACE = $(top_srcdir)/dbus/org.freedesktop.realmd.xml
-DBUS_ESCAPED = xml/escaped-org.freedesktop.realmd.xml
+DBUS_ESCAPED = realmd-org.freedesktop.realmd.xml
 
 DBUS_GENERATED = \
-	xml/realm-dbus-generated-org.freedesktop.realmd.Kerberos.xml \
-	xml/realm-dbus-generated-org.freedesktop.realmd.Provider.xml \
-	xml/realm-dbus-generated-org.freedesktop.realmd.Service.xml
+	realmd-org.freedesktop.realmd.Kerberos.xml \
+	realmd-org.freedesktop.realmd.Provider.xml \
+	realmd-org.freedesktop.realmd.Service.xml
 
 # Extra SGML files that are included by $(DOC_MAIN_SGML_FILE).
 # e.g. content_files=running.sgml building.sgml changes-2.0.sgml
@@ -40,15 +40,19 @@ expand_content_files=
 include $(top_srcdir)/gtk-doc.make
 
 EXTRA_DIST += \
+	$(DBUS_GENERATED) \
+	$(DBUS_ESCAPED) \
 	escape-xml-to-text.xsl \
 	version.xml.in \
 	version.xml \
 	html.css
 
 CLEANFILES += \
-	$(DBUS_GENERATED) \
-	$(DBUS_ESCAPED) \
 	style.stamp
+
+DISTCLEANFILES = \
+	$(DBUS_GENERATED) \
+	$(DBUS_ESCAPED)
 
 noinst_DATA = style.stamp
 
@@ -59,8 +63,8 @@ style.stamp: html.css html-build.stamp html.stamp
 
 $(DBUS_GENERATED): $(DBUS_INTERFACE)
 	$(AM_V_GEN) gdbus-codegen --interface-prefix org.freedesktop.realmd. \
-		--generate-docbook xml/realm-dbus-generated $<
+		--generate-docbook realmd $<
 
-$(DBUS_ESCAPED): $(DBUS_INTERFACE) escape-xml-to-text.xsl
-	$(AM_V_GEN) xsltproc --output $(DBUS_ESCAPED) escape-xml-to-text.xsl $(DBUS_INTERFACE)
+$(DBUS_ESCAPED): $(DBUS_INTERFACE) $(srcdir)/escape-xml-to-text.xsl
+	$(AM_V_GEN) xsltproc --output $(DBUS_ESCAPED) $(srcdir)/escape-xml-to-text.xsl $(DBUS_INTERFACE)
 	@sed -i '/^[	 ]*$$/d' $(DBUS_ESCAPED)

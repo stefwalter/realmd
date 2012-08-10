@@ -33,15 +33,11 @@ DBUS_XML_DEFINITIONS = \
 DBUS_GENERATED = \
 	realm-dbus-generated.c \
 	realm-dbus-generated.h \
-	realm-dbus-generated-org.freedesktop.realmd.Kerberos.xml \
-	realm-dbus-generated-org.freedesktop.realmd.Provider.xml \
-	realm-dbus-generated-org.freedesktop.realmd.Service.xml \
 	$(NULL)
 
 $(DBUS_GENERATED): org.freedesktop.realmd.xml
 	$(AM_V_GEN) gdbus-codegen --interface-prefix org.freedesktop.realmd. \
 		--generate-c-code realm-dbus-generated \
-		--generate-docbook realm-dbus-generated \
 		--c-namespace RealmDbus $<
 
 # ------------------------------------------------------------------

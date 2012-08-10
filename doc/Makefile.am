@@ -19,12 +19,14 @@ DOC_SOURCE_DIR=.
 # e.g. MKDB_OPTIONS=--sgml-mode --output-format=xml
 MKDB_OPTIONS=--sgml-mode --output-format=xml
 
+DBUS_GENERATED = \
+	xml/realm-dbus-generated-org.freedesktop.realmd.Kerberos.xml \
+	xml/realm-dbus-generated-org.freedesktop.realmd.Provider.xml \
+	xml/realm-dbus-generated-org.freedesktop.realmd.Service.xml
+
 # Extra SGML files that are included by $(DOC_MAIN_SGML_FILE).
 # e.g. content_files=running.sgml building.sgml changes-2.0.sgml
-content_files= \
-	$(top_srcdir)/dbus/realm-dbus-generated-org.freedesktop.realmd.Kerberos.xml \
-	$(top_srcdir)/dbus/realm-dbus-generated-org.freedesktop.realmd.Provider.xml \
-	$(top_srcdir)/dbus/realm-dbus-generated-org.freedesktop.realmd.Service.xml
+content_files= $(DBUS_GENERATED)
 
 # SGML files where gtk-doc abbrevations (#GtkWidget) are expanded
 # These files must be listed here *and* in content_files
@@ -45,3 +47,7 @@ style.stamp: html.css html-build.stamp html.stamp
 	@cp $(srcdir)/html.css $(builddir)/html/html.css
 	@sed -i 's/href="style.css"/href="html.css"/' $(builddir)/html/*.html
 	@touch $(builddir)/style.stamp
+
+$(DBUS_GENERATED): $(top_srcdir)/dbus/org.freedesktop.realmd.xml
+	$(AM_V_GEN) gdbus-codegen --interface-prefix org.freedesktop.realmd. \
+		--generate-docbook xml/realm-dbus-generated $<

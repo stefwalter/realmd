@@ -13,8 +13,8 @@
 
 	<chapter xml:id="dbus-interface">
 		<title>DBus Interface</title>
-		<xi:include href="../dbus/realm-dbus-generated-org.freedesktop.realmd.Kerberos.xml"/>
-		<xi:include href="../dbus/realm-dbus-generated-org.freedesktop.realmd.Provider.xml"/>
-		<xi:include href="../dbus/realm-dbus-generated-org.freedesktop.realmd.Service.xml"/>
+		<xi:include href="xml/realm-dbus-generated-org.freedesktop.realmd.Kerberos.xml"/>
+		<xi:include href="xml/realm-dbus-generated-org.freedesktop.realmd.Provider.xml"/>
+		<xi:include href="xml/realm-dbus-generated-org.freedesktop.realmd.Service.xml"/>
 	</chapter>
 </book>

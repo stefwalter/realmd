@@ -11,10 +11,19 @@
 		<releaseinfo>for &version;</releaseinfo>
 	</bookinfo>
 
-	<chapter xml:id="dbus-interface">
-		<title>DBus Interface</title>
+	<chapter xml:id="dbus-interface-reference">
+		<title>DBus Interface Reference</title>
 		<xi:include href="xml/realm-dbus-generated-org.freedesktop.realmd.Kerberos.xml"/>
 		<xi:include href="xml/realm-dbus-generated-org.freedesktop.realmd.Provider.xml"/>
 		<xi:include href="xml/realm-dbus-generated-org.freedesktop.realmd.Service.xml"/>
+	</chapter>
+	<chapter xml:id="dbus-interface-raw">
+		<title>Raw DBus Interfaces</title>
+		<para>These are the current raw DBus interfaces for realmd.</para>
+		<programlisting role="rawhtml">
+<textobject>
+<?dbhtml-include href="xml/escaped-org.freedesktop.realmd.xml"?>
+</textobject>
+		</programlisting>
 	</chapter>
 </book>

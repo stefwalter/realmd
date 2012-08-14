@@ -264,7 +264,7 @@ update_login_formats (RealmSssd *self)
 	format = realm_ini_config_get (self->pv->config, self->pv->section, "full_name_format");
 
 	/* Here we place a '%s' in the place of the user in the format */
-	login_formats[0] = build_login_format (format, "%s", self->pv->domain);
+	login_formats[0] = build_login_format (format, "%U", self->pv->domain);
 	realm_kerberos_set_login_formats (kerberos, (const gchar **)login_formats);
 	g_free (login_formats[0]);
 	g_free (format);

@@ -337,8 +337,10 @@
 
 		  Supported formats for login to this realm. This is only
 		  relevant once the realm has been enrolled. The formats
-		  will contain a <literal>%s</literal> in the string, which
-		  indicate where the user name should be placed.
+		  will contain a <literal>%U</literal> in the string, which
+		  indicate where the user name should be placed. The formats
+		  may contain a <literal>%D</literal> in the string which
+		  indicate where a domain name should be placed.
 
 		  The first format in the list is the preferred format for
 		  login names.

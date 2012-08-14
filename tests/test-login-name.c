@@ -84,7 +84,7 @@ test_parse_all (Test *test,
 		NULL,
 	};
 	const gchar *const formats[] = {
-		"Domain\\%s",
+		"Domain\\%U",
 		NULL
 	};
 
@@ -112,7 +112,7 @@ test_parse_all_failed (Test *test,
 		NULL,
 	};
 	const gchar *const formats[] = {
-		"Domain\\%s",
+		"Domain\\%U",
 		NULL
 	};
 
@@ -131,17 +131,17 @@ main (int argc,
       char **argv)
 {
 	static const gchar *const domain_formats[] = {
-		"Domain\\%s",
+		"Domain\\%U",
 		NULL
 	};
 
 	static const gchar *const prefix_suffix_formats[] = {
-		"prefix|%s|suffix",
+		"prefix|%U|suffix",
 		NULL
 	};
 
 	static const gchar *const email_formats[] = {
-		"%s@domain",
+		"%U@domain",
 		NULL
 	};
 

@@ -34,7 +34,7 @@ split_login_format (const gchar *format,
 	g_assert (suffix != NULL);
 	g_assert (suffix_len != NULL);
 
-	pos = strstr (format, "%s");
+	pos = strstr (format, "%U");
 	if (pos == NULL)
 		return FALSE;
 
@@ -62,6 +62,11 @@ realm_login_name_parse (const gchar *const *formats,
 	g_return_val_if_fail (login != NULL, NULL);
 
 	for (i = 0; formats[i]; i++) {
+		if (strstr (formats[i], "%D") != NULL) {
+			g_warning ("Using a %%D as a domain in a login format is not yet implemented");
+			continue;
+		}
+
 		split_login_format (formats[i], &prefix, &prefix_len, &suffix, &suffix_len);
 		length = strlen (login);
 

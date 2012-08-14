@@ -516,12 +516,12 @@ update_properties (RealmSamba *self)
 	/* Setup the workgroup property */
 	prefix = lookup_login_prefix (self);
 	if (prefix != NULL) {
-		login_formats[0] = g_strdup_printf ("%s%%s", prefix);
+		login_formats[0] = g_strdup_printf ("%s%%U", prefix);
 		realm_kerberos_set_login_formats (kerberos, (const gchar **)login_formats);
 		g_free (login_formats[0]);
 		g_free (prefix);
 	} else {
-		login_formats[0] = "%s";
+		login_formats[0] = "%U";
 		realm_kerberos_set_login_formats (kerberos, (const gchar **)login_formats);
 	}
 

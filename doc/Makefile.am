@@ -54,7 +54,7 @@ CLEANFILES += \
 
 noinst_DATA = style.stamp
 
-style.stamp: html.css html-build.stamp html.stamp
+style.stamp: html.css html-build.stamp
 	@cp $(srcdir)/html.css $(builddir)/html/html.css
 	@sed -i 's/href="style.css"/href="html.css"/' $(builddir)/html/*.html
 	@touch $(builddir)/style.stamp

@@ -48,11 +48,9 @@ EXTRA_DIST += \
 	html.css
 
 CLEANFILES += \
-	style.stamp
-
-DISTCLEANFILES = \
 	$(DBUS_GENERATED) \
-	$(DBUS_ESCAPED)
+	$(DBUS_ESCAPED) \
+	style.stamp
 
 noinst_DATA = style.stamp
 

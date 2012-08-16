@@ -64,5 +64,6 @@ $(DBUS_GENERATED): $(DBUS_INTERFACE)
 		--generate-docbook realmd $<
 
 $(DBUS_ESCAPED): $(DBUS_INTERFACE) $(srcdir)/escape-xml-to-text.xsl
-	$(AM_V_GEN) xsltproc --output $(DBUS_ESCAPED) $(srcdir)/escape-xml-to-text.xsl $(DBUS_INTERFACE)
+	$(AM_V_GEN) xsltproc --nonet --novalid --output $(DBUS_ESCAPED) \
+		$(srcdir)/escape-xml-to-text.xsl $(DBUS_INTERFACE)
 	@sed -i '/^[	 ]*$$/d' $(DBUS_ESCAPED)

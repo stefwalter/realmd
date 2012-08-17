@@ -37,21 +37,18 @@
 
 struct _RealmKerberosPrivate {
 	GHashTable *discovery;
-	gboolean constructing;
+	RealmDbusRealm *realm_iface;
 	RealmDbusKerberos *kerberos_iface;
 	RealmDbusKerberosMembership *membership_iface;
 };
 
 enum {
 	PROP_0,
+	PROP_NAME,
 	PROP_DISCOVERY
 };
 
-static void realm_dbus_iface_init (RealmDbusRealmIface *iface);
-
-G_DEFINE_TYPE_WITH_CODE (RealmKerberos, realm_kerberos, REALM_DBUS_TYPE_REALM_SKELETON,
-	G_IMPLEMENT_INTERFACE (REALM_DBUS_TYPE_REALM, realm_dbus_iface_init);
-);
+G_DEFINE_TYPE (RealmKerberos, realm_kerberos, G_TYPE_DBUS_OBJECT_SKELETON);
 
 typedef struct {
 	RealmKerberos *self;
@@ -413,9 +410,10 @@ handle_leave (RealmDbusKerberosMembership *membership,
 static gboolean
 handle_deconfigure (RealmDbusRealm *realm,
                     GDBusMethodInvocation *invocation,
-                    GVariant *options)
+                    GVariant *options,
+                    gpointer user_data)
 {
-	RealmKerberos *self = REALM_KERBEROS (realm);
+	RealmKerberos *self = REALM_KERBEROS (user_data);
 
 	/* Make note of the current operation id, for diagnostics */
 	realm_diagnostics_setup_options (invocation, options);
@@ -465,10 +463,11 @@ handle_change_login_policy (RealmDbusRealm *realm,
                             const gchar *login_policy,
                             const gchar *const *add,
                             const gchar *const *remove,
-                            GVariant *options)
+                            GVariant *options,
+                            gpointer user_data)
 {
 	RealmKerberosLoginPolicy policy = REALM_KERBEROS_POLICY_NOT_SET;
-	RealmKerberos *self = REALM_KERBEROS (realm);
+	RealmKerberos *self = REALM_KERBEROS (user_data);
 	RealmKerberosClass *klass;
 	gchar **policies;
 	gint policies_set = 0;
@@ -523,7 +522,8 @@ handle_change_login_policy (RealmDbusRealm *realm,
 }
 
 static gboolean
-realm_kerberos_authorize_method (GDBusInterfaceSkeleton *skeleton,
+realm_kerberos_authorize_method (GDBusObjectSkeleton    *object,
+                                 GDBusInterfaceSkeleton *iface,
                                  GDBusMethodInvocation  *invocation)
 {
 	const gchar *interface = g_dbus_method_invocation_get_interface_name (invocation);
@@ -567,27 +567,34 @@ realm_kerberos_authorize_method (GDBusInterfaceSkeleton *skeleton,
 static void
 realm_kerberos_init (RealmKerberos *self)
 {
+	GDBusObjectSkeleton *skeleton = G_DBUS_OBJECT_SKELETON (self);
+
 	self->pv = G_TYPE_INSTANCE_GET_PRIVATE (self, REALM_TYPE_KERBEROS,
 	                                        RealmKerberosPrivate);
-	self->pv->constructing = TRUE;
+
+	self->pv->realm_iface = realm_dbus_realm_skeleton_new ();
+	g_signal_connect (self->pv->realm_iface, "handle-deconfigure",
+	                  G_CALLBACK (handle_deconfigure), self);
+	g_signal_connect (self->pv->realm_iface, "handle-change-login-policy",
+	                  G_CALLBACK (handle_change_login_policy), self);
+	g_dbus_object_skeleton_add_interface (skeleton, G_DBUS_INTERFACE_SKELETON (self->pv->realm_iface));
 
 	self->pv->kerberos_iface = realm_dbus_kerberos_skeleton_new ();
-	g_signal_connect (self->pv->kerberos_iface, "g-authorize-method",
-	                  G_CALLBACK (realm_kerberos_authorize_method), NULL);
+	g_dbus_object_skeleton_add_interface (skeleton, G_DBUS_INTERFACE_SKELETON (self->pv->kerberos_iface));
 
 	self->pv->membership_iface = realm_dbus_kerberos_membership_skeleton_new ();
-	g_signal_connect (self->pv->membership_iface, "g-authorize-method",
-	                  G_CALLBACK (realm_kerberos_authorize_method), NULL);
 	g_signal_connect (self->pv->membership_iface, "handle-join",
 	                  G_CALLBACK (handle_join), self);
 	g_signal_connect (self->pv->membership_iface, "handle-leave",
 	                  G_CALLBACK (handle_leave), self);
+	g_dbus_object_skeleton_add_interface (skeleton, G_DBUS_INTERFACE_SKELETON (self->pv->membership_iface));
 }
 
 static void
 realm_kerberos_constructed (GObject *obj)
 {
-	const gchar *supported_interfaces[] = {
+	RealmKerberos *self = REALM_KERBEROS (obj);
+	static const gchar *supported_interfaces[] = {
 		REALM_DBUS_KERBEROS_INTERFACE,
 		REALM_DBUS_KERBEROS_MEMBERSHIP_INTERFACE,
 		NULL,
@@ -595,10 +602,8 @@ realm_kerberos_constructed (GObject *obj)
 
 	G_OBJECT_CLASS (realm_kerberos_parent_class)->constructed (obj);
 
-	realm_dbus_realm_set_supported_interfaces (REALM_DBUS_REALM (obj),
+	realm_dbus_realm_set_supported_interfaces (self->pv->realm_iface,
 	                                           supported_interfaces);
-
-	REALM_KERBEROS (obj)->pv->constructing = FALSE;
 }
 
 static void
@@ -610,6 +615,9 @@ realm_kerberos_get_property (GObject *obj,
 	RealmKerberos *self = REALM_KERBEROS (obj);
 
 	switch (prop_id) {
+	case PROP_NAME:
+		g_value_set_string (value, realm_kerberos_get_name (self));
+		break;
 	case PROP_DISCOVERY:
 		g_value_set_boxed (value, realm_kerberos_get_discovery (self));
 		break;
@@ -628,6 +636,10 @@ realm_kerberos_set_property (GObject *obj,
 	RealmKerberos *self = REALM_KERBEROS (obj);
 
 	switch (prop_id) {
+	case PROP_NAME:
+		realm_dbus_realm_set_name (self->pv->realm_iface,
+		                           g_value_get_string (value));
+		break;
 	case PROP_DISCOVERY:
 		realm_kerberos_set_discovery (self, g_value_get_boxed (value));
 		break;
@@ -642,8 +654,10 @@ realm_kerberos_finalize (GObject *obj)
 {
 	RealmKerberos *self = REALM_KERBEROS (obj);
 
+	g_object_unref (self->pv->realm_iface);
 	g_object_unref (self->pv->kerberos_iface);
 	g_object_unref (self->pv->membership_iface);
+
 	if (self->pv->discovery)
 		g_hash_table_unref (self->pv->discovery);
 
@@ -654,28 +668,24 @@ static void
 realm_kerberos_class_init (RealmKerberosClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
-	GDBusInterfaceSkeletonClass *skeleton_class = G_DBUS_INTERFACE_SKELETON_CLASS (klass);
+	GDBusObjectSkeletonClass *skeleton_class = G_DBUS_OBJECT_SKELETON_CLASS (klass);
 
 	object_class->constructed = realm_kerberos_constructed;
 	object_class->get_property = realm_kerberos_get_property;
 	object_class->set_property = realm_kerberos_set_property;
 	object_class->finalize = realm_kerberos_finalize;
 
-	skeleton_class->g_authorize_method = realm_kerberos_authorize_method;
+	skeleton_class->authorize_method = realm_kerberos_authorize_method;
 
 	g_type_class_add_private (klass, sizeof (RealmKerberosPrivate));
+
+	g_object_class_install_property (object_class, PROP_NAME,
+	             g_param_spec_string ("name", "Name", "Name",
+	                                  NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS));
 
 	g_object_class_install_property (object_class, PROP_DISCOVERY,
 	             g_param_spec_boxed ("discovery", "Discovery", "Discovery Data",
 	                                 G_TYPE_HASH_TABLE, G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS));
-}
-
-static void
-realm_dbus_iface_init (RealmDbusRealmIface *iface)
-{
-	memcpy (iface, g_type_interface_peek_parent (iface), sizeof (*iface));
-	iface->handle_deconfigure = handle_deconfigure;
-	iface->handle_change_login_policy = handle_change_login_policy;
 }
 
 void
@@ -709,7 +719,7 @@ realm_kerberos_parse_login (RealmKerberos *self,
 	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
 	g_return_val_if_fail (login != NULL, NULL);
 
-	formats = realm_dbus_realm_get_login_formats (REALM_DBUS_REALM (self));
+	formats = realm_dbus_realm_get_login_formats (self->pv->realm_iface);
 	if (formats == NULL)
 		return NULL;
 
@@ -728,7 +738,7 @@ realm_kerberos_parse_logins (RealmKerberos *self,
 
 	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
 
-	formats = realm_dbus_realm_get_login_formats (REALM_DBUS_REALM (self));
+	formats = realm_dbus_realm_get_login_formats (self->pv->realm_iface);
 	if (formats == NULL) {
 		g_set_error (error, REALM_ERROR,
 		             REALM_ERROR_NOT_CONFIGURED,
@@ -756,7 +766,7 @@ realm_kerberos_format_login (RealmKerberos *self,
 	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
 	g_return_val_if_fail (user != NULL, NULL);
 
-	formats = realm_dbus_realm_get_login_formats (REALM_DBUS_REALM (self));
+	formats = realm_dbus_realm_get_login_formats (self->pv->realm_iface);
 	if (formats == NULL || formats[0] == NULL)
 		return NULL;
 
@@ -1049,41 +1059,11 @@ realm_kerberos_kinit_ccache_finish (RealmKerberos *self,
 	return g_bytes_ref (kinit->ccache);
 }
 
-void
-realm_kerberos_export_to_dbus (RealmKerberos *self,
-                               GDBusConnection *connection,
-                               const gchar *object_path)
-{
-	GError *error = NULL;
-
-	g_return_if_fail (REALM_IS_KERBEROS (self));
-	g_return_if_fail (G_IS_DBUS_CONNECTION (connection));
-	g_return_if_fail (object_path != NULL);
-
-	g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (self),
-	                                  connection, object_path, &error);
-
-	if (error == NULL) {
-		g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (self->pv->kerberos_iface),
-		                                  connection, object_path, &error);
-	}
-
-	if (error == NULL) {
-		g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (self->pv->membership_iface),
-		                                  connection, object_path, &error);
-	}
-
-	if (error != NULL) {
-		g_warning ("couldn't export realm on dbus connection: %s", error->message);
-		g_error_free (error);
-	}
-}
-
 const gchar *
 realm_kerberos_get_name (RealmKerberos *self)
 {
 	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
-	return realm_dbus_realm_get_name (REALM_DBUS_REALM (self));
+	return realm_dbus_realm_get_name (self->pv->realm_iface);
 }
 
 const gchar *
@@ -1138,7 +1118,7 @@ realm_kerberos_set_permitted_logins (RealmKerberos *self,
                                      const gchar **value)
 {
 	g_return_if_fail (REALM_IS_KERBEROS (self));
-	realm_dbus_realm_set_permitted_logins (REALM_DBUS_REALM (self), (const gchar * const*)value);
+	realm_dbus_realm_set_permitted_logins (self->pv->realm_iface, (const gchar * const*)value);
 }
 
 void
@@ -1163,7 +1143,7 @@ realm_kerberos_set_login_policy (RealmKerberos *self,
 		break;
 	}
 
-	realm_dbus_realm_set_login_policy (REALM_DBUS_REALM (self), policy);
+	realm_dbus_realm_set_login_policy (self->pv->realm_iface, policy);
 }
 
 void
@@ -1171,7 +1151,7 @@ realm_kerberos_set_login_formats (RealmKerberos *self,
                                   const gchar **value)
 {
 	g_return_if_fail (REALM_IS_KERBEROS (self));
-	realm_dbus_realm_set_login_formats (REALM_DBUS_REALM (self), (const gchar * const*)value);
+	realm_dbus_realm_set_login_formats (self->pv->realm_iface, (const gchar * const*)value);
 }
 
 void
@@ -1209,7 +1189,7 @@ realm_kerberos_set_details (RealmKerberos *self,
 	                               (GVariant * const *)tuples->pdata,
 	                               tuples->len);
 
-	realm_dbus_realm_set_details (REALM_DBUS_REALM (self), details);
+	realm_dbus_realm_set_details (self->pv->realm_iface, details);
 
 	g_ptr_array_free (tuples, TRUE);
 }
@@ -1219,6 +1199,6 @@ realm_kerberos_set_configured (RealmKerberos *self,
                                gboolean configured)
 {
 	g_return_if_fail (REALM_IS_KERBEROS (self));
-	realm_dbus_realm_set_configured (REALM_DBUS_REALM (self),
+	realm_dbus_realm_set_configured (self->pv->realm_iface,
 	                                 configured ? REALM_DBUS_KERBEROS_MEMBERSHIP_INTERFACE : "");
 }

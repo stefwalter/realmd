@@ -31,6 +31,8 @@ typedef struct _RealmSssdIpaProvider RealmSssdIpaProvider;
 
 GType              realm_sssd_ipa_provider_get_type                 (void) G_GNUC_CONST;
 
+RealmProvider *    realm_sssd_ipa_provider_new                      (void);
+
 G_END_DECLS
 
 #endif /* __REALM_SSSD_IPA_PROVIDER_H__ */

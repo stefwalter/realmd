@@ -44,6 +44,7 @@ static gint64 service_quit_at = 0;
 static guint service_timeout_id = 0;
 static guint service_bus_name_owner_id = 0;
 static gboolean service_bus_name_claimed = FALSE;
+static GDBusObjectManagerServer *object_server = NULL;
 
 typedef struct {
 	guint watch;
@@ -371,19 +372,27 @@ on_name_lost (GDBusConnection *connection,
 		g_warning ("lost service name on DBus bus: %s", name);
 }
 
+void
+realm_daemon_export_object (GDBusObjectSkeleton *object)
+{
+	g_return_if_fail (G_IS_DBUS_OBJECT_MANAGER_SERVER (object_server));
+	g_return_if_fail (G_IS_DBUS_OBJECT_SKELETON (object));
+	g_dbus_object_manager_server_export (object_server, object);
+}
+
 static void
 on_bus_get_connection (GObject *source,
                        GAsyncResult *result,
-                       gpointer user_data)
+                       gpointer unused)
 {
 	GError *error = NULL;
-	GDBusConnection **connection = (GDBusConnection **)user_data;
+	GDBusConnection *connection;
 	const gchar *self_name;
 	RealmProvider *all_provider;
 	RealmProvider *provider;
 	guint owner_id;
 
-	*connection = g_bus_get_finish (result, &error);
+	connection = g_bus_get_finish (result, &error);
 	if (error != NULL) {
 		g_warning ("couldn't connect to bus: %s", error->message);
 		g_main_loop_quit (main_loop);
@@ -393,31 +402,40 @@ on_bus_get_connection (GObject *source,
 		realm_debug ("connected to bus");
 
 		/* Add a filter which keeps service alive */
-		self_name = g_dbus_connection_get_unique_name (*connection);
-		g_dbus_connection_add_filter (*connection, on_connection_filter,
+		self_name = g_dbus_connection_get_unique_name (connection);
+		g_dbus_connection_add_filter (connection, on_connection_filter,
 		                              (gchar *)self_name, NULL);
 
-		realm_diagnostics_initialize (*connection);
-		all_provider = realm_provider_start (*connection, REALM_TYPE_ALL_PROVIDER);
+		realm_diagnostics_initialize (connection);
 
-		provider = realm_provider_start (*connection, REALM_TYPE_SSSD_AD_PROVIDER);
+		object_server = g_dbus_object_manager_server_new (REALM_DBUS_SERVICE_PATH);
+
+		all_provider = realm_all_provider_new_and_export (connection);
+
+		provider = realm_sssd_ad_provider_new ();
+		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
 		realm_all_provider_register (all_provider, provider);
 		g_object_unref (provider);
 
-		provider = realm_provider_start (*connection, REALM_TYPE_SSSD_IPA_PROVIDER);
+		provider = realm_sssd_ipa_provider_new ();
+		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
 		realm_all_provider_register (all_provider, provider);
 		g_object_unref (provider);
 
-		provider = realm_provider_start (*connection, REALM_TYPE_SAMBA_PROVIDER);
+		provider = realm_samba_provider_new ();
+		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
 		realm_all_provider_register (all_provider, provider);
 		g_object_unref (provider);
 
-		owner_id = g_bus_own_name_on_connection (*connection,
+		g_dbus_object_manager_server_set_connection (object_server, connection);
+
+		owner_id = g_bus_own_name_on_connection (connection,
 		                                         REALM_DBUS_BUS_NAME,
 		                                         G_BUS_NAME_OWNER_FLAGS_NONE,
 		                                         on_name_acquired, on_name_lost,
 		                                         all_provider, g_object_unref);
 		service_bus_name_owner_id = owner_id;
+		g_object_unref (connection);
 	}
 
 	/* Matches the hold() in main() */
@@ -432,7 +450,6 @@ int
 main (int argc,
       char *argv[])
 {
-	GDBusConnection *connection = NULL;
 	RealmDbusService *service;
 	GOptionContext *context;
 	GError *error = NULL;
@@ -472,7 +489,7 @@ main (int argc,
 	g_signal_connect (service, "handle-cancel", G_CALLBACK (on_service_cancel), NULL);
 
 	realm_debug ("starting service");
-	g_bus_get (G_BUS_TYPE_SYSTEM, NULL, on_bus_get_connection, &connection);
+	g_bus_get (G_BUS_TYPE_SYSTEM, NULL, on_bus_get_connection, &object_server);
 
 	main_loop = g_main_loop_new (NULL, FALSE);
 
@@ -480,8 +497,10 @@ main (int argc,
 
 	if (service_bus_name_owner_id != 0)
 		g_bus_unown_name (service_bus_name_owner_id);
-	if (connection != NULL)
-		g_object_unref (connection);
+	if (object_server != NULL) {
+		g_dbus_object_manager_server_set_connection (object_server, NULL);
+		g_object_unref (object_server);
+	}
 
 	G_LOCK (polkit_authority);
 	g_clear_object (&polkit_authority);

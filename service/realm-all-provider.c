@@ -52,27 +52,26 @@ realm_all_provider_constructed (GObject *obj)
 	G_OBJECT_CLASS (realm_all_provider_parent_class)->constructed (obj);
 
 	/* The dbus Name property of the provider */
-	realm_dbus_provider_set_name (REALM_DBUS_PROVIDER (obj), "All");
+	realm_provider_set_name (REALM_PROVIDER (obj), "All");
 }
 
 static void
 update_realms_property (RealmAllProvider *self)
 {
-	const gchar *const * objects;
+	const gchar *const * paths;
 	GPtrArray *realms;
 	GList *l;
 	gint i;
 
 	realms = g_ptr_array_new ();
 	for (l = self->providers; l != NULL; l = g_list_next (l)) {
-		objects = realm_dbus_provider_get_realms (l->data);
-		for (i = 0; objects != NULL && objects[i] != NULL; i++)
-			g_ptr_array_add (realms, (gchar *)objects[i]);
+		paths = realm_provider_get_realms (l->data);
+		for (i = 0; paths != NULL && paths[i] != NULL; i++)
+			g_ptr_array_add (realms, (gchar *)paths[i]);
 	}
 
 	g_ptr_array_add (realms, NULL);
-	realm_dbus_provider_set_realms (REALM_DBUS_PROVIDER (self),
-	                                (const gchar *const *)realms->pdata);
+	realm_provider_set_realms (REALM_PROVIDER (self), (const gchar **)realms->pdata);
 	g_ptr_array_free (realms, TRUE);
 }
 
@@ -322,10 +321,35 @@ realm_all_provider_class_init (RealmAllProviderClass *klass)
 	object_class->constructed = realm_all_provider_constructed;
 	object_class->finalize = realm_all_provider_finalize;
 
-	provider_class->dbus_path = REALM_DBUS_SERVICE_PATH;
-
 	provider_class->discover_async = realm_all_provider_discover_async;
 	provider_class->discover_finish = realm_all_provider_discover_finish;
+}
+
+RealmProvider *
+realm_all_provider_new_and_export (GDBusConnection *connection)
+{
+	GDBusObject *self;
+	GList *interfaces, *l;
+	GError *error = NULL;
+
+	self = g_object_new (REALM_TYPE_ALL_PROVIDER,
+	                     "g-object-path", REALM_DBUS_SERVICE_PATH,
+	                     NULL);
+
+	interfaces = g_dbus_object_get_interfaces (G_DBUS_OBJECT (self));
+	for (l = interfaces; l != NULL; l = g_list_next (l)) {
+		g_dbus_interface_skeleton_export (l->data, connection,
+		                                  g_dbus_object_get_object_path (self),
+		                                  &error);
+		if (error != NULL) {
+			g_warning ("Couldn't export DBus interface at %s",
+			           g_dbus_object_get_object_path (self));
+			g_clear_error (&error);
+		}
+	}
+
+	g_list_free_full (interfaces, g_object_unref);
+	return REALM_PROVIDER (self);
 }
 
 void

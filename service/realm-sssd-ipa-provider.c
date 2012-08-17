@@ -69,7 +69,7 @@ realm_sssd_ipa_provider_constructed (GObject *obj)
 
 	self = REALM_SSSD_IPA_PROVIDER (obj);
 
-	realm_dbus_provider_set_name (REALM_DBUS_PROVIDER (obj), "SssdIpa");
+	realm_provider_set_name (REALM_PROVIDER (obj), "SssdIpa");
 
 	domains = realm_sssd_config_get_domains (self->config);
 	for (i = 0; domains && domains[i] != 0; i++) {
@@ -127,7 +127,7 @@ realm_sssd_ipa_provider_discover_finish (RealmProvider *provider,
 {
 	GSimpleAsyncResult *async;
 	GAsyncResult *ipa_result;
-	GDBusInterfaceSkeleton *realm;
+	RealmKerberos *realm;
 	GHashTable *discovery;
 	const gchar *object_path;
 	gchar *name;
@@ -148,7 +148,7 @@ realm_sssd_ipa_provider_discover_finish (RealmProvider *provider,
 	if (realm == NULL)
 		return 0;
 
-	object_path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
+	object_path = g_dbus_object_get_object_path (G_DBUS_OBJECT (realm));
 	*realms = g_variant_new_objv (&object_path, 1);
 	g_variant_ref_sink (*realms);
 
@@ -189,7 +189,6 @@ realm_sssd_ipa_provider_class_init (RealmSssdIpaProviderClass *klass)
 	RealmProviderClass *provider_class = REALM_PROVIDER_CLASS (klass);
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-	provider_class->dbus_path = REALM_DBUS_SSSD_IPA_PATH;
 	provider_class->discover_async = realm_sssd_ipa_provider_discover_async;
 	provider_class->discover_finish = realm_sssd_ipa_provider_discover_finish;
 
@@ -200,4 +199,12 @@ realm_sssd_ipa_provider_class_init (RealmSssdIpaProviderClass *klass)
 	g_object_class_install_property (object_class, PROP_SSSD_CONFIG,
 	            g_param_spec_object ("sssd-config", "Sssd Config", "Sssd Config",
 	                                 REALM_TYPE_INI_CONFIG, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
+}
+
+RealmProvider *
+realm_sssd_ipa_provider_new (void)
+{
+	return g_object_new (REALM_TYPE_SSSD_IPA_PROVIDER,
+	                     "g-object-path", REALM_DBUS_SSSD_IPA_PATH,
+	                     NULL);
 }

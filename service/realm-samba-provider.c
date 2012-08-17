@@ -68,7 +68,7 @@ realm_samba_provider_constructed (GObject *obj)
 
 	self = REALM_SAMBA_PROVIDER (obj);
 
-	realm_dbus_provider_set_name (REALM_DBUS_PROVIDER (self), "Samba");
+	realm_provider_set_name (REALM_PROVIDER (self), "Samba");
 
 	security = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "security");
 	if (security != NULL && g_ascii_strcasecmp (security, "ADS") == 0)
@@ -117,7 +117,7 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
                                       GVariant **realms,
                                       GError **error)
 {
-	GDBusInterfaceSkeleton *realm;
+	RealmKerberos *realm;
 	GSimpleAsyncResult *async;
 	GHashTable *discovery;
 	GAsyncResult *ad_result;
@@ -140,7 +140,7 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
 	if (realm == NULL)
 		return 0;
 
-	object_path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
+	object_path = g_dbus_object_get_object_path (G_DBUS_OBJECT (realm));
 	*realms = g_variant_new_objv (&object_path, 1);
 	g_variant_ref_sink (*realms);
 
@@ -182,8 +182,6 @@ realm_samba_provider_class_init (RealmSambaProviderClass *klass)
 	RealmProviderClass *provider_class = REALM_PROVIDER_CLASS (klass);
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-	provider_class->dbus_path = REALM_DBUS_SAMBA_PATH;
-
 	provider_class->discover_async = realm_samba_provider_discover_async;
 	provider_class->discover_finish = realm_samba_provider_discover_finish;
 
@@ -195,4 +193,12 @@ realm_samba_provider_class_init (RealmSambaProviderClass *klass)
 	            g_param_spec_object ("samba-config", "Samba Config", "Samba Config",
 	                                 REALM_TYPE_INI_CONFIG, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 
+}
+
+RealmProvider *
+realm_samba_provider_new (void)
+{
+	return g_object_new (REALM_TYPE_SAMBA_PROVIDER,
+	                     "g-object-path", REALM_DBUS_SAMBA_PATH,
+	                     NULL);
 }

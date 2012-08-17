@@ -31,6 +31,8 @@ typedef struct _RealmSssdAdProvider RealmSssdAdProvider;
 
 GType               realm_sssd_ad_provider_get_type                 (void) G_GNUC_CONST;
 
+RealmProvider *     realm_sssd_ad_provider_new                      (void);
+
 G_END_DECLS
 
 #endif /* __REALM_SSSD_AD_PROVIDER_H__ */

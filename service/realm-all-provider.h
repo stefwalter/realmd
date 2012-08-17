@@ -31,6 +31,8 @@ typedef struct _RealmAllProvider RealmAllProvider;
 
 GType               realm_all_provider_get_type                 (void) G_GNUC_CONST;
 
+RealmProvider *     realm_all_provider_new_and_export           (GDBusConnection *connection);
+
 void                realm_all_provider_register                 (RealmProvider *all_provider,
                                                                  RealmProvider *provider);
 

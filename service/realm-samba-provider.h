@@ -31,6 +31,8 @@ typedef struct _RealmSambaProvider RealmSambaProvider;
 
 GType               realm_samba_provider_get_type                 (void) G_GNUC_CONST;
 
+RealmProvider *     realm_samba_provider_new                      (void);
+
 G_END_DECLS
 
 #endif /* __REALM_SAMBA_PROVIDER_H__ */

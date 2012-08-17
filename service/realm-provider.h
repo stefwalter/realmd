@@ -20,6 +20,7 @@
 #include <gio/gio.h>
 
 #include "realm-dbus-generated.h"
+#include "realm-kerberos.h"
 
 G_BEGIN_DECLS
 
@@ -42,8 +43,6 @@ struct _RealmProvider {
 struct _RealmProviderClass {
 	RealmDbusProviderSkeletonClass parent_class;
 
-	const gchar *dbus_path;
-
 	void         (* discover_async)  (RealmProvider *provider,
 	                                  const gchar *string,
 	                                  GDBusMethodInvocation *invocation,
@@ -63,7 +62,7 @@ RealmProvider *          realm_provider_start                    (GDBusConnectio
 
 void                     realm_provider_stop_all                 (void);
 
-GDBusInterfaceSkeleton * realm_provider_lookup_or_register_realm (RealmProvider *self,
+RealmKerberos *          realm_provider_lookup_or_register_realm (RealmProvider *self,
                                                                   GType realm_type,
                                                                   const gchar *realm_name,
                                                                   GHashTable *discovery);
@@ -81,6 +80,14 @@ gint                     realm_provider_discover_finish          (RealmProvider 
                                                                   GAsyncResult *result,
                                                                   GVariant **realms,
                                                                   GError **error);
+
+void                     realm_provider_set_name                 (RealmProvider *self,
+                                                                  const gchar *value);
+
+const gchar **           realm_provider_get_realms               (RealmProvider *self);
+
+void                     realm_provider_set_realms               (RealmProvider *self,
+                                                                  const gchar **value);
 
 G_END_DECLS
 

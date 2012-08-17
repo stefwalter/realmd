@@ -111,6 +111,10 @@
 
 	  This interface is implemented by the realmd service, and is always
 	  available at the object path <literal>/org/freedesktop/realmd</literal>
+
+	  The service also implements the
+	  <literal>org.freedesktop.DBus.ObjectManager</literal> interface which
+	  makes it easy to retrieve all realmd objects and properties in one go.
 	-->
 	<interface name="org.freedesktop.realmd.Service">
 

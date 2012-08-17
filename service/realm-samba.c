@@ -589,7 +589,8 @@ realm_samba_notify (GObject *obj,
 	if (g_str_equal (spec->name, "name"))
 		update_properties (REALM_SAMBA (obj));
 
-	G_OBJECT_CLASS (realm_samba_parent_class)->notify (obj, spec);
+	if (G_OBJECT_CLASS (realm_samba_parent_class)->notify)
+		G_OBJECT_CLASS (realm_samba_parent_class)->notify (obj, spec);
 }
 
 static void

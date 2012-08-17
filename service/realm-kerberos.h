@@ -57,12 +57,12 @@ typedef struct _RealmKerberosClass RealmKerberosClass;
 typedef struct _RealmKerberosPrivate RealmKerberosPrivate;
 
 struct _RealmKerberos {
-	RealmDbusKerberosSkeleton parent;
+	GDBusObjectSkeleton parent;
 	RealmKerberosPrivate *pv;
 };
 
 struct _RealmKerberosClass {
-	RealmDbusKerberosSkeletonClass parent_class;
+	GDBusObjectSkeletonClass parent_class;
 
 	void       (* enroll_password_async)    (RealmKerberos *realm,
 	                                         const char *name,
@@ -129,10 +129,6 @@ struct _RealmKerberosClass {
 };
 
 GType               realm_kerberos_get_type              (void) G_GNUC_CONST;
-
-void                realm_kerberos_export_to_dbus        (RealmKerberos *self,
-                                                          GDBusConnection *connection,
-                                                          const gchar *object_path);
 
 void                realm_kerberos_set_discovery         (RealmKerberos *self,
                                                           GHashTable *discovery);

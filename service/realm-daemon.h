@@ -40,6 +40,8 @@ void                 realm_daemon_poke                       (void);
 gboolean             realm_daemon_check_dbus_action          (const gchar *sender,
                                                               const gchar *action_id);
 
+void                 realm_daemon_export_object              (GDBusObjectSkeleton *object);
+
 G_END_DECLS
 
 #endif /* __REALM_DAEMON_H__ */

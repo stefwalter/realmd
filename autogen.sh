@@ -12,6 +12,14 @@ FILE=service/realm-daemon.c
 
 DIE=0
 
+# Some boiler plate to get git setup as expected
+if test -d .git; then
+	if test -f .git/hooks/pre-commit.sample && \
+	   test ! -f .git/hooks/pre-commit; then
+		cp -pv .git/hooks/pre-commit.sample .git/hooks/pre-commit
+	fi
+fi
+
 (autoconf --version) < /dev/null > /dev/null 2>&1 || {
 	echo
 	echo "You must have autoconf installed to compile $PROJECT."

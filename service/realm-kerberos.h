@@ -135,10 +135,6 @@ void                realm_kerberos_set_discovery         (RealmKerberos *self,
 
 GHashTable *        realm_kerberos_get_discovery         (RealmKerberos *self);
 
-gchar *             realm_kerberos_parse_login           (RealmKerberos *self,
-                                                          gboolean lower,
-                                                          const gchar *login);
-
 gchar **            realm_kerberos_parse_logins          (RealmKerberos *self,
                                                           gboolean lower,
                                                           const gchar **logins,

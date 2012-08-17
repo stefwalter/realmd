@@ -709,23 +709,6 @@ realm_kerberos_get_discovery (RealmKerberos *self)
 	return self->pv->discovery;
 }
 
-gchar *
-realm_kerberos_parse_login (RealmKerberos *self,
-                            gboolean lower,
-                            const gchar *login)
-{
-	const gchar *const *formats;
-
-	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
-	g_return_val_if_fail (login != NULL, NULL);
-
-	formats = realm_dbus_realm_get_login_formats (self->pv->realm_iface);
-	if (formats == NULL)
-		return NULL;
-
-	return realm_login_name_parse (formats, lower, login);
-}
-
 gchar **
 realm_kerberos_parse_logins (RealmKerberos *self,
                              gboolean lower,

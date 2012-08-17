@@ -591,7 +591,7 @@
 		    <listitem><para><literal>org.freedesktop.realmd.Error.NotAuthorized</literal>:
 		      returned if the calling client is not permitted to perform an join
 		      operation.</para></listitem>
-		    <listitem><para><literal>org.freedesktop.realmd.Error.AuthenicationFailed</literal>:
+		    <listitem><para><literal>org.freedesktop.realmd.Error.AuthenticationFailed</literal>:
 		      returned if the credentials passed did not authenticate against the realm
 		      correctly. It is appropriate to prompt the user again.</para></listitem>
 		    <listitem><para><literal>org.freedesktop.realmd.Error.AlreadyEnrolled</literal>:
@@ -646,7 +646,7 @@
 		    <listitem><para><literal>org.freedesktop.realmd.Error.NotAuthorized</literal>:
 		      returned if the calling client is not permitted to perform an unenroll
 		      operation.</para></listitem>
-		    <listitem><para><literal>org.freedesktop.realmd.Error.AuthenicationFailed</literal>:
+		    <listitem><para><literal>org.freedesktop.realmd.Error.AuthenticationFailed</literal>:
 		      returned if the credentials passed did not authenticate against the realm
 		      correctly. It is appropriate to prompt the user again.</para></listitem>
 		    <listitem><para><literal>org.freedesktop.realmd.Error.NotEnrolled</literal>:

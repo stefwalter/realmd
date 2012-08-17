@@ -235,9 +235,12 @@ on_discover_timeout (gpointer user_data)
 	 */
 
 	if (!g_queue_is_empty (&discover->results)) {
+		g_debug ("Providers taking too long, terminating search early");
 		discover_process_results (async, discover);
 		discover->completed = TRUE;
 		g_simple_async_result_complete (async);
+	} else {
+		g_debug ("Waiting for results from providers");
 	}
 
 	return TRUE;

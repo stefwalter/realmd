@@ -20,7 +20,7 @@
 		</defaults>
 	</action>
 
-	<action id="org.freedesktop.realmd.enroll-machine">
+	<action id="org.freedesktop.realmd.configure-realm">
 		<_description>Join machine to realm</_description>
 		<_message>Authentication is required to join this machine to a realm or domain</_message>
 		<defaults>
@@ -30,11 +30,11 @@
 		</defaults>
 		<annotate key="org.freedesktop.policykit.imply">
 			org.freedesktop.realmd.discover-realm
-			org.freedesktop.realmd.unenroll-machine
+			org.freedesktop.realmd.deconfigure-realm
 		</annotate>
 	</action>
 
-	<action id="org.freedesktop.realmd.unenroll-machine">
+	<action id="org.freedesktop.realmd.deconfigure-realm">
 		<_description>Remove machine from realm</_description>
 		<_message>Authentication is required to remove this computer from a realm or domain.</_message>
 		<defaults>

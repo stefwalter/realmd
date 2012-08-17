@@ -44,25 +44,21 @@ G_DEFINE_TYPE (RealmSssdAd, realm_sssd_ad, REALM_TYPE_SSSD);
 static void
 realm_sssd_ad_init (RealmSssdAd *self)
 {
-	GPtrArray *entries;
-	GVariant *entry;
-	GVariant *details;
+
+}
+
+static void
+realm_sssd_ad_constructed (GObject *obj)
+{
+	RealmKerberos *kerberos = REALM_KERBEROS (obj);
 	GVariant *supported;
 
-	entries = g_ptr_array_new ();
+	G_OBJECT_CLASS (realm_sssd_ad_parent_class)->constructed (obj);
 
-	entry = g_variant_new_dict_entry (g_variant_new_string ("server-software"),
-	                                  g_variant_new_string ("active-directory"));
-	g_ptr_array_add (entries, entry);
-
-	entry = g_variant_new_dict_entry (g_variant_new_string ("client-software"),
-	                                  g_variant_new_string ("sssd"));
-	g_ptr_array_add (entries, entry);
-
-	details = g_variant_new_array (G_VARIANT_TYPE ("{ss}"),
-	                               (GVariant * const *)entries->pdata,
-	                               entries->len);
-	g_variant_ref_sink (details);
+	realm_kerberos_set_details (kerberos,
+	                            "server-software", "active-directory",
+	                            "client-software", "sssd",
+	                            NULL);
 
 	/*
 	 * Each line is a combination of owner and what kind of credentials are supported,
@@ -73,17 +69,13 @@ realm_sssd_ad_init (RealmSssdAd *self)
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_ADMIN,
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_USER,
 			0);
-
-	g_object_set (self,
-	              "details", details,
-	              "suggested-administrator", "Administrator",
-	              "supported-enroll-credentials", supported,
-	              "supported-unenroll-credentials", supported,
-	              NULL);
-
-	g_variant_unref (details);
+	g_variant_ref_sink (supported);
+	realm_kerberos_set_supported_join_creds (kerberos, supported);
+	realm_kerberos_set_supported_leave_creds (kerberos, supported);
 	g_variant_unref (supported);
-	g_ptr_array_free (entries, TRUE);
+
+	realm_kerberos_set_suggested_admin (kerberos, "Administrator");
+	realm_kerberos_set_login_policy (kerberos, REALM_KERBEROS_ALLOW_ANY_LOGIN);
 }
 
 typedef struct {
@@ -297,19 +289,19 @@ realm_sssd_ad_enroll_async (RealmKerberos *realm,
 	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
 	                                 realm_sssd_ad_enroll_async);
 	enroll = g_slice_new0 (EnrollClosure);
-	g_object_get (sssd, "name", &enroll->realm_name, NULL);
+	enroll->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
 	enroll->invocation = g_object_ref (invocation);
 	g_simple_async_result_set_op_res_gpointer (res, enroll, enroll_closure_free);
 
 	/* Make sure not already enrolled in a realm */
 	if (realm_sssd_get_config_section (sssd) != NULL) {
-		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_ALREADY_ENROLLED,
-		                                 _("Already enrolled in this realm"));
+		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
+		                                 _("Already joined to this domain"));
 		g_simple_async_result_complete_in_idle (res);
 
 	} else if (realm_sssd_config_have_domain (realm_sssd_get_config (sssd), enroll->realm_name)) {
-		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_ALREADY_ENROLLED,
-		                                 _("This domain is already configured"));
+		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
+		                                 _("A domain with this name is already configured"));
 		g_simple_async_result_complete_in_idle (res);
 
 	/* Already have discovery info, so go straight to install */
@@ -450,7 +442,7 @@ realm_sssd_ad_unenroll_async (RealmKerberos *realm,
 	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
 	                                 realm_sssd_ad_unenroll_async);
 	unenroll = g_slice_new0 (UnenrollClosure);
-	g_object_get (sssd, "name", &unenroll->realm_name, NULL);
+	unenroll->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
 	unenroll->invocation = g_object_ref (invocation);
 	g_simple_async_result_set_op_res_gpointer (res, unenroll, unenroll_closure_free);
 
@@ -460,8 +452,8 @@ realm_sssd_ad_unenroll_async (RealmKerberos *realm,
 		                                   invocation, on_kinit_do_leave, g_object_ref (res));
 
 	} else {
-		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_NOT_ENROLLED,
-		                                 _("Not currently enrolled in the realm"));
+		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
+		                                 _("Not currently joined to this domain"));
 		g_simple_async_result_complete_in_idle (res);
 	}
 
@@ -483,6 +475,9 @@ void
 realm_sssd_ad_class_init (RealmSssdAdClass *klass)
 {
 	RealmKerberosClass *kerberos_class = REALM_KERBEROS_CLASS (klass);
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+	object_class->constructed = realm_sssd_ad_constructed;
 
 	kerberos_class->enroll_password_async = realm_sssd_ad_enroll_async;
 	kerberos_class->enroll_finish = realm_sssd_ad_generic_finish;

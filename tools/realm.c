@@ -83,49 +83,82 @@ realm_handle_error (GError *error,
 	g_string_free (message, TRUE);
 }
 
-RealmDbusKerberos *
-realm_info_to_realm_proxy (GVariant *realm_info)
+gboolean
+realm_supports_interface (RealmDbusRealm *realm,
+                          const gchar *interface)
 {
-	RealmDbusKerberos *realm = NULL;
-	const gchar *object_path;
-	const gchar *interface_name;
+	const gchar *const *supported;
+	gint i;
+
+	supported = realm_dbus_realm_get_supported_interfaces (realm);
+	g_return_val_if_fail (supported != NULL, FALSE);
+
+	for (i = 0; supported[i] != NULL; i++) {
+		if (g_str_equal (supported[i], interface))
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+gchar **
+realm_lookup_paths (void)
+{
+	RealmDbusProvider *provider;
+	GError *error = NULL;
+	gchar **realms;
+
+	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+	                                                       G_DBUS_PROXY_FLAGS_NONE,
+	                                                       REALM_DBUS_BUS_NAME,
+	                                                       REALM_DBUS_SERVICE_PATH,
+	                                                       NULL, &error);
+	if (error != NULL) {
+		realm_handle_error (error, _("Couldn't connect to realm service"));
+		return NULL;
+	}
+
+	/* Find the right realm, but only enrolled */
+	realms = g_strdupv ((gchar **)realm_dbus_provider_get_realms (provider));
+	g_object_unref (provider);
+
+	return realms;
+}
+
+RealmDbusRealm *
+realm_path_to_realm (const gchar *object_path)
+{
+	RealmDbusRealm *realm = NULL;
 	GError *error = NULL;
 
-	g_variant_get (realm_info, "(&o&s)", &object_path, &interface_name);
-
-	if (g_str_equal (interface_name, REALM_DBUS_KERBEROS_REALM_INTERFACE)) {
-		realm = realm_dbus_kerberos_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-		                                                    G_DBUS_PROXY_FLAGS_NONE,
-		                                                    REALM_DBUS_BUS_NAME, object_path,
-		                                                    NULL, &error);
-	}
+	realm = realm_dbus_realm_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+	                                                 G_DBUS_PROXY_FLAGS_NONE,
+	                                                 REALM_DBUS_BUS_NAME, object_path,
+	                                                 NULL, &error);
 
 	if (error != NULL)
 		realm_handle_error (error, _("Couldn't use realm service"));
-	else if (realm == NULL)
-		realm_handle_error (NULL, _("Unsupported realm type: %s"), interface_name);
 
 	return realm;
 }
 
-static RealmDbusKerberos *
-find_enrolled_in_realms (GVariant *realms,
-                         const gchar *realm_name)
+RealmDbusRealm *
+realm_paths_to_configured_realm (const gchar * const* realm_paths,
+                                 const gchar *realm_name)
 {
-	RealmDbusKerberos *result = NULL;
-	RealmDbusKerberos *realm;
-	GVariant *realm_info;
-	GVariantIter iter;
+	RealmDbusRealm *result = NULL;
+	const gchar *configured;
+	RealmDbusRealm *realm;
 	const gchar *name;
+	gint i;
 
-	g_variant_iter_init (&iter, realms);
-	while ((realm_info = g_variant_iter_next_value (&iter)) != NULL) {
-		realm = realm_info_to_realm_proxy (realm_info);
-		g_variant_unref (realm_info);
+	for (i = 0; realm_paths[i] != NULL; i++) {
+		realm = realm_path_to_realm (realm_paths[i]);
 		if (realm == NULL)
 			continue;
 
-		if (realm_dbus_kerberos_get_enrolled (realm)) {
+		configured = realm_dbus_realm_get_configured (realm);
+		if (g_strcmp0 (configured, "") != 0) {
 
 			/* Searching for any enrolled realm */
 			if (realm_name == NULL) {
@@ -141,7 +174,7 @@ find_enrolled_in_realms (GVariant *realms,
 
 			/* Searching for a specific enrolled realm */
 			} else {
-				name = realm_dbus_kerberos_get_name (realm);
+				name = realm_dbus_realm_get_name (realm);
 				if (name != NULL && g_ascii_strcasecmp (name, realm_name) == 0) {
 					return realm;
 				}
@@ -163,14 +196,14 @@ find_enrolled_in_realms (GVariant *realms,
 }
 
 
-RealmDbusKerberos *
-realm_name_to_enrolled (GDBusConnection *connection,
-                        const gchar *realm_name)
+RealmDbusRealm *
+realm_name_to_configured (GDBusConnection *connection,
+                          const gchar *realm_name)
 {
-	RealmDbusKerberos *realm;
+	RealmDbusRealm *realm;
 	RealmDbusProvider *provider;
 	GError *error = NULL;
-	GVariant *realms;
+	const gchar * const* realms;
 
 	if (realm_name != NULL && g_str_equal (realm_name, ""))
 		realm_name = NULL;
@@ -189,7 +222,7 @@ realm_name_to_enrolled (GDBusConnection *connection,
 	realms = realm_dbus_provider_get_realms (provider);
 	g_return_val_if_fail (realms != NULL, NULL);
 
-	realm = find_enrolled_in_realms (realms, realm_name);
+	realm = realm_paths_to_configured_realm (realms, realm_name);
 	g_object_unref (provider);
 
 	return realm;

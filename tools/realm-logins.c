@@ -45,14 +45,14 @@ perform_permit_or_deny_logins (GDBusConnection *connection,
                                gint n_logins,
                                gboolean permit)
 {
-	RealmDbusKerberos *realm;
+	RealmDbusRealm *realm;
 	SyncClosure sync;
 	gchar **add_or_remove;
 	GError *error = NULL;
 	const gchar *empty[] = { NULL };
 	GVariant *options;
 
-	realm = realm_name_to_enrolled (connection, realm_name);
+	realm = realm_name_to_configured (connection, realm_name);
 	if (realm == NULL)
 		return 1;
 
@@ -69,17 +69,17 @@ perform_permit_or_deny_logins (GDBusConnection *connection,
 	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
 	g_variant_ref_sink (options);
 
-	realm_dbus_kerberos_call_change_login_policy (realm, REALM_DBUS_LOGIN_POLICY_PERMITTED,
-	                                              permit ? (const gchar * const*)add_or_remove : empty,
-	                                              permit ? empty : (const gchar * const*)add_or_remove,
-	                                              options, NULL, on_complete_get_result, &sync);
+	realm_dbus_realm_call_change_login_policy (realm, REALM_DBUS_LOGIN_POLICY_PERMITTED,
+	                                           permit ? (const gchar * const*)add_or_remove : empty,
+	                                           permit ? empty : (const gchar * const*)add_or_remove,
+	                                           options, NULL, on_complete_get_result, &sync);
 
 	g_variant_unref (options);
 
 	/* This mainloop is quit by on_complete_get_result */
 	g_main_loop_run (sync.loop);
 
-	realm_dbus_kerberos_call_change_login_policy_finish (realm, sync.result, &error);
+	realm_dbus_realm_call_change_login_policy_finish (realm, sync.result, &error);
 
 	g_object_unref (sync.result);
 	g_main_loop_unref (sync.loop);
@@ -98,13 +98,13 @@ perform_permit_or_deny_all (GDBusConnection *connection,
                             const gchar *realm_name,
                             gboolean permit)
 {
-	RealmDbusKerberos *realm;
+	RealmDbusRealm *realm;
 	const gchar *policy;
 	const gchar *logins[] = { NULL };
 	GError *error = NULL;
 	GVariant *options;
 
-	realm = realm_name_to_enrolled (connection, realm_name);
+	realm = realm_name_to_configured (connection, realm_name);
 	if (realm == NULL)
 		return 1;
 
@@ -112,10 +112,10 @@ perform_permit_or_deny_all (GDBusConnection *connection,
 	g_variant_ref_sink (options);
 
 	policy = permit ? REALM_DBUS_LOGIN_POLICY_ANY : REALM_DBUS_LOGIN_POLICY_DENY;
-	realm_dbus_kerberos_call_change_login_policy_sync (realm, policy,
-	                                                   (const gchar * const *)logins,
-	                                                   (const gchar * const *)logins,
-	                                                   options, NULL, &error);
+	realm_dbus_realm_call_change_login_policy_sync (realm, policy,
+	                                                (const gchar * const *)logins,
+	                                                (const gchar * const *)logins,
+	                                                options, NULL, &error);
 
 	g_variant_unref (options);
 

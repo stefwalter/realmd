@@ -5,7 +5,7 @@ TABLE.navigation {
 	border-width: 0 !important;
 	color: white;
 	font-family: Georgia, "Times New Roman", Times, serif;
-	min-height: 4em !important;
+	height: 4em !important;
 }
 
 TABLE.navigation TH {

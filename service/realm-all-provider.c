@@ -43,55 +43,37 @@ G_DEFINE_TYPE (RealmAllProvider, realm_all_provider, REALM_TYPE_PROVIDER);
 static void
 realm_all_provider_init (RealmAllProvider *self)
 {
-	/* The dbus Name property of the provider */
-	g_object_set (self, "name", "All", NULL);
+
 }
 
-static GVariant *
-reduce_array (GQueue *input,
-              const gchar *array_sig)
+static void
+realm_all_provider_constructed (GObject *obj)
 {
-	GVariantBuilder builder;
-	GVariant *element;
-	GVariant *array;
-	GVariantIter iter;
+	G_OBJECT_CLASS (realm_all_provider_parent_class)->constructed (obj);
 
-	g_variant_builder_init (&builder, G_VARIANT_TYPE (array_sig));
-
-	for (;;) {
-		array = g_queue_pop_head (input);
-		if (!array)
-			break;
-		g_variant_iter_init (&iter, array);
-		for (;;) {
-			element = g_variant_iter_next_value (&iter);
-			if (!element)
-				break;
-			g_variant_builder_add_value (&builder, element);
-			g_variant_unref (element);
-		}
-		g_variant_unref (array);
-	}
-
-	return g_variant_builder_end (&builder);
+	/* The dbus Name property of the provider */
+	realm_dbus_provider_set_name (REALM_DBUS_PROVIDER (obj), "All");
 }
 
 static void
 update_realms_property (RealmAllProvider *self)
 {
-	GQueue realms = G_QUEUE_INIT;
-	GVariant *variant;
+	const gchar *const * objects;
+	GPtrArray *realms;
 	GList *l;
+	gint i;
 
+	realms = g_ptr_array_new ();
 	for (l = self->providers; l != NULL; l = g_list_next (l)) {
-		variant = realm_dbus_provider_get_realms (l->data);
-		if (variant)
-			g_queue_push_tail (&realms, g_variant_ref (variant));
+		objects = realm_dbus_provider_get_realms (l->data);
+		for (i = 0; objects != NULL && objects[i] != NULL; i++)
+			g_ptr_array_add (realms, (gchar *)objects[i]);
 	}
 
-	variant = g_variant_ref_sink (reduce_array (&realms, "a(os)"));
-	g_object_set (self, "realms", variant, NULL);
-	g_variant_unref (variant);
+	g_ptr_array_add (realms, NULL);
+	realm_dbus_provider_set_realms (REALM_DBUS_PROVIDER (self),
+	                                (const gchar *const *)realms->pdata);
+	g_ptr_array_free (realms, TRUE);
 }
 
 static void
@@ -147,10 +129,10 @@ compare_relevance (gconstpointer a,
 	gint relevance_b = 0;
 	GVariant *realms;
 
-	g_variant_get ((GVariant *)a, "(i@a(os))", &relevance_a, &realms);
+	g_variant_get ((GVariant *)a, "(i@ao)", &relevance_a, &realms);
 	g_variant_unref (realms);
 
-	g_variant_get ((GVariant *)b, "(i@a(os))", &relevance_b, &realms);
+	g_variant_get ((GVariant *)b, "(i@ao)", &relevance_b, &realms);
 	g_variant_unref (realms);
 
 	return relevance_b - relevance_a;
@@ -176,13 +158,10 @@ discover_process_results (GSimpleAsyncResult *res,
 		result = g_queue_pop_head (&discover->results);
 		if (result == NULL)
 			break;
-		g_variant_get (result, "(i@a(os))", &relevance, &realms);
+		g_variant_get (result, "(i@ao)", &relevance, &realms);
 		g_variant_iter_init (&iter, realms);
-		while ((realm = g_variant_iter_next_value (&iter)) != NULL) {
-			const gchar *iface, *path;
-			g_variant_get (realm, "(&o&s)", &iface, &path);
+		while ((realm = g_variant_iter_next_value (&iter)) != NULL)
 			g_ptr_array_add (results, realm);
-		}
 		if (relevance > discover->relevance)
 			discover->relevance = relevance;
 		g_variant_unref (realms);
@@ -190,7 +169,7 @@ discover_process_results (GSimpleAsyncResult *res,
 		any = TRUE;
 	}
 
-	discover->realms = g_variant_new_array (G_VARIANT_TYPE ("(os)"),
+	discover->realms = g_variant_new_array (G_VARIANT_TYPE ("o"),
 	                                        (GVariant *const *)results->pdata,
 	                                        results->len);
 	g_variant_ref_sink (discover->realms);
@@ -219,7 +198,7 @@ on_provider_discover (GObject *source,
 
 	relevance = realm_provider_discover_finish (REALM_PROVIDER (source), result, &realms, &error);
 	if (error == NULL) {
-		retval = g_variant_new ("(i@a(os))", relevance, realms);
+		retval = g_variant_new ("(i@ao)", relevance, realms);
 		g_queue_push_tail (&discover->results, g_variant_ref_sink (retval));
 	} else {
 		g_queue_push_tail (&discover->failures, error);
@@ -340,6 +319,7 @@ realm_all_provider_class_init (RealmAllProviderClass *klass)
 	RealmProviderClass *provider_class = REALM_PROVIDER_CLASS (klass);
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+	object_class->constructed = realm_all_provider_constructed;
 	object_class->finalize = realm_all_provider_finalize;
 
 	provider_class->dbus_path = REALM_DBUS_SERVICE_PATH;

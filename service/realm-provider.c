@@ -22,6 +22,7 @@
 #include "realm-diagnostics.h"
 #include "realm-discovery.h"
 #include "realm-errors.h"
+#include "realm-kerberos.h"
 #include "realm-provider.h"
 #include "realm-settings.h"
 
@@ -74,7 +75,7 @@ on_discover_complete (GObject *source,
 
 	relevance = realm_provider_discover_finish (closure->self, result, &realms, &error);
 	if (error == NULL) {
-		retval = g_variant_new ("(i@a(os))", relevance, realms);
+		retval = g_variant_new ("(i@ao)", relevance, realms);
 		g_dbus_method_invocation_return_value (closure->invocation, retval);
 		g_variant_unref (realms);
 	} else {
@@ -154,9 +155,15 @@ realm_provider_init (RealmProvider *self)
 	                                        RealmProviderPrivate);
 	self->pv->realms = g_hash_table_new_full (g_str_hash, g_str_equal,
 	                                          g_free, g_object_unref);
+}
+
+static void
+realm_provider_constructed (GObject *obj)
+{
+	G_OBJECT_CLASS (realm_provider_parent_class)->constructed (obj);
 
 	/* The dbus version property of the provider */
-	g_object_set (self, "version", VERSION, NULL);
+	realm_dbus_provider_set_version (REALM_DBUS_PROVIDER (obj), VERSION);
 }
 
 static void
@@ -166,19 +173,22 @@ update_realms_property (RealmProvider *self)
 	GDBusInterfaceSkeleton *realm;
 	GVariantBuilder builder;
 	const gchar *path;
-	GVariant *variant;
+	GPtrArray *realms;
 
-	g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(os)"));
+	g_variant_builder_init (&builder, G_VARIANT_TYPE ("ao"));
 
+	realms = g_ptr_array_new ();
 	g_hash_table_iter_init (&iter, self->pv->realms);
 	while (g_hash_table_iter_next (&iter, NULL, (gpointer)&realm)) {
 		path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
-		g_variant_builder_add (&builder, "(os)", path, REALM_DBUS_KERBEROS_REALM_INTERFACE);
+		g_ptr_array_add (realms, (gchar *)path);
 	}
 
-	variant = g_variant_builder_end (&builder);
-	g_object_set (self, "realms", g_variant_ref_sink (variant), NULL);
-	g_variant_unref (variant);
+	g_ptr_array_add (realms, NULL);
+
+	realm_dbus_provider_set_realms (REALM_DBUS_PROVIDER (self),
+	                                (const gchar *const *)realms->pdata);
+	g_ptr_array_free (realms, TRUE);
 }
 
 static void
@@ -197,6 +207,7 @@ realm_provider_class_init (RealmProviderClass *klass)
 	GDBusInterfaceSkeletonClass *skeleton_class = G_DBUS_INTERFACE_SKELETON_CLASS (klass);
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+	object_class->constructed = realm_provider_constructed;
 	object_class->finalize = realm_provider_finalize;
 	skeleton_class->g_authorize_method = realm_provider_authorize_method;
 
@@ -210,50 +221,31 @@ realm_provider_iface_init (RealmDbusProviderIface *iface)
 	iface->handle_discover = realm_provider_handle_discover;
 }
 
-GVariant *
-realm_provider_new_realm_info (const gchar *object_path,
-                               const gchar *interface)
-{
-	g_return_val_if_fail (g_variant_is_object_path (object_path), NULL);
-	g_return_val_if_fail (g_dbus_is_interface_name (interface), NULL);
-	return g_variant_new ("(os)", object_path, interface);
-}
-
 static void
 export_realm_if_possible (RealmProvider *self,
-                          GDBusInterfaceSkeleton *realm)
+                          RealmKerberos *realm)
 {
 	GDBusConnection *connection;
 	static gint unique_number = 0;
 	const char *provider_path;
-	GError *error = NULL;
-	gchar *realm_name;
 	gchar *escaped;
 	gchar *path;
 
 	connection = g_dbus_interface_skeleton_get_connection (G_DBUS_INTERFACE_SKELETON (self));
 	if (connection == NULL)
 		return;
-	if (g_dbus_interface_skeleton_has_connection (realm, connection))
+	if (g_dbus_interface_skeleton_has_connection (G_DBUS_INTERFACE_SKELETON (realm), connection))
 		return;
 
-	g_object_get (realm, "name", &realm_name, NULL);
-	escaped = g_strdup (realm_name);
+	escaped = g_strdup (realm_kerberos_get_name (realm));
 	g_strcanon (escaped, REALM_DBUS_NAME_CHARS, '_');
-	g_free (realm_name);
 
 	provider_path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (self));
 	path = g_strdup_printf ("%s/%s_%d", provider_path, escaped, ++unique_number);
 	g_free (escaped);
-	g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (realm),
-	                                  connection, path, &error);
-	g_free (path);
 
-	if (error != NULL) {
-		g_warning ("couldn't export realm on dbus connection: %s",
-		           error->message);
-		g_error_free (error);
-	}
+	realm_kerberos_export_to_dbus (realm, connection, path);
+	g_free (path);
 
 	update_realms_property (self);
 }
@@ -261,29 +253,35 @@ export_realm_if_possible (RealmProvider *self,
 GDBusInterfaceSkeleton *
 realm_provider_lookup_or_register_realm (RealmProvider *self,
                                          GType realm_type,
-                                         const gchar *realm_name)
+                                         const gchar *realm_name,
+                                         GHashTable *discovery)
 {
-	GDBusInterfaceSkeleton *realm;
+	RealmKerberos *realm;
 
 	realm = g_hash_table_lookup (self->pv->realms, realm_name);
-	if (realm != NULL)
-		return realm;
+	if (realm != NULL) {
+		if (discovery != NULL)
+			realm_kerberos_set_discovery (realm, discovery);
+		return G_DBUS_INTERFACE_SKELETON (realm);
+	}
 
 	realm = g_object_new (realm_type,
 	                      "name", realm_name,
-	                      "provider", self, NULL);
+	                      "discovery", discovery,
+	                      "provider", self,
+	                      NULL);
 
 	export_realm_if_possible (self, realm);
 
 	g_hash_table_insert (self->pv->realms, g_strdup (realm_name), realm);
-	return realm;
+	return G_DBUS_INTERFACE_SKELETON (realm);
 }
 
 static void
 provider_object_start (GDBusConnection *connection,
                        RealmProvider *self)
 {
-	GDBusInterfaceSkeleton *realm;
+	RealmKerberos *realm;
 	RealmProviderClass *provider_class;
 	GError *error = NULL;
 	GHashTableIter iter;
@@ -381,7 +379,7 @@ realm_provider_discover_finish (RealmProvider *self,
 	relevance = (klass->discover_finish) (self, result, realms, &sub_error);
 	if (sub_error == NULL) {
 		if (realms != NULL && *realms == NULL) {
-			*realms =  g_variant_new_array (G_VARIANT_TYPE ("(os)"), NULL, 0);
+			*realms =  g_variant_new_array (G_VARIANT_TYPE ("o"), NULL, 0);
 			g_variant_ref_sink (*realms);
 		}
 	} else {

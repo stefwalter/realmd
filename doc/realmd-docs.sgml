@@ -13,8 +13,10 @@
 
 	<chapter xml:id="dbus-interface-reference">
 		<title>DBus Interface Reference</title>
-		<xi:include href="realmd-org.freedesktop.realmd.Kerberos.xml"/>
 		<xi:include href="realmd-org.freedesktop.realmd.Provider.xml"/>
+		<xi:include href="realmd-org.freedesktop.realmd.Realm.xml"/>
+		<xi:include href="realmd-org.freedesktop.realmd.Kerberos.xml"/>
+		<xi:include href="realmd-org.freedesktop.realmd.KerberosMembership.xml"/>
 		<xi:include href="realmd-org.freedesktop.realmd.Service.xml"/>
 	</chapter>
 	<chapter xml:id="dbus-interface-raw">

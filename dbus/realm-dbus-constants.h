@@ -29,7 +29,9 @@ G_BEGIN_DECLS
 #define   DBUS_INTROSPECTABLE_INTERFACE            "org.freedesktop.DBus.Introspectable"
 
 #define   REALM_DBUS_PROVIDER_INTERFACE            "org.freedesktop.realmd.Provider"
-#define   REALM_DBUS_KERBEROS_REALM_INTERFACE      "org.freedesktop.realmd.Kerberos"
+#define   REALM_DBUS_REALM_INTERFACE               "org.freedesktop.realmd.Realm"
+#define   REALM_DBUS_KERBEROS_INTERFACE            "org.freedesktop.realmd.Kerberos"
+#define   REALM_DBUS_KERBEROS_MEMBERSHIP_INTERFACE "org.freedesktop.realmd.KerberosMembership"
 #define   REALM_DBUS_SERVICE_INTERFACE             "org.freedesktop.realmd.Service"
 
 #define   REALM_DBUS_DIAGNOSTICS_SIGNAL            "Diagnostics"
@@ -39,8 +41,8 @@ G_BEGIN_DECLS
 #define   REALM_DBUS_ERROR_BUSY                    "org.freedesktop.realmd.Error.Busy"
 #define   REALM_DBUS_ERROR_NOT_AUTHORIZED          "org.freedesktop.realmd.Error.NotAuthorized"
 #define   REALM_DBUS_ERROR_CANCELLED               "org.freedesktop.realmd.Error.Cancelled"
-#define   REALM_DBUS_ERROR_ALREADY_ENROLLED        "org.freedesktop.realmd.Error.AlreadyEnrolled"
-#define   REALM_DBUS_ERROR_NOT_ENROLLED            "org.freedesktop.realmd.Error.NotEnrolled"
+#define   REALM_DBUS_ERROR_ALREADY_CONFIGURED      "org.freedesktop.realmd.Error.AlreadyConfigured"
+#define   REALM_DBUS_ERROR_NOT_CONFIGURED          "org.freedesktop.realmd.Error.NotConfigured"
 #define   REALM_DBUS_ERROR_AUTH_FAILED             "org.freedesktop.realmd.Error.AuthenicationFailed"
 
 #define   REALM_DBUS_DISCOVERY_TYPE                "type"

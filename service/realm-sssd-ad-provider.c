@@ -53,9 +53,6 @@ static void
 realm_sssd_ad_provider_init (RealmSssdAdProvider *self)
 {
 	self->config = realm_sssd_config_new (NULL);
-
-	/* The dbus Name property of the provider */
-	g_object_set (self, "name", "SssdAd", NULL);
 }
 
 static void
@@ -72,6 +69,8 @@ realm_sssd_ad_provider_constructed (GObject *obj)
 
 	self = REALM_SSSD_AD_PROVIDER (obj);
 
+	realm_dbus_provider_set_name (REALM_DBUS_PROVIDER (self), "SssdAd");
+
 	domains = realm_sssd_config_get_domains (self->config);
 	for (i = 0; domains && domains[i] != 0; i++) {
 		section = realm_sssd_config_domain_to_section (domains[i]);
@@ -82,7 +81,7 @@ realm_sssd_ad_provider_constructed (GObject *obj)
 		if (g_strcmp0 (type, "ad") == 0) {
 			realm_provider_lookup_or_register_realm (REALM_PROVIDER (self),
 			                                         REALM_TYPE_SSSD_AD,
-			                                         realm ? realm : domains[i]);
+			                                         realm ? realm : domains[i], NULL);
 		}
 
 		g_free (realm);
@@ -130,7 +129,6 @@ realm_sssd_ad_provider_discover_finish (RealmProvider *provider,
 	GDBusInterfaceSkeleton *realm;
 	GHashTable *discovery;
 	const gchar *object_path;
-	GVariant *realm_info;
 	gchar *name;
 
 	async = G_SIMPLE_ASYNC_RESULT (result);
@@ -142,22 +140,16 @@ realm_sssd_ad_provider_discover_finish (RealmProvider *provider,
 
 	realm = realm_provider_lookup_or_register_realm (provider,
 	                                                 REALM_TYPE_SSSD_AD,
-	                                                 name);
+	                                                 name, discovery);
 	g_free (name);
+	g_hash_table_unref (discovery);
 
-	if (realm == NULL) {
-		g_hash_table_unref (discovery);
+	if (realm == NULL)
 		return 0;
-	}
-
-	realm_kerberos_set_discovery (REALM_KERBEROS (realm), discovery);
 
 	object_path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
-	realm_info = realm_provider_new_realm_info (object_path, REALM_DBUS_KERBEROS_REALM_INTERFACE);
-	*realms = g_variant_new_array (G_VARIANT_TYPE ("(os)"), &realm_info, 1);
+	*realms = g_variant_new_objv (&object_path, 1);
 	g_variant_ref_sink (*realms);
-
-	g_hash_table_unref (discovery);
 
 	/* Return a higher priority if we're the default */
 	return realm_provider_is_default ("active-directory", "sssd") ? 100 : 50;

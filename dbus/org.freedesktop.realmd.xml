@@ -40,10 +40,9 @@
 		  are discovered they are added to this list.
 
 		  Each realm is represented by the DBus object path of the
-		  realm object, and the interface which the realm implements
-		  (eg: <literal>org.freedesktop.realmd.Kerberos</literal>)
+		  realm object.
 		-->
-		<property name="Realms" type="a(os)" access="read"/>
+		<property name="Realms" type="ao" access="read"/>
 
 		<!--
 		  Discover:
@@ -79,6 +78,9 @@
 		  connect to the org.freedesktop.realmd.Service::Diagnostics
 		  signal.
 
+		  This method requires authorization for the PolicyKit action
+		  called <literal>org.freedesktop.realmd.discover-realm</literal>.
+
 		  In addition to common DBus error results, this method may
 		  return:
 		  <itemizedlist>
@@ -95,8 +97,9 @@
 			<arg name="string" type="s" direction="in"/>
 			<arg name="options" type="a{sv}" direction="in"/>
 			<arg name="relevance" type="i" direction="out"/>
-			<arg name="realm" type="a(os)" direction="out"/>
+			<arg name="realm" type="ao" direction="out"/>
 		</method>
+
 	</interface>
 
 	<!--
@@ -184,48 +187,130 @@
 		<method name="Release">
 			<!-- no arguments -->
 		</method>
+
 	</interface>
 
 	<!--
-	  org.freedesktop.realmd.Kerberos:
-	  @short_description: a kerberos realm
+	  org.freedesktop.realmd.Realm:
+	  @short_description: a realm
 
-	  Represents one kerberos realm.
+	  Represents one realm.
+
+	  Contains generic information about a realm, and useful properties for
+	  introspecting what kind of realm this is and how to work with
+	  the realm.
 
 	  Use #org.freedesktop.realmd.Provider:Realms or
-	  # org.freedesktop.realmd.Provider.Discover() to get access to some
-	  kerberos realm objects. Do not assume that all realms implement
-	  this kerberos interface. The interface will be indicated in the
-	  list of realms.
+	  #org.freedesktop.realmd.Provider.Discover() to get access to some
+	  kerberos realm objects.
+
+	  Realms will always implement additional interfaces, such as
+	  #org.freedesktop.realmd.Kerberos.  Do not assume that all realms
+	  implement that kerberos interface. Use the
+	  #org.freedesktop.realmd.Realm:SupportedInterfaces property to see
+	  which interfaces are set.
+
+	  Different realms support various ways to configure them on the
+	  system. Use the #org.freedesktop.realmd.Realm:Configured property
+	  to determine if a realm is configured. If it is configured the
+	  property will be set to the interface of the mechanism that was
+	  used to configure it.
+
+	  To configure a realm, look in the
+	  #org.freedesktop.realmd.Realm:SupportedInterfaces property for a
+	  recognized purpose specific interface that can be used for
+	  configuration, such as the
+	  #org.freedesktop.realmd.KerberosMembership interface and its
+	  #org.freedesktop.realmd.KerberosMembership.Join() method.
+
+	  To deconfigure a realm from the current system, you can use the
+	  #org.freedesktop.realmd.Realm.Deconfigure() method. In additon some
+	  of the configuration specific interfaces provide methods to
+	  deconfigure a realm in a specific way, such as
+	  #org.freedesktop.realmd.KerberosMembership.Leave() method.
 
 	  The various properties are guaranteed to have been updated before
 	  the operation methods return, if they change state.
 	-->
-	<interface name="org.freedesktop.realmd.Kerberos">
+	<interface name="org.freedesktop.realmd.Realm">
 
 		<!--
 		  Name: the realm name
 
-		  The kerberos realm in the correct case for kerberos, usually
-		  in upper case.
+		  This is the name of the realm, appropriate for display to
+		  end users where necessary.
 		-->
 		<property name="Name" type="s" access="read"/>
 
 		<!--
-		  Domain: the DNS domain name
+		  Configured: whether this domain is configured and how
 
-		  The DNS domain name for this realm. This may be more
-		  appropriate for display to a user than the
-		  #org.freedesktop.realmd.Kerberos:Name property.
+		  If this property is an empty string, then the realm is not
+		  configured. Otherwise the realm is configured, and contains
+		  a string which is the interface that represents how it was
+		  configured, for example #org.freedesktop.realmd.KerberosMembership.
 		-->
-		<property name="Domain" type="s" access="read"/>
+		<property name="Configured" type="s" access="read"/>
 
 		<!--
-		  Enrolled: whether enrolled or not
+		  Deconfigure: deconfigure this realm
 
-		  Whether enrolled in this realm or not.
+		  Deconfigure this realm from the local machine with standard
+		  default behavior.
+
+		  The behavior of this method depends on the which configuration
+		  interface is present in the
+		  #org.freedesktop.realmd.Realm.Configured property. It does not
+		  always delete membership accounts in the realm, but just
+		  reconfigures the local machine so it no longer is configured
+		  for the given realm. In some cases the implementation may try
+		  to update membership accounts, but this is not guaranteed.
+
+		  Various configuration interfaces may support more specific ways
+		  to deconfigure a realm in a specific way, such as the
+		  #org.freedesktop.realmd.KerberosMembership.Leave() method.
+
+		  @options can contain, but is not limited to, the following values:
+		  <itemizedlist>
+		    <listitem><para><literal>operation</literal>: a string
+		      identifier chosen by the client, which can then later be
+		      passed to org.freedesktop.realmd.Service.Cancel() in order
+		      to cancel the operation</para></listitem>
+		  </itemizedlist>
+
+		  This method requires authorization for the PolicyKit action
+		  called <literal>org.freedesktop.realmd.deconfigure-realm</literal>.
+
+		  In addition to common DBus error results, this method may return:
+		  <itemizedlist>
+		    <listitem><para><literal>org.freedesktop.realmd.Error.Failed</literal>:
+		      may be returned if the deconfigure failed for a generic reason.</para></listitem>
+		    <listitem><para><literal>org.freedesktop.realmd.Error.Cancelled</literal>:
+		      returned if the operation was cancelled.</para></listitem>
+		    <listitem><para><literal>org.freedesktop.realmd.Error.NotAuthorized</literal>:
+		      returned if the calling client is not permitted to deconfigure a
+		      realm.</para></listitem>
+		    <listitem><para><literal>org.freedesktop.realmd.Error.NotConfigured</literal>:
+		      returned if this realm is not configured on the machine.</para></listitem>
+		    <listitem><para><literal>org.freedesktop.realmd.Error.Busy</literal>:
+		      returned if the service is currently performing another operation like
+		      join or leave.</para></listitem>
+		  </itemizedlist>
 		-->
-		<property name="Enrolled" type="b" access="read"/>
+		<method name="Deconfigure">
+			<arg name="options" type="a{sv}" direction="in"/>
+		</method>
+
+		<!--
+		  SupportedInterfaces:
+
+		  Additional supported interfaces of this realm. This includes
+		  interfaces that contain more information about the realm,
+		  such as #org.freedesktop.realmd.Kerberos and interfaces
+		  which contain methods for configuring a realm, such as
+		  #org.freedesktop.realmd.KerberosMembership.
+		-->
+		<property name="SupportedInterfaces" type="as" access="read"/>
 
 		<!--
 		  Details: informational details about the realm
@@ -244,6 +329,152 @@
 		<property name="Details" type="a(ss)" access="read"/>
 
 		<!--
+		  LoginFormats: supported formats for login names
+
+		  Supported formats for login to this realm. This is only
+		  relevant once the realm has been enrolled. The formats
+		  will contain a <literal>%s</literal> in the string, which
+		  indicate where the user name should be placed.
+
+		  The first format in the list is the preferred format for
+		  login names.
+		-->
+		<property name="LoginFormats" type="as" access="read"/>
+
+		<!--
+		  LoginPolicy: the policy for logins using this realm
+
+		  The policy for logging into this computer using this realm.
+
+		  The policy can be changed using the
+		  #org.freedesktop.realmd.Realm.ChangeLoginPolicy() method.
+
+		  The following policies are predefined. Not all providers
+		  support all these policies and there may be provider specific
+		  policies or multiple policies represented in the string:
+		  <itemizedlist>
+		    <listitem><para><literal>allow-any-login</literal>: allow
+		      login by any authenticated user present in this
+		      realm.</para></listitem>
+		    <listitem><para><literal>allow-permitted-logins</literal>:
+		      only allow the logins permitted in the
+		      #org.freedesktop.realmd.Realm:PermittedLogins
+		      property.</para></listitem>
+		    <listitem><para><literal>deny-any-login</literal>:
+		      don't allow any logins via authenticated users of this
+		      realm.</para></listitem>
+		  </itemizedlist>
+		-->
+		<property name="LoginPolicy" type="s" access="read"/>
+
+		<!--
+		  PermittedLogins: the permitted login names
+
+		  The list of permitted authenticated users allowed to login
+		  into this computer. This is only relevant if the
+		  #org.freedesktop.realmd.Realm:LoginPolicy property
+		  contains the <literal>allow-permitted-logins</literal>
+		  string.
+		-->
+		<property name="PermittedLogins" type="as" access="read"/>
+
+		<!--
+		  ChangeLoginPolicy:
+		  @login_policy: the new login policy, or an empty string
+		  @permitted_add: a list of logins to permit
+		  @permitted_remove: a list of logins to not permit
+		  @options: options for this operation
+
+		  Change the login policy and/or permitted logins for this realm.
+
+		  Not all realms support the all the various login policies. An
+		  error will be returned if the new login policy is not supported.
+		  You may specify an empty string for the @login_policy argument
+		  which will cause no change in the policy itself. If the policy
+		  is changed, it will be reflected in the
+		  #org.freedesktop.realmd.Realm:LoginPolicy property.
+
+		  The @permitted_add and @permitted_remove arguments represent
+		  lists of login names that should be added and removed from
+		  the #org.freedesktop.realmd.Kerberos:PermittedLogins property.
+
+		  @options can contain, but is not limited to, the following values:
+		  <itemizedlist>
+		    <listitem><para><literal>operation</literal>: a string
+		      identifier chosen by the client, which can then later be
+		      passed to org.freedesktop.realmd.Service.Cancel() in order
+		      to cancel the operation</para></listitem>
+		  </itemizedlist>
+
+		  This method requires authorization for the PolicyKit action
+		  called <literal>org.freedesktop.realmd.login-policy</literal>.
+
+		  In addition to common DBus error results, this method may return:
+		  <itemizedlist>
+		    <listitem><para><literal>org.freedesktop.realmd.Error.Failed</literal>:
+		      may be returned if the policy change failed for a generic reason.</para></listitem>
+		    <listitem><para><literal>org.freedesktop.realmd.Error.Cancelled</literal>:
+		      returned if the operation was cancelled.</para></listitem>
+		    <listitem><para><literal>org.freedesktop.realmd.Error.NotAuthorized</literal>:
+		      returned if the calling client is not permitted to change login policy
+		      operation.</para></listitem>
+		    <listitem><para><literal>org.freedesktop.realmd.Error.NotConfigured</literal>:
+		      returned if the realm is not configured.</para></listitem>
+		    <listitem><para><literal>org.freedesktop.realmd.Error.Busy</literal>:
+		      returned if the service is currently performing another operation like
+		      join or leave.</para></listitem>
+		  </itemizedlist>
+		-->
+		<method name="ChangeLoginPolicy">
+			<arg name="login_policy" type="s" direction="in"/>
+			<arg name="permitted_add" type="as" direction="in"/>
+			<arg name="permitted_remove" type="as" direction="in"/>
+			<arg name="options" type="a{sv}" direction="in"/>
+		</method>
+
+	</interface>
+
+	<!--
+	  org.freedesktop.realmd.Kerberos:
+	  @short_description: a kerberos realm
+
+	  An interface that describes a kerberos realm in more detail. This
+	  is always implemented on an DBus object path that also implements
+	  the #org.freedesktop.realmd.Realm interface.
+	-->
+	<interface name="org.freedesktop.realmd.Kerberos">
+
+		<!--
+		  RealmName: the kerberos realm name
+
+		  The kerberos name for this realm. This is usually in upper
+		  case.
+		-->
+		<property name="RealmName" type="s" access="read"/>
+
+		<!--
+		  DomainName: the DNS domain name
+
+		  The DNS domain name for this realm.
+		-->
+		<property name="DomainName" type="s" access="read"/>
+
+	</interface>
+
+	<!--
+	  org.freedesktop.realmd.KerberosMembership:
+
+	  An interface used to configure this machine by joining a realm.
+
+	  It sets up a computer/host account in the realm for this machine
+	  and a keytab to track the credentials for that account.
+
+	  The various properties are guaranteed to have been updated before
+	  the operation methods return, if they change state.
+	-->
+	<interface name="org.freedesktop.realmd.KerberosMembership">
+
+		<!--
 		  SuggestedAdministrator: common administrator name
 
 		  The common administrator name for this type of realm. This
@@ -253,10 +484,10 @@
 		<property name="SuggestedAdministrator" type="s" access="read"/>
 
 		<!--
-		  SupportedEnrollCredentials: credentials supported for enrolling
+		  SupportedJoinCredentials: credentials supported for joining
 
 		  Various kinds of credentials that are supported when calling the
-		  #org.freedesktop.realmd.Kerberos.Enroll() method.
+		  #org.freedesktop.realmd.Kerberos.Join() method.
 
 		  Each credential is represented by a type, and an owner. The type
 		  denotes which kind of credential is passed to the method. The
@@ -299,39 +530,39 @@
 		      being run on.</para></listitem>
 		    <listitem><para><literal>secret</literal>:
 		      the credentials are a one time password or other secret
-		      used to enroll or unenroll the computer.</para></listitem>
+		      used to join or leave the computer.</para></listitem>
 		  </itemizedlist>
 		-->
-		<property name="SupportedEnrollCredentials" type="a(ss)" access="read"/>
+		<property name="SupportedJoinCredentials" type="a(ss)" access="read"/>
 
 		<!--
-		  SupportedUnenrollCredentials: credentials supported for unenrolling
+		  SupportedLeaveCredentials: credentials supported for leaving
 
 		  Various kinds of credentials that are supported when calling the
-		  #org.freedesktop.realmd.Kerberos.Unenroll() method.
+		  #org.freedesktop.realmd.Kerberos.Leave() method.
 
-		  See #org.freedesktop.realmd.Kerberos:SupportedEnrollCredentials for
+		  See #org.freedesktop.realmd.Kerberos:SupportedJoinCredentials for
 		  a discussion of what the values represent.
 		-->
-		<property name="SupportedUnenrollCredentials" type="a(ss)" access="read"/>
+		<property name="SupportedLeaveCredentials" type="a(ss)" access="read"/>
 
 		<!--
-		  Enroll:
+		  Join:
 
-		  Enroll this machine in this realm.
+		  Join this machine to the realm and enroll the machine.
 
 		  If this method returns successfully then the machine will be
-		  enrolled. It is not necessary to restart services or the
+		  joined to the realm. It is not necessary to restart services or the
 		  machine afterward. Relevant properties on the realm will be updated
 		  before the method returns.
 
 		  The @credentials should be set according to one of the
 		  supported credentials returned by
-		  #org.freedesktop.realmd.Kerberos:SupportedEnrollCredentials.
+		  #org.freedesktop.realmd.Kerberos:SupportedJoinCredentials.
 		  The first string in the tuple is the type, the second string
 		  is the owner, and the variant contains the credential contents
 		  See the discussion at
-		  #org.freedesktop.realmd.Kerberos:SupportedEnrollCredentials
+		  #org.freedesktop.realmd.Kerberos:SupportedJoinCredentials
 		  for more information.
 
 		  @options can contain, but is not limited to, the following values:
@@ -342,14 +573,17 @@
 		      to cancel the operation</para></listitem>
 		  </itemizedlist>
 
+		  This method requires authorization for the PolicyKit action
+		  called <literal>org.freedesktop.realmd.configure-realm</literal>.
+
 		  In addition to common DBus error results, this method may return:
 		  <itemizedlist>
 		    <listitem><para><literal>org.freedesktop.realmd.Error.Failed</literal>:
-		      may be returned if the enroll failed for a generic reason.</para></listitem>
+		      may be returned if the join failed for a generic reason.</para></listitem>
 		    <listitem><para><literal>org.freedesktop.realmd.Error.Cancelled</literal>:
 		      returned if the operation was cancelled.</para></listitem>
 		    <listitem><para><literal>org.freedesktop.realmd.Error.NotAuthorized</literal>:
-		      returned if the calling client is not permitted to perform an enroll
+		      returned if the calling client is not permitted to perform an join
 		      operation.</para></listitem>
 		    <listitem><para><literal>org.freedesktop.realmd.Error.AuthenicationFailed</literal>:
 		      returned if the credentials passed did not authenticate against the realm
@@ -359,23 +593,23 @@
 		      in multiple realms is not supported.</para></listitem>
 		    <listitem><para><literal>org.freedesktop.realmd.Error.Busy</literal>:
 		      returned if the service is currently performing another operation like
-		      enroll or unenroll.</para></listitem>
+		      join or leave.</para></listitem>
 		  </itemizedlist>
 		-->
-		<method name="Enroll">
+		<method name="Join">
 			<arg name="credentials" type="(ssv)" direction="in"/>
 			<arg name="options" type="a{sv}" direction="in"/>
 		</method>
 
 		<!--
-		  Unenroll:
+		  Leave:
 
-		  Unenroll this machine in this realm.
+		  Leave the realm and unenroll the machine.
 
 		  If this method returns successfully then the machine will have
-		  been unenrolled. It is not necessary to restart services or the
-		  machine afterward. Relevant properties on the realm will be updated
-		  before the method returns.
+		  left the domain and been unenrolled. It is not necessary to restart
+		  services or the machine afterward. Relevant properties on the realm
+		  will be updated before the method returns.
 
 		  The @credentials should be set according to one of the
 		  supported credentials returned by
@@ -393,6 +627,9 @@
 		      passed to org.freedesktop.realmd.Service.Cancel() in order
 		      to cancel the operation</para></listitem>
 		  </itemizedlist>
+
+		  This method requires authorization for the PolicyKit action
+		  called <literal>org.freedesktop.realmd.deconfigure-realm</literal>.
 
 		  In addition to common DBus error results, this method may return:
 		  <itemizedlist>
@@ -413,110 +650,11 @@
 		      enroll or unenroll.</para></listitem>
 		  </itemizedlist>
 		-->
-		<method name="Unenroll">
+		<method name="Leave">
 			<arg name="credentials" type="(ssv)" direction="in"/>
 			<arg name="options" type="a{sv}" direction="in"/>
 		</method>
 
-		<!--
-		  LoginFormats: supported formats for login names
-
-		  Supported formats for login to this realm. This is only
-		  relevant once the realm has been enrolled. The formats
-		  will contain a <literal>%s</literal> in the string, which
-		  indicate where the user name should be placed.
-
-		  The first format in the list is the preferred format for
-		  login names.
-		-->
-		<property name="LoginFormats" type="as" access="read"/>
-
-		<!--
-		  LoginPolicy: the policy for logins using this realm
-
-		  The policy for logging into this computer using this realm.
-
-		  The policy can be changed using the
-		  #org.freedesktop.realmd.Kerberos.ChangeLoginPolicy() method.
-
-		  The following policies are predefined. Not all providers
-		  support all these policies and there may be provider specific
-		  policies or multiple policies represented in the string:
-		  <itemizedlist>
-		    <listitem><para><literal>allow-any-login</literal>: allow
-		      login by any authenticated user present in this
-		      realm.</para></listitem>
-		    <listitem><para><literal>allow-permitted-logins</literal>:
-		      only allow the logins permitted in the
-		      #org.freedesktop.realmd.Kerberos:PermittedLogins
-		      property.</para></listitem>
-		    <listitem><para><literal>deny-any-login</literal>:
-		      don't allow any logins via authenticated users of this
-		      realm.</para></listitem>
-		  </itemizedlist>
-		-->
-		<property name="LoginPolicy" type="s" access="read"/>
-
-		<!--
-		  PermittedLogins: the permitted login names
-		  
-		  The list of permitted authenticated users allowed to login
-		  into this computer. This is only relevant if the
-		  #org.freedesktop.realmd.Kerberos:LoginPolicy property
-		  contains the <literal>allow-permitted-logins</literal>
-		  string.
-		-->
-		<property name="PermittedLogins" type="as" access="read"/>
-
-		<!--
-		  ChangeLoginPolicy:
-		  @login_policy: the new login policy, or an empty string
-		  @permitted_add: a list of logins to permit
-		  @permitted_remove: a list of logins to not permit
-		  @options: options for this operation
-
-		  Change the login policy and/or permitted logins for this realm.
-
-		  Not all realms support the all the various login policies. An
-		  error will be returned if the new login policy is not supported.
-		  You may specify an empty string for the @login_policy argument
-		  which will cause no change in the policy itself. If the policy
-		  is changed, it will be reflected in the
-		  #org.freedesktop.realmd.Kerberos:LoginPolicy property.
-
-		  The @permitted_add and @permitted_remove arguments represent
-		  lists of login names that should be added and removed from
-		  the #org.freedesktop.realmd.Kerberos:PermittedLogins property.
-
-		  @options can contain, but is not limited to, the following values:
-		  <itemizedlist>
-		    <listitem><para><literal>operation</literal>: a string
-		      identifier chosen by the client, which can then later be
-		      passed to org.freedesktop.realmd.Service.Cancel() in order
-		      to cancel the operation</para></listitem>
-		  </itemizedlist>
-
-		  In addition to common DBus error results, this method may return:
-		  <itemizedlist>
-		    <listitem><para><literal>org.freedesktop.realmd.Error.Failed</literal>:
-		      may be returned if the policy change failed for a generic reason.</para></listitem>
-		    <listitem><para><literal>org.freedesktop.realmd.Error.Cancelled</literal>:
-		      returned if the operation was cancelled.</para></listitem>
-		    <listitem><para><literal>org.freedesktop.realmd.Error.NotAuthorized</literal>:
-		      returned if the calling client is not permitted to change login policy
-		      operation.</para></listitem>
-		    <listitem><para><literal>org.freedesktop.realmd.Error.NotEnrolled</literal>:
-		      returned if not enrolled in this realm.</para></listitem>
-		    <listitem><para><literal>org.freedesktop.realmd.Error.Busy</literal>:
-		      returned if the service is currently performing another operation like
-		      enroll or unenroll.</para></listitem>
-		  </itemizedlist>
-		-->
-		<method name="ChangeLoginPolicy">
-			<arg name="login_policy" type="s" direction="in"/>
-			<arg name="permitted_add" type="as" direction="in"/>
-			<arg name="permitted_remove" type="as" direction="in"/>
-			<arg name="options" type="a{sv}" direction="in"/>
-		</method>
 	</interface>
+
 </node>

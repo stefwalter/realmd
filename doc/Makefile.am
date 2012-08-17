@@ -24,7 +24,9 @@ DBUS_ESCAPED = realmd-org.freedesktop.realmd.xml
 
 DBUS_GENERATED = \
 	realmd-org.freedesktop.realmd.Kerberos.xml \
+	realmd-org.freedesktop.realmd.KerberosMembership.xml \
 	realmd-org.freedesktop.realmd.Provider.xml \
+	realmd-org.freedesktop.realmd.Realm.xml \
 	realmd-org.freedesktop.realmd.Service.xml
 
 # Extra SGML files that are included by $(DOC_MAIN_SGML_FILE).

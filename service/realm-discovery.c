@@ -37,6 +37,24 @@ realm_discovery_add_string (GHashTable *discovery,
 		realm_discovery_add_variant (discovery, type, g_variant_new_string (value));
 }
 
+const gchar *
+realm_discovery_get_string (GHashTable *discovery,
+                            const gchar *type)
+{
+	GVariant *variant;
+
+	g_return_val_if_fail (type != NULL, NULL);
+
+	if (discovery == NULL)
+		return NULL;
+
+	variant = g_hash_table_lookup (discovery, type);
+	if (variant == NULL)
+		return NULL;
+
+	return g_variant_get_string (variant, NULL);
+}
+
 void
 realm_discovery_add_variant (GHashTable *discovery,
                              const gchar *type,

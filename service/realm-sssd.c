@@ -18,6 +18,7 @@
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
+#include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-packages.h"
 #include "realm-provider.h"
@@ -100,8 +101,8 @@ realm_sssd_logins_async (RealmKerberos *realm,
 
 	if (!self->pv->section) {
 		async = g_simple_async_result_new_error (G_OBJECT (realm), callback, user_data,
-		                                         REALM_ERROR, REALM_ERROR_NOT_ENROLLED,
-		                                         "Not enrolled in this realm");
+		                                         REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
+		                                         "Not joined to this domain");
 		g_simple_async_result_complete_in_idle (async);
 		g_object_unref (async);
 		return;
@@ -177,22 +178,53 @@ realm_sssd_generic_finish (RealmKerberos *realm,
 static void
 update_enrolled (RealmSssd *self)
 {
-	g_object_set (self, "enrolled", self->pv->section ? TRUE : FALSE, NULL);
+	realm_kerberos_set_configured (REALM_KERBEROS (self),
+	                               self->pv->section ? TRUE : FALSE);
+}
+
+static void
+update_realm_name (RealmSssd *self)
+{
+	RealmKerberos *kerberos = REALM_KERBEROS (self);
+	const char *name;
+	gchar *realm = NULL;
+
+	if (self->pv->section == NULL) {
+		realm = g_strdup (realm_discovery_get_string (realm_kerberos_get_discovery (kerberos),
+		                                              REALM_DBUS_DISCOVERY_REALM));
+	} else {
+		realm = realm_ini_config_get (self->pv->config, self->pv->section, "krb5_realm");
+	}
+
+	if (realm == NULL) {
+		name = realm_kerberos_get_name (kerberos);
+		realm = name ? g_ascii_strup (name, -1) : NULL;
+	}
+
+	realm_kerberos_set_realm_name (kerberos, realm);
+	g_free (realm);
 }
 
 static void
 update_domain (RealmSssd *self)
 {
+	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	const char *name;
 	gchar *domain = NULL;
 
-	if (self->pv->section != NULL)
+	if (self->pv->section == NULL) {
+		domain = g_strdup (realm_discovery_get_string (realm_kerberos_get_discovery (kerberos),
+		                                               REALM_DBUS_DISCOVERY_DOMAIN));
+	} else {
 		domain = realm_ini_config_get (self->pv->config, self->pv->section, "dns_discovery_domain");
+	}
+
 	if (domain == NULL) {
-		name = realm_dbus_kerberos_get_name (REALM_DBUS_KERBEROS (self));
+		name = realm_kerberos_get_name (kerberos);
 		domain = name ? g_ascii_strdown (name, -1) : NULL;
 	}
-	g_object_set (self, "domain", domain, NULL);
+
+	realm_kerberos_set_domain_name (kerberos, domain);
 	g_free (domain);
 }
 
@@ -219,11 +251,12 @@ build_login_format (const gchar *format,
 static void
 update_login_formats (RealmSssd *self)
 {
+	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	gchar *login_formats[2] = { NULL, NULL };
 	gchar *format = NULL;
 
 	if (self->pv->section == NULL) {
-		g_object_set (self, "login-formats", login_formats, NULL);
+		realm_kerberos_set_login_formats (kerberos, (const gchar **)login_formats);
 		return;
 	}
 
@@ -232,7 +265,7 @@ update_login_formats (RealmSssd *self)
 
 	/* Here we place a '%s' in the place of the user in the format */
 	login_formats[0] = build_login_format (format, "%s", self->pv->domain);
-	g_object_set (self, "login-formats", login_formats, NULL);
+	realm_kerberos_set_login_formats (kerberos, (const gchar **)login_formats);
 	g_free (login_formats[0]);
 	g_free (format);
 }
@@ -240,7 +273,8 @@ update_login_formats (RealmSssd *self)
 static void
 update_login_policy (RealmSssd *self)
 {
-	const gchar *policy = NULL;
+	RealmKerberosLoginPolicy policy = REALM_KERBEROS_POLICY_NOT_SET;
+	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	GPtrArray *permitted;
 	gchar *access = NULL;
 	gchar **values;
@@ -253,24 +287,22 @@ update_login_policy (RealmSssd *self)
 		values = realm_ini_config_get_list (self->pv->config, self->pv->section,
 		                                    "simple_allow_users", ",");
 		for (i = 0; values != NULL && values[i] != NULL; i++)
-			g_ptr_array_add (permitted, realm_kerberos_format_login (REALM_KERBEROS (self), values[i]));
+			g_ptr_array_add (permitted, realm_kerberos_format_login (kerberos, values[i]));
 		g_strfreev (values);
 		g_free (access);
-		policy = REALM_DBUS_LOGIN_POLICY_PERMITTED;
+		policy = REALM_KERBEROS_ALLOW_PERMITTED_LOGINS;
 	} else if (g_strcmp0 (access, "permit") == 0) {
-		policy = REALM_DBUS_LOGIN_POLICY_ANY;
+		policy = REALM_KERBEROS_ALLOW_ANY_LOGIN;
 	} else if (g_strcmp0 (access, "deny") == 0) {
-		policy = REALM_DBUS_LOGIN_POLICY_DENY;
+		policy = REALM_KERBEROS_DENY_ANY_LOGIN;
 	} else {
-		policy = NULL;
+		policy = REALM_KERBEROS_POLICY_NOT_SET;
 	}
 
 	g_ptr_array_add (permitted, NULL);
 
-	g_object_set (self,
-	              "login-policy", policy,
-	              "permitted-logins", (gchar **)permitted->pdata,
-	              NULL);
+	realm_kerberos_set_login_policy (kerberos, policy);
+	realm_kerberos_set_permitted_logins (kerberos, (const gchar **)permitted->pdata);
 
 	g_ptr_array_free (permitted, TRUE);
 }
@@ -290,7 +322,7 @@ update_properties (RealmSssd *self)
 
 	/* Find the config domain with our realm */
 	domains = realm_sssd_config_get_domains (self->pv->config);
-	name = realm_dbus_kerberos_get_name (REALM_DBUS_KERBEROS (self));
+	name = realm_kerberos_get_name (REALM_KERBEROS (self));
 	for (i = 0; domains && domains[i]; i++) {
 		section = realm_sssd_config_domain_to_section (domains[i]);
 		realm = realm_ini_config_get (self->pv->config, section, "krb5_realm");
@@ -311,6 +343,7 @@ update_properties (RealmSssd *self)
 
 	/* Update all the other properties */
 	update_enrolled (self);
+	update_realm_name (self);
 	update_domain (self);
 	update_login_formats (self);
 	update_login_policy (self);

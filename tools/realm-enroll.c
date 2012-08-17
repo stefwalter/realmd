@@ -55,36 +55,6 @@ handle_krb5_error (krb5_error_code code,
 	g_string_free (message, TRUE);
 }
 
-static RealmDbusKerberos *
-realms_to_realm_proxy (GVariant *realms,
-                       const gchar *enrolled)
-{
-	RealmDbusKerberos *realm = NULL;
-	GVariant *realm_info;
-	GVariantIter iter;
-	const gchar *name;
-
-	g_variant_iter_init (&iter, realms);
-	while ((realm_info = g_variant_iter_next_value (&iter)) != NULL) {
-		realm = realm_info_to_realm_proxy (realm_info);
-		g_variant_unref (realm_info);
-
-		if (realm != NULL && enrolled &&
-		    !realm_dbus_kerberos_get_enrolled (realm)) {
-			name = realm_dbus_kerberos_get_name (realm);
-			if (name && g_ascii_strcasecmp (enrolled, name) == 0) {
-				g_object_unref (realm);
-				realm = NULL;
-			}
-		}
-
-		if (realm != NULL)
-			break;
-	}
-
-	return realm;
-}
-
 static GVariant *
 read_file_into_variant (const gchar *filename)
 {
@@ -210,7 +180,7 @@ on_complete_get_result (GObject *source,
 }
 
 static const gchar *
-find_appropriate_cred_type (RealmDbusKerberos *realm,
+find_appropriate_cred_type (RealmDbusKerberosMembership *membership,
                             gboolean join,
                             const gchar **owner)
 {
@@ -220,9 +190,9 @@ find_appropriate_cred_type (RealmDbusKerberos *realm,
 	const gchar *cred_type;
 
 	if (join)
-		supported = realm_dbus_kerberos_get_supported_enroll_credentials (realm);
+		supported = realm_dbus_kerberos_membership_get_supported_join_credentials (membership);
 	else
-		supported = realm_dbus_kerberos_get_supported_unenroll_credentials (realm);
+		supported = realm_dbus_kerberos_membership_get_supported_leave_credentials (membership);
 
 	g_variant_iter_init (&iter, supported);
 	while (g_variant_iter_loop (&iter, "(&s&s)", &cred_type, &cred_owner)) {
@@ -235,11 +205,122 @@ find_appropriate_cred_type (RealmDbusKerberos *realm,
 	return NULL;
 }
 
+static RealmDbusKerberosMembership *
+find_supported_membership_in_realms (const gchar **realms)
+{
+	RealmDbusKerberosMembership *membership;
+	RealmDbusRealm *realm;
+	GDBusProxy *proxy;
+	GError *error = NULL;
+	gint i;
+
+	for (i = 0; realms[i] != NULL; i++) {
+		realm = realm_path_to_realm (realms[i]);
+		if (!realm)
+			continue;
+
+		if (!realm_supports_interface (realm, REALM_DBUS_KERBEROS_INTERFACE) ||
+		    !realm_supports_interface (realm, REALM_DBUS_KERBEROS_MEMBERSHIP_INTERFACE)) {
+			g_object_unref (realm);
+			continue;
+		}
+
+		proxy = G_DBUS_PROXY (realm);
+		membership = realm_dbus_kerberos_membership_proxy_new_sync (g_dbus_proxy_get_connection (proxy),
+		                                                            G_DBUS_PROXY_FLAGS_NONE,
+		                                                            g_dbus_proxy_get_name (proxy),
+		                                                            g_dbus_proxy_get_object_path (proxy),
+		                                                            NULL, &error);
+
+		g_object_unref (realm);
+
+		if (error != NULL) {
+			g_warning ("Couldn't get kerberos proxy: %s", error->message);
+			g_error_free (error);
+			continue;
+		}
+
+		return membership;
+	}
+
+	return NULL;
+}
+
+static RealmDbusKerberosMembership *
+find_configured_membership_in_realms (const gchar **realms,
+                                      const gchar *name)
+{
+	RealmDbusKerberosMembership *membership;
+	RealmDbusRealm *realm;
+	GDBusProxy *proxy;
+	GError *error = NULL;
+	gint i;
+
+	for (i = 0; realms[i] != NULL; i++) {
+		realm = realm_path_to_realm (realms[i]);
+		if (!realm)
+			continue;
+
+		if (!realm_supports_interface (realm, REALM_DBUS_KERBEROS_INTERFACE) ||
+		    g_strcmp0 (realm_dbus_realm_get_configured (realm),
+		               REALM_DBUS_KERBEROS_MEMBERSHIP_INTERFACE) != 0) {
+			g_object_unref (realm);
+			continue;
+		}
+
+		if (name != NULL &&
+		    g_ascii_strcasecmp (realm_dbus_realm_get_name (realm), name) != 0) {
+			g_object_unref (realm);
+			continue;
+		}
+
+		proxy = G_DBUS_PROXY (realm);
+		membership = realm_dbus_kerberos_membership_proxy_new_sync (g_dbus_proxy_get_connection (proxy),
+		                                                            G_DBUS_PROXY_FLAGS_NONE,
+		                                                            g_dbus_proxy_get_name (proxy),
+		                                                            g_dbus_proxy_get_object_path (proxy),
+		                                                            NULL, &error);
+
+		g_object_unref (realm);
+
+		if (error != NULL) {
+			g_warning ("Couldn't get kerberos proxy: %s", error->message);
+			g_error_free (error);
+			continue;
+		}
+
+		return membership;
+	}
+
+	return NULL;
+}
+
+static RealmDbusKerberos *
+cast_to_kerberos (gpointer proxy)
+{
+	RealmDbusKerberos *kerberos;
+	GError *error = NULL;
+
+	kerberos = realm_dbus_kerberos_proxy_new_sync (g_dbus_proxy_get_connection (proxy),
+	                                               G_DBUS_PROXY_FLAGS_NONE,
+	                                               g_dbus_proxy_get_name (proxy),
+	                                               g_dbus_proxy_get_object_path (proxy),
+	                                               NULL, &error);
+
+	if (error != NULL) {
+		g_warning ("Couldn't get kerberos proxy: %s", error->message);
+		g_error_free (error);
+	}
+
+	return kerberos;
+}
+
 static GVariant *
-build_ccache_or_password_creds (RealmDbusKerberos *realm,
+build_ccache_or_password_creds (RealmDbusKerberosMembership *membership,
                                 const gchar *user_name,
                                 gboolean join)
 {
+	RealmDbusKerberos *kerberos;
 	GVariant *contents;
 	const gchar *cred_type;
 	const gchar *cred_owner;
@@ -248,21 +329,23 @@ build_ccache_or_password_creds (RealmDbusKerberos *realm,
 	gchar *password;
 	gchar *prompt;
 
-	cred_type = find_appropriate_cred_type (realm, join, &cred_owner);
+	cred_type = find_appropriate_cred_type (membership, join, &cred_owner);
 	if (cred_type == NULL) {
 		realm_handle_error (NULL, _("Realm has no supported way to authenticate"));
 		return NULL;
 	}
 
 	if (user_name == NULL)
-		user_name = realm_dbus_kerberos_get_suggested_administrator (realm);
+		user_name = realm_dbus_kerberos_membership_get_suggested_administrator (membership);
 	if (user_name == NULL)
 		user_name = g_get_user_name ();
 
 	/* Do a kinit for the given realm */
-	realm_name = realm_dbus_kerberos_get_name (realm);
 	if (g_str_equal (cred_type, "ccache")) {
+		kerberos = cast_to_kerberos (membership);
+		realm_name = realm_dbus_kerberos_get_realm_name (kerberos);
 		contents = kinit_to_kerberos_cache (user_name, realm_name);
+		g_object_unref (kerberos);
 
 	} else if (g_str_equal (cred_type, "password")) {
 		prompt = g_strdup_printf (_("Password for %s: "), user_name);
@@ -291,7 +374,7 @@ build_ccache_or_password_creds (RealmDbusKerberos *realm,
 }
 
 static int
-realm_join_or_leave (RealmDbusKerberos *realm,
+realm_join_or_leave (RealmDbusKerberosMembership *membership,
                      const gchar *user_name,
                      gboolean join)
 {
@@ -300,7 +383,7 @@ realm_join_or_leave (RealmDbusKerberos *realm,
 	GVariant *creds;
 	SyncClosure sync;
 
-	creds = build_ccache_or_password_creds (realm, user_name, join);
+	creds = build_ccache_or_password_creds (membership, user_name, join);
 
 	sync.result = NULL;
 	sync.loop = g_main_loop_new (NULL, FALSE);
@@ -309,13 +392,13 @@ realm_join_or_leave (RealmDbusKerberos *realm,
 	g_variant_ref_sink (options);
 
 	/* Start actual operation */
-	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (realm), G_MAXINT);
+	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (membership), G_MAXINT);
 	if (join)
-		realm_dbus_kerberos_call_enroll (realm, creds, options,
-		                                 NULL, on_complete_get_result, &sync);
+		realm_dbus_kerberos_membership_call_join (membership, creds, options,
+		                                          NULL, on_complete_get_result, &sync);
 	else
-		realm_dbus_kerberos_call_unenroll (realm, creds, options,
-		                                   NULL, on_complete_get_result, &sync);
+		realm_dbus_kerberos_membership_call_leave (membership, creds, options,
+		                                           NULL, on_complete_get_result, &sync);
 
 	g_variant_unref (options);
 	g_variant_unref (creds);
@@ -324,9 +407,9 @@ realm_join_or_leave (RealmDbusKerberos *realm,
 	g_main_loop_run (sync.loop);
 
 	if (join)
-		realm_dbus_kerberos_call_enroll_finish (realm, sync.result, &error);
+		realm_dbus_kerberos_membership_call_join_finish (membership, sync.result, &error);
 	else
-		realm_dbus_kerberos_call_unenroll_finish (realm, sync.result, &error);
+		realm_dbus_kerberos_membership_call_leave_finish (membership, sync.result, &error);
 
 	g_object_unref (sync.result);
 	g_main_loop_unref (sync.loop);
@@ -344,11 +427,11 @@ perform_join (GDBusConnection *connection,
               const gchar *string,
               const gchar *user_name)
 {
-	RealmDbusKerberos *realm;
+	RealmDbusKerberosMembership *membership;
 	RealmDbusProvider *provider;
 	GVariant *options;
 	GError *error = NULL;
-	GVariant *realms;
+	gchar **realms;
 	gint relevance;
 	gint ret;
 
@@ -376,16 +459,17 @@ perform_join (GDBusConnection *connection,
 		return 1;
 	}
 
-	realm = realms_to_realm_proxy (realms, FALSE);
-	g_variant_unref (realms);
+	membership = find_supported_membership_in_realms ((const gchar **)realms);
+	g_strfreev (realms);
 
-	if (realm == NULL) {
+	if (membership == NULL) {
 		realm_handle_error (NULL, _("No such realm found: %s"), string);
 		return 1;
 	}
 
-	ret = realm_join_or_leave (realm, user_name, TRUE);
-	g_object_unref (realm);
+	ret = realm_join_or_leave (membership, user_name, TRUE);
+
+	g_object_unref (membership);
 
 	return ret;
 }
@@ -395,18 +479,27 @@ perform_leave (GDBusConnection *connection,
                const gchar *string,
                const gchar *user_name)
 {
-	RealmDbusKerberos *realm;
+	RealmDbusKerberosMembership *membership;
+	gchar **paths;
 	gint ret;
 
-	/* Find the right realm, but only enrolled */
-	realm = realm_name_to_enrolled (connection, string);
-
-	/* Message already printed */
-	if (realm == NULL)
+	paths = realm_lookup_paths ();
+	if (paths == NULL)
 		return 1;
 
-	ret = realm_join_or_leave (realm, user_name, FALSE);
-	g_object_unref (realm);
+	membership = find_configured_membership_in_realms ((const gchar **)paths, string);
+	g_strfreev (paths);
+
+	if (membership == NULL) {
+		if (string == NULL)
+			realm_handle_error (NULL, "Couldn't find a configured realm");
+		else
+			realm_handle_error (NULL, "Couldn't find the configured realm: %s", string);
+		return 1;
+	}
+
+	ret = realm_join_or_leave (membership, user_name, FALSE);
+	g_object_unref (membership);
 
 	return ret;
 }
@@ -483,10 +576,6 @@ realm_leave (int argc,
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
 		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
 		g_error_free (error);
-		ret = 2;
-
-	} else if (argc < 2) {
-		g_printerr ("%s: %s\n", _("Specify one realm to leave"), g_get_prgname ());
 		ret = 2;
 
 	} else {

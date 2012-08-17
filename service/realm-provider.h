@@ -63,12 +63,10 @@ RealmProvider *          realm_provider_start                    (GDBusConnectio
 
 void                     realm_provider_stop_all                 (void);
 
-GVariant *               realm_provider_new_realm_info           (const gchar *object_path,
-                                                                  const gchar *interface);
-
 GDBusInterfaceSkeleton * realm_provider_lookup_or_register_realm (RealmProvider *self,
                                                                   GType realm_type,
-                                                                  const gchar *realm_name);
+                                                                  const gchar *realm_name,
+                                                                  GHashTable *discovery);
 
 gboolean                 realm_provider_is_default               (const gchar *type,
                                                                   const gchar *name);

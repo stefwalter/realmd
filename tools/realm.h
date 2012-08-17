@@ -51,10 +51,18 @@ void                  realm_handle_error           (GError *error,
                                                     const gchar *format,
                                                     ...) G_GNUC_PRINTF (2, 3);
 
-RealmDbusKerberos *   realm_info_to_realm_proxy    (GVariant *realm_info);
+gboolean              realm_supports_interface          (RealmDbusRealm *realm,
+                                                         const gchar *interface);
 
-RealmDbusKerberos *   realm_name_to_enrolled       (GDBusConnection *connection,
-                                                    const gchar *realm_name);
+gchar **              realm_lookup_paths                (void);
+
+RealmDbusRealm *      realm_path_to_realm               (const gchar *object_path);
+
+RealmDbusRealm *      realm_name_to_configured          (GDBusConnection *connection,
+                                                         const gchar *realm_name);
+
+RealmDbusRealm *      realm_paths_to_configured_realm   (const gchar * const* object_paths,
+                                                         const gchar *realm_name);
 
 G_END_DECLS
 

@@ -32,56 +32,80 @@
 #include <string.h>
 
 static void
-print_realm_info (GVariant *realm_info)
+print_kerberos_info (const gchar *realm_path)
 {
-	RealmDbusKerberos *realm = NULL;
-	const gchar *object_path;
-	const gchar *interface_name;
+	RealmDbusKerberos *kerberos;
 	GError *error = NULL;
-	GVariantIter iter;
-	GVariant *details;
-	const gchar *name;
-	const gchar *value;
-	gboolean enrolled;
-	gchar *string;
-	const gchar *policy;
 
-	g_variant_get (realm_info, "(&o&s)", &object_path, &interface_name);
-
-	if (!g_str_equal (interface_name, REALM_DBUS_KERBEROS_REALM_INTERFACE))
-		return;
-
-	realm = realm_dbus_kerberos_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-	                                                    G_DBUS_PROXY_FLAGS_NONE,
-	                                                    REALM_DBUS_BUS_NAME, object_path,
-	                                                    NULL, &error);
+	kerberos = realm_dbus_kerberos_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+	                                                       G_DBUS_PROXY_FLAGS_NONE,
+	                                                       REALM_DBUS_BUS_NAME, realm_path,
+	                                                       NULL, &error);
 
 	if (error != NULL) {
-		g_warning ("couldn't use realm service: %s", error->message);
+		g_warning ("Couldn't use realm service: %s", error->message);
 		g_error_free (error);
 		return;
 	}
 
-	enrolled = realm_dbus_kerberos_get_enrolled (realm);
-	g_print ("%s\n", realm_dbus_kerberos_get_name (realm));
-	g_print ("  domain: %s\n", realm_dbus_kerberos_get_domain (realm));
-	g_print ("  enrolled: %s\n", enrolled ? "yes" : "no");
+	g_print ("  type: kerberos\n");
+	g_print ("  realm-name: %s\n", realm_dbus_kerberos_get_realm_name (kerberos));
+	g_print ("  domain-name: %s\n", realm_dbus_kerberos_get_domain_name (kerberos));
 
-	details = realm_dbus_kerberos_get_details (realm);
+	g_object_unref (kerberos);
+}
+
+static void
+print_realm_info (const gchar *realm_path)
+{
+	RealmDbusRealm *realm;
+	const gchar *configured;
+	GVariant *details;
+	const gchar *name;
+	const gchar *value;
+	gboolean is_configured;
+	gchar *string;
+	const gchar *policy;
+	GVariantIter iter;
+
+	realm = realm_path_to_realm (realm_path);
+	if (realm == NULL)
+		return;
+
+	g_print ("%s\n", realm_dbus_realm_get_name (realm));
+
+	is_configured = TRUE;
+	configured = realm_dbus_realm_get_configured (realm);
+	if (configured == NULL || g_str_equal (configured, "")) {
+		configured = "no";
+		is_configured = FALSE;
+
+	} else if (g_str_equal (configured, REALM_DBUS_KERBEROS_MEMBERSHIP_INTERFACE)) {
+		configured = "kerberos-member";
+	}
+
+	g_print ("  configured: %s\n", configured);
+
+	details = realm_dbus_realm_get_details (realm);
 	if (details) {
 		g_variant_iter_init (&iter, details);
-		while (g_variant_iter_loop (&iter, "{&s&s}", &name, &value))
+		while (g_variant_iter_loop (&iter, "(&s&s)", &name, &value))
 			g_print ("  %s: %s\n", name, value);
 	}
 
-	if (enrolled) {
-		string = g_strjoinv (", ", (gchar **)realm_dbus_kerberos_get_login_formats (realm));
+	if (realm_supports_interface (realm, REALM_DBUS_KERBEROS_INTERFACE))
+		print_kerberos_info (realm_path);
+	else
+		g_print ("  type: unknown\n");
+
+	if (is_configured) {
+		string = g_strjoinv (", ", (gchar **)realm_dbus_realm_get_login_formats (realm));
 		g_print ("  login-formats: %s\n", string);
 		g_free (string);
-		policy = realm_dbus_kerberos_get_login_policy (realm);
+		policy = realm_dbus_realm_get_login_policy (realm);
 		g_print ("  login-policy: %s\n", policy);
 		if (strstr (policy, REALM_DBUS_LOGIN_POLICY_PERMITTED)) {
-			string = g_strjoinv (", ", (gchar **)realm_dbus_kerberos_get_permitted_logins (realm));
+			string = g_strjoinv (", ", (gchar **)realm_dbus_realm_get_permitted_logins (realm));
 			g_print ("  permitted-logins: %s\n", string);
 			g_free (string);
 		}
@@ -110,14 +134,13 @@ perform_discover (GDBusConnection *connection,
                   const gchar *string)
 {
 	RealmDbusProvider *provider;
-	GVariant *realm_info;
 	gboolean found = FALSE;
 	GError *error = NULL;
-	GVariantIter iter;
 	SyncClosure sync;
-	GVariant *realms;
+	gchar **realms;
 	gint relevance;
 	GVariant *options;
+	gint i;
 
 	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
 	                                                       G_DBUS_PROXY_FLAGS_NONE,
@@ -155,14 +178,12 @@ perform_discover (GDBusConnection *connection,
 		return 2;
 	}
 
-	g_variant_iter_init (&iter, realms);
-	while ((realm_info = g_variant_iter_next_value (&iter)) != NULL) {
-		print_realm_info (realm_info);
-		g_variant_unref (realm_info);
+	for (i = 0; realms[i] != NULL; i++) {
+		print_realm_info (realms[i]);
 		found = TRUE;
 	}
 
-	g_variant_unref (realms);
+	g_strfreev (realms);
 
 	if (!found) {
 		if (string == NULL)
@@ -232,11 +253,10 @@ perform_list (GDBusConnection *connection,
               gboolean verbose)
 {
 	RealmDbusProvider *provider;
-	GVariant *realms;
-	GVariant *realm_info;
+	const gchar *const *realms;
 	GError *error = NULL;
-	GVariantIter iter;
 	gboolean printed = FALSE;
+	gint i;
 
 	provider = realm_dbus_provider_proxy_new_sync (connection, G_DBUS_PROXY_FLAGS_NONE,
 	                                               REALM_DBUS_BUS_NAME,
@@ -248,9 +268,8 @@ perform_list (GDBusConnection *connection,
 	}
 
 	realms = realm_dbus_provider_get_realms (provider);
-	g_variant_iter_init (&iter, realms);
-	while (g_variant_iter_loop (&iter, "@(os)", &realm_info)) {
-		print_realm_info (realm_info);
+	for (i = 0; realms[i] != NULL; i++) {
+		print_realm_info (realms[i]);
 		printed = TRUE;
 	}
 

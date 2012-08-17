@@ -46,41 +46,33 @@ G_DEFINE_TYPE (RealmSssdIpa, realm_sssd_ipa, REALM_TYPE_SSSD);
 static void
 realm_sssd_ipa_init (RealmSssdIpa *self)
 {
-	GPtrArray *entries;
-	GVariant *entry;
-	GVariant *details;
+
+}
+
+static void
+realm_sssd_ipa_constructed (GObject *obj)
+{
+	RealmKerberos *kerberos = REALM_KERBEROS (obj);
 	GVariant *supported;
 
-	entries = g_ptr_array_new ();
+	G_OBJECT_CLASS (realm_sssd_ipa_parent_class)->constructed (obj);
 
-	entry = g_variant_new_dict_entry (g_variant_new_string ("server-software"),
-	                                  g_variant_new_string ("freeipa"));
-	g_ptr_array_add (entries, entry);
-
-	entry = g_variant_new_dict_entry (g_variant_new_string ("client-software"),
-	                                  g_variant_new_string ("sssd"));
-	g_ptr_array_add (entries, entry);
-
-	details = g_variant_new_array (G_VARIANT_TYPE ("{ss}"),
-	                               (GVariant * const *)entries->pdata,
-	                               entries->len);
-	g_variant_ref_sink (details);
+	realm_kerberos_set_details (kerberos,
+	                            "server-software", "freeipa",
+	                            "client-software", "sssd",
+	                            NULL);
 
 	/*
 	 * Each line is a combination of owner and what kind of credentials are supported,
 	 * same for enroll/unenroll. Enroll is not currently implemented: empty.
 	 */
 	supported = realm_kerberos_build_supported_credentials (0, 0);
+	g_variant_ref_sink (supported);
+	realm_kerberos_set_supported_join_creds (kerberos, supported);
+	realm_kerberos_set_supported_leave_creds (kerberos, supported);
+	g_variant_unref (supported);
 
-	g_object_set (self,
-	              "details", details,
-	              "suggested-administrator", "admin",
-	              "supported-enroll-credentials", supported,
-	              "supported-unenroll-credentials", supported,
-	              NULL);
-
-	g_variant_unref (details);
-	g_ptr_array_free (entries, TRUE);
+	realm_kerberos_set_suggested_admin (kerberos, "admin");
 }
 
 static void
@@ -133,6 +125,9 @@ void
 realm_sssd_ipa_class_init (RealmSssdIpaClass *klass)
 {
 	RealmKerberosClass *kerberos_class = REALM_KERBEROS_CLASS (klass);
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+	object_class->constructed = realm_sssd_ipa_constructed;
 
 	kerberos_class->enroll_ccache_async = realm_sssd_ipa_enroll_async;
 	kerberos_class->enroll_finish = realm_sssd_ipa_generic_finish;

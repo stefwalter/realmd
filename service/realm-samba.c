@@ -21,6 +21,7 @@
 #include "realm-diagnostics.h"
 #include "realm-discovery.h"
 #include "realm-errors.h"
+#include "realm-kerberos.h"
 #include "realm-packages.h"
 #include "realm-provider.h"
 #include "realm-samba.h"
@@ -54,25 +55,21 @@ G_DEFINE_TYPE (RealmSamba, realm_samba, REALM_TYPE_KERBEROS);
 static void
 realm_samba_init (RealmSamba *self)
 {
-	GPtrArray *entries;
-	GVariant *entry;
-	GVariant *details;
+
+}
+
+static void
+realm_samba_constructed (GObject *obj)
+{
+	RealmKerberos *kerberos = REALM_KERBEROS (obj);
 	GVariant *supported;
 
-	entries = g_ptr_array_new ();
+	G_OBJECT_CLASS (realm_samba_parent_class)->constructed (obj);
 
-	entry = g_variant_new_dict_entry (g_variant_new_string ("server-software"),
-	                                  g_variant_new_string ("active-directory"));
-	g_ptr_array_add (entries, entry);
-
-	entry = g_variant_new_dict_entry (g_variant_new_string ("client-software"),
-	                                  g_variant_new_string ("winbind"));
-	g_ptr_array_add (entries, entry);
-
-	details = g_variant_new_array (G_VARIANT_TYPE ("{ss}"),
-	                               (GVariant * const *)entries->pdata,
-	                               entries->len);
-	g_variant_ref_sink (details);
+	realm_kerberos_set_details (kerberos,
+	                            "server-software", "active-directory",
+	                            "client-software", "winbind",
+	                            NULL);
 
 	/*
 	 * Each line is a combination of owner and what kind of credentials are supported,
@@ -83,18 +80,13 @@ realm_samba_init (RealmSamba *self)
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_ADMIN,
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_USER,
 			0);
-
-	g_object_set (self,
-	              "details", details,
-	              "suggested-administrator", "Administrator",
-	              "login-policy", REALM_DBUS_LOGIN_POLICY_ANY,
-	              "supported-enroll-credentials", supported,
-	              "supported-unenroll-credentials", supported,
-	              NULL);
-
+	g_variant_ref_sink (supported);
+	realm_kerberos_set_supported_join_creds (kerberos, supported);
+	realm_kerberos_set_supported_leave_creds (kerberos, supported);
 	g_variant_unref (supported);
-	g_variant_unref (details);
-	g_ptr_array_free (entries, TRUE);
+
+	realm_kerberos_set_suggested_admin (kerberos, "Administrator");
+	realm_kerberos_set_login_policy (kerberos, REALM_KERBEROS_ALLOW_ANY_LOGIN);
 }
 
 static gchar *
@@ -118,7 +110,7 @@ lookup_is_enrolled (RealmSamba *self)
 
 	enrolled = lookup_enrolled_realm (self);
 	if (enrolled != NULL) {
-		name = realm_dbus_kerberos_get_name (REALM_DBUS_KERBEROS (self));
+		name = realm_kerberos_get_realm_name (REALM_KERBEROS (self));
 		ret = g_strcmp0 (name, enrolled) == 0;
 		g_free (enrolled);
 	}
@@ -280,15 +272,15 @@ realm_samba_enroll_async (RealmKerberos *realm,
 	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
 	                                 realm_samba_enroll_async);
 	enroll = g_slice_new0 (EnrollClosure);
-	g_object_get (realm, "name", &enroll->realm_name, NULL);
+	enroll->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
 	enroll->invocation = g_object_ref (invocation);
 	g_simple_async_result_set_op_res_gpointer (res, enroll, enroll_closure_free);
 
 	/* Make sure not already enrolled in a realm */
 	enrolled = lookup_enrolled_realm (self);
 	if (enrolled != NULL) {
-		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_ALREADY_ENROLLED,
-		                                 _("Already enrolled in a realm"));
+		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
+		                                 _("Already joined to a domain"));
 		g_simple_async_result_complete_in_idle (res);
 
 	} else {
@@ -403,7 +395,7 @@ realm_samba_unenroll_async (RealmKerberos *realm,
 	const gchar *realm_name;
 	gchar *enrolled;
 
-	realm_name = realm_dbus_kerberos_get_name (REALM_DBUS_KERBEROS (self));
+	realm_name = realm_kerberos_get_realm_name (REALM_KERBEROS (self));
 
 	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
 	                                 realm_samba_unenroll_async);
@@ -419,8 +411,8 @@ realm_samba_unenroll_async (RealmKerberos *realm,
 		                                   invocation, on_kinit_do_leave, g_object_ref (res));
 
 	} else {
-		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_NOT_ENROLLED,
-		                                 _("Not currently enrolled in the realm"));
+		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
+		                                 _("Not currently joined to a domain"));
 		g_simple_async_result_complete_in_idle (res);
 	}
 
@@ -440,8 +432,8 @@ realm_samba_change_logins (RealmKerberos *realm,
 	gboolean ret = FALSE;
 
 	if (!lookup_is_enrolled (self)) {
-		g_set_error (error, REALM_ERROR, REALM_ERROR_NOT_ENROLLED,
-		             _("Not enrolled in this realm"));
+		g_set_error (error, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
+		             _("Not joined to this domain"));
 		return FALSE;
 	}
 
@@ -497,33 +489,40 @@ realm_samba_logins_async (RealmKerberos *realm,
 static void
 update_properties (RealmSamba *self)
 {
+	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	GPtrArray *permitted;
 	gchar *login_formats[2] = { NULL, NULL };
 	const gchar *name;
 	gchar *domain;
+	gchar *realm;
 	gchar **values;
 	gchar *prefix;
 	gint i;
 
 	g_object_freeze_notify (G_OBJECT (self));
 
-	name = realm_dbus_kerberos_get_name (REALM_DBUS_KERBEROS (self));
+	name = realm_kerberos_get_name (kerberos);
+
 	domain = name ? g_ascii_strdown (name, -1) : NULL;
-	g_object_set (self, "domain", domain, NULL);
+	realm_kerberos_set_domain_name (kerberos, domain);
 	g_free (domain);
 
-	g_object_set (self, "enrolled", lookup_is_enrolled (self), NULL);
+	realm = name ? g_ascii_strup (name, -1) : NULL;
+	realm_kerberos_set_realm_name (kerberos, realm);
+	g_free (realm);
+
+	realm_kerberos_set_configured (kerberos, lookup_is_enrolled (self));
 
 	/* Setup the workgroup property */
 	prefix = lookup_login_prefix (self);
 	if (prefix != NULL) {
 		login_formats[0] = g_strdup_printf ("%s%%s", prefix);
-		g_object_set (self, "login-formats", login_formats, NULL);
+		realm_kerberos_set_login_formats (kerberos, (const gchar **)login_formats);
 		g_free (login_formats[0]);
 		g_free (prefix);
 	} else {
 		login_formats[0] = "%s";
-		g_object_set (self, "login-formats", login_formats, NULL);
+		realm_kerberos_set_login_formats (kerberos, (const gchar **)login_formats);
 	}
 
 	permitted = g_ptr_array_new_full (0, g_free);
@@ -534,7 +533,7 @@ update_properties (RealmSamba *self)
 		g_ptr_array_add (permitted, realm_kerberos_format_login (REALM_KERBEROS (self), values[i]));
 	g_ptr_array_add (permitted, NULL);
 
-	g_object_set (self, "permitted-logins", (gchar **)permitted->pdata, NULL);
+	realm_kerberos_set_permitted_logins (kerberos, (const gchar **)permitted->pdata);
 	g_ptr_array_free (permitted, TRUE);
 	g_strfreev (values);
 
@@ -617,6 +616,7 @@ realm_samba_class_init (RealmSambaClass *klass)
 	kerberos_class->logins_async = realm_samba_logins_async;
 	kerberos_class->logins_finish = realm_samba_generic_finish;
 
+	object_class->constructed = realm_samba_constructed;
 	object_class->set_property = realm_samba_set_property;
 	object_class->notify = realm_samba_notify;
 	object_class->finalize = realm_samba_finalize;

@@ -130,6 +130,10 @@ struct _RealmKerberosClass {
 
 GType               realm_kerberos_get_type              (void) G_GNUC_CONST;
 
+void                realm_kerberos_export_to_dbus        (RealmKerberos *self,
+                                                          GDBusConnection *connection,
+                                                          const gchar *object_path);
+
 void                realm_kerberos_set_discovery         (RealmKerberos *self,
                                                           GHashTable *discovery);
 
@@ -162,6 +166,40 @@ void                realm_kerberos_kinit_ccache_async    (RealmKerberos *self,
 GBytes *            realm_kerberos_kinit_ccache_finish   (RealmKerberos *self,
                                                           GAsyncResult *result,
                                                           GError **error);
+
+const gchar *       realm_kerberos_get_name                    (RealmKerberos *self);
+
+const gchar *       realm_kerberos_get_realm_name              (RealmKerberos *self);
+
+void                realm_kerberos_set_realm_name              (RealmKerberos *self,
+                                                                const gchar *value);
+
+void                realm_kerberos_set_domain_name             (RealmKerberos *self,
+                                                                const gchar *value);
+
+void                realm_kerberos_set_suggested_admin         (RealmKerberos *self,
+                                                                const gchar *value);
+
+void                realm_kerberos_set_supported_join_creds    (RealmKerberos *self,
+                                                                GVariant *value);
+
+void                realm_kerberos_set_supported_leave_creds   (RealmKerberos *self,
+                                                                GVariant *value);
+
+void                realm_kerberos_set_permitted_logins        (RealmKerberos *self,
+                                                                const gchar **value);
+
+void                realm_kerberos_set_login_policy            (RealmKerberos *self,
+                                                                RealmKerberosLoginPolicy value);
+
+void                realm_kerberos_set_login_formats           (RealmKerberos *self,
+                                                                const gchar **value);
+
+void                realm_kerberos_set_details                 (RealmKerberos *self,
+                                                                ...) G_GNUC_NULL_TERMINATED;
+
+void                realm_kerberos_set_configured              (RealmKerberos *self,
+                                                                gboolean configured);
 
 G_END_DECLS
 

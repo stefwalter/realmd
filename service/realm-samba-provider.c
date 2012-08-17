@@ -55,9 +55,6 @@ static void
 realm_samba_provider_init (RealmSambaProvider *self)
 {
 	self->config = realm_samba_config_new (NULL);
-
-	/* The dbus Name property of the provider */
-	g_object_set (self, "name", "Samba", NULL);
 }
 
 static void
@@ -70,13 +67,16 @@ realm_samba_provider_constructed (GObject *obj)
 	G_OBJECT_CLASS (realm_samba_provider_parent_class)->constructed (obj);
 
 	self = REALM_SAMBA_PROVIDER (obj);
+
+	realm_dbus_provider_set_name (REALM_DBUS_PROVIDER (self), "Samba");
+
 	security = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "security");
 	if (security != NULL && g_ascii_strcasecmp (security, "ADS") == 0)
 		name = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
 
 	if (name != NULL) {
 		realm_provider_lookup_or_register_realm (REALM_PROVIDER (self),
-		                                         REALM_TYPE_SAMBA, name);
+		                                         REALM_TYPE_SAMBA, name, NULL);
 	}
 
 	g_free (name);
@@ -122,7 +122,6 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
 	GHashTable *discovery;
 	GAsyncResult *ad_result;
 	const gchar *object_path;
-	GVariant *realm_info;
 	gchar *name;
 
 	async = G_SIMPLE_ASYNC_RESULT (result);
@@ -134,22 +133,16 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
 
 	realm = realm_provider_lookup_or_register_realm (provider,
 	                                                 REALM_TYPE_SAMBA,
-	                                                 name);
+	                                                 name, discovery);
 	g_free (name);
+	g_hash_table_unref (discovery);
 
-	if (realm == NULL) {
-		g_hash_table_unref (discovery);
+	if (realm == NULL)
 		return 0;
-	}
-
-	realm_kerberos_set_discovery (REALM_KERBEROS (realm), discovery);
 
 	object_path = g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (realm));
-	realm_info = realm_provider_new_realm_info (object_path, REALM_DBUS_KERBEROS_REALM_INTERFACE);
-	*realms = g_variant_new_array (G_VARIANT_TYPE ("(os)"), &realm_info, 1);
+	*realms = g_variant_new_objv (&object_path, 1);
 	g_variant_ref_sink (*realms);
-
-	g_hash_table_unref (discovery);
 
 	/* Return a higher priority if we're the default */
 	return realm_provider_is_default ("active-directory", "winbind") ? 100 : 50;

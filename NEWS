@@ -1,3 +1,11 @@
+0.7
+ * Refactor the DBus interface so we can add other realm types later
+ * Implement o.f.DBus.ObjectManager
+ * Some compat fixes for samba4
+ * Use better LoginFormats format
+ * Add DBus interface documentation
+ * Build fixes
+
 0.6
  * Switch default AD client to sssd
  * Support building with automake 1.12.x

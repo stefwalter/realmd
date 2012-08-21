@@ -284,6 +284,7 @@ on_join_do_keytab (GObject *source,
 		    g_pattern_match_simple ("*failed*: Constraint violation*", output->str) ||
 		    g_pattern_match_simple ("*failed*: Object class violation*", output->str) ||
 		    g_pattern_match_simple ("*failed*: Insufficient access*", output->str) ||
+		    g_pattern_match_simple ("*: Access denied*", output->str) ||
 		    g_pattern_match_simple ("*not have administrator privileges*", output->str)) {
 			g_set_error (&error, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
 			             "Insufficient permissions to join the domain %s",

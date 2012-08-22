@@ -42,11 +42,11 @@ typedef struct {
 	gchar *domain;
 	GList *servers;
 	gboolean found_kerberos;
-	gboolean finished_kerberos;
+	gint outstanding_kerberos;
 	gboolean found_msdcs;
-	gboolean finished_msdcs;
+	gint outstanding_msdcs;
 	gboolean found_ipa;
-	gboolean finished_ipa;
+	gint outstanding_ipa;
 	gboolean completed;
 	GError *error;
 	Callback *callback;
@@ -157,9 +157,9 @@ maybe_complete_discover (RealmKerberosDiscover *self)
 	gboolean complete;
 
 	/* If discovered either AD or IPA successfully, then complete */
-	complete = (self->finished_kerberos &&
+	complete = (!self->outstanding_kerberos &&
 	            (self->found_msdcs || self->found_ipa ||
-	             (self->finished_msdcs && self->finished_ipa)));
+	             (!self->outstanding_msdcs && !self->outstanding_ipa)));
 
 	if (!complete)
 		return;
@@ -185,19 +185,18 @@ on_discover_ipa (GObject *source,
 	RealmKerberosDiscover *self = REALM_KERBEROS_DISCOVER (user_data);
 	GError *error = NULL;
 
-	if (self->completed) {
-		g_object_unref (self);
-		return;
+	g_assert (self->outstanding_ipa > 0);
+	self->outstanding_ipa--;
+
+	if (!self->completed && !self->found_ipa) {
+		self->found_ipa = realm_ipa_discover_finish (result, &error);
+		if (error != NULL) {
+			g_clear_error (&self->error);
+			self->error = error;
+		}
+		maybe_complete_discover (self);
 	}
 
-	self->found_ipa = realm_ipa_discover_finish (result, &error);
-	if (error != NULL) {
-		g_clear_error (&self->error);
-		self->error = error;
-	}
-
-	self->finished_ipa = TRUE;
-	maybe_complete_discover (self);
 	g_object_unref (self);
 }
 
@@ -211,6 +210,9 @@ on_resolve_kerberos (GObject *source,
 	GError *error = NULL;
 	GString *info;
 	GList *l;
+	gint i;
+
+	self->outstanding_kerberos = 0;
 
 	if (self->completed) {
 		g_object_unref (self);
@@ -237,10 +239,13 @@ on_resolve_kerberos (GObject *source,
 
 		g_string_free (info, TRUE);
 
-		/* Unless sure domain is AD, start IPA discovery */
+		/* Unless sure domain is AD, start IPA discovery, for first N KDCs */
 		if (!self->found_msdcs) {
-			realm_ipa_discover_async (self->servers, invocation,
-			                          on_discover_ipa, g_object_ref (self));
+			for (l = self->servers, i = 0; l != NULL && i < 3; l = g_list_next (l), i++) {
+				realm_ipa_discover_async (l->data, invocation,
+				                          on_discover_ipa, g_object_ref (self));
+				self->outstanding_ipa++;
+			}
 		}
 
 	} else {
@@ -249,7 +254,6 @@ on_resolve_kerberos (GObject *source,
 		self->error = error;
 	}
 
-	self->finished_kerberos = TRUE;
 	maybe_complete_discover (self);
 	g_object_unref (self);
 }
@@ -264,6 +268,8 @@ on_resolve_msdcs (GObject *source,
 	GResolver *resolver = G_RESOLVER (source);
 	GError *error = NULL;
 	GList *records;
+
+	self->outstanding_msdcs = 0;
 
 	if (self->completed) {
 		g_object_unref (self);
@@ -281,7 +287,6 @@ on_resolve_msdcs (GObject *source,
 		self->error = error;
 	}
 
-	self->finished_msdcs = TRUE;
 	maybe_complete_discover (self);
 	g_object_unref (self);
 }
@@ -302,6 +307,7 @@ kerberos_discover_domain_begin (RealmKerberosDiscover *self)
 	resolver = g_resolver_get_default ();
 	g_resolver_lookup_service_async (resolver, "kerberos", "udp", self->domain, NULL,
 	                                 on_resolve_kerberos, g_object_ref (self));
+	self->outstanding_kerberos = 1;
 
 	/* Active Directory DNS zones have this subzone */
 	msdcs = g_strdup_printf ("dc._msdcs.%s", self->domain);
@@ -312,6 +318,7 @@ kerberos_discover_domain_begin (RealmKerberosDiscover *self)
 
 	g_resolver_lookup_service_async (resolver, "kerberos", "tcp", msdcs, NULL,
 	                                 on_resolve_msdcs, g_object_ref (self));
+	self->outstanding_msdcs = 1;
 
 	g_free (msdcs);
 

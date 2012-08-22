@@ -21,7 +21,7 @@
 
 G_BEGIN_DECLS
 
-void           realm_ipa_discover_async        (GList *kdcs,
+void           realm_ipa_discover_async        (GSrvTarget *kdc,
                                                 GDBusMethodInvocation *invocation,
                                                 GAsyncReadyCallback callback,
                                                 gpointer user_data);

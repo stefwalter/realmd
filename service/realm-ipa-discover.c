@@ -36,11 +36,9 @@ typedef struct {
 	GAsyncReadyCallback callback;
 	gpointer user_data;
 
-	/* Used while iterating through services */
-	GQueue remaining_services;
+	GSrvTarget *kdc;
 	GBytes *http_request;
 	GIOStream *current_connection;
-	GSrvTarget *current_target;
 	GTlsCertificate *peer_certificate;
 	GSocketConnectable *peer_identity;
 } RealmIpaDiscover;
@@ -55,10 +53,6 @@ typedef struct {
 
 GType realm_ipa_discover_get_type (void) G_GNUC_CONST;
 
-static void ipa_discover_step (RealmIpaDiscover *self);
-
-static void ipa_discover_step_clear (RealmIpaDiscover *self);
-
 void  realm_ipa_discover_async_result_init (GAsyncResultIface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (RealmIpaDiscover, realm_ipa_discover, G_TYPE_OBJECT,
@@ -68,7 +62,7 @@ G_DEFINE_TYPE_WITH_CODE (RealmIpaDiscover, realm_ipa_discover, G_TYPE_OBJECT,
 static void
 realm_ipa_discover_init (RealmIpaDiscover *self)
 {
-	g_queue_init (&self->remaining_services);
+
 }
 
 static void
@@ -77,11 +71,21 @@ realm_ipa_discover_finalize (GObject *obj)
 	RealmIpaDiscover *self = REALM_IPA_DISCOVER (obj);
 
 	g_object_unref (self->invocation);
-	g_list_free_full (self->services, (GDestroyNotify)g_srv_target_free);
 	g_clear_error (&self->error);
+	g_srv_target_free (self->kdc);
 
-	ipa_discover_step_clear (self);
-	g_queue_clear (&self->remaining_services);
+	if (self->http_request)
+		g_bytes_unref (self->http_request);
+
+	if (self->current_connection)
+		g_object_unref (self->current_connection);
+
+	if (self->peer_certificate)
+		g_object_unref (self->peer_certificate);
+
+	if (self->peer_identity)
+		g_object_unref (self->peer_identity);
+
 	g_assert (self->callback == NULL);
 
 	G_OBJECT_CLASS (realm_ipa_discover_parent_class)->finalize (obj);
@@ -308,29 +312,6 @@ write_all_bytes_finish (GOutputStream *stream,
 }
 
 static void
-ipa_discover_step_clear (RealmIpaDiscover *self)
-{
-	if (self->http_request)
-		g_bytes_unref (self->http_request);
-	self->http_request = NULL;
-
-	if (self->current_connection)
-		g_object_unref (self->current_connection);
-	self->current_connection = NULL;
-
-	/* Owned by self->services */
-	self->current_target = NULL;
-
-	if (self->peer_certificate)
-		g_object_unref (self->peer_certificate);
-	self->peer_certificate = NULL;
-
-	if (self->peer_identity)
-		g_object_unref (self->peer_identity);
-	self->peer_identity = NULL;
-}
-
-static void
 ipa_discover_complete (RealmIpaDiscover *self)
 {
 	GAsyncReadyCallback call;
@@ -449,7 +430,7 @@ on_read_http_response (GObject *source,
 	if (error != NULL)
 		ipa_discover_take_error (self, "Couldn't read certificate via HTTP", error);
 	if (!self->completed)
-		ipa_discover_step (self);
+		ipa_discover_complete (self);
 
 	g_object_unref (self);
 }
@@ -473,7 +454,7 @@ on_write_http_request (GObject *source,
 		                      on_read_http_response, g_object_ref (self));
 	} else {
 		ipa_discover_take_error (self, "Couldn't send HTTP request for certificate", error);
-		ipa_discover_step (self);
+		ipa_discover_complete (self);
 	}
 
 	g_object_unref (self);
@@ -495,7 +476,7 @@ on_connect_to_host (GObject *source,
 
 	request = g_strdup_printf ("GET /ipa/config/ca.crt HTTP/1.0\r\n"
 	                           "Host: %s\r\n"
-	                           "\r\n", g_srv_target_get_hostname (self->current_target));
+	                           "\r\n", g_srv_target_get_hostname (self->kdc));
 	self->http_request = g_bytes_new_take (request, strlen (request));
 
 	connection = g_socket_client_connect_to_host_finish (G_SOCKET_CLIENT (source), result, &error);
@@ -511,11 +492,11 @@ on_connect_to_host (GObject *source,
 	           g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NETWORK_UNREACHABLE) ||
 	           g_error_matches (error, G_IO_ERROR, G_IO_ERROR_TIMED_OUT)) {
 		realm_debug ("Couldn't connect to check for IPA domain: %s", error->message);
-		ipa_discover_step (self);
+		ipa_discover_complete (self);
 
 	} else {
 		ipa_discover_take_error (self, "Couldn't connect to check for IPA domain", error);
-		ipa_discover_step (self);
+		ipa_discover_complete (self);
 	}
 
 	g_object_unref (self);
@@ -539,35 +520,46 @@ on_connection_event (GSocketClient      *client,
 	} else if (event == G_SOCKET_CLIENT_RESOLVED) {
 		g_return_if_fail (self->peer_identity == NULL);
 		self->peer_identity = g_object_ref (connectable);
+
+	/* Once connected, raise the timeout, so TLS can succeed */
+	} else if (event == G_SOCKET_CLIENT_CONNECTED) {
+		g_socket_client_set_timeout (client, 30);
 	}
 }
 
 #define VALID_DNS_CHARS \
 	"abcdefghijklnmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-."
 
-static void
-ipa_discover_step (RealmIpaDiscover *self)
+void
+realm_ipa_discover_async (GSrvTarget *kdc,
+                          GDBusMethodInvocation *invocation,
+                          GAsyncReadyCallback callback,
+                          gpointer user_data)
 {
+	RealmIpaDiscover *self;
 	GSocketClient *client;
 	const gchar *hostname;
 
-	ipa_discover_step_clear (self);
+	g_return_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation));
 
-	if (g_queue_is_empty (&self->remaining_services)) {
+	self = g_object_new (REALM_TYPE_IPA_DISCOVER, NULL);
+	self->invocation = g_object_ref (invocation);
+	self->callback = callback;
+	self->user_data = user_data;
+	self->kdc = g_srv_target_copy (kdc);
+
+	hostname = g_srv_target_get_hostname (self->kdc);
+
+	/* If an invalid hostname, skip and go to next step */
+	if (strspn (hostname, VALID_DNS_CHARS) != strlen (hostname)) {
 		ipa_discover_complete (self);
 		return;
 	}
 
-	self->current_target = g_queue_pop_head (&self->remaining_services);
-	hostname = g_srv_target_get_hostname (self->current_target);
-
-	/* If an invalid hostname, skip and go to next step */
-	if (strspn (hostname, VALID_DNS_CHARS) != strlen (hostname)) {
-		ipa_discover_step (self);
-		return;
-	}
-
 	client = g_socket_client_new ();
+
+	/* Initial socket connections are limited to a low timeout*/
+	g_socket_client_set_timeout (client, 5);
 
 	/*
 	 * Note that we accept invalid certificates, we're just comparing them
@@ -588,28 +580,6 @@ ipa_discover_step (RealmIpaDiscover *self)
 	                                       NULL, on_connect_to_host, g_object_ref (self));
 
 	g_object_unref (client);
-}
-
-void
-realm_ipa_discover_async (GList *kdcs,
-                          GDBusMethodInvocation *invocation,
-                          GAsyncReadyCallback callback,
-                          gpointer user_data)
-{
-	RealmIpaDiscover *self;
-	GList *l;
-
-	g_return_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation));
-
-	self = g_object_new (REALM_TYPE_IPA_DISCOVER, NULL);
-	self->invocation = g_object_ref (invocation);
-	self->callback = callback;
-	self->user_data = user_data;
-
-	for (l = kdcs; l != NULL; l = g_list_next (l))
-		g_queue_push_tail (&self->remaining_services, l->data);
-
-	ipa_discover_step (self);
 
 	/* self is released in ipa_discover_complete */
 }

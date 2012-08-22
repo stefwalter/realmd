@@ -249,6 +249,7 @@ on_discover_timeout (gpointer user_data)
 static void
 realm_all_provider_discover_async (RealmProvider *provider,
                                    const gchar *string,
+                                   GVariant *options,
                                    GDBusMethodInvocation *invocation,
                                    GAsyncReadyCallback callback,
                                    gpointer user_data)
@@ -267,8 +268,8 @@ realm_all_provider_discover_async (RealmProvider *provider,
 	g_simple_async_result_set_op_res_gpointer (res, discover, discover_closure_free);
 
 	for (l = self->providers; l != NULL; l = g_list_next (l)) {
-		realm_provider_discover (l->data, string, invocation, on_provider_discover,
-		                         g_object_ref (res));
+		realm_provider_discover (l->data, string, options, invocation,
+		                         on_provider_discover, g_object_ref (res));
 		discover->outstanding++;
 	}
 

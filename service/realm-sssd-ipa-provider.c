@@ -104,6 +104,7 @@ on_ipa_discover (GObject *source,
 static void
 realm_sssd_ipa_provider_discover_async (RealmProvider *provider,
                                         const gchar *string,
+                                        GVariant *options,
                                         GDBusMethodInvocation *invocation,
                                         GAsyncReadyCallback callback,
                                         gpointer user_data)

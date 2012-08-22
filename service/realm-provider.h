@@ -45,6 +45,7 @@ struct _RealmProviderClass {
 
 	void         (* discover_async)  (RealmProvider *provider,
 	                                  const gchar *string,
+	                                  GVariant *options,
 	                                  GDBusMethodInvocation *invocation,
 	                                  GAsyncReadyCallback callback,
 	                                  gpointer user_data);
@@ -72,6 +73,7 @@ gboolean                 realm_provider_is_default               (const gchar *t
 
 void                     realm_provider_discover                 (RealmProvider *self,
                                                                   const gchar *string,
+                                                                  GVariant *options,
                                                                   GDBusMethodInvocation *invocation,
                                                                   GAsyncReadyCallback callback,
                                                                   gpointer user_data);

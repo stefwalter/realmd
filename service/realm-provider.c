@@ -104,7 +104,7 @@ realm_provider_handle_discover (RealmDbusProvider *provider,
 	/* Make note of the current operation id, for diagnostics */
 	realm_diagnostics_setup_options (invocation, options);
 
-	realm_provider_discover (self, string, invocation, on_discover_complete,
+	realm_provider_discover (self, string, options, invocation, on_discover_complete,
 	                         method_closure_new (self, invocation));
 
 	return TRUE;
@@ -302,6 +302,7 @@ realm_provider_set_realms (RealmProvider *self,
 void
 realm_provider_discover (RealmProvider *self,
                          const gchar *string,
+                         GVariant *options,
                          GDBusMethodInvocation *invocation,
                          GAsyncReadyCallback callback,
                          gpointer user_data)
@@ -311,7 +312,7 @@ realm_provider_discover (RealmProvider *self,
 	klass = REALM_PROVIDER_GET_CLASS (self);
 	g_return_if_fail (klass->discover_async != NULL);
 
-	(klass->discover_async) (self, string, invocation, callback, user_data);
+	(klass->discover_async) (self, string, options, invocation, callback, user_data);
 }
 
 gint

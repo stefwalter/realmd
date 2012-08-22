@@ -103,17 +103,26 @@ on_ad_discover (GObject *source,
 
 static void
 realm_sssd_ad_provider_discover_async (RealmProvider *provider,
-                                     const gchar *string,
-                                     GDBusMethodInvocation *invocation,
-                                     GAsyncReadyCallback callback,
-                                     gpointer user_data)
+                                       const gchar *string,
+                                       GVariant *options,
+                                       GDBusMethodInvocation *invocation,
+                                       GAsyncReadyCallback callback,
+                                       gpointer user_data)
 {
 	GSimpleAsyncResult *async;
 
 	async = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
 	                                   realm_sssd_ad_provider_discover_async);
 
-	realm_ad_discover_async (string, invocation, on_ad_discover, g_object_ref (async));
+	if (!realm_provider_match_options (options,
+	                                   REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY,
+	                                   REALM_DBUS_IDENTIFIER_SSSD)) {
+		g_simple_async_result_complete_in_idle (async);
+
+	} else {
+		realm_ad_discover_async (string, invocation, on_ad_discover,
+		                         g_object_ref (async));
+	}
 
 	g_object_unref (async);
 }
@@ -133,6 +142,8 @@ realm_sssd_ad_provider_discover_finish (RealmProvider *provider,
 
 	async = G_SIMPLE_ASYNC_RESULT (result);
 	ad_result = g_simple_async_result_get_op_res_gpointer (async);
+	if (ad_result == NULL)
+		return 0;
 
 	name = realm_ad_discover_finish (ad_result, &discovery, error);
 	if (name == NULL)

@@ -91,6 +91,10 @@ const gchar **           realm_provider_get_realms               (RealmProvider 
 void                     realm_provider_set_realms               (RealmProvider *self,
                                                                   const gchar **value);
 
+gboolean                 realm_provider_match_options            (GVariant *options,
+                                                                  const gchar *server_software,
+                                                                  const gchar *client_software);
+
 G_END_DECLS
 
 #endif /* __REALM_KERBEROS_PROVIDER_H__ */

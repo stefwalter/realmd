@@ -131,7 +131,9 @@ on_complete_get_result (GObject *source,
 
 static int
 perform_discover (GDBusConnection *connection,
-                  const gchar *string)
+                  const gchar *string,
+                  const gchar *server_software,
+                  const gchar *client_software)
 {
 	RealmDbusProvider *provider;
 	gboolean found = FALSE;
@@ -155,7 +157,9 @@ perform_discover (GDBusConnection *connection,
 	sync.result = NULL;
 	sync.loop = g_main_loop_new (NULL, FALSE);
 
-	options = realm_build_options (NULL, NULL);
+	options = realm_build_options (REALM_DBUS_OPTION_CLIENT_SOFTWARE, client_software,
+	                               REALM_DBUS_OPTION_SERVER_SOFTWARE, server_software,
+	                               NULL);
 	g_variant_ref_sink (options);
 
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);
@@ -203,6 +207,8 @@ realm_discover (int argc,
 	GDBusConnection *connection;
 	GOptionContext *context;
 	gboolean arg_verbose = FALSE;
+	gchar *arg_client_software = NULL;
+	gchar *arg_server_software = NULL;
 	GError *error = NULL;
 	gint result = 0;
 	gint ret;
@@ -210,6 +216,8 @@ realm_discover (int argc,
 
 	GOptionEntry option_entries[] = {
 		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
+		{ "client-software", 0, 0, G_OPTION_ARG_STRING, &arg_client_software, N_("Use specific client software"), NULL },
+		{ "server-software", 0, 0, G_OPTION_ARG_STRING, &arg_server_software, N_("Use specific server software"), NULL },
 		{ NULL, }
 	};
 
@@ -231,19 +239,23 @@ realm_discover (int argc,
 
 	/* The default realm? */
 	} else if (argc == 1) {
-		ret = perform_discover (connection, NULL);
+		ret = perform_discover (connection, NULL,
+		                        arg_server_software, arg_client_software);
 		g_object_unref (connection);
 
 	/* Specific realms */
 	} else {
 		for (i = 1; i < argc; i++) {
-			ret = perform_discover (connection, argv[i]);
+			ret = perform_discover (connection, argv[i],
+			                        arg_server_software, arg_client_software);
 			if (ret != 0)
 				result = ret;
 		}
 		g_object_unref (connection);
 	}
 
+	g_free (arg_server_software);
+	g_free (arg_client_software);
 	g_option_context_free (context);
 	return result;
 }

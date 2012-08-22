@@ -342,3 +342,26 @@ realm_provider_discover_finish (RealmProvider *self,
 
 	return relevance;
 }
+
+gboolean
+realm_provider_match_options (GVariant *options,
+                              const gchar *server_software,
+                              const gchar *client_software)
+{
+	const gchar *string;
+
+	g_return_val_if_fail (server_software != NULL, FALSE);
+	g_return_val_if_fail (client_software != NULL, FALSE);
+
+	if (g_variant_lookup (options, REALM_DBUS_OPTION_SERVER_SOFTWARE, "&s", &string)) {
+		if (!g_str_equal (server_software, string))
+			return FALSE;
+	}
+
+	if (g_variant_lookup (options, REALM_DBUS_OPTION_CLIENT_SOFTWARE, "&s", &string)) {
+		if (!g_str_equal (client_software, string))
+			return FALSE;
+	}
+
+	return TRUE;
+}

@@ -427,7 +427,9 @@ static int
 perform_join (GDBusConnection *connection,
               const gchar *string,
               const gchar *user_name,
-              const gchar *computer_ou)
+              const gchar *computer_ou,
+              const gchar *client_software,
+              const gchar *server_software)
 {
 	RealmDbusKerberosMembership *membership;
 	RealmDbusProvider *provider;
@@ -446,7 +448,9 @@ perform_join (GDBusConnection *connection,
 		return 1;
 	}
 
-	options = realm_build_options (NULL, NULL);
+	options = realm_build_options (REALM_DBUS_OPTION_CLIENT_SOFTWARE, client_software,
+	                               REALM_DBUS_OPTION_SERVER_SOFTWARE, server_software,
+	                               NULL);
 	g_variant_ref_sink (options);
 
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);
@@ -517,12 +521,16 @@ realm_join (int argc,
 	GError *error = NULL;
 	const gchar *realm_name;
 	gchar *arg_computer_ou = NULL;
+	gchar *arg_client_software = NULL;
+	gchar *arg_server_software = NULL;
 	gint ret = 0;
 
 	GOptionEntry option_entries[] = {
 		{ "user", 'U', 0, G_OPTION_ARG_STRING, &arg_user, N_("User name to use for enrollment"), NULL },
 		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
 		{ "computer-ou", 0, 0, G_OPTION_ARG_STRING, &arg_computer_ou, N_("Computer OU DN to join"), NULL },
+		{ "client-software", 0, 0, G_OPTION_ARG_STRING, &arg_client_software, N_("Use specific client software"), NULL },
+		{ "server-software", 0, 0, G_OPTION_ARG_STRING, &arg_server_software, N_("Use specific server software"), NULL },
 		{ NULL, }
 	};
 
@@ -544,7 +552,8 @@ realm_join (int argc,
 		if (connection) {
 			realm_name = argc < 2 ? "" : argv[1];
 			ret = perform_join (connection, realm_name, arg_user,
-			                    arg_computer_ou);
+			                    arg_computer_ou, arg_client_software,
+			                    arg_server_software);
 			g_object_unref (connection);
 		} else {
 			ret = 1;
@@ -553,6 +562,8 @@ realm_join (int argc,
 
 	g_free (arg_user);
 	g_free (arg_computer_ou);
+	g_free (arg_client_software);
+	g_free (arg_server_software);
 	g_option_context_free (context);
 	return ret;
 }

@@ -62,6 +62,12 @@
 		      identifier chosen by the client, which can then later be
 		      passed to org.freedesktop.realmd.Service.Cancel() in order
 		      to cancel the operation</para></listitem>
+		    <listitem><para><literal>client-software</literal>: a string
+		      containing the client software identifier that the returned
+		      realms should match.</para></listitem>
+		    <listitem><para><literal>server-software</literal>: a string
+		      containing the client software identifier that the returned
+		      realms should match.</para></listitem>
 		  </itemizedlist>
 
 		  The @relevance returned can be used to rank results from

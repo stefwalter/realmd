@@ -114,7 +114,15 @@ realm_sssd_ipa_provider_discover_async (RealmProvider *provider,
 	async = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
 	                                   realm_sssd_ipa_provider_discover_async);
 
-	realm_ipa_discover_async (string, invocation, on_ipa_discover, g_object_ref (async));
+	if (!realm_provider_match_options (options,
+	                                   REALM_DBUS_IDENTIFIER_FREEIPA,
+	                                   REALM_DBUS_IDENTIFIER_SSSD)) {
+		g_simple_async_result_complete_in_idle (async);
+
+	} else {
+		realm_ipa_discover_async (string, invocation, on_ipa_discover,
+		                          g_object_ref (async));
+	}
 
 	g_object_unref (async);
 
@@ -135,6 +143,8 @@ realm_sssd_ipa_provider_discover_finish (RealmProvider *provider,
 
 	async = G_SIMPLE_ASYNC_RESULT (result);
 	ipa_result = g_simple_async_result_get_op_res_gpointer (async);
+	if (ipa_result == NULL)
+		return 0;
 
 	name = realm_ipa_discover_finish (ipa_result, &discovery, error);
 	if (name == NULL)

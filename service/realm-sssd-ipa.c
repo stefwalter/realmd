@@ -58,8 +58,8 @@ realm_sssd_ipa_constructed (GObject *obj)
 	G_OBJECT_CLASS (realm_sssd_ipa_parent_class)->constructed (obj);
 
 	realm_kerberos_set_details (kerberos,
-	                            "server-software", "freeipa",
-	                            "client-software", "sssd",
+	                            REALM_DBUS_OPTION_SERVER_SOFTWARE, REALM_DBUS_IDENTIFIER_FREEIPA,
+	                            REALM_DBUS_OPTION_CLIENT_SOFTWARE, REALM_DBUS_IDENTIFIER_SSSD,
 	                            NULL);
 
 	/*

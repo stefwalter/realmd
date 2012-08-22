@@ -145,7 +145,7 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
 	g_variant_ref_sink (*realms);
 
 	/* Return a higher priority if we're the default */
-	return realm_provider_is_default ("active-directory", "winbind") ? 100 : 50;
+	return realm_provider_is_default (REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY, REALM_DBUS_IDENTIFIER_WINBIND) ? 100 : 50;
 }
 
 static void

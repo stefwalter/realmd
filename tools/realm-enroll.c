@@ -389,7 +389,7 @@ realm_join_or_leave (RealmDbusKerberosMembership *membership,
 	sync.result = NULL;
 	sync.loop = g_main_loop_new (NULL, FALSE);
 
-	options = realm_build_options ("computer-ou", computer_ou, NULL);
+	options = realm_build_options (REALM_DBUS_OPTION_COMPUTER_OU, computer_ou, NULL);
 	g_variant_ref_sink (options);
 
 	/* Start actual operation */

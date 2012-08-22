@@ -1199,12 +1199,12 @@ realm_kerberos_calculate_join_computer_ou (RealmKerberos *self,
 	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
 
 	if (options) {
-		if (!g_variant_lookup (options, "computer-ou", "&s", &computer_ou))
+		if (!g_variant_lookup (options, REALM_DBUS_OPTION_COMPUTER_OU, "&s", &computer_ou))
 			computer_ou = NULL;
 	}
 
 	if (!computer_ou)
-		computer_ou = realm_settings_value (realm_kerberos_get_name (self), "join-computer-ou");
+		computer_ou = realm_settings_value (realm_kerberos_get_name (self), REALM_DBUS_OPTION_COMPUTER_OU);
 
 	return g_strdup (computer_ou);
 }

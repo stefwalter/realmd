@@ -67,8 +67,8 @@ realm_samba_constructed (GObject *obj)
 	G_OBJECT_CLASS (realm_samba_parent_class)->constructed (obj);
 
 	realm_kerberos_set_details (kerberos,
-	                            "server-software", "active-directory",
-	                            "client-software", "winbind",
+	                            REALM_DBUS_OPTION_SERVER_SOFTWARE, REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY,
+	                            REALM_DBUS_OPTION_CLIENT_SOFTWARE, REALM_DBUS_IDENTIFIER_WINBIND,
 	                            NULL);
 
 	/*
@@ -417,7 +417,7 @@ realm_samba_unenroll_async (RealmKerberos *realm,
 		                                 _("Not currently joined to a domain"));
 		g_simple_async_result_complete_in_idle (res);
 
-	} else if (g_variant_lookup (options, "computer-ou", "&s", &computer_ou)) {
+	} else if (g_variant_lookup (options, REALM_DBUS_OPTION_COMPUTER_OU, "&s", &computer_ou)) {
 		g_simple_async_result_set_error (res, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
 		                                 "The computer-ou argument is not supported when leaving a domain (using samba).");
 		g_simple_async_result_complete_in_idle (res);

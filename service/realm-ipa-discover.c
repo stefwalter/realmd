@@ -29,7 +29,6 @@
 typedef struct {
 	GObject parent;
 	GDBusMethodInvocation *invocation;
-	GList *services;
 	gboolean completed;
 	gboolean found_ipa;
 	GError *error;

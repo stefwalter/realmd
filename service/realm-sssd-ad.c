@@ -18,6 +18,7 @@
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
+#include "realm-kerberos-membership.h"
 #include "realm-packages.h"
 #include "realm-samba-enroll.h"
 #include "realm-service.h"
@@ -39,7 +40,11 @@ typedef struct {
 	RealmSssdClass parent_class;
 } RealmSssdAdClass;
 
-G_DEFINE_TYPE (RealmSssdAd, realm_sssd_ad, REALM_TYPE_SSSD);
+static void realm_sssd_ad_kerberos_membership_iface (RealmKerberosMembershipIface *iface);
+
+G_DEFINE_TYPE_WITH_CODE (RealmSssdAd, realm_sssd_ad, REALM_TYPE_SSSD,
+                         G_IMPLEMENT_INTERFACE (REALM_TYPE_KERBEROS_MEMBERSHIP, realm_sssd_ad_kerberos_membership_iface);
+);
 
 static void
 realm_sssd_ad_init (RealmSssdAd *self)
@@ -65,7 +70,7 @@ realm_sssd_ad_constructed (GObject *obj)
 	 * same for enroll/unenroll. We can't accept a ccache, because samba3 needs
 	 * to have credentials limited to RC4.
 	 */
-	supported = realm_kerberos_build_supported_credentials (
+	supported = realm_kerberos_membership_build_supported (
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_ADMIN,
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_USER,
 			0);
@@ -276,7 +281,7 @@ on_kinit_do_install (GObject *source,
 }
 
 static void
-realm_sssd_ad_enroll_async (RealmKerberos *realm,
+realm_sssd_ad_enroll_async (RealmKerberosMembership *membership,
                             const char *name,
                             const char *password,
                             RealmKerberosFlags flags,
@@ -285,6 +290,7 @@ realm_sssd_ad_enroll_async (RealmKerberos *realm,
                             GAsyncReadyCallback callback,
                             gpointer user_data)
 {
+	RealmKerberos *realm = REALM_KERBEROS (membership);
 	RealmSssd *sssd = REALM_SSSD (realm);
 	GSimpleAsyncResult *res;
 	EnrollClosure *enroll;
@@ -431,7 +437,7 @@ on_kinit_do_leave (GObject *source,
 }
 
 static void
-realm_sssd_ad_unenroll_async (RealmKerberos *realm,
+realm_sssd_ad_unenroll_async (RealmKerberosMembership *membership,
                               const gchar *name,
                               const gchar *password,
                               RealmKerberosFlags flags,
@@ -440,6 +446,7 @@ realm_sssd_ad_unenroll_async (RealmKerberos *realm,
                               GAsyncReadyCallback callback,
                               gpointer user_data)
 {
+	RealmKerberos *realm = REALM_KERBEROS (membership);
 	RealmSssd *sssd = REALM_SSSD (realm);
 	GSimpleAsyncResult *res;
 	UnenrollClosure *unenroll;
@@ -472,7 +479,7 @@ realm_sssd_ad_unenroll_async (RealmKerberos *realm,
 }
 
 static gboolean
-realm_sssd_ad_generic_finish (RealmKerberos *realm,
+realm_sssd_ad_generic_finish (RealmKerberosMembership *realm,
                               GAsyncResult *result,
                               GError **error)
 {
@@ -485,13 +492,16 @@ realm_sssd_ad_generic_finish (RealmKerberos *realm,
 void
 realm_sssd_ad_class_init (RealmSssdAdClass *klass)
 {
-	RealmKerberosClass *kerberos_class = REALM_KERBEROS_CLASS (klass);
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
-
 	object_class->constructed = realm_sssd_ad_constructed;
+}
 
-	kerberos_class->enroll_password_async = realm_sssd_ad_enroll_async;
-	kerberos_class->enroll_finish = realm_sssd_ad_generic_finish;
-	kerberos_class->unenroll_password_async = realm_sssd_ad_unenroll_async;
-	kerberos_class->unenroll_finish = realm_sssd_ad_generic_finish;
+
+static void
+realm_sssd_ad_kerberos_membership_iface (RealmKerberosMembershipIface *iface)
+{
+	iface->enroll_password_async = realm_sssd_ad_enroll_async;
+	iface->enroll_finish = realm_sssd_ad_generic_finish;
+	iface->unenroll_password_async = realm_sssd_ad_unenroll_async;
+	iface->unenroll_finish = realm_sssd_ad_generic_finish;
 }

@@ -21,6 +21,7 @@
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-kerberos.h"
+#include "realm-kerberos-membership.h"
 #include "realm-packages.h"
 #include "realm-provider.h"
 #include "realm-samba.h"
@@ -49,7 +50,11 @@ enum {
 	PROP_PROVIDER,
 };
 
-G_DEFINE_TYPE (RealmSamba, realm_samba, REALM_TYPE_KERBEROS);
+static void realm_samba_kerberos_membership_iface (RealmKerberosMembershipIface *iface);
+
+G_DEFINE_TYPE_WITH_CODE (RealmSamba, realm_samba, REALM_TYPE_KERBEROS,
+                         G_IMPLEMENT_INTERFACE (REALM_TYPE_KERBEROS_MEMBERSHIP, realm_samba_kerberos_membership_iface);
+);
 
 static void
 realm_samba_init (RealmSamba *self)
@@ -75,7 +80,7 @@ realm_samba_constructed (GObject *obj)
 	 * same for enroll/unenroll. We can't accept a ccache, because samba3 needs
 	 * to have credentials limited to RC4.
 	 */
-	supported = realm_kerberos_build_supported_credentials (
+	supported = realm_kerberos_membership_build_supported (
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_ADMIN,
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_USER,
 			0);
@@ -257,7 +262,7 @@ on_kinit_do_install (GObject *source,
 }
 
 static void
-realm_samba_enroll_async (RealmKerberos *realm,
+realm_samba_enroll_async (RealmKerberosMembership *membership,
                           const gchar *name,
                           const gchar *password,
                           RealmKerberosFlags flags,
@@ -266,6 +271,7 @@ realm_samba_enroll_async (RealmKerberos *realm,
                           GAsyncReadyCallback callback,
                           gpointer user_data)
 {
+	RealmKerberos *realm = REALM_KERBEROS (membership);
 	RealmSamba *self = REALM_SAMBA (realm);
 	GSimpleAsyncResult *res;
 	EnrollClosure *enroll;
@@ -384,7 +390,7 @@ on_kinit_do_leave (GObject *source,
 }
 
 static void
-realm_samba_unenroll_async (RealmKerberos *realm,
+realm_samba_unenroll_async (RealmKerberosMembership *membership,
                             const gchar *name,
                             const gchar *password,
                             RealmKerberosFlags flags,
@@ -393,6 +399,7 @@ realm_samba_unenroll_async (RealmKerberos *realm,
                             GAsyncReadyCallback callback,
                             gpointer user_data)
 {
+	RealmKerberos *realm = REALM_KERBEROS (membership);
 	RealmSamba *self = REALM_SAMBA (realm);
 	GSimpleAsyncResult *res;
 	UnenrollClosure *unenroll;
@@ -558,6 +565,18 @@ on_config_changed (RealmIniConfig *config,
 }
 
 static gboolean
+realm_samba_membership_generic_finish (RealmKerberosMembership *realm,
+                                       GAsyncResult *result,
+                                       GError **error)
+{
+	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
+		return FALSE;
+
+	update_properties (REALM_SAMBA (realm));
+	return TRUE;
+}
+
+static gboolean
 realm_samba_generic_finish (RealmKerberos *realm,
                             GAsyncResult *result,
                             GError **error)
@@ -620,10 +639,6 @@ realm_samba_class_init (RealmSambaClass *klass)
 	RealmKerberosClass *kerberos_class = REALM_KERBEROS_CLASS (klass);
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-	kerberos_class->enroll_password_async = realm_samba_enroll_async;
-	kerberos_class->enroll_finish = realm_samba_generic_finish;
-	kerberos_class->unenroll_password_async = realm_samba_unenroll_async;
-	kerberos_class->unenroll_finish = realm_samba_generic_finish;
 	kerberos_class->logins_async = realm_samba_logins_async;
 	kerberos_class->logins_finish = realm_samba_generic_finish;
 
@@ -635,6 +650,15 @@ realm_samba_class_init (RealmSambaClass *klass)
 	g_object_class_install_property (object_class, PROP_PROVIDER,
 	            g_param_spec_object ("provider", "Provider", "Samba Provider",
 	                                 REALM_TYPE_PROVIDER, G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+}
+
+static void
+realm_samba_kerberos_membership_iface (RealmKerberosMembershipIface *iface)
+{
+	iface->enroll_password_async = realm_samba_enroll_async;
+	iface->enroll_finish = realm_samba_membership_generic_finish;
+	iface->unenroll_password_async = realm_samba_unenroll_async;
+	iface->unenroll_finish = realm_samba_membership_generic_finish;
 }
 
 RealmKerberos *

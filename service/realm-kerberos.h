@@ -68,6 +68,7 @@ struct _RealmKerberosClass {
 	                                         const char *name,
 	                                         const char *password,
 	                                         RealmKerberosFlags flags,
+	                                         GVariant *options,
 	                                         GDBusMethodInvocation *invocation,
 	                                         GAsyncReadyCallback callback,
 	                                         gpointer user_data);
@@ -75,12 +76,14 @@ struct _RealmKerberosClass {
 	void       (* enroll_ccache_async)      (RealmKerberos *realm,
 	                                         GBytes *ccache,
 	                                         RealmKerberosFlags flags,
+	                                         GVariant *options,
 	                                         GDBusMethodInvocation *invocation,
 	                                         GAsyncReadyCallback callback,
 	                                         gpointer user_data);
 
 	void       (* enroll_automatic_async)   (RealmKerberos *realm,
 	                                         RealmKerberosFlags flags,
+	                                         GVariant *options,
 	                                         GDBusMethodInvocation *invocation,
 	                                         GAsyncReadyCallback callback,
 	                                         gpointer user_data);
@@ -93,6 +96,7 @@ struct _RealmKerberosClass {
 	                                         const char *name,
 	                                         const char *password,
 	                                         RealmKerberosFlags flags,
+	                                         GVariant *options,
 	                                         GDBusMethodInvocation *invocation,
 	                                         GAsyncReadyCallback callback,
 	                                         gpointer user_data);
@@ -100,12 +104,14 @@ struct _RealmKerberosClass {
 	void       (* unenroll_ccache_async)    (RealmKerberos *realm,
 	                                         GBytes *ccache,
 	                                         RealmKerberosFlags flags,
+	                                         GVariant *options,
 	                                         GDBusMethodInvocation *invocation,
 	                                         GAsyncReadyCallback callback,
 	                                         gpointer user_data);
 
 	void       (* unenroll_automatic_async) (RealmKerberos *realm,
 	                                         RealmKerberosFlags flags,
+	                                         GVariant *options,
 	                                         GDBusMethodInvocation *invocation,
 	                                         GAsyncReadyCallback callback,
 	                                         gpointer user_data);

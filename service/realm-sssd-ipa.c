@@ -79,6 +79,7 @@ static void
 realm_sssd_ipa_enroll_async (RealmKerberos *realm,
                              GBytes *admin_kerberos_cache,
                              RealmKerberosFlags flags,
+                             GVariant *options,
                              GDBusMethodInvocation *invocation,
                              GAsyncReadyCallback callback,
                              gpointer user_data)
@@ -97,6 +98,7 @@ static void
 realm_sssd_ipa_unenroll_async (RealmKerberos *realm,
                                GBytes *admin_kerberos_cache,
                                RealmKerberosFlags flags,
+                               GVariant *options,
                                GDBusMethodInvocation *invocation,
                                GAsyncReadyCallback callback,
                                gpointer user_data)

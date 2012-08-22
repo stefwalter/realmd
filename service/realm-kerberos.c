@@ -156,6 +156,7 @@ on_unenroll_complete (GObject *source,
 static void
 enroll_or_unenroll_with_ccache (RealmKerberos *self,
                                 RealmKerberosFlags flags,
+                                GVariant *options,
                                 GDBusMethodInvocation *invocation,
                                 GVariant *ccache,
                                 gboolean enroll)
@@ -193,12 +194,12 @@ enroll_or_unenroll_with_ccache (RealmKerberos *self,
 
 	if (enroll) {
 		g_return_if_fail (klass->enroll_finish != NULL);
-		(klass->enroll_ccache_async) (self, bytes, flags, invocation, on_enroll_complete,
-		                              method_closure_new (self, invocation));
+		(klass->enroll_ccache_async) (self, bytes, flags, options, invocation,
+		                              on_enroll_complete, method_closure_new (self, invocation));
 	} else {
 		g_return_if_fail (klass->unenroll_finish != NULL);
-		(klass->unenroll_ccache_async) (self, bytes, flags, invocation, on_unenroll_complete,
-		                                method_closure_new (self, invocation));
+		(klass->unenroll_ccache_async) (self, bytes, flags, options, invocation,
+		                                on_unenroll_complete, method_closure_new (self, invocation));
 	}
 
 	g_bytes_unref (bytes);
@@ -207,6 +208,7 @@ enroll_or_unenroll_with_ccache (RealmKerberos *self,
 static void
 enroll_or_unenroll_with_password (RealmKerberos *self,
                                   RealmKerberosFlags flags,
+                                  GVariant *options,
                                   GDBusMethodInvocation *invocation,
                                   const gchar *name,
                                   const gchar *password,
@@ -231,19 +233,20 @@ enroll_or_unenroll_with_password (RealmKerberos *self,
 
 	if (enroll) {
 		g_return_if_fail (klass->enroll_finish != NULL);
-		(klass->enroll_password_async) (self, name, password, flags, invocation, on_enroll_complete,
-		                                method_closure_new (self, invocation));
+		(klass->enroll_password_async) (self, name, password, flags, options, invocation,
+		                                on_enroll_complete, method_closure_new (self, invocation));
 
 	} else {
 		g_return_if_fail (klass->unenroll_finish != NULL);
-		(klass->unenroll_password_async) (self, name, password, flags, invocation, on_unenroll_complete,
-		                                method_closure_new (self, invocation));
+		(klass->unenroll_password_async) (self, name, password, flags, options, invocation,
+		                                  on_unenroll_complete, method_closure_new (self, invocation));
 	}
 }
 
 static void
 enroll_or_unenroll_with_automatic (RealmKerberos *self,
                                    RealmKerberosFlags flags,
+                                   GVariant *options,
                                    GDBusMethodInvocation *invocation,
                                    gboolean enroll)
 {
@@ -266,12 +269,12 @@ enroll_or_unenroll_with_automatic (RealmKerberos *self,
 
 	if (enroll) {
 		g_return_if_fail (klass->enroll_finish != NULL);
-		(klass->enroll_automatic_async) (self, flags, invocation, on_enroll_complete,
-		                                 method_closure_new (self, invocation));
+		(klass->enroll_automatic_async) (self, flags, options, invocation,
+		                                 on_enroll_complete, method_closure_new (self, invocation));
 	} else {
 		g_return_if_fail (klass->enroll_finish != NULL);
-		(klass->unenroll_automatic_async) (self, flags, invocation, on_unenroll_complete,
-		                                   method_closure_new (self, invocation));
+		(klass->unenroll_automatic_async) (self, flags, options, invocation,
+		                                   on_unenroll_complete, method_closure_new (self, invocation));
 	}
 }
 
@@ -352,14 +355,14 @@ handle_join (RealmDbusKerberosMembership *membership,
 
 	switch (cred_type) {
 	case REALM_KERBEROS_CREDENTIAL_CCACHE:
-		enroll_or_unenroll_with_ccache (self, flags, invocation, creds, TRUE);
+		enroll_or_unenroll_with_ccache (self, flags, options, invocation, creds, TRUE);
 		break;
 	case REALM_KERBEROS_CREDENTIAL_PASSWORD:
 		g_variant_get (creds, "(&s&s)", &name, &password);
-		enroll_or_unenroll_with_password (self, flags, invocation, name, password, TRUE);
+		enroll_or_unenroll_with_password (self, flags, options, invocation, name, password, TRUE);
 		break;
 	case REALM_KERBEROS_CREDENTIAL_AUTOMATIC:
-		enroll_or_unenroll_with_automatic (self, flags, invocation, TRUE);
+		enroll_or_unenroll_with_automatic (self, flags, options, invocation, TRUE);
 		break;
 	default:
 		g_assert_not_reached ();
@@ -390,14 +393,14 @@ handle_leave (RealmDbusKerberosMembership *membership,
 
 	switch (cred_type) {
 	case REALM_KERBEROS_CREDENTIAL_CCACHE:
-		enroll_or_unenroll_with_ccache (self, flags, invocation, creds, FALSE);
+		enroll_or_unenroll_with_ccache (self, flags, options, invocation, creds, FALSE);
 		break;
 	case REALM_KERBEROS_CREDENTIAL_PASSWORD:
 		g_variant_get (creds, "(&s&s)", &name, &password);
-		enroll_or_unenroll_with_password (self, flags, invocation, name, password, FALSE);
+		enroll_or_unenroll_with_password (self, flags, options, invocation, name, password, FALSE);
 		break;
 	case REALM_KERBEROS_CREDENTIAL_AUTOMATIC:
-		enroll_or_unenroll_with_automatic (self, flags, invocation, FALSE);
+		enroll_or_unenroll_with_automatic (self, flags, options, invocation, FALSE);
 		break;
 	default:
 		g_assert_not_reached ();
@@ -419,7 +422,7 @@ handle_deconfigure (RealmDbusRealm *realm,
 	realm_diagnostics_setup_options (invocation, options);
 
 	enroll_or_unenroll_with_automatic (self, REALM_KERBEROS_CREDENTIAL_COMPUTER,
-	                                   invocation, FALSE);
+	                                   options, invocation, FALSE);
 	return TRUE;
 }
 

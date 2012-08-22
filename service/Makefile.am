@@ -29,6 +29,7 @@ realmd_SOURCES = \
 	realm-kerberos.c realm-kerberos.h \
 	realm-kerberos-discover.c realm-kerberos-discover.h \
 	realm-kerberos-membership.c realm-kerberos-membership.h \
+	realm-kerberos-provider.c realm-kerberos-provider.h \
 	realm-login-name.c realm-login-name.h \
 	realm-network.c realm-network.h \
 	realm-packages.c realm-packages.h \

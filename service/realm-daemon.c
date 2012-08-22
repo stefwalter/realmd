@@ -22,6 +22,7 @@
 #include "realm-debug.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
+#include "realm-kerberos-provider.h"
 #include "realm-samba-provider.h"
 #include "realm-settings.h"
 #include "realm-sssd-ad-provider.h"
@@ -423,6 +424,11 @@ on_bus_get_connection (GObject *source,
 		g_object_unref (provider);
 
 		provider = realm_samba_provider_new ();
+		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
+		realm_all_provider_register (all_provider, provider);
+		g_object_unref (provider);
+
+		provider = realm_kerberos_provider_new ();
 		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
 		realm_all_provider_register (all_provider, provider);
 		g_object_unref (provider);

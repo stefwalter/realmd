@@ -20,6 +20,7 @@
 #include "realm-dbus-constants.h"
 #include "realm-dbus-generated.h"
 #include "realm-diagnostics.h"
+#include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-kerberos.h"
 #include "realm-kerberos-membership.h"
@@ -595,6 +596,7 @@ realm_kerberos_constructed (GObject *obj)
 {
 	RealmKerberos *self = REALM_KERBEROS (obj);
 	const gchar *supported_interfaces[3];
+	const gchar *name;
 
 	G_OBJECT_CLASS (realm_kerberos_parent_class)->constructed (obj);
 
@@ -617,6 +619,15 @@ realm_kerberos_constructed (GObject *obj)
 
 	realm_dbus_realm_set_supported_interfaces (self->pv->realm_iface,
 	                                           supported_interfaces);
+
+	if (self->pv->discovery) {
+		name = realm_discovery_get_string (self->pv->discovery, REALM_DBUS_DISCOVERY_DOMAIN);
+		if (name)
+			realm_kerberos_set_domain_name (self, name);
+		name = realm_discovery_get_string (self->pv->discovery, REALM_DBUS_DISCOVERY_REALM);
+		if (name)
+			realm_kerberos_set_realm_name (self, name);
+	}
 }
 
 static void

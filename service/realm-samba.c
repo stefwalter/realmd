@@ -138,6 +138,7 @@ lookup_login_prefix (RealmSamba *self)
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	GBytes *ccache;
+	gchar *computer_ou;
 	gchar *realm_name;
 } EnrollClosure;
 
@@ -146,6 +147,7 @@ enroll_closure_free (gpointer data)
 {
 	EnrollClosure *enroll = data;
 	g_free (enroll->realm_name);
+	g_free (enroll->computer_ou);
 	g_object_unref (enroll->invocation);
 	g_bytes_unref (enroll->ccache);
 	g_slice_free (EnrollClosure, enroll);
@@ -222,8 +224,8 @@ on_install_do_join (GObject *source,
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
 		realm_samba_enroll_join_async (enroll->realm_name, enroll->ccache,
-		                               enroll->invocation, on_join_do_winbind,
-		                               g_object_ref (res));
+		                               enroll->computer_ou, enroll->invocation,
+		                               on_join_do_winbind, g_object_ref (res));
 
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -275,6 +277,7 @@ realm_samba_enroll_async (RealmKerberos *realm,
 	enroll = g_slice_new0 (EnrollClosure);
 	enroll->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
 	enroll->invocation = g_object_ref (invocation);
+	enroll->computer_ou = realm_kerberos_calculate_join_computer_ou (realm, options);
 	g_simple_async_result_set_op_res_gpointer (res, enroll, enroll_closure_free);
 
 	/* Make sure not already enrolled in a realm */
@@ -395,6 +398,7 @@ realm_samba_unenroll_async (RealmKerberos *realm,
 	GSimpleAsyncResult *res;
 	UnenrollClosure *unenroll;
 	const gchar *realm_name;
+	const gchar *computer_ou;
 	gchar *enrolled;
 
 	realm_name = realm_kerberos_get_realm_name (REALM_KERBEROS (self));
@@ -408,14 +412,19 @@ realm_samba_unenroll_async (RealmKerberos *realm,
 
 	/* Check that enrolled in this realm */
 	enrolled = lookup_enrolled_realm (self);
-	if (g_strcmp0 (enrolled, realm_name) == 0) {
-		realm_kerberos_kinit_ccache_async (realm, name, password, REALM_SAMBA_ENROLL_ENC_TYPES,
-		                                   invocation, on_kinit_do_leave, g_object_ref (res));
-
-	} else {
+	if (g_strcmp0 (enrolled, realm_name) != 0) {
 		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
 		                                 _("Not currently joined to a domain"));
 		g_simple_async_result_complete_in_idle (res);
+
+	} else if (g_variant_lookup (options, "computer-ou", "&s", &computer_ou)) {
+		g_simple_async_result_set_error (res, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+		                                 "The computer-ou argument is not supported when leaving a domain (using samba).");
+		g_simple_async_result_complete_in_idle (res);
+
+	} else {
+		realm_kerberos_kinit_ccache_async (realm, name, password, REALM_SAMBA_ENROLL_ENC_TYPES,
+		                                   invocation, on_kinit_do_leave, g_object_ref (res));
 	}
 
 	g_object_unref (res);

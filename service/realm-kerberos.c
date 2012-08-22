@@ -23,6 +23,7 @@
 #include "realm-errors.h"
 #include "realm-kerberos.h"
 #include "realm-login-name.h"
+#include "realm-settings.h"
 
 #include <krb5/krb5.h>
 
@@ -1187,4 +1188,23 @@ realm_kerberos_set_configured (RealmKerberos *self,
 	g_return_if_fail (REALM_IS_KERBEROS (self));
 	realm_dbus_realm_set_configured (self->pv->realm_iface,
 	                                 configured ? REALM_DBUS_KERBEROS_MEMBERSHIP_INTERFACE : "");
+}
+
+gchar *
+realm_kerberos_calculate_join_computer_ou (RealmKerberos *self,
+                                           GVariant *options)
+{
+	const gchar *computer_ou = NULL;
+
+	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
+
+	if (options) {
+		if (!g_variant_lookup (options, "computer-ou", "&s", &computer_ou))
+			computer_ou = NULL;
+	}
+
+	if (!computer_ou)
+		computer_ou = realm_settings_value (realm_kerberos_get_name (self), "join-computer-ou");
+
+	return g_strdup (computer_ou);
 }

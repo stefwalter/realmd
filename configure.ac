@@ -122,6 +122,22 @@ AC_SUBST(KRB5_CFLAGS)
 AC_SUBST(KRB5_LIBS)
 
 # -------------------------------------------------------------------
+# LDAP
+
+LDAP_LIBS=""
+
+AC_CHECK_LIB(ldap, ldap_search)
+AC_CHECK_LIB(lber, ber_pvt_opt_on)
+AC_CHECK_HEADERS(ldap.h)
+AC_CHECK_LIB(resolv, res_query, LDAP_LIBS="-lresolv")
+
+LDAP_LIBS="$LDAP_LIBS -lldap -llber"
+LDAP_CFLAGS=""
+
+AC_SUBST(LDAP_LIBS)
+AC_SUBST(LDAP_CFLAGS)
+
+# -------------------------------------------------------------------
 # Directories
 
 DBUS_SERVICES_DIR="${datadir}/dbus-1/system-services"

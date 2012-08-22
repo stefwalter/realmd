@@ -22,9 +22,12 @@
 #include "realm-samba-config.h"
 #include "realm-samba-enroll.h"
 #include "realm-samba-provider.h"
+#include "realm-samba-util.h"
 #include "realm-settings.h"
 
 #include <glib/gstdio.h>
+
+#include <ldap.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -34,6 +37,7 @@ typedef struct {
 	GCancellable *cancellable;
 	GDBusMethodInvocation *invocation;
 	gchar *kerberos_cache_filename;
+	gchar *create_computer_arg;
 	GHashTable *settings;
 	gchar **environ;
 	gchar *realm;
@@ -55,6 +59,7 @@ join_closure_free (gpointer data)
 		g_free (join->kerberos_cache_filename);
 	}
 
+	g_free (join->create_computer_arg);
 	g_free (join->realm);
 	g_strfreev (join->environ);
 	if (join->settings)
@@ -325,7 +330,8 @@ on_conf_do_join (GObject *source,
 
 	if (error == NULL) {
 		begin_net_process (join,  on_join_do_keytab, g_object_ref (res),
-		                   "-k", "ads", "join", join->realm, NULL);
+		                   "-k", "ads", "join", join->realm,
+		                   join->create_computer_arg, NULL);
 
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -338,6 +344,7 @@ on_conf_do_join (GObject *source,
 void
 realm_samba_enroll_join_async (const gchar *realm,
                                GBytes *admin_kerberos_cache,
+                               const gchar *computer_ou,
                                GDBusMethodInvocation *invocation,
                                GAsyncReadyCallback callback,
                                gpointer user_data)
@@ -345,6 +352,7 @@ realm_samba_enroll_join_async (const gchar *realm,
 	GSimpleAsyncResult *res;
 	JoinClosure *join;
 	GError *error = NULL;
+	gchar *strange_ou;
 
 	g_return_if_fail (realm != NULL);
 	g_return_if_fail (admin_kerberos_cache != NULL);
@@ -353,11 +361,26 @@ realm_samba_enroll_join_async (const gchar *realm,
 	                                 realm_samba_enroll_join_async);
 
 	join = join_closure_init (realm, admin_kerberos_cache, invocation, &error);
-	if (join == NULL) {
+
+	if (error == NULL) {
+		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
+
+		if (computer_ou != NULL) {
+			strange_ou = realm_samba_util_build_strange_ou (computer_ou, realm);
+			if (strange_ou) {
+				join->create_computer_arg = g_strdup_printf ("createcomputer=%s", strange_ou);
+				g_free (strange_ou);
+			} else {
+				g_set_error (&error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+				             "The computer-ou argument must be a valid LDAP DN and contain only OU=xxx RDN values.");
+			}
+		}
+	}
+
+	if (error != NULL) {
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete_in_idle (res);
 	} else {
-		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
 		begin_net_process (join, on_conf_do_join, g_object_ref (res),
 		                   "conf", "setparm", REALM_SAMBA_CONFIG_GLOBAL,
 		                   "realm", join->realm, NULL);

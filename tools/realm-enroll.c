@@ -376,19 +376,23 @@ build_ccache_or_password_creds (RealmDbusKerberosMembership *membership,
 static int
 realm_join_or_leave (RealmDbusKerberosMembership *membership,
                      const gchar *user_name,
+                     const gchar *computer_ou,
                      gboolean join)
 {
 	GError *error = NULL;
 	GVariant *options;
 	GVariant *creds;
 	SyncClosure sync;
+	GVariant *option = NULL;
 
 	creds = build_ccache_or_password_creds (membership, user_name, join);
 
 	sync.result = NULL;
 	sync.loop = g_main_loop_new (NULL, FALSE);
 
-	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
+	if (computer_ou)
+		option = g_variant_new ("{sv}", "computer-ou", g_variant_new_string (computer_ou));
+	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), &option, option ? 1 : 0);
 	g_variant_ref_sink (options);
 
 	/* Start actual operation */
@@ -425,7 +429,8 @@ realm_join_or_leave (RealmDbusKerberosMembership *membership,
 static int
 perform_join (GDBusConnection *connection,
               const gchar *string,
-              const gchar *user_name)
+              const gchar *user_name,
+              const gchar *computer_ou)
 {
 	RealmDbusKerberosMembership *membership;
 	RealmDbusProvider *provider;
@@ -467,7 +472,7 @@ perform_join (GDBusConnection *connection,
 		return 1;
 	}
 
-	ret = realm_join_or_leave (membership, user_name, TRUE);
+	ret = realm_join_or_leave (membership, user_name, computer_ou, TRUE);
 
 	g_object_unref (membership);
 
@@ -498,7 +503,7 @@ perform_leave (GDBusConnection *connection,
 		return 1;
 	}
 
-	ret = realm_join_or_leave (membership, user_name, FALSE);
+	ret = realm_join_or_leave (membership, user_name, NULL, FALSE);
 	g_object_unref (membership);
 
 	return ret;
@@ -514,11 +519,13 @@ realm_join (int argc,
 	gboolean arg_verbose = FALSE;
 	GError *error = NULL;
 	const gchar *realm_name;
+	gchar *arg_computer_ou = NULL;
 	gint ret = 0;
 
 	GOptionEntry option_entries[] = {
 		{ "user", 'U', 0, G_OPTION_ARG_STRING, &arg_user, N_("User name to use for enrollment"), NULL },
 		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
+		{ "computer-ou", 0, 0, G_OPTION_ARG_STRING, &arg_computer_ou, N_("Computer OU DN to join"), NULL },
 		{ NULL, }
 	};
 
@@ -539,7 +546,8 @@ realm_join (int argc,
 		connection = realm_get_connection (arg_verbose);
 		if (connection) {
 			realm_name = argc < 2 ? "" : argv[1];
-			ret = perform_join (connection, realm_name, arg_user);
+			ret = perform_join (connection, realm_name, arg_user,
+			                    arg_computer_ou);
 			g_object_unref (connection);
 		} else {
 			ret = 1;
@@ -547,6 +555,7 @@ realm_join (int argc,
 	}
 
 	g_free (arg_user);
+	g_free (arg_computer_ou);
 	g_option_context_free (context);
 	return ret;
 }

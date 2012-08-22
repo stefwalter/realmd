@@ -36,6 +36,7 @@ realmd_SOURCES = \
 	realm-samba-config.c realm-samba-config.h \
 	realm-samba-enroll.c realm-samba-enroll.h \
 	realm-samba-provider.c realm-samba-provider.h \
+	realm-samba-util.c realm-samba-util.h \
 	realm-samba-winbind.c realm-samba-winbind.h \
 	realm-service.c realm-service.h \
 	realm-service-systemd.c realm-service-systemd.h \
@@ -60,6 +61,7 @@ realmd_CFLAGS = \
 	$(POLKIT_CFLAGS) \
 	$(GLIB_CFLAGS) \
 	$(KRB5_CFLAGS) \
+	$(LDAP_CFLAGS) \
 	$(NULL)
 
 realmd_LDADD = \
@@ -68,6 +70,7 @@ realmd_LDADD = \
 	$(POLKIT_LIBS) \
 	$(GLIB_LIBS) \
 	$(KRB5_LIBS) \
+	$(LDAP_LIBS) \
 	$(NULL)
 
 # Install and uninstall the config for this distro

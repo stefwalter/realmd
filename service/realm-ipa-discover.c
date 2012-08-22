@@ -28,7 +28,6 @@
 
 typedef struct {
 	GObject parent;
-	gchar *domain;
 	GDBusMethodInvocation *invocation;
 	GList *services;
 	gboolean completed;
@@ -78,7 +77,6 @@ realm_ipa_discover_finalize (GObject *obj)
 	RealmIpaDiscover *self = REALM_IPA_DISCOVER (obj);
 
 	g_object_unref (self->invocation);
-	g_free (self->domain);
 	g_list_free_full (self->services, (GDestroyNotify)g_srv_target_free);
 	g_clear_error (&self->error);
 
@@ -592,89 +590,15 @@ ipa_discover_step (RealmIpaDiscover *self)
 	g_object_unref (client);
 }
 
-static void
-on_resolve_kerberos (GObject *source,
-                     GAsyncResult *result,
-                     gpointer user_data)
-{
-	RealmIpaDiscover *self = REALM_IPA_DISCOVER (user_data);
-	GDBusMethodInvocation *invocation = self->invocation;
-	GError *error = NULL;
-	GList *l;
-
-	self->services = g_resolver_lookup_service_finish (G_RESOLVER (source), result, &error);
-
-	/* We don't treat 'host not found' as an error */
-	if (g_error_matches (error, G_RESOLVER_ERROR, G_RESOLVER_ERROR_NOT_FOUND))
-		g_clear_error (&error);
-
-	if (error == NULL) {
-		for (l = self->services; l != NULL; l = g_list_next (l))
-			g_queue_push_tail (&self->remaining_services, l->data);
-		ipa_discover_step (self);
-
-	} else {
-		realm_diagnostics_error (invocation, error, "Couldn't lookup SRV records for domain");
-		ipa_discover_take_error (self, "Couldn't lookup SRV records for domain", error);
-		ipa_discover_complete (self);
-	}
-
-	g_object_unref (self);
-}
-
-static void
-ipa_discover_begin (RealmIpaDiscover *self)
-{
-	GDBusMethodInvocation *invocation = self->invocation;
-	GResolver *resolver;
-
-	g_assert (self->domain != NULL);
-
-	realm_diagnostics_info (invocation,
-	                        "Searching for kerberos SRV records for domain: _kerberos._udp.%s",
-	                        self->domain);
-
-	resolver = g_resolver_get_default ();
-	g_resolver_lookup_service_async (resolver, "kerberos", "udp", self->domain, NULL,
-	                                 on_resolve_kerberos, g_object_ref (self));
-
-	g_object_unref (resolver);
-}
-
-static void
-on_get_dhcp_domain (GObject *source,
-                    GAsyncResult *result,
-                    gpointer user_data)
-{
-	RealmIpaDiscover *self = REALM_IPA_DISCOVER (user_data);
-	GDBusMethodInvocation *invocation = self->invocation;
-	GError *error = NULL;
-
-	self->domain = realm_network_get_dhcp_domain_finish (result, &error);
-	if (error != NULL) {
-		realm_diagnostics_error (invocation, error, "Failure to lookup DHCP domain");
-		g_error_free (error);
-	} else if (self->domain) {
-		realm_diagnostics_info (invocation, "Discovering for DHCP domain: %s", self->domain);
-		ipa_discover_begin (self);
-	} else {
-		realm_diagnostics_info (invocation, "No DHCP domain available");
-		ipa_discover_complete (self);
-	}
-
-	g_object_unref (self);
-}
-
 void
-realm_ipa_discover_async (const gchar *string,
+realm_ipa_discover_async (GList *kdcs,
                           GDBusMethodInvocation *invocation,
                           GAsyncReadyCallback callback,
                           gpointer user_data)
 {
-	GDBusConnection *connection;
 	RealmIpaDiscover *self;
+	GList *l;
 
-	g_return_if_fail (string != NULL);
 	g_return_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation));
 
 	self = g_object_new (REALM_TYPE_IPA_DISCOVER, NULL);
@@ -682,31 +606,22 @@ realm_ipa_discover_async (const gchar *string,
 	self->callback = callback;
 	self->user_data = user_data;
 
-	if (g_str_equal (string, "")) {
-		connection = g_dbus_method_invocation_get_connection (invocation);
-		realm_diagnostics_info (invocation, "Looking up our DHCP domain");
-		realm_network_get_dhcp_domain_async (connection, on_get_dhcp_domain,
-		                                     g_object_ref (self));
+	for (l = kdcs; l != NULL; l = g_list_next (l))
+		g_queue_push_tail (&self->remaining_services, l->data);
 
-	} else {
-		self->domain = g_ascii_strdown (string, -1);
-		g_strstrip (self->domain);
-		ipa_discover_begin (self);
-	}
+	ipa_discover_step (self);
 
 	/* self is released in ipa_discover_complete */
 }
 
-gchar *
+gboolean
 realm_ipa_discover_finish (GAsyncResult *result,
-                           GHashTable **discovery,
                            GError **error)
 {
 	RealmIpaDiscover *self;
-	gchar *realm;
 
-	g_return_val_if_fail (REALM_IS_IPA_DISCOVER (result), NULL);
-	g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+	g_return_val_if_fail (REALM_IS_IPA_DISCOVER (result), FALSE);
+	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
 	self = REALM_IPA_DISCOVER (result);
 
@@ -714,33 +629,8 @@ realm_ipa_discover_finish (GAsyncResult *result,
 	if (self->error) {
 		if (error)
 			*error = g_error_copy (self->error);
-		return NULL;
+		return FALSE;
 	}
 
-	if (!self->found_ipa)
-		return NULL;
-
-	realm = g_ascii_strup (self->domain, -1);
-
-	if (discovery) {
-		*discovery = realm_discovery_new ();
-
-		/* The domain */
-		realm_discovery_add_string (*discovery, REALM_DBUS_DISCOVERY_DOMAIN,
-		                            self->domain);
-
-		/* The realm */
-		realm_discovery_add_string (*discovery, REALM_DBUS_DISCOVERY_REALM, realm);
-
-		/* The servers */
-		realm_discovery_add_srv_targets (*discovery, REALM_DBUS_DISCOVERY_KDCS,
-		                                 self->services);
-
-		/* The type */
-		realm_discovery_add_string (*discovery, REALM_DBUS_DISCOVERY_TYPE,
-		                            "kerberos-ad");
-	}
-
-	realm_diagnostics_info (self->invocation, "Successfully discovered realm: %s", realm);
-	return realm;
+	return self->found_ipa;
 }

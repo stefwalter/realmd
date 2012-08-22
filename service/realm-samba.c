@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "realm-ad-discover.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"

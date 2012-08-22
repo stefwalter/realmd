@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "realm-ad-discover.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
@@ -22,6 +21,7 @@
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-kerberos.h"
+#include "realm-kerberos-discover.h"
 #include "realm-packages.h"
 #include "realm-samba.h"
 #include "realm-samba-config.h"
@@ -113,8 +113,8 @@ realm_samba_provider_discover_async (RealmProvider *provider,
 		g_simple_async_result_complete_in_idle (async);
 
 	} else {
-		realm_ad_discover_async (string, invocation, on_ad_discover,
-		                         g_object_ref (async));
+		realm_kerberos_discover_async (string, invocation, on_ad_discover,
+		                               g_object_ref (async));
 	}
 
 	g_object_unref (async);
@@ -126,7 +126,7 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
                                       GVariant **realms,
                                       GError **error)
 {
-	RealmKerberos *realm;
+	RealmKerberos *realm = NULL;
 	GSimpleAsyncResult *async;
 	GHashTable *discovery;
 	GAsyncResult *ad_result;
@@ -138,13 +138,19 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
 	if (ad_result == NULL)
 		return 0;
 
-	name = realm_ad_discover_finish (ad_result, &discovery, error);
+	name = realm_kerberos_discover_finish (ad_result, &discovery, error);
 	if (name == NULL)
 		return 0;
 
-	realm = realm_provider_lookup_or_register_realm (provider,
-	                                                 REALM_TYPE_SAMBA,
-	                                                 name, discovery);
+	if (realm_discovery_has_string (discovery,
+	                                REALM_DBUS_OPTION_SERVER_SOFTWARE,
+	                                REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY)) {
+
+		realm = realm_provider_lookup_or_register_realm (provider,
+		                                                 REALM_TYPE_SAMBA,
+		                                                 name, discovery);
+	}
+
 	g_free (name);
 	g_hash_table_unref (discovery);
 

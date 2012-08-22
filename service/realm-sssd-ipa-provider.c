@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "realm-ipa-discover.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
@@ -22,6 +21,7 @@
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-kerberos.h"
+#include "realm-kerberos-discover.h"
 #include "realm-packages.h"
 #include "realm-sssd-ipa.h"
 #include "realm-sssd-ipa-provider.h"
@@ -120,7 +120,7 @@ realm_sssd_ipa_provider_discover_async (RealmProvider *provider,
 		g_simple_async_result_complete_in_idle (async);
 
 	} else {
-		realm_ipa_discover_async (string, invocation, on_ipa_discover,
+		realm_kerberos_discover_async (string, invocation, on_ipa_discover,
 		                          g_object_ref (async));
 	}
 
@@ -136,7 +136,7 @@ realm_sssd_ipa_provider_discover_finish (RealmProvider *provider,
 {
 	GSimpleAsyncResult *async;
 	GAsyncResult *ipa_result;
-	RealmKerberos *realm;
+	RealmKerberos *realm = NULL;
 	GHashTable *discovery;
 	const gchar *object_path;
 	gchar *name;
@@ -146,13 +146,19 @@ realm_sssd_ipa_provider_discover_finish (RealmProvider *provider,
 	if (ipa_result == NULL)
 		return 0;
 
-	name = realm_ipa_discover_finish (ipa_result, &discovery, error);
+	name = realm_kerberos_discover_finish (ipa_result, &discovery, error);
 	if (name == NULL)
 		return 0;
 
-	realm = realm_provider_lookup_or_register_realm (provider,
-	                                                 REALM_TYPE_SSSD_IPA,
-	                                                 name, discovery);
+	if (realm_discovery_has_string (discovery,
+	                                REALM_DBUS_OPTION_SERVER_SOFTWARE,
+	                                REALM_DBUS_IDENTIFIER_FREEIPA)) {
+
+		realm = realm_provider_lookup_or_register_realm (provider,
+		                                                 REALM_TYPE_SSSD_IPA,
+		                                                 name, discovery);
+	}
+
 	g_free (name);
 	g_hash_table_unref (discovery);
 

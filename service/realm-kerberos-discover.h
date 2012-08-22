@@ -14,19 +14,19 @@
 
 #include "config.h"
 
-#ifndef __REALM_AD_DISCOVER_H__
-#define __REALM_AD_DISCOVER_H__
+#ifndef __REALM_KERBEROS_DISCOVER_H__
+#define __REALM_KERBEROS_DISCOVER_H__
 
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
 
-void           realm_ad_discover_async         (const gchar *string,
+void        realm_kerberos_discover_async      (const gchar *string,
                                                 GDBusMethodInvocation *invocation,
                                                 GAsyncReadyCallback callback,
                                                 gpointer user_data);
 
-gchar *        realm_ad_discover_finish        (GAsyncResult *result,
+gchar *     realm_kerberos_discover_finish     (GAsyncResult *result,
                                                 GHashTable **discovery,
                                                 GError **error);
 

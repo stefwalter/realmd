@@ -45,7 +45,6 @@ G_BEGIN_DECLS
 #define   REALM_DBUS_ERROR_NOT_CONFIGURED          "org.freedesktop.realmd.Error.NotConfigured"
 #define   REALM_DBUS_ERROR_AUTH_FAILED             "org.freedesktop.realmd.Error.AuthenticationFailed"
 
-#define   REALM_DBUS_DISCOVERY_TYPE                "type"
 #define   REALM_DBUS_DISCOVERY_DOMAIN              "domain"
 #define   REALM_DBUS_DISCOVERY_KDCS                "kerberos-kdcs"
 #define   REALM_DBUS_DISCOVERY_REALM               "kerberos-realm"

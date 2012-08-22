@@ -55,6 +55,16 @@ realm_discovery_get_string (GHashTable *discovery,
 	return g_variant_get_string (variant, NULL);
 }
 
+gboolean
+realm_discovery_has_string (GHashTable *discovery,
+                            const gchar *type,
+                            const gchar *value)
+{
+	const gchar *has;
+	has = realm_discovery_get_string (discovery, type);
+	return has != NULL && g_str_equal (has, value);
+}
+
 void
 realm_discovery_add_variant (GHashTable *discovery,
                              const gchar *type,

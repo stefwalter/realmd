@@ -30,6 +30,10 @@ void           realm_discovery_add_string       (GHashTable *discovery,
 const gchar *  realm_discovery_get_string       (GHashTable *discovery,
                                                  const gchar *type);
 
+gboolean       realm_discovery_has_string       (GHashTable *discovery,
+                                                 const gchar *type,
+                                                 const gchar *value);
+
 void           realm_discovery_add_variant      (GHashTable *discovery,
                                                  const gchar *type,
                                                  GVariant *value);

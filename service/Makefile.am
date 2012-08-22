@@ -17,7 +17,6 @@ polkit_policy_DATA = $(polkit_policy_in_files:.policy.in=.policy)
 @INTLTOOL_POLICY_RULE@
 
 realmd_SOURCES = \
-	realm-ad-discover.c realm-ad-discover.h \
 	realm-all-provider.c realm-all-provider.h \
 	realm-command.c realm-command.h \
 	realm-daemon.c realm-daemon.h \
@@ -28,6 +27,7 @@ realmd_SOURCES = \
 	realm-ini-config.c realm-ini-config.h \
 	realm-ipa-discover.c realm-ipa-discover.h \
 	realm-kerberos.c realm-kerberos.h \
+	realm-kerberos-discover.c realm-kerberos-discover.h \
 	realm-login-name.c realm-login-name.h \
 	realm-network.c realm-network.h \
 	realm-packages.c realm-packages.h \

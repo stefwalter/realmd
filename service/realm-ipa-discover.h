@@ -21,13 +21,12 @@
 
 G_BEGIN_DECLS
 
-void           realm_ipa_discover_async        (const gchar *string,
+void           realm_ipa_discover_async        (GList *kdcs,
                                                 GDBusMethodInvocation *invocation,
                                                 GAsyncReadyCallback callback,
                                                 gpointer user_data);
 
-gchar *        realm_ipa_discover_finish       (GAsyncResult *result,
-                                                GHashTable **discovery,
+gboolean       realm_ipa_discover_finish       (GAsyncResult *result,
                                                 GError **error);
 
 G_END_DECLS

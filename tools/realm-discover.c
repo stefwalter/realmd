@@ -155,7 +155,7 @@ perform_discover (GDBusConnection *connection,
 	sync.result = NULL;
 	sync.loop = g_main_loop_new (NULL, FALSE);
 
-	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
+	options = realm_build_options (NULL, NULL);
 	g_variant_ref_sink (options);
 
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);

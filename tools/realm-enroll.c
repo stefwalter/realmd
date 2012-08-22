@@ -383,16 +383,13 @@ realm_join_or_leave (RealmDbusKerberosMembership *membership,
 	GVariant *options;
 	GVariant *creds;
 	SyncClosure sync;
-	GVariant *option = NULL;
 
 	creds = build_ccache_or_password_creds (membership, user_name, join);
 
 	sync.result = NULL;
 	sync.loop = g_main_loop_new (NULL, FALSE);
 
-	if (computer_ou)
-		option = g_variant_new ("{sv}", "computer-ou", g_variant_new_string (computer_ou));
-	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), &option, option ? 1 : 0);
+	options = realm_build_options ("computer-ou", computer_ou, NULL);
 	g_variant_ref_sink (options);
 
 	/* Start actual operation */
@@ -449,7 +446,7 @@ perform_join (GDBusConnection *connection,
 		return 1;
 	}
 
-	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
+	options = realm_build_options (NULL, NULL);
 	g_variant_ref_sink (options);
 
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);

@@ -66,7 +66,7 @@ perform_permit_or_deny_logins (GDBusConnection *connection,
 	/* Start actual operation */
 	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (realm), G_MAXINT);
 
-	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
+	options = realm_build_options (NULL, NULL);
 	g_variant_ref_sink (options);
 
 	realm_dbus_realm_call_change_login_policy (realm, REALM_DBUS_LOGIN_POLICY_PERMITTED,
@@ -108,7 +108,7 @@ perform_permit_or_deny_all (GDBusConnection *connection,
 	if (realm == NULL)
 		return 1;
 
-	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
+	options = realm_build_options (NULL, NULL);
 	g_variant_ref_sink (options);
 
 	policy = permit ? REALM_DBUS_LOGIN_POLICY_ANY : REALM_DBUS_LOGIN_POLICY_DENY;

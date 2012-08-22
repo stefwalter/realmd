@@ -42,6 +42,9 @@ int                   realm_permit                 (int argc,
 int                   realm_deny                   (int argc,
                                                     char *argv[]);
 
+GVariant *            realm_build_options          (const gchar *first,
+                                                    ...) G_GNUC_NULL_TERMINATED;
+
 GDBusConnection *     realm_get_connection         (gboolean verbose);
 
 void                  realm_print_error            (const gchar *format,

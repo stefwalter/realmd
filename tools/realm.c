@@ -244,6 +244,37 @@ on_diagnostics_signal (GDBusConnection *connection,
 	g_printerr ("%s", data);
 }
 
+GVariant *
+realm_build_options (const gchar *first,
+                     ...)
+{
+	const gchar *value;
+	GPtrArray *opts;
+	GVariant *options;
+	GVariant *option;
+	va_list va;
+
+	va_start (va, first);
+
+	opts = g_ptr_array_new ();
+	while (first != NULL) {
+		value = va_arg (va, const gchar *);
+		if (value != NULL) {
+			option = g_variant_new ("{sv}", first, g_variant_new_string (value));
+			g_ptr_array_add (opts, option);
+		}
+
+		first = va_arg (va, const gchar *);
+	}
+
+	va_end (va);
+
+	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), (GVariant * const*)opts->pdata, opts->len);
+	g_ptr_array_free (opts, TRUE);
+
+	return options;
+}
+
 GDBusConnection *
 realm_get_connection (gboolean verbose)
 {

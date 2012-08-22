@@ -647,9 +647,7 @@ realm_samba_class_init (RealmSambaClass *klass)
 	object_class->notify = realm_samba_notify;
 	object_class->finalize = realm_samba_finalize;
 
-	g_object_class_install_property (object_class, PROP_PROVIDER,
-	            g_param_spec_object ("provider", "Provider", "Samba Provider",
-	                                 REALM_TYPE_PROVIDER, G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+	g_object_class_override_property (object_class, PROP_PROVIDER, "provider");
 }
 
 static void

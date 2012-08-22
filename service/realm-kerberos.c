@@ -24,6 +24,7 @@
 #include "realm-kerberos.h"
 #include "realm-kerberos-membership.h"
 #include "realm-login-name.h"
+#include "realm-provider.h"
 #include "realm-settings.h"
 
 #include <krb5/krb5.h>
@@ -47,7 +48,8 @@ struct _RealmKerberosPrivate {
 enum {
 	PROP_0,
 	PROP_NAME,
-	PROP_DISCOVERY
+	PROP_DISCOVERY,
+	PROP_PROVIDER,
 };
 
 G_DEFINE_TYPE (RealmKerberos, realm_kerberos, G_TYPE_DBUS_OBJECT_SKELETON);
@@ -654,6 +656,9 @@ realm_kerberos_set_property (GObject *obj,
 	case PROP_DISCOVERY:
 		realm_kerberos_set_discovery (self, g_value_get_boxed (value));
 		break;
+	case PROP_PROVIDER:
+		/* ignore */
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
 		break;
@@ -698,6 +703,10 @@ realm_kerberos_class_init (RealmKerberosClass *klass)
 	g_object_class_install_property (object_class, PROP_DISCOVERY,
 	             g_param_spec_boxed ("discovery", "Discovery", "Discovery Data",
 	                                 G_TYPE_HASH_TABLE, G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS));
+
+	g_object_class_install_property (object_class, PROP_PROVIDER,
+	            g_param_spec_object ("provider", "Provider", "Samba Provider",
+	                                 REALM_TYPE_PROVIDER, G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 void

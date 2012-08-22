@@ -577,6 +577,9 @@
 		      identifier chosen by the client, which can then later be
 		      passed to org.freedesktop.realmd.Service.Cancel() in order
 		      to cancel the operation</para></listitem>
+		    <listitem><para><literal>computer-ou</literal>: a string
+		      containing an LDAP DN for an organizational unit where the
+		      computer account should be created</para></listitem>
 		  </itemizedlist>
 
 		  This method requires authorization for the PolicyKit action

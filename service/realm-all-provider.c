@@ -93,7 +93,6 @@ on_provider_notify (GObject *obj,
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	gchar *operation_id;
-	guint timeout_id;
 	gboolean completed;
 	gint outstanding;
 	GQueue failures;
@@ -114,8 +113,6 @@ discover_closure_free (gpointer data)
 		g_error_free (g_queue_pop_head (&discover->failures));
 	if (discover->realms)
 		g_variant_unref (discover->realms);
-	if (discover->timeout_id)
-		g_source_remove (discover->timeout_id);
 	g_slice_free (DiscoverClosure, discover);
 }
 
@@ -220,32 +217,6 @@ on_provider_discover (GObject *source,
 	g_object_unref (self);
 }
 
-static gboolean
-on_discover_timeout (gpointer user_data)
-{
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	DiscoverClosure *discover = g_simple_async_result_get_op_res_gpointer (async);
-
-	if (discover->completed)
-		return TRUE;
-
-	/*
-	 * So at this point if we have results, then consider the rest of
-	 * the providers as taking too long, and ignore their results.
-	 */
-
-	if (!g_queue_is_empty (&discover->results)) {
-		g_debug ("Providers taking too long, terminating search early");
-		discover_process_results (async, discover);
-		discover->completed = TRUE;
-		g_simple_async_result_complete (async);
-	} else {
-		g_debug ("Waiting for results from providers");
-	}
-
-	return TRUE;
-}
-
 static void
 realm_all_provider_discover_async (RealmProvider *provider,
                                    const gchar *string,
@@ -264,7 +235,6 @@ realm_all_provider_discover_async (RealmProvider *provider,
 	discover = g_slice_new0 (DiscoverClosure);
 	g_queue_init (&discover->results);
 	discover->invocation = g_object_ref (invocation);
-	discover->timeout_id = g_timeout_add_seconds (3, on_discover_timeout, res);
 	g_simple_async_result_set_op_res_gpointer (res, discover, discover_closure_free);
 
 	for (l = self->providers; l != NULL; l = g_list_next (l)) {

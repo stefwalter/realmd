@@ -217,10 +217,10 @@ on_resolve_msdcs (GObject *source,
 	GError *error = NULL;
 	GList *records;
 
-	records = g_resolver_lookup_records_finish (resolver, result, &error);
+	records = g_resolver_lookup_service_finish (resolver, result, &error);
 	if (error == NULL || g_error_matches (error, G_RESOLVER_ERROR, G_RESOLVER_ERROR_NOT_FOUND)) {
 		self->found_msdcs = (records != NULL);
-		g_list_free_full (records, (GDestroyNotify)g_variant_unref);
+		g_list_free_full (records, (GDestroyNotify)g_srv_target_free);
 
 	} else {
 		realm_diagnostics_error (invocation, error, "Failure to lookup domain MSDCS records");

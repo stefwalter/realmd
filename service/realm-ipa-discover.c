@@ -286,7 +286,7 @@ write_all_bytes_async (GOutputStream *stream,
   data = g_bytes_get_data (bytes, &size);
   simple = g_simple_async_result_new (G_OBJECT (stream),
                                       callback, user_data,
-                                      g_output_stream_write_bytes_async);
+                                      write_all_bytes_async);
   closure = g_slice_new0 (WriteAllClosure);
   closure->bytes = g_bytes_ref (bytes);
   g_simple_async_result_set_op_res_gpointer (simple, closure, write_all_closure_free);

@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "realm-adcli-enroll.h"
 #include "realm-command.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
@@ -39,6 +40,18 @@ struct _RealmSssdAd {
 typedef struct {
 	RealmSssdClass parent_class;
 } RealmSssdAdClass;
+
+static const gchar *adcli_packages[] = {
+	REALM_DBUS_IDENTIFIER_SSSD,
+	REALM_DBUS_IDENTIFIER_ADCLI,
+	NULL
+};
+
+static const gchar *samba_packages[] = {
+	REALM_DBUS_IDENTIFIER_SSSD,
+	REALM_DBUS_IDENTIFIER_SAMBA,
+	NULL
+};
 
 static void realm_sssd_ad_kerberos_membership_iface (RealmKerberosMembershipIface *iface);
 
@@ -71,13 +84,19 @@ realm_sssd_ad_constructed (GObject *obj)
 	 * to have credentials limited to RC4.
 	 */
 	supported = realm_kerberos_membership_build_supported (
-			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_ADMIN,
-			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_USER,
+			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_ADMIN,
+			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_USER,
+			REALM_KERBEROS_CREDENTIAL_AUTOMATIC, REALM_KERBEROS_OWNER_NONE,
+			REALM_KERBEROS_CREDENTIAL_SECRET, REALM_KERBEROS_OWNER_NONE,
 			0);
-	g_variant_ref_sink (supported);
 	realm_kerberos_set_supported_join_creds (kerberos, supported);
+
+	/* For leave, we don't support one-time-password (ie: secret/none) */
+	supported = realm_kerberos_membership_build_supported (
+			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_ADMIN,
+			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_USER,
+			0);
 	realm_kerberos_set_supported_leave_creds (kerberos, supported);
-	g_variant_unref (supported);
 
 	realm_kerberos_set_suggested_admin (kerberos, "Administrator");
 	realm_kerberos_set_login_policy (kerberos, REALM_KERBEROS_ALLOW_ANY_LOGIN);
@@ -85,20 +104,26 @@ realm_sssd_ad_constructed (GObject *obj)
 
 typedef struct {
 	GDBusMethodInvocation *invocation;
-	GBytes *ccache;
+	RealmKerberosCredential cred_type;
+	gchar *ccache_file;
 	gchar *computer_ou;
 	gchar *realm_name;
-} EnrollClosure;
+	gboolean use_adcli;
+	GBytes *one_time_password;
+	const gchar **packages;
+} JoinClosure;
 
 static void
-enroll_closure_free (gpointer data)
+join_closure_free (gpointer data)
 {
-	EnrollClosure *enroll = data;
-	g_free (enroll->realm_name);
-	g_object_unref (enroll->invocation);
-	g_bytes_unref (enroll->ccache);
-	g_free (enroll->computer_ou);
-	g_slice_free (EnrollClosure, enroll);
+	JoinClosure *join = data;
+	g_free (join->realm_name);
+	g_object_unref (join->invocation);
+	if (join->ccache_file)
+		realm_keberos_ccache_delete_and_free (join->ccache_file);
+	g_free (join->computer_ou);
+	g_bytes_unref (join->one_time_password);
+	g_slice_free (JoinClosure, join);
 }
 
 static void
@@ -106,7 +131,7 @@ on_enable_nss_done (GObject *source,
                     GAsyncResult *result,
                     gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
 	gint status;
 
@@ -115,10 +140,10 @@ on_enable_nss_done (GObject *source,
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             _("Enabling SSSD in nsswitch.conf and PAM failed."));
 	if (error != NULL)
-		g_simple_async_result_take_error (res, error);
+		g_simple_async_result_take_error (async, error);
 
-	g_simple_async_result_complete (res);
-	g_object_unref (res);
+	g_simple_async_result_complete (async);
+	g_object_unref (async);
 }
 
 static void
@@ -126,44 +151,36 @@ on_sssd_enable_nss (GObject *source,
                     GAsyncResult *result,
                     gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (async);
 	GError *error = NULL;
 
 	realm_service_enable_and_restart_finish (result, &error);
 
 	if (error == NULL) {
-		realm_command_run_known_async ("sssd-enable-logins", NULL, enroll->invocation,
-		                               NULL, on_enable_nss_done, g_object_ref (res));
+		realm_command_run_known_async ("sssd-enable-logins", NULL, join->invocation,
+		                               NULL, on_enable_nss_done, g_object_ref (async));
 
 	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete (async);
 	}
 
-	g_object_unref (res);
+	g_object_unref (async);
 }
 
 static gboolean
 configure_sssd_for_domain (RealmIniConfig *config,
                            const gchar *realm,
-                           GHashTable *settings,
+                           const gchar *workgroup,
                            GError **error)
 {
-	const gchar *workgroup;
 	gboolean ret;
 	gchar *domain;
 	gchar **parts;
 	gchar *rdn;
 	gchar *dn;
 	gint i;
-
-	workgroup = g_hash_table_lookup (settings, "workgroup");
-	if (workgroup == NULL) {
-		g_set_error (error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             _("Failed to calculate domain workgroup"));
-		return FALSE;
-	}
 
 	/* Calculate the domain and dn */
 	domain = g_ascii_strdown (realm, -1);
@@ -206,33 +223,46 @@ on_join_do_sssd (GObject *source,
                  GAsyncResult *result,
                  gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (async);
 	RealmSssd *sssd = REALM_SSSD (g_async_result_get_source_object (user_data));
 	GHashTable *settings = NULL;
 	GError *error = NULL;
+	gchar *workgroup = NULL;
 
-	realm_samba_enroll_join_finish (result, &settings, &error);
+
+	if (join->use_adcli) {
+		if (!realm_adcli_enroll_join_finish (result, &workgroup, &error))
+			workgroup = NULL;
+	} else {
+		if (realm_samba_enroll_join_finish (result, &settings, &error)) {
+			workgroup = g_strdup (g_hash_table_lookup (settings, "workgroup"));
+			g_hash_table_unref (settings);
+		}
+	}
+
+	if (error == NULL && workgroup == NULL) {
+		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
+		             _("Failed to calculate domain workgroup"));
+	}
+
 	if (error == NULL) {
 		configure_sssd_for_domain (realm_sssd_get_config (sssd),
-		                           enroll->realm_name,
-		                           settings, &error);
-		g_hash_table_unref (settings);
+		                           join->realm_name, workgroup, &error);
 	}
 
 	if (error == NULL) {
-		realm_service_enable_and_restart ("sssd", enroll->invocation,
-		                                  on_sssd_enable_nss, g_object_ref (res));
+		realm_service_enable_and_restart ("sssd", join->invocation,
+		                                  on_sssd_enable_nss, g_object_ref (async));
 
 	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete (async);
 	}
 
-	if (settings)
-		g_hash_table_unref (settings);
+	g_free (workgroup);
 	g_object_unref (sssd);
-	g_object_unref (res);
+	g_object_unref (async);
 }
 
 static void
@@ -240,22 +270,48 @@ on_install_do_join (GObject *source,
                     GAsyncResult *result,
                     gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (async);
 	GError *error = NULL;
 
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
-		realm_samba_enroll_join_async (enroll->realm_name, enroll->ccache,
-		                               enroll->computer_ou, enroll->invocation,
-		                               on_join_do_sssd, g_object_ref (res));
+		if (join->use_adcli && join->one_time_password) {
+			realm_adcli_enroll_join_otp_async (join->realm_name,
+			                                   join->one_time_password,
+			                                   join->computer_ou,
+			                                   join->invocation,
+			                                   on_join_do_sssd,
+			                                   g_object_ref (async));
+
+		} else if (join->use_adcli && join->ccache_file) {
+			realm_adcli_enroll_join_ccache_async (join->realm_name,
+			                                      join->ccache_file,
+			                                      join->computer_ou,
+			                                      join->invocation,
+			                                      on_join_do_sssd,
+			                                      g_object_ref (async));
+
+		} else if (join->use_adcli) {
+			realm_adcli_enroll_join_automatic_async (join->realm_name,
+			                                         join->computer_ou,
+			                                         join->invocation,
+			                                         on_join_do_sssd,
+			                                         g_object_ref (async));
+
+		} else {
+			g_assert (join->ccache_file != NULL);
+			realm_samba_enroll_join_async (join->realm_name, join->ccache_file,
+			                               join->computer_ou, join->invocation,
+			                               on_join_do_sssd, g_object_ref (async));
+		}
 
 	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete (async);
 	}
 
-	g_object_unref (res);
+	g_object_unref (async);
 }
 
 static void
@@ -263,69 +319,235 @@ on_kinit_do_install (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (async);
 	GError *error = NULL;
 
-	enroll->ccache = realm_kerberos_kinit_ccache_finish (REALM_KERBEROS (source), result, &error);
+	join->ccache_file = realm_kerberos_kinit_ccache_finish (REALM_KERBEROS (source), result, &error);
 	if (error == NULL) {
-		realm_packages_install_async ("sssd-ad-packages", enroll->invocation,
-		                              on_install_do_join, g_object_ref (res));
+		realm_packages_install_async (join->packages, join->invocation,
+		                              on_install_do_join, g_object_ref (async));
 
 	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete (async);
 	}
 
-	g_object_unref (res);
+	g_object_unref (async);
 }
 
-static void
-realm_sssd_ad_enroll_async (RealmKerberosMembership *membership,
-                            const char *name,
-                            const char *password,
-                            RealmKerberosFlags flags,
-                            GVariant *options,
-                            GDBusMethodInvocation *invocation,
-                            GAsyncReadyCallback callback,
-                            gpointer user_data)
+static gboolean
+parse_join_options (JoinClosure *join,
+                    RealmKerberosCredential cred_type,
+                    RealmKerberosFlags owner,
+                    GVariant *options,
+                    GError **error)
+{
+	const gchar *software;
+
+	/* Figure out the method that we're going to use to enroll */
+	if (g_variant_lookup (options, REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, "&s", &software)) {
+		if (!g_str_equal (software, REALM_DBUS_IDENTIFIER_ADCLI) &&
+		    !g_str_equal (software, REALM_DBUS_IDENTIFIER_SAMBA)) {
+			g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+			             _("Unsupported or unknown membership software '%s'"), software);
+			return FALSE;
+		}
+	} else {
+		software = NULL;
+	}
+
+	/*
+	 * If we are enrolling with a one time password, or automatically, use
+	 * adcli. Samba doesn't support computer passwords or using reset accounts.
+	 */
+	if ((cred_type == REALM_KERBEROS_CREDENTIAL_SECRET && owner == REALM_KERBEROS_OWNER_NONE) ||
+	    (cred_type == REALM_KERBEROS_CREDENTIAL_AUTOMATIC && owner == REALM_KERBEROS_OWNER_NONE)) {
+		if (!software)
+			software = REALM_DBUS_IDENTIFIER_ADCLI;
+		if (!g_str_equal (software, REALM_DBUS_IDENTIFIER_ADCLI)) {
+			g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+			             _("Joining a domain with a one time password is only supported with the '%s' membership software"),
+			             REALM_DBUS_IDENTIFIER_ADCLI);
+			return FALSE;
+		}
+
+	/*
+	 * If we are enrolling with a user password, then we have to use samba,
+	 * adcli only supports admin passwords.
+	 */
+	} else if (cred_type == REALM_KERBEROS_CREDENTIAL_PASSWORD && owner == REALM_KERBEROS_OWNER_USER) {
+		if (!software)
+			software = REALM_DBUS_IDENTIFIER_SAMBA;
+		if (!g_str_equal (software, REALM_DBUS_IDENTIFIER_SAMBA)) {
+			g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+			             _("Joining a domain with a user password is only supported with the '%s' membership software"),
+			             REALM_DBUS_IDENTIFIER_SAMBA);
+			return FALSE;
+		}
+
+	/*
+	 * For other supported enrolling credentials, we support either adcli or
+	 * samba. But since adcli is pretty immature at this point, we use samba
+	 * by default.
+	 */
+	} else if (cred_type == REALM_KERBEROS_CREDENTIAL_PASSWORD && owner == REALM_KERBEROS_OWNER_ADMIN) {
+		if (!software)
+			software = REALM_DBUS_IDENTIFIER_SAMBA;
+
+	/* It would be odd to get here */
+	} else {
+		g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+		             _("Unsupported credentials for joining a domain"));
+		return FALSE;
+	}
+
+	g_assert (software != NULL);
+
+	if (g_str_equal (software, REALM_DBUS_IDENTIFIER_ADCLI)) {
+		join->use_adcli = TRUE;
+		join->packages = adcli_packages;
+	} else {
+		join->use_adcli = FALSE;
+		join->packages = samba_packages;
+	}
+
+	return TRUE;
+}
+
+static GSimpleAsyncResult *
+prepare_join_async_result (RealmKerberosMembership *membership,
+                           RealmKerberosCredential cred_type,
+                           RealmKerberosFlags flags,
+                           GVariant *options,
+                           GDBusMethodInvocation *invocation,
+                           GAsyncReadyCallback callback,
+                           gpointer user_data)
 {
 	RealmKerberos *realm = REALM_KERBEROS (membership);
 	RealmSssd *sssd = REALM_SSSD (realm);
-	GSimpleAsyncResult *res;
-	EnrollClosure *enroll;
+	GSimpleAsyncResult *async;
+	JoinClosure *join;
+	GError *error = NULL;
 
-	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
-	                                 realm_sssd_ad_enroll_async);
-	enroll = g_slice_new0 (EnrollClosure);
-	enroll->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
-	enroll->invocation = g_object_ref (invocation);
-	enroll->computer_ou = realm_kerberos_calculate_join_computer_ou (realm, options);
-	g_simple_async_result_set_op_res_gpointer (res, enroll, enroll_closure_free);
+	async = g_simple_async_result_new (G_OBJECT (realm), callback, user_data, NULL);
+	join = g_slice_new0 (JoinClosure);
+	join->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
+	join->invocation = g_object_ref (invocation);
+	join->computer_ou = realm_kerberos_calculate_join_computer_ou (realm, options);
+	join->cred_type = cred_type;
+	g_simple_async_result_set_op_res_gpointer (async, join, join_closure_free);
 
 	/* Make sure not already enrolled in a realm */
 	if (realm_sssd_get_config_section (sssd) != NULL) {
-		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
+		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
 		                                 _("Already joined to this domain"));
-		g_simple_async_result_complete_in_idle (res);
+		g_simple_async_result_complete_in_idle (async);
 
-	} else if (realm_sssd_config_have_domain (realm_sssd_get_config (sssd), enroll->realm_name)) {
-		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
+	} else if (realm_sssd_config_have_domain (realm_sssd_get_config (sssd), join->realm_name)) {
+		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
 		                                 _("A domain with this name is already configured"));
-		g_simple_async_result_complete_in_idle (res);
+		g_simple_async_result_complete_in_idle (async);
 
-	/* Already have discovery info, so go straight to install */
+	} else if (!parse_join_options (join, cred_type, flags & REALM_KERBEROS_OWNER_MASK, options, &error)) {
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete_in_idle (async);
+
+	/* Prepared successfully without an error */
 	} else {
-		realm_kerberos_kinit_ccache_async (realm, name, password, REALM_SAMBA_ENROLL_ENC_TYPES,
-		                                   invocation, on_kinit_do_install, g_object_ref (res));
+		return async;
 	}
 
-	g_object_unref (res);
+	/* Had an error */
+	g_object_unref (async);
+	return NULL;
+}
+
+static void
+realm_sssd_ad_join_automatic_async (RealmKerberosMembership *membership,
+                                    RealmKerberosFlags flags,
+                                    GVariant *options,
+                                    GDBusMethodInvocation *invocation,
+                                    GAsyncReadyCallback callback,
+                                    gpointer user_data)
+{
+	GSimpleAsyncResult *async;
+	JoinClosure *join;
+
+	async = prepare_join_async_result (membership, REALM_KERBEROS_CREDENTIAL_AUTOMATIC,
+	                                   flags, options, invocation, callback, user_data);
+
+	if (async) {
+		join = g_simple_async_result_get_op_res_gpointer (async);
+		realm_packages_install_async (join->packages, join->invocation,
+		                              on_install_do_join, g_object_ref (async));
+		g_object_unref (async);
+	}
+}
+
+static void
+realm_sssd_ad_join_secret_async (RealmKerberosMembership *membership,
+                                 GBytes *secret,
+                                 RealmKerberosFlags flags,
+                                 GVariant *options,
+                                 GDBusMethodInvocation *invocation,
+                                 GAsyncReadyCallback callback,
+                                 gpointer user_data)
+{
+	GSimpleAsyncResult *async;
+	JoinClosure *join;
+
+	async = prepare_join_async_result (membership, REALM_KERBEROS_CREDENTIAL_SECRET,
+	                                   flags, options, invocation, callback, user_data);
+
+	if (async) {
+		join = g_simple_async_result_get_op_res_gpointer (async);
+		join->one_time_password = g_bytes_ref (secret);
+		realm_packages_install_async (join->packages, join->invocation,
+		                              on_install_do_join, g_object_ref (async));
+		g_object_unref (async);
+	}
+}
+
+static void
+realm_sssd_ad_join_password_async (RealmKerberosMembership *membership,
+                                   const char *name,
+                                   const char *password,
+                                   RealmKerberosFlags flags,
+                                   GVariant *options,
+                                   GDBusMethodInvocation *invocation,
+                                   GAsyncReadyCallback callback,
+                                   gpointer user_data)
+{
+	const krb5_enctype *enctypes;
+	GSimpleAsyncResult *async;
+	JoinClosure *join;
+
+	async = prepare_join_async_result (membership, REALM_KERBEROS_CREDENTIAL_PASSWORD,
+	                                   flags, options, invocation, callback, user_data);
+
+	if (async) {
+		join = g_simple_async_result_get_op_res_gpointer (async);
+
+		/* If using samba, then only for a subset of enctypes */
+		if (join->use_adcli)
+			enctypes = NULL;
+		else
+			enctypes = REALM_SAMBA_ENROLL_ENC_TYPES;
+
+		realm_kerberos_kinit_ccache_async (REALM_KERBEROS (membership),
+		                                   name, password, enctypes,
+		                                   invocation, on_kinit_do_install,
+		                                   g_object_ref (async));
+
+		g_object_unref (async);
+	}
 }
 
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	gchar *realm_name;
+	gchar *ccache_file;
 } UnenrollClosure;
 
 static void
@@ -333,6 +555,8 @@ unenroll_closure_free (gpointer data)
 {
 	UnenrollClosure *unenroll = data;
 	g_free (unenroll->realm_name);
+	if (unenroll->ccache_file)
+		realm_keberos_ccache_delete_and_free (unenroll->ccache_file);
 	g_object_unref (unenroll->invocation);
 	g_slice_free (UnenrollClosure, unenroll);
 }
@@ -420,13 +644,12 @@ on_kinit_do_leave (GObject *source,
 	UnenrollClosure *unenroll = g_simple_async_result_get_op_res_gpointer (async);
 	RealmSssd *self = REALM_SSSD (source);
 	GError *error = NULL;
-	GBytes *ccache;
 
-	ccache = realm_kerberos_kinit_ccache_finish (REALM_KERBEROS (self), result, &error);
+	unenroll->ccache_file = realm_kerberos_kinit_ccache_finish (REALM_KERBEROS (self), result, &error);
 	if (error == NULL) {
-		realm_samba_enroll_leave_async (unenroll->realm_name, ccache, unenroll->invocation,
-		                                on_leave_do_sssd, g_object_ref (async));
-		g_bytes_unref (ccache);
+		realm_samba_enroll_leave_async (unenroll->realm_name, unenroll->ccache_file,
+		                                unenroll->invocation, on_leave_do_sssd,
+		                                g_object_ref (async));
 
 	} else {
 		g_simple_async_result_take_error (async, error);
@@ -496,11 +719,12 @@ realm_sssd_ad_class_init (RealmSssdAdClass *klass)
 	object_class->constructed = realm_sssd_ad_constructed;
 }
 
-
 static void
 realm_sssd_ad_kerberos_membership_iface (RealmKerberosMembershipIface *iface)
 {
-	iface->enroll_password_async = realm_sssd_ad_enroll_async;
+	iface->enroll_automatic_async = realm_sssd_ad_join_automatic_async;
+	iface->enroll_password_async = realm_sssd_ad_join_password_async;
+	iface->enroll_secret_async = realm_sssd_ad_join_secret_async;
 	iface->enroll_finish = realm_sssd_ad_generic_finish;
 	iface->unenroll_password_async = realm_sssd_ad_unenroll_async;
 	iface->unenroll_finish = realm_sssd_ad_generic_finish;

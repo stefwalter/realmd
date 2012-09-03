@@ -59,11 +59,14 @@ G_BEGIN_DECLS
 #define   REALM_DBUS_OPTION_COMPUTER_OU            "computer-ou"
 #define   REALM_DBUS_OPTION_SERVER_SOFTWARE        "server-software"
 #define   REALM_DBUS_OPTION_CLIENT_SOFTWARE        "client-software"
+#define   REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE    "membership-software"
 
 #define   REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY   "active-directory"
 #define   REALM_DBUS_IDENTIFIER_WINBIND            "winbind"
 #define   REALM_DBUS_IDENTIFIER_FREEIPA            "freeipa"
 #define   REALM_DBUS_IDENTIFIER_SSSD               "sssd"
+#define   REALM_DBUS_IDENTIFIER_SAMBA              "samba"
+#define   REALM_DBUS_IDENTIFIER_ADCLI              "adcli"
 
 G_END_DECLS
 

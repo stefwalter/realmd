@@ -32,33 +32,19 @@
 #include <string.h>
 
 static void
-print_kerberos_info (const gchar *realm_path)
+print_kerberos_info (RealmClient *client,
+                     RealmDbusKerberos *kerberos)
 {
-	RealmDbusKerberos *kerberos;
-	GError *error = NULL;
-
-	kerberos = realm_dbus_kerberos_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-	                                                       G_DBUS_PROXY_FLAGS_NONE,
-	                                                       REALM_DBUS_BUS_NAME, realm_path,
-	                                                       NULL, &error);
-
-	if (error != NULL) {
-		g_warning ("Couldn't use realm service: %s", error->message);
-		g_error_free (error);
-		return;
-	}
-
 	g_print ("  type: kerberos\n");
 	g_print ("  realm-name: %s\n", realm_dbus_kerberos_get_realm_name (kerberos));
 	g_print ("  domain-name: %s\n", realm_dbus_kerberos_get_domain_name (kerberos));
-
-	g_object_unref (kerberos);
 }
 
 static void
-print_realm_info (const gchar *realm_path)
+print_realm_info (RealmClient *client,
+                  RealmDbusRealm *realm)
 {
-	RealmDbusRealm *realm;
+	RealmDbusKerberos *kerberos;
 	const gchar *configured;
 	GVariant *details;
 	const gchar *name;
@@ -68,10 +54,7 @@ print_realm_info (const gchar *realm_path)
 	const gchar *policy;
 	GVariantIter iter;
 
-	realm = realm_path_to_realm (realm_path);
-	if (realm == NULL)
-		return;
-
+	g_return_if_fail (REALM_DBUS_IS_REALM (realm));
 	g_print ("%s\n", realm_dbus_realm_get_name (realm));
 
 	is_configured = TRUE;
@@ -93,10 +76,13 @@ print_realm_info (const gchar *realm_path)
 			g_print ("  %s: %s\n", name, value);
 	}
 
-	if (realm_supports_interface (realm, REALM_DBUS_KERBEROS_INTERFACE))
-		print_kerberos_info (realm_path);
-	else
+	kerberos = realm_client_to_kerberos (client, realm);
+	if (kerberos) {
+		print_kerberos_info (client, kerberos);
+		g_object_unref (kerberos);
+	} else {
 		g_print ("  type: unknown\n");
+	}
 
 	if (is_configured) {
 		string = g_strjoinv (", ", (gchar **)realm_dbus_realm_get_login_formats (realm));
@@ -110,84 +96,33 @@ print_realm_info (const gchar *realm_path)
 			g_free (string);
 		}
 	}
-
-	g_object_unref (realm);
-}
-
-typedef struct {
-	GAsyncResult *result;
-	GMainLoop *loop;
-} SyncClosure;
-
-static void
-on_complete_get_result (GObject *source,
-                        GAsyncResult *result,
-                        gpointer user_data)
-{
-	SyncClosure *sync = user_data;
-	sync->result = g_object_ref (result);
-	g_main_loop_quit (sync->loop);
 }
 
 static int
-perform_discover (GDBusConnection *connection,
+perform_discover (RealmClient *client,
                   const gchar *string,
                   const gchar *server_software,
                   const gchar *client_software)
 {
-	RealmDbusProvider *provider;
 	gboolean found = FALSE;
 	GError *error = NULL;
-	SyncClosure sync;
-	gchar **realms;
-	gint relevance;
-	GVariant *options;
-	gint i;
+	GList *realms;
+	GList *l;
 
-	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-	                                                       G_DBUS_PROXY_FLAGS_NONE,
-	                                                       REALM_DBUS_BUS_NAME,
-	                                                       REALM_DBUS_SERVICE_PATH,
-	                                                       NULL, &error);
-	if (error != NULL) {
-		realm_handle_error (error, _("Couldn't connect to realmd service"));
-		return 2;
-	}
-
-	sync.result = NULL;
-	sync.loop = g_main_loop_new (NULL, FALSE);
-
-	options = realm_build_options (REALM_DBUS_OPTION_CLIENT_SOFTWARE, client_software,
-	                               REALM_DBUS_OPTION_SERVER_SOFTWARE, server_software,
-	                               NULL);
-	g_variant_ref_sink (options);
-
-	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);
-	realm_dbus_provider_call_discover (provider, string ? string : "",
-	                                   options, NULL, on_complete_get_result, &sync);
-
-	g_variant_unref (options);
-
-	/* This mainloop is quit by on_complete_get_result */
-	g_main_loop_run (sync.loop);
-
-	realm_dbus_provider_call_discover_finish (provider, &relevance, &realms,
-	                                          sync.result, &error);
-
-	g_object_unref (sync.result);
-	g_main_loop_unref (sync.loop);
+	realms = realm_client_discover (client, string, client_software, server_software,
+	                                REALM_DBUS_REALM_INTERFACE, &error);
 
 	if (error != NULL) {
-		realm_handle_error (error, _("Couldn't discover realm"));
-		return 2;
+		realm_handle_error (error, _("Couldn't discover realms"));
+		return 1;
 	}
 
-	for (i = 0; realms[i] != NULL; i++) {
-		print_realm_info (realms[i]);
+	for (l = realms; l != NULL; l = g_list_next (l)) {
+		print_realm_info (client, l->data);
 		found = TRUE;
 	}
 
-	g_strfreev (realms);
+	g_list_free_full (realms, g_object_unref);
 
 	if (!found) {
 		if (string == NULL)
@@ -204,7 +139,7 @@ int
 realm_discover (int argc,
                 char *argv[])
 {
-	GDBusConnection *connection;
+	RealmClient *client;
 	GOptionContext *context;
 	gboolean arg_verbose = FALSE;
 	gchar *arg_client_software = NULL;
@@ -233,25 +168,25 @@ realm_discover (int argc,
 		ret = 2;
 	}
 
-	connection = realm_get_connection (arg_verbose);
-	if (!connection) {
+	client = realm_client_new (arg_verbose);
+	if (!client) {
 		ret = 1;
 
 	/* The default realm? */
 	} else if (argc == 1) {
-		ret = perform_discover (connection, NULL,
-		                        arg_server_software, arg_client_software);
-		g_object_unref (connection);
+		ret = perform_discover (client, NULL, arg_server_software,
+		                        arg_client_software);
+		g_object_unref (client);
 
 	/* Specific realms */
 	} else {
 		for (i = 1; i < argc; i++) {
-			ret = perform_discover (connection, argv[i],
+			ret = perform_discover (client, argv[i],
 			                        arg_server_software, arg_client_software);
 			if (ret != 0)
 				result = ret;
 		}
-		g_object_unref (connection);
+		g_object_unref (client);
 	}
 
 	g_free (arg_server_software);
@@ -261,34 +196,28 @@ realm_discover (int argc,
 }
 
 static int
-perform_list (GDBusConnection *connection,
+perform_list (RealmClient *client,
               gboolean verbose)
 {
 	RealmDbusProvider *provider;
 	const gchar *const *realms;
-	GError *error = NULL;
 	gboolean printed = FALSE;
+	RealmDbusRealm *realm;
 	gint i;
 
-	provider = realm_dbus_provider_proxy_new_sync (connection, G_DBUS_PROXY_FLAGS_NONE,
-	                                               REALM_DBUS_BUS_NAME,
-	                                               REALM_DBUS_SERVICE_PATH,
-	                                               NULL, &error);
-	if (error != NULL) {
-		realm_handle_error (error, _("Couldn't connect to realmd service"));
-		return 1;
-	}
-
+	provider = realm_client_get_provider (client);
 	realms = realm_dbus_provider_get_realms (provider);
-	for (i = 0; realms[i] != NULL; i++) {
-		print_realm_info (realms[i]);
+
+	for (i = 0; realms && realms[i] != NULL; i++) {
+		realm = realm_client_get_realm (client, realms[i]);
+		print_realm_info (client, realm);
 		printed = TRUE;
+		g_object_unref (realm);
 	}
 
 	if (verbose && !printed)
 		g_printerr ("No known realms\n");
 
-	g_object_unref (provider);
 	return 0;
 }
 
@@ -296,7 +225,7 @@ int
 realm_list (int argc,
             char *argv[])
 {
-	GDBusConnection *connection;
+	RealmClient *client;
 	GOptionContext *context;
 	gboolean arg_verbose = FALSE;
 	GError *error = NULL;
@@ -321,10 +250,10 @@ realm_list (int argc,
 		ret = 2;
 
 	} else {
-		connection = realm_get_connection (arg_verbose);
-		if (connection) {
-			ret = perform_list (connection, arg_verbose);
-			g_object_unref (connection);
+		client = realm_client_new (arg_verbose);
+		if (client) {
+			ret = perform_list (client, arg_verbose);
+			g_object_unref (client);
 		} else {
 			ret = 1;
 		}

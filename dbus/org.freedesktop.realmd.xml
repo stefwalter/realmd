@@ -516,9 +516,12 @@
 		      the credentials should contain a pair of strings as a
 		      <literal>(ss)</literal> representing a name and
 		      password. The name may contain a realm in the standard
-		      kerberos format. If missing, it will default to this
-		      realm. The name may be empty for a computer or one time
-		      password.</para></listitem>
+		      kerberos format. If a realm is missing, it will default
+		      to this realm. </para></listitem>
+		    <listitem><para><literal>secret</literal>:
+		      the credentials should contain a string secret as an
+		      <literal>ay</literal> array of bytes. This is usually used
+		      for one time passwords.</para></listitem>
 		    <listitem><para><literal>automatic</literal>:
 		      the credentials should contain an empty string as a
 		      <literal>s</literal>. Using <literal>automatic</literal>
@@ -538,11 +541,10 @@
 		      for his (possibly non-administrative)
 		      credentials.</para></listitem>
 		    <listitem><para><literal>computer</literal>:
-		      the credentials belong to the computer realmd is
-		      being run on.</para></listitem>
-		    <listitem><para><literal>secret</literal>:
-		      the credentials are a one time password or other secret
-		      used to join or leave the computer.</para></listitem>
+		      the credentials belong to a computer account.</para></listitem>
+		    <listitem><para><literal>none</literal>:
+		      the credentials have an unspecified owner, such as a one
+		      time secret.</para></listitem>
 		  </itemizedlist>
 		-->
 		<property name="SupportedJoinCredentials" type="a(ss)" access="read"/>

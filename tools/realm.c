@@ -19,8 +19,13 @@
 
 #include <glib.h>
 #include <glib/gi18n.h>
+#include <glib/gstdio.h>
 #include <glib-object.h>
 
+#include <krb5/krb5.h>
+
+#include <errno.h>
+#include <fcntl.h>
 #include <locale.h>
 
 struct {
@@ -68,9 +73,11 @@ realm_handle_error (GError *error,
 	message = g_string_new ("");
 	g_string_append_printf (message, "%s: ", g_get_prgname ());
 
-	va_start (va, format);
-	g_string_append_vprintf (message, format, va);
-	va_end (va);
+	if (format) {
+		va_start (va, format);
+		g_string_append_vprintf (message, format, va);
+		va_end (va);
+	}
 
 	if (error) {
 		g_dbus_error_strip_remote_error (error);
@@ -81,167 +88,6 @@ realm_handle_error (GError *error,
 
 	g_printerr ("%s\n", message->str);
 	g_string_free (message, TRUE);
-}
-
-gboolean
-realm_supports_interface (RealmDbusRealm *realm,
-                          const gchar *interface)
-{
-	const gchar *const *supported;
-	gint i;
-
-	supported = realm_dbus_realm_get_supported_interfaces (realm);
-	g_return_val_if_fail (supported != NULL, FALSE);
-
-	for (i = 0; supported[i] != NULL; i++) {
-		if (g_str_equal (supported[i], interface))
-			return TRUE;
-	}
-
-	return FALSE;
-}
-
-gchar **
-realm_lookup_paths (void)
-{
-	RealmDbusProvider *provider;
-	GError *error = NULL;
-	gchar **realms;
-
-	provider = realm_dbus_provider_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-	                                                       G_DBUS_PROXY_FLAGS_NONE,
-	                                                       REALM_DBUS_BUS_NAME,
-	                                                       REALM_DBUS_SERVICE_PATH,
-	                                                       NULL, &error);
-	if (error != NULL) {
-		realm_handle_error (error, _("Couldn't connect to realm service"));
-		return NULL;
-	}
-
-	/* Find the right realm, but only enrolled */
-	realms = g_strdupv ((gchar **)realm_dbus_provider_get_realms (provider));
-	g_object_unref (provider);
-
-	return realms;
-}
-
-RealmDbusRealm *
-realm_path_to_realm (const gchar *object_path)
-{
-	RealmDbusRealm *realm = NULL;
-	GError *error = NULL;
-
-	realm = realm_dbus_realm_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-	                                                 G_DBUS_PROXY_FLAGS_NONE,
-	                                                 REALM_DBUS_BUS_NAME, object_path,
-	                                                 NULL, &error);
-
-	if (error != NULL)
-		realm_handle_error (error, _("Couldn't use realm service"));
-
-	return realm;
-}
-
-RealmDbusRealm *
-realm_paths_to_configured_realm (const gchar * const* realm_paths,
-                                 const gchar *realm_name)
-{
-	RealmDbusRealm *result = NULL;
-	const gchar *configured;
-	RealmDbusRealm *realm;
-	const gchar *name;
-	gint i;
-
-	for (i = 0; realm_paths[i] != NULL; i++) {
-		realm = realm_path_to_realm (realm_paths[i]);
-		if (realm == NULL)
-			continue;
-
-		configured = realm_dbus_realm_get_configured (realm);
-		if (g_strcmp0 (configured, "") != 0) {
-
-			/* Searching for any enrolled realm */
-			if (realm_name == NULL) {
-				if (result == NULL) {
-					result = realm;
-					realm = NULL;
-				} else {
-					realm_handle_error (NULL, N_("More than one enrolled realm, please specify the realm name"));
-					g_object_unref (realm);
-					g_object_unref (result);
-					return NULL;
-				}
-
-			/* Searching for a specific enrolled realm */
-			} else {
-				name = realm_dbus_realm_get_name (realm);
-				if (name != NULL && g_ascii_strcasecmp (name, realm_name) == 0) {
-					return realm;
-				}
-			}
-		}
-
-		if (realm != NULL)
-			g_object_unref (realm);
-	}
-
-	if (realm_name == NULL) {
-		if (result == NULL)
-			realm_handle_error (NULL, _("No enrolled realms found"));
-		return result;
-	}
-
-	realm_handle_error (NULL, _("Enrolled realm not found: %s"), realm_name);
-	return NULL;
-}
-
-
-RealmDbusRealm *
-realm_name_to_configured (GDBusConnection *connection,
-                          const gchar *realm_name)
-{
-	RealmDbusRealm *realm;
-	RealmDbusProvider *provider;
-	GError *error = NULL;
-	const gchar * const* realms;
-
-	if (realm_name != NULL && g_str_equal (realm_name, ""))
-		realm_name = NULL;
-
-	provider = realm_dbus_provider_proxy_new_sync (connection,
-	                                               G_DBUS_PROXY_FLAGS_NONE,
-	                                               REALM_DBUS_BUS_NAME,
-	                                               REALM_DBUS_SERVICE_PATH,
-	                                               NULL, &error);
-	if (error != NULL) {
-		realm_handle_error (error, _("Couldn't connect to realm service"));
-		return NULL;
-	}
-
-	/* Find the right realm, but only enrolled */
-	realms = realm_dbus_provider_get_realms (provider);
-	g_return_val_if_fail (realms != NULL, NULL);
-
-	realm = realm_paths_to_configured_realm (realms, realm_name);
-	g_object_unref (provider);
-
-	return realm;
-}
-
-static void
-on_diagnostics_signal (GDBusConnection *connection,
-                       const gchar *sender_name,
-                       const gchar *object_path,
-                       const gchar *interface_name,
-                       const gchar *signal_name,
-                       GVariant *parameters,
-                       gpointer user_data)
-{
-	const gchar *operation_id;
-	const gchar *data;
-
-	g_variant_get (parameters, "(&s&s)", &data, &operation_id);
-	g_printerr ("%s", data);
 }
 
 GVariant *
@@ -275,28 +121,138 @@ realm_build_options (const gchar *first,
 	return options;
 }
 
-GDBusConnection *
-realm_get_connection (gboolean verbose)
+static void
+handle_krb5_error (krb5_error_code code,
+                   krb5_context context,
+                   const gchar *format,
+                   ...)
 {
-	GDBusConnection *connection;
-	GError *error = NULL;
+	GString *message;
+	va_list va;
 
-	connection = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, &error);
-	if (error == NULL) {
-		if (verbose) {
-			g_dbus_connection_signal_subscribe (connection, REALM_DBUS_BUS_NAME,
-			                                    REALM_DBUS_SERVICE_INTERFACE,
-			                                    REALM_DBUS_DIAGNOSTICS_SIGNAL,
-			                                    REALM_DBUS_SERVICE_PATH,
-			                                    NULL, G_DBUS_SIGNAL_FLAGS_NONE,
-			                                    on_diagnostics_signal, NULL, NULL);
-		}
+	message = g_string_new ("");
+	g_string_append_printf (message, "%s: ", g_get_prgname ());
 
-	} else {
-		realm_handle_error (error, _("Couldn't connect to system bus"));
+	va_start (va, format);
+	g_string_append_vprintf (message, format, va);
+	va_end (va);
+
+	if (code != 0) {
+		g_string_append (message, ": ");
+		g_string_append (message, krb5_get_error_message (context, code));
 	}
 
-	return connection;
+	g_printerr ("%s\n", message->str);
+	g_string_free (message, TRUE);
+}
+
+static GVariant *
+read_file_into_variant (const gchar *filename)
+{
+	GVariant *variant;
+	GError *error = NULL;
+	gchar *contents;
+	gsize length;
+
+	g_file_get_contents (filename, &contents, &length, &error);
+	if (error != NULL) {
+		realm_handle_error (error, _("Couldn't read credential cache"));
+		return NULL;
+	}
+
+	variant = g_variant_new_from_data (G_VARIANT_TYPE ("ay"),
+	                                   contents, length,
+	                                   TRUE, g_free, contents);
+
+	return g_variant_ref_sink (variant);
+}
+
+GVariant *
+realm_kinit_to_kerberos_cache (const gchar *name,
+                               const gchar *realm)
+{
+	krb5_get_init_creds_opt *options = NULL;
+	krb5_context context = NULL;
+	krb5_principal principal = NULL;
+	krb5_error_code code;
+	int temp_fd;
+	gchar *filename = NULL;
+	krb5_ccache ccache = NULL;
+	krb5_creds my_creds;
+	GVariant *result = NULL;
+
+	code = krb5_init_context (&context);
+	if (code != 0) {
+		handle_krb5_error (code, NULL, _("Couldn't initialize kerberos"));
+		goto cleanup;
+	}
+
+	code = krb5_parse_name (context, name, &principal);
+	if (code != 0) {
+		handle_krb5_error (code, context, _("Couldn't parse user name: %s"), name);
+		goto cleanup;
+	}
+
+	/* Use our realm as the default */
+	if (strchr (name, '@') == NULL) {
+		code = krb5_set_principal_realm (context, principal, realm);
+		g_return_val_if_fail (code == 0, NULL);
+	}
+
+	code = krb5_get_init_creds_opt_alloc (context, &options);
+	if (code != 0) {
+		handle_krb5_error (code, context, _("Couldn't setup kerberos options"));
+		goto cleanup;
+	}
+
+	filename = g_build_filename (g_get_user_runtime_dir (), "realmd-krb5-cache.XXXXXX", NULL);
+	temp_fd = g_mkstemp_full (filename, O_RDWR, S_IRUSR | S_IWUSR);
+	if (temp_fd == -1) {
+		realm_handle_error (NULL, _("Couldn't create credential cache file: %s"), g_strerror (errno));
+		goto cleanup;
+	}
+	close (temp_fd);
+
+	code = krb5_cc_resolve (context, filename, &ccache);
+	if (code != 0) {
+		handle_krb5_error (code, context, _("Couldn't resolve credential cache"));
+		goto cleanup;
+	}
+
+	code = krb5_get_init_creds_opt_set_out_ccache (context, options, ccache);
+	if (code != 0) {
+		handle_krb5_error (code, context, _("Couldn't setup credential cache"));
+		goto cleanup;
+	}
+
+	code = krb5_get_init_creds_password (context, &my_creds, principal, NULL,
+	                                     krb5_prompter_posix, 0, 0, NULL, options);
+	if (code != 0) {
+		handle_krb5_error (code, context, _("Couldn't authenticate as %s"), name);
+		goto cleanup;
+	}
+
+	krb5_cc_close (context, ccache);
+	ccache = NULL;
+
+	result = read_file_into_variant (filename);
+	krb5_free_cred_contents (context, &my_creds);
+
+cleanup:
+	if (filename) {
+		g_unlink (filename);
+		g_free (filename);
+	}
+
+	if (options)
+		krb5_get_init_creds_opt_free (context, options);
+	if (principal)
+		krb5_free_principal (context, principal);
+	if (ccache)
+		krb5_cc_close (context, ccache);
+	if (context)
+		krb5_free_context (context);
+	return result;
 }
 
 static int

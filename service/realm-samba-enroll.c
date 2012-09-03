@@ -36,7 +36,6 @@
 typedef struct {
 	GCancellable *cancellable;
 	GDBusMethodInvocation *invocation;
-	gchar *kerberos_cache_filename;
 	gchar *create_computer_arg;
 	GHashTable *settings;
 	gchar **environ;
@@ -50,14 +49,6 @@ join_closure_free (gpointer data)
 
 	g_clear_object (&join->cancellable);
 
-	if (join->kerberos_cache_filename) {
-		if (!realm_debug_flag_is_set (REALM_DEBUG_LEAVE_TEMP_FILES) &&
-		    g_unlink (join->kerberos_cache_filename) < 0) {
-			g_warning ("couldn't remove kerberos cache file: %s: %s",
-			           join->kerberos_cache_filename, g_strerror (errno));
-		}
-		g_free (join->kerberos_cache_filename);
-	}
 
 	g_free (join->create_computer_arg);
 	g_free (join->realm);
@@ -69,66 +60,9 @@ join_closure_free (gpointer data)
 	g_slice_free (JoinClosure, join);
 }
 
-static gboolean
-prepare_admin_cache (JoinClosure *join,
-                     GBytes *admin_cache,
-                     GError **error)
-{
-	const gchar *directory;
-	gchar *filename;
-	const guchar *data;
-	gsize length;
-	gint fd;
-	int res;
-
-	data = g_bytes_get_data (admin_cache, &length);
-	g_return_val_if_fail (length > 0, FALSE);
-
-	directory = g_get_tmp_dir ();
-	filename = g_build_filename (directory, "realm-ad-kerberos-XXXXXX", NULL);
-
-	fd = g_mkstemp_full (filename, O_WRONLY, 0600);
-	if (fd < 0) {
-		g_warning ("couldn't open temporary file in %s directory for kerberos cache: %s",
-		           directory, g_strerror (errno));
-		g_set_error (error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Problem writing out the kerberos cache data");
-		g_free (filename);
-		return FALSE;
-	}
-
-	while (length > 0) {
-		res = write (fd, data, length);
-		if (res <= 0) {
-			if (errno == EAGAIN && errno == EINTR)
-				continue;
-			g_warning ("couldn't write kerberos cache to file %s: %s",
-			           directory, g_strerror (errno));
-			g_set_error (error, REALM_ERROR, REALM_ERROR_INTERNAL,
-			             "Problem writing out the kerberos cache data");
-			break;
-		} else  {
-			length -= res;
-			data += res;
-		}
-	}
-
-	if (length != 0) {
-		g_free (filename);
-		return FALSE;
-	}
-
-	join->kerberos_cache_filename = filename;
-	join->environ = g_environ_setenv (join->environ,
-	                                  "KRB5CCNAME", join->kerberos_cache_filename,
-	                                  TRUE);
-
-	return TRUE;
-}
-
 static JoinClosure *
 join_closure_init (const gchar *realm,
-                   GBytes *admin_kerberos_cache,
+                   const gchar *ccache_file,
                    GDBusMethodInvocation *invocation,
                    GError **error)
 {
@@ -142,10 +76,9 @@ join_closure_init (const gchar *realm,
 	                                  "LC_ALL", "C",
 	                                  TRUE);
 
-	if (!prepare_admin_cache (join, admin_kerberos_cache, error)) {
-		join_closure_free (join);
-		return NULL;
-	}
+	join->environ = g_environ_setenv (join->environ,
+	                                  "KRB5CCNAME", ccache_file,
+	                                  TRUE);
 
 	return join;
 }
@@ -218,6 +151,7 @@ on_list_complete (GObject *source,
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 
+	g_string_free (output, TRUE);
 	g_simple_async_result_complete (res);
 	g_object_unref (res);
 }
@@ -339,7 +273,7 @@ on_conf_do_join (GObject *source,
 
 void
 realm_samba_enroll_join_async (const gchar *realm,
-                               GBytes *admin_kerberos_cache,
+                               const gchar *ccache_file,
                                const gchar *computer_ou,
                                GDBusMethodInvocation *invocation,
                                GAsyncReadyCallback callback,
@@ -351,12 +285,12 @@ realm_samba_enroll_join_async (const gchar *realm,
 	gchar *strange_ou;
 
 	g_return_if_fail (realm != NULL);
-	g_return_if_fail (admin_kerberos_cache != NULL);
+	g_return_if_fail (ccache_file != NULL);
 
 	res = g_simple_async_result_new (NULL, callback, user_data,
 	                                 realm_samba_enroll_join_async);
 
-	join = join_closure_init (realm, admin_kerberos_cache, invocation, &error);
+	join = join_closure_init (realm, ccache_file, invocation, &error);
 
 	if (error == NULL) {
 		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
@@ -453,7 +387,7 @@ on_flush_do_leave (GObject *source,
 
 void
 realm_samba_enroll_leave_async (const gchar *realm,
-                                GBytes *admin_kerberos_cache,
+                                const gchar *ccache_file,
                                 GDBusMethodInvocation *invocation,
                                 GAsyncReadyCallback callback,
                                 gpointer user_data)
@@ -465,7 +399,7 @@ realm_samba_enroll_leave_async (const gchar *realm,
 	res = g_simple_async_result_new (NULL, callback, user_data,
 	                                 realm_samba_enroll_leave_async);
 
-	join = join_closure_init (realm, admin_kerberos_cache, invocation, &error);
+	join = join_closure_init (realm, ccache_file, invocation, &error);
 	if (error == NULL) {
 		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
 		begin_net_process (join, on_flush_do_leave, g_object_ref (res),

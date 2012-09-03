@@ -38,8 +38,40 @@ on_complete_get_result (GObject *source,
 	g_main_loop_quit (sync->loop);
 }
 
+static RealmDbusRealm *
+locate_configured_matching_realm (RealmClient *client,
+                                  const gchar *realm_name)
+{
+	RealmDbusProvider *provider;
+	const gchar *const *paths;
+	RealmDbusRealm *realm;
+	gboolean matched;
+	gint i;
+
+	provider = realm_client_get_provider (client);
+	paths = realm_dbus_provider_get_realms (provider);
+
+	for (i = 0; paths && paths[i]; i++) {
+		matched = FALSE;
+
+		realm = realm_client_get_realm (client, paths[i]);
+		if (realm != NULL && realm_dbus_realm_get_configured (realm)) {
+			matched = (realm_name == NULL ||
+			           g_strcmp0 (realm_dbus_realm_get_name (realm), realm_name) == 0);
+		}
+
+		if (matched)
+			break;
+
+		g_object_unref (realm);
+		realm = NULL;
+	}
+
+	return realm;
+}
+
 static int
-perform_permit_or_deny_logins (GDBusConnection *connection,
+perform_permit_or_deny_logins (RealmClient *client,
                                const gchar *realm_name,
                                const gchar **logins,
                                gint n_logins,
@@ -52,7 +84,7 @@ perform_permit_or_deny_logins (GDBusConnection *connection,
 	const gchar *empty[] = { NULL };
 	GVariant *options;
 
-	realm = realm_name_to_configured (connection, realm_name);
+	realm = locate_configured_matching_realm (client, realm_name);
 	if (realm == NULL)
 		return 1;
 
@@ -62,9 +94,6 @@ perform_permit_or_deny_logins (GDBusConnection *connection,
 
 	sync.result = NULL;
 	sync.loop = g_main_loop_new (NULL, FALSE);
-
-	/* Start actual operation */
-	g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (realm), G_MAXINT);
 
 	options = realm_build_options (NULL, NULL);
 	g_variant_ref_sink (options);
@@ -83,6 +112,7 @@ perform_permit_or_deny_logins (GDBusConnection *connection,
 
 	g_object_unref (sync.result);
 	g_main_loop_unref (sync.loop);
+	g_object_unref (realm);
 
 	if (error != NULL) {
 		realm_handle_error (error,
@@ -94,7 +124,7 @@ perform_permit_or_deny_logins (GDBusConnection *connection,
 }
 
 static int
-perform_permit_or_deny_all (GDBusConnection *connection,
+perform_permit_or_deny_all (RealmClient *client,
                             const gchar *realm_name,
                             gboolean permit)
 {
@@ -104,7 +134,7 @@ perform_permit_or_deny_all (GDBusConnection *connection,
 	GError *error = NULL;
 	GVariant *options;
 
-	realm = realm_name_to_configured (connection, realm_name);
+	realm = locate_configured_matching_realm (client, realm_name);
 	if (realm == NULL)
 		return 1;
 
@@ -118,6 +148,7 @@ perform_permit_or_deny_all (GDBusConnection *connection,
 	                                                options, NULL, &error);
 
 	g_variant_unref (options);
+	g_object_unref (realm);
 
 	if (error != NULL) {
 		realm_handle_error (error, "couldn't %s all logins",
@@ -133,7 +164,7 @@ realm_permit_or_deny (gboolean permit,
                       int argc,
                       char *argv[])
 {
-	GDBusConnection *connection;
+	RealmClient *client;
 	GOptionContext *context;
 	gboolean arg_all = FALSE;
 	gboolean arg_verbose = FALSE;
@@ -164,10 +195,10 @@ realm_permit_or_deny (gboolean permit,
 			g_printerr ("%s: %s\n", _("No users should be specified with -a or --all"), g_get_prgname ());
 			ret = 2;
 		} else {
-			connection = realm_get_connection (arg_verbose);
-			if (connection) {
-				ret = perform_permit_or_deny_all (connection, realm_name, permit);
-				g_object_unref (connection);
+			client = realm_client_new (arg_verbose);
+			if (client) {
+				ret = perform_permit_or_deny_all (client, realm_name, permit);
+				g_object_unref (client);
 			} else {
 				ret = 1;
 			}
@@ -178,12 +209,12 @@ realm_permit_or_deny (gboolean permit,
 		ret = 2;
 
 	} else {
-		connection = realm_get_connection (arg_verbose);
-		if (connection) {
-			ret = perform_permit_or_deny_logins (connection, realm_name,
+		client = realm_client_new (arg_verbose);
+		if (client) {
+			ret = perform_permit_or_deny_logins (client, realm_name,
 			                                     (const gchar **)(argv + 1),
 			                                     argc - 1, permit);
-			g_object_unref (connection);
+			g_object_unref (client);
 		} else {
 			ret = 1;
 		}

@@ -5,8 +5,11 @@ bin_PROGRAMS = \
 
 realm_SOURCES = \
 	realm.c realm.h \
-	realm-enroll.c \
+	realm-client.h \
+	realm-client.c \
 	realm-discover.c \
+	realm-join.c \
+	realm-leave.c \
 	realm-logins.c \
 	$(NULL)
 

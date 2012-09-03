@@ -31,7 +31,7 @@ const static krb5_enctype REALM_SAMBA_ENROLL_ENC_TYPES[] = {
 };
 
 void               realm_samba_enroll_join_async     (const gchar *realm,
-                                                      GBytes *admin_kerberos_cache,
+                                                      const gchar *ccache_file,
                                                       const gchar *computer_ou,
                                                       GDBusMethodInvocation *invocation,
                                                       GAsyncReadyCallback callback,
@@ -42,7 +42,7 @@ gboolean           realm_samba_enroll_join_finish    (GAsyncResult *result,
                                                       GError **error);
 
 void               realm_samba_enroll_leave_async    (const gchar *realm,
-                                                      GBytes *admin_kerberos_cache,
+                                                      const gchar *ccache_file,
                                                       GDBusMethodInvocation *invocation,
                                                       GAsyncReadyCallback callback,
                                                       gpointer user_data);

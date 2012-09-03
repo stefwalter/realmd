@@ -19,6 +19,7 @@
 #include <gio/gio.h>
 
 #include "realm-dbus-generated.h"
+#include "realm-client.h"
 
 G_BEGIN_DECLS
 
@@ -45,8 +46,6 @@ int                   realm_deny                   (int argc,
 GVariant *            realm_build_options          (const gchar *first,
                                                     ...) G_GNUC_NULL_TERMINATED;
 
-GDBusConnection *     realm_get_connection         (gboolean verbose);
-
 void                  realm_print_error            (const gchar *format,
                                                     ...) G_GNUC_PRINTF (1, 2);
 
@@ -54,18 +53,8 @@ void                  realm_handle_error           (GError *error,
                                                     const gchar *format,
                                                     ...) G_GNUC_PRINTF (2, 3);
 
-gboolean              realm_supports_interface          (RealmDbusRealm *realm,
-                                                         const gchar *interface);
-
-gchar **              realm_lookup_paths                (void);
-
-RealmDbusRealm *      realm_path_to_realm               (const gchar *object_path);
-
-RealmDbusRealm *      realm_name_to_configured          (GDBusConnection *connection,
-                                                         const gchar *realm_name);
-
-RealmDbusRealm *      realm_paths_to_configured_realm   (const gchar * const* object_paths,
-                                                         const gchar *realm_name);
+GVariant *            realm_kinit_to_kerberos_cache     (const gchar *name,
+                                                         const gchar *realm);
 
 G_END_DECLS
 

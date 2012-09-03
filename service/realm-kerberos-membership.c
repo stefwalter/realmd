@@ -40,14 +40,14 @@ realm_kerberos_membership_build_supported (RealmKerberosCredential cred_type,
 	elements = g_ptr_array_new ();
 
 	while (cred_type != 0) {
-		if (cred_owner & REALM_KERBEROS_CREDENTIAL_ADMIN)
+		if (cred_owner & REALM_KERBEROS_OWNER_ADMIN)
 			string = "administrator";
-		else if (cred_owner & REALM_KERBEROS_CREDENTIAL_USER)
+		else if (cred_owner & REALM_KERBEROS_OWNER_USER)
 			string = "user";
-		else if (cred_owner & REALM_KERBEROS_CREDENTIAL_COMPUTER)
+		else if (cred_owner & REALM_KERBEROS_OWNER_COMPUTER)
 			string = "computer";
-		else if (cred_owner & REALM_KERBEROS_CREDENTIAL_SECRET)
-			string = "secret";
+		else if (cred_owner & REALM_KERBEROS_OWNER_NONE)
+			string = "none";
 		else
 			g_assert_not_reached ();
 
@@ -59,6 +59,9 @@ realm_kerberos_membership_build_supported (RealmKerberosCredential cred_type,
 			break;
 		case REALM_KERBEROS_CREDENTIAL_PASSWORD:
 			string = "password";
+			break;
+		case REALM_KERBEROS_CREDENTIAL_SECRET:
+			string = "secret";
 			break;
 		case REALM_KERBEROS_CREDENTIAL_AUTOMATIC:
 			string = "automatic";

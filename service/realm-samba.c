@@ -16,6 +16,7 @@
 
 #include "realm-command.h"
 #include "realm-daemon.h"
+#include "realm-debug.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
 #include "realm-discovery.h"
@@ -81,8 +82,8 @@ realm_samba_constructed (GObject *obj)
 	 * to have credentials limited to RC4.
 	 */
 	supported = realm_kerberos_membership_build_supported (
-			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_ADMIN,
-			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_CREDENTIAL_USER,
+			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_ADMIN,
+			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_USER,
 			0);
 	g_variant_ref_sink (supported);
 	realm_kerberos_set_supported_join_creds (kerberos, supported);
@@ -141,7 +142,7 @@ lookup_login_prefix (RealmSamba *self)
 
 typedef struct {
 	GDBusMethodInvocation *invocation;
-	GBytes *ccache;
+	gchar *ccache_file;
 	gchar *computer_ou;
 	gchar *realm_name;
 } EnrollClosure;
@@ -153,7 +154,8 @@ enroll_closure_free (gpointer data)
 	g_free (enroll->realm_name);
 	g_free (enroll->computer_ou);
 	g_object_unref (enroll->invocation);
-	g_bytes_unref (enroll->ccache);
+	if (enroll->ccache_file)
+		realm_keberos_ccache_delete_and_free (enroll->ccache_file);
 	g_slice_free (EnrollClosure, enroll);
 }
 
@@ -227,7 +229,7 @@ on_install_do_join (GObject *source,
 
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
-		realm_samba_enroll_join_async (enroll->realm_name, enroll->ccache,
+		realm_samba_enroll_join_async (enroll->realm_name, enroll->ccache_file,
 		                               enroll->computer_ou, enroll->invocation,
 		                               on_join_do_winbind, g_object_ref (res));
 
@@ -246,11 +248,12 @@ on_kinit_do_install (GObject *source,
 {
 	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
 	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (async);
+	const gchar *packages[] = { REALM_DBUS_IDENTIFIER_WINBIND, REALM_DBUS_IDENTIFIER_SAMBA, NULL };
 	GError *error = NULL;
 
-	enroll->ccache = realm_kerberos_kinit_ccache_finish (REALM_KERBEROS (source), result, &error);
+	enroll->ccache_file = realm_kerberos_kinit_ccache_finish (REALM_KERBEROS (source), result, &error);
 	if (error == NULL) {
-		realm_packages_install_async ("samba-packages", enroll->invocation,
+		realm_packages_install_async (packages, enroll->invocation,
 		                              on_install_do_join, g_object_ref (async));
 
 	} else {
@@ -259,6 +262,24 @@ on_kinit_do_install (GObject *source,
 	}
 
 	g_object_unref (async);
+}
+
+static gboolean
+validate_membership_options (GVariant *options,
+                             GError **error)
+{
+	const gchar *software;
+
+	/* Figure out the method that we're going to use to enroll */
+	if (g_variant_lookup (options, REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, "&s", &software)) {
+		if (!g_str_equal (software, REALM_DBUS_IDENTIFIER_SAMBA)) {
+			g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+			             _("Unsupported or unknown membership software '%s'"), software);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
 }
 
 static void
@@ -275,6 +296,7 @@ realm_samba_enroll_async (RealmKerberosMembership *membership,
 	RealmSamba *self = REALM_SAMBA (realm);
 	GSimpleAsyncResult *res;
 	EnrollClosure *enroll;
+	GError *error = NULL;
 	gchar *enrolled;
 
 	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
@@ -292,6 +314,10 @@ realm_samba_enroll_async (RealmKerberosMembership *membership,
 		                                 _("Already joined to a domain"));
 		g_simple_async_result_complete_in_idle (res);
 
+	} else if (!validate_membership_options (options, &error)) {
+		g_simple_async_result_take_error (res, error);
+		g_simple_async_result_complete_in_idle (res);
+
 	} else {
 		realm_kerberos_kinit_ccache_async (realm, name, password, REALM_SAMBA_ENROLL_ENC_TYPES,
 		                                   invocation, on_kinit_do_install, g_object_ref (res));
@@ -304,6 +330,7 @@ realm_samba_enroll_async (RealmKerberosMembership *membership,
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	gchar *realm_name;
+	gchar *ccache_file;
 } UnenrollClosure;
 
 static void
@@ -311,6 +338,8 @@ unenroll_closure_free (gpointer data)
 {
 	UnenrollClosure *unenroll = data;
 	g_free (unenroll->realm_name);
+	if (unenroll->ccache_file)
+		realm_keberos_ccache_delete_and_free (unenroll->ccache_file);
 	g_object_unref (unenroll->invocation);
 	g_slice_free (UnenrollClosure, unenroll);
 }
@@ -373,13 +402,12 @@ on_kinit_do_leave (GObject *source,
 	UnenrollClosure *unenroll = g_simple_async_result_get_op_res_gpointer (async);
 	RealmSamba *self = REALM_SAMBA (source);
 	GError *error = NULL;
-	GBytes *ccache;
 
-	ccache = realm_kerberos_kinit_ccache_finish (REALM_KERBEROS (self), result, &error);
+	unenroll->ccache_file = realm_kerberos_kinit_ccache_finish (REALM_KERBEROS (self), result, &error);
 	if (error == NULL) {
-		realm_samba_enroll_leave_async (unenroll->realm_name, ccache, unenroll->invocation,
-		                                on_leave_do_winbind, g_object_ref (async));
-		g_bytes_unref (ccache);
+		realm_samba_enroll_leave_async (unenroll->realm_name, unenroll->ccache_file,
+		                                unenroll->invocation, on_leave_do_winbind,
+		                                g_object_ref (async));
 
 	} else {
 		g_simple_async_result_take_error (async, error);

@@ -88,9 +88,11 @@ void                realm_kerberos_kinit_ccache_async    (RealmKerberos *self,
                                                           GAsyncReadyCallback callback,
                                                           gpointer user_data);
 
-GBytes *            realm_kerberos_kinit_ccache_finish   (RealmKerberos *self,
+gchar *             realm_kerberos_kinit_ccache_finish   (RealmKerberos *self,
                                                           GAsyncResult *result,
                                                           GError **error);
+
+void                realm_keberos_ccache_delete_and_free (gchar *ccache_file);
 
 const gchar *       realm_kerberos_get_name                    (RealmKerberos *self);
 

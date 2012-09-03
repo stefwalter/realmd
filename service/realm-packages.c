@@ -220,48 +220,55 @@ on_install_refresh (GObject *source,
 }
 
 static void
-lookup_required_files_and_packages (const gchar *package_set,
-                                    gchar ***packages,
-                                    gchar ***files,
+lookup_required_files_and_packages (const gchar **package_sets,
+                                    gchar ***result_packages,
+                                    gchar ***result_files,
                                     gboolean *unconditional)
 {
 	GHashTable *settings;
 	GHashTableIter iter;
+	GPtrArray *packages;
+	GPtrArray *files;
+	gchar *section;
 	gchar *package;
 	gchar *file;
-	gchar **f, **p;
-	gsize length;
+	gint i;
 
 	*unconditional = FALSE;
+	packages = g_ptr_array_new_with_free_func (g_free);
+	files = g_ptr_array_new_with_free_func (g_free);
 
-	settings = realm_settings_section (package_set);
-	length = settings ? g_hash_table_size (settings) : 0;
+	for (i = 0; package_sets[i] != NULL; i++) {
+		section = g_strdup_printf ("%s-packages", package_sets[i]);
+		settings = realm_settings_section (section);
+		g_free (section);
 
-	*packages = p = g_new0 (gchar *, length + 1);
-	*files = f = g_new0 (gchar *, length + 1);
-
-	g_hash_table_iter_init (&iter, settings);
-	while (g_hash_table_iter_next (&iter, (gpointer *)&package, (gpointer *)&file)) {
-		file = g_strstrip (g_strdup (file));
-		if (g_str_equal (file, "")) {
-			g_free (file);
-			*unconditional = TRUE;
-		} else {
-			*(f++) = file;
+		g_hash_table_iter_init (&iter, settings);
+		while (g_hash_table_iter_next (&iter, (gpointer *)&package, (gpointer *)&file)) {
+			file = g_strstrip (g_strdup (file));
+			if (g_str_equal (file, "")) {
+				g_free (file);
+				*unconditional = TRUE;
+			} else {
+				g_ptr_array_add (files, file);
+			}
+			package = g_strstrip (g_strdup (package));
+			if (g_str_equal (package, ""))
+				g_free (package);
+			else
+				g_ptr_array_add (packages, package);
 		}
-		package = g_strstrip (g_strdup (package));
-		if (g_str_equal (package, ""))
-			g_free (package);
-		else
-			*(p++) = package;
-
-		/* As a logic double check */
-		g_assert (length-- > 0);
 	}
+
+	g_ptr_array_add (packages, NULL);
+	*result_packages = (gchar **)g_ptr_array_free (packages, FALSE);
+
+	g_ptr_array_add (files, NULL);
+	*result_files = (gchar **)g_ptr_array_free (files, FALSE);
 }
 
 void
-realm_packages_install_async (const gchar *package_set,
+realm_packages_install_async (const gchar **package_sets,
                               GDBusMethodInvocation *invocation,
                               GAsyncReadyCallback callback,
                               gpointer user_data)
@@ -274,10 +281,10 @@ realm_packages_install_async (const gchar *package_set,
 	gchar *string;
 	gboolean have;
 
-	g_return_if_fail (package_set != NULL);
+	g_return_if_fail (package_sets != NULL);
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
-	lookup_required_files_and_packages (package_set, &packages, &required_files, &unconditional);
+	lookup_required_files_and_packages (package_sets, &packages, &required_files, &unconditional);
 
 	res = g_simple_async_result_new (NULL, callback, user_data, realm_packages_install_async);
 	install = g_slice_new (InstallClosure);

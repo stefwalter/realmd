@@ -26,16 +26,23 @@
 G_BEGIN_DECLS
 
 typedef enum {
-	REALM_KERBEROS_CREDENTIAL_ADMIN = 1 << 1,
-	REALM_KERBEROS_CREDENTIAL_USER = 1 << 2,
-	REALM_KERBEROS_CREDENTIAL_COMPUTER = 1 << 3,
-	REALM_KERBEROS_CREDENTIAL_SECRET = 1 << 4,
+	REALM_KERBEROS_OWNER_ADMIN = 1 << 1,
+	REALM_KERBEROS_OWNER_USER = 1 << 2,
+	REALM_KERBEROS_OWNER_COMPUTER = 1 << 3,
+	REALM_KERBEROS_OWNER_NONE = 1 << 4,
 } RealmKerberosFlags;
+
+#define REALM_KERBEROS_OWNER_MASK \
+	(REALM_KERBEROS_OWNER_ADMIN | \
+	 REALM_KERBEROS_OWNER_USER | \
+	 REALM_KERBEROS_OWNER_COMPUTER | \
+	 REALM_KERBEROS_OWNER_NONE)
 
 typedef enum {
 	REALM_KERBEROS_CREDENTIAL_CCACHE = 1,
 	REALM_KERBEROS_CREDENTIAL_PASSWORD,
-	REALM_KERBEROS_CREDENTIAL_AUTOMATIC,
+	REALM_KERBEROS_CREDENTIAL_SECRET,
+	REALM_KERBEROS_CREDENTIAL_AUTOMATIC
 } RealmKerberosCredential;
 
 #define REALM_TYPE_KERBEROS_MEMBERSHIP             (realm_kerberos_membership_get_type ())
@@ -66,6 +73,14 @@ struct _RealmKerberosMembershipIface {
 	                                         GAsyncReadyCallback callback,
 	                                         gpointer user_data);
 
+	void       (* enroll_secret_async)      (RealmKerberosMembership *realm,
+	                                         GBytes *secret,
+	                                         RealmKerberosFlags flags,
+	                                         GVariant *options,
+	                                         GDBusMethodInvocation *invocation,
+	                                         GAsyncReadyCallback callback,
+	                                         gpointer user_data);
+
 	void       (* enroll_automatic_async)   (RealmKerberosMembership *realm,
 	                                         RealmKerberosFlags flags,
 	                                         GVariant *options,
@@ -88,6 +103,14 @@ struct _RealmKerberosMembershipIface {
 
 	void       (* unenroll_ccache_async)    (RealmKerberosMembership *realm,
 	                                         GBytes *ccache,
+	                                         RealmKerberosFlags flags,
+	                                         GVariant *options,
+	                                         GDBusMethodInvocation *invocation,
+	                                         GAsyncReadyCallback callback,
+	                                         gpointer user_data);
+
+	void       (* unenroll_secret_async)    (RealmKerberosMembership *realm,
+	                                         GBytes *secret,
 	                                         RealmKerberosFlags flags,
 	                                         GVariant *options,
 	                                         GDBusMethodInvocation *invocation,

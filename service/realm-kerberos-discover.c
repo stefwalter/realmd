@@ -228,8 +228,9 @@ on_resolve_kerberos (GObject *source,
 
 	self->servers = g_resolver_lookup_service_finish (G_RESOLVER (source), result, &error);
 
-	/* We don't treat 'host not found' as an error */
-	if (g_error_matches (error, G_RESOLVER_ERROR, G_RESOLVER_ERROR_NOT_FOUND))
+	/* We don't treat 'host not found' or 'temporarily unable to resolve' as errors */
+	if (g_error_matches (error, G_RESOLVER_ERROR, G_RESOLVER_ERROR_NOT_FOUND) ||
+	    g_error_matches (error, G_RESOLVER_ERROR, G_RESOLVER_ERROR_TEMPORARY_FAILURE))
 		g_clear_error (&error);
 
 	if (error == NULL) {
@@ -284,7 +285,13 @@ on_resolve_msdcs (GObject *source,
 	}
 
 	records = g_resolver_lookup_service_finish (resolver, result, &error);
-	if (error == NULL || g_error_matches (error, G_RESOLVER_ERROR, G_RESOLVER_ERROR_NOT_FOUND)) {
+
+	/* We don't treat 'host not found' or 'temporarily unable to resolve' as errors */
+	if (g_error_matches (error, G_RESOLVER_ERROR, G_RESOLVER_ERROR_NOT_FOUND) ||
+	    g_error_matches (error, G_RESOLVER_ERROR, G_RESOLVER_ERROR_TEMPORARY_FAILURE))
+		g_clear_error (&error);
+
+	if (error == NULL) {
 		self->found_msdcs = (records != NULL);
 		g_list_free_full (records, (GDestroyNotify)g_srv_target_free);
 

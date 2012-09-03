@@ -396,7 +396,7 @@ on_read_http_response (GObject *source,
 	bytes = read_all_bytes_finish (G_INPUT_STREAM (source), result, &error);
 
 	if (!self->peer_certificate || !self->peer_identity) {
-		g_critical ("No peer certificate or peer identity received.");
+		realm_debug ("No peer certificate or peer identity received.");
 
 	} else if (error == NULL) {
 		bytes = strip_http_header (bytes);
@@ -517,8 +517,8 @@ on_connection_event (GSocketClient      *client,
 			g_object_ref (self->peer_certificate);
 
 	} else if (event == G_SOCKET_CLIENT_RESOLVED) {
-		g_return_if_fail (self->peer_identity == NULL);
-		self->peer_identity = g_object_ref (connectable);
+		if (self->peer_identity)
+			self->peer_identity = g_object_ref (connectable);
 
 	/* Once connected, raise the timeout, so TLS can succeed */
 	} else if (event == G_SOCKET_CLIENT_CONNECTED) {

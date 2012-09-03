@@ -29,6 +29,7 @@ void                realm_command_run_async                    (gchar **environ,
 
 void                realm_command_runv_async                   (gchar **name_or_path_and_arguments,
                                                                 gchar **environ,
+                                                                GBytes *input,
                                                                 GDBusMethodInvocation *invocation,
                                                                 GCancellable *cancellable,
                                                                 GAsyncReadyCallback callback,

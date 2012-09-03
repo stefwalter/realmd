@@ -37,7 +37,8 @@ enum {
 
 
 typedef struct {
-	GString *input;
+	GBytes *input;
+	gsize input_offset;
 	GString *output;
 	guint source_sig;
 	gint exit_code;
@@ -63,6 +64,10 @@ static void
 command_closure_free (gpointer data)
 {
 	CommandClosure *command = data;
+	if (command->input)
+		g_bytes_unref (command->input);
+	if (command->invocation)
+		g_object_unref (command->invocation);
 	g_string_free (command->output, TRUE);
 	g_assert (command->source_sig == 0);
 	g_slice_free (CommandClosure, command);
@@ -182,39 +187,40 @@ read_output (int fd,
 }
 
 static gboolean
-write_input (int fd,
-             GString *buffer)
-{
-	gssize result;
-
-	g_return_val_if_fail (fd >= 0, FALSE);
-
-	for (;;) {
-		result = write (fd, buffer->str, buffer->len);
-		if (result < 0) {
-			if (errno == EINTR || errno == EAGAIN)
-				continue;
-			return FALSE;
-		} else {
-			g_string_erase (buffer, 0, result);
-			return TRUE;
-		}
-	}
-}
-
-static gboolean
 on_process_source_input (CommandClosure *command,
                          ProcessSource *process_source,
                          gint fd)
 {
+	const guchar *data;
+	gsize length;
+	gssize result;
+
 	if (command->input == NULL)
-		return FALSE;
-	if (!write_input (fd, command->input)) {
-		g_warning ("couldn't write output data to process");
-		return FALSE;
+		return FALSE; /* don't call again */
+
+	data = g_bytes_get_data (command->input, &length);
+	if (command->input_offset < length) {
+		result = write (fd, data + command->input_offset,
+		                length - command->input_offset);
+		if (result < 0) {
+			if (errno != EINTR && errno != EAGAIN) {
+				g_warning ("couldn't write output data to process");
+				g_bytes_unref (command->input);
+				command->input = NULL;
+				return FALSE;
+			}
+		} else {
+			command->input_offset += result;
+		}
 	}
 
-	return TRUE;
+	if (command->input_offset >= length) {
+		g_bytes_unref (command->input);
+		command->input = NULL;
+		return FALSE; /* close, don't call again */
+	}
+
+	return TRUE; /* call again */
 }
 
 static gboolean
@@ -410,13 +416,14 @@ realm_command_run_async (gchar **environ,
 	} while (arg != NULL);
 	va_end (va);
 
-	realm_command_runv_async ((gchar **)array->pdata, environ, invocation,
-	                       cancellable, callback, user_data);
+	realm_command_runv_async ((gchar **)array->pdata, environ, NULL, invocation,
+	                          cancellable, callback, user_data);
 }
 
 void
 realm_command_runv_async (gchar **argv,
                           gchar **environ,
+                          GBytes *input,
                           GDBusMethodInvocation *invocation,
                           GCancellable *cancellable,
                           GAsyncReadyCallback callback,
@@ -468,7 +475,7 @@ realm_command_runv_async (gchar **argv,
 
 	res = g_simple_async_result_new (NULL, callback, user_data, realm_command_runv_async);
 	command = g_slice_new0 (CommandClosure);
-	command->input = NULL;
+	command->input = input ? g_bytes_ref (input) : NULL;
 	command->output = g_string_sized_new (128);
 	command->invocation = invocation ? g_object_ref (invocation) : NULL;
 	g_simple_async_result_set_op_res_gpointer (res, command, command_closure_free);
@@ -587,7 +594,7 @@ realm_command_run_known_async (const gchar *known_command,
 		argv = g_strdupv ((gchar **)invalid_argv);
 	}
 
-	realm_command_runv_async (argv, environ, invocation, cancellable, callback, user_data);
+	realm_command_runv_async (argv, environ, NULL, invocation, cancellable, callback, user_data);
 	g_strfreev (argv);
 }
 

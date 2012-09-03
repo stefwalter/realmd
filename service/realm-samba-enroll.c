@@ -163,7 +163,6 @@ begin_net_process (JoinClosure *join,
                    ...)
 {
 	GPtrArray *args;
-	gchar *command;
 	gchar *arg;
 	va_list va;
 
@@ -181,10 +180,7 @@ begin_net_process (JoinClosure *join,
 	} while (arg != NULL);
 	va_end (va);
 
-	command = g_strjoinv (" ", (gchar **)args->pdata);
-	g_free (command);
-
-	realm_command_runv_async ((gchar **)args->pdata, join->environ,
+	realm_command_runv_async ((gchar **)args->pdata, join->environ, NULL,
 	                          join->invocation, join->cancellable, callback, user_data);
 
 	g_ptr_array_free (args, TRUE);

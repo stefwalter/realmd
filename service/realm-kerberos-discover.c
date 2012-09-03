@@ -190,10 +190,17 @@ on_discover_ipa (GObject *source,
 
 	if (!self->completed && !self->found_ipa) {
 		self->found_ipa = realm_ipa_discover_finish (result, &error);
-		if (error != NULL) {
+
+		/*
+		 * No errors from the IPA discovery are treated as discovery
+		 * failures, but merely the abscence of IPA.
+		 */
+		if (error) {
+			realm_diagnostics_error (self->key.invocation, error,
+			                         "Couldn't discover IPA KDC");
 			g_clear_error (&self->error);
-			self->error = error;
 		}
+
 		maybe_complete_discover (self);
 	}
 

@@ -166,6 +166,7 @@ realm_client_new (gboolean verbose)
 	if (ret != NULL) {
 		client = REALM_CLIENT (ret);
 		client->provider = g_object_ref (provider);
+		g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);
 	}
 
 	g_object_unref (provider);

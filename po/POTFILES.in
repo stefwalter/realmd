@@ -5,8 +5,9 @@ service/realm-provider.c
 service/realm-samba.c
 service/realm-sssd-ad.c
 service/realm-sssd-config.c
-tools/realm-discover.c
-tools/realm-enroll.c
-tools/realm-logins.c
 tools/realm.c
-
+tools/realm-client.c
+tools/realm-discover.c
+tools/realm-join.c
+tools/realm-leave.c
+tools/realm-logins.c

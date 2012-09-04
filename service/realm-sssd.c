@@ -42,8 +42,6 @@ enum {
 	PROP_PROVIDER,
 };
 
-static void  update_properties   (RealmSssd *self);
-
 G_DEFINE_TYPE (RealmSssd, realm_sssd, REALM_TYPE_KERBEROS);
 
 static void
@@ -65,7 +63,7 @@ on_logins_restarted (GObject *source,
 	if (error != NULL)
 		g_simple_async_result_take_error (async, error);
 
-	update_properties (self);
+	realm_sssd_update_properties (self);
 	g_simple_async_result_complete (async);
 
 	g_object_unref (async);
@@ -339,8 +337,8 @@ update_login_policy (RealmSssd *self)
 	g_ptr_array_free (permitted, TRUE);
 }
 
-static void
-update_properties (RealmSssd *self)
+void
+realm_sssd_update_properties (RealmSssd *self)
 {
 	GObject *obj = G_OBJECT (self);
 	const gchar *name;
@@ -387,7 +385,7 @@ static void
 on_config_changed (RealmIniConfig *config,
                    gpointer user_data)
 {
-	update_properties (REALM_SSSD (user_data));
+	realm_sssd_update_properties (REALM_SSSD (user_data));
 }
 
 static void
@@ -418,7 +416,7 @@ realm_sssd_notify (GObject *obj,
                    GParamSpec *spec)
 {
 	if (g_str_equal (spec->name, "name"))
-		update_properties (REALM_SSSD (obj));
+		realm_sssd_update_properties (REALM_SSSD (obj));
 
 	if (G_OBJECT_CLASS (realm_sssd_parent_class)->notify)
 		G_OBJECT_CLASS (realm_sssd_parent_class)->notify (obj, spec);

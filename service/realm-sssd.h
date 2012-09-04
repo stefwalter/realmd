@@ -57,6 +57,8 @@ void                realm_sssd_deconfigure_domain_tail  (RealmSssd *self,
                                                          GSimpleAsyncResult *async,
                                                          GDBusMethodInvocation *invocation);
 
+void                realm_sssd_update_properties        (RealmSssd *self);
+
 G_END_DECLS
 
 #endif /* __REALM_SSSD_H__ */

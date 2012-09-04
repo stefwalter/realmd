@@ -81,7 +81,8 @@ realm_handle_error (GError *error,
 
 	if (error) {
 		g_dbus_error_strip_remote_error (error);
-		g_string_append (message, ": ");
+		if (format)
+			g_string_append (message, ": ");
 		g_string_append (message, error->message);
 		g_error_free (error);
 	}

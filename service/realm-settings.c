@@ -92,7 +92,6 @@ realm_settings_init (void)
 	realm_conf = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
 	                                    (GDestroyNotify)g_hash_table_unref);
 
-
 	/*
 	 * These are treated like 'linker error' in that we cannot proceed without
 	 * this data. The reason it is not compiled into the daemon itself, is
@@ -115,11 +114,17 @@ realm_settings_init (void)
 	/* We allow failure of loading or parsing this data, it's only overrides */
 	realm_settings_load (admin_conf, &error);
 	if (error != NULL) {
-		if (!g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
+		if (!g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT)) {
 			g_message ("couldn't load admin configuration file: %s: %s",
 			           admin_conf, error->message);
+		}
+		admin_conf = NULL;
 		g_clear_error (&error);
 	}
+
+	g_debug ("Loaded settings from: %s %s %s",
+	         default_conf, distro_conf,
+	         admin_conf ? admin_conf : "");
 }
 
 void

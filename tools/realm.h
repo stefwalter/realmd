@@ -54,7 +54,9 @@ void                  realm_handle_error           (GError *error,
                                                     ...) G_GNUC_PRINTF (2, 3);
 
 GVariant *            realm_kinit_to_kerberos_cache     (const gchar *name,
-                                                         const gchar *realm);
+                                                         const gchar *realm,
+                                                         const gchar *password,
+                                                         GError **error);
 
 G_END_DECLS
 

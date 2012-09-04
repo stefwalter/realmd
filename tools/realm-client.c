@@ -346,7 +346,7 @@ realm_client_build_principal_creds (RealmClient *self,
 {
 	RealmDbusKerberos *kerberos;
 	const gchar *realm_name;
-	const gchar *password;
+	const gchar *password = NULL;
 	gboolean use_ccache;
 	GVariant *contents;
 	GVariant *creds;
@@ -372,16 +372,11 @@ realm_client_build_principal_creds (RealmClient *self,
 	if (user_name == NULL || g_str_equal (user_name, ""))
 		user_name = g_get_user_name ();
 
-	/* Do a kinit for the given realm */
+	/* If passing in a credential cache, then let krb5 do the prompting */
 	if (use_ccache) {
-		kerberos = realm_client_to_kerberos (self, membership);
-		realm_name = realm_dbus_kerberos_get_realm_name (kerberos);
-		contents = realm_kinit_to_kerberos_cache (user_name, realm_name);
-		g_object_unref (kerberos);
+		password = NULL;
 
-		return g_variant_new ("(ssv)", "ccache", owner, contents);
-
-	/* Just prompt for a password, and pass it in */
+	/* Passing in a password, we need to know it */
 	} else {
 		prompt = g_strdup_printf (_("Password for %s: "), user_name);
 		password = getpass (prompt);
@@ -392,13 +387,31 @@ realm_client_build_principal_creds (RealmClient *self,
 			             _("Couldn't prompt for password: %s"), g_strerror (errno));
 			return NULL;
 		}
+	}
 
+	kerberos = realm_client_to_kerberos (self, membership);
+	realm_name = realm_dbus_kerberos_get_realm_name (kerberos);
+	contents = realm_kinit_to_kerberos_cache (user_name, realm_name, password, error);
+	g_object_unref (kerberos);
+
+	if (!contents) {
+		creds = NULL;
+
+	/* Do a kinit for the given realm */
+	} else if (use_ccache) {
+		creds = g_variant_new ("(ssv)", "ccache", owner, contents);
+
+	/* Just prompt for a password, and pass it in */
+	} else {
+		g_variant_unref (contents);
 		creds = g_variant_new ("(ssv)", "password", owner,
 		                       g_variant_new ("(ss)", user_name, password));
-
-		memset ((char *)password, 0, strlen (password));
-		return creds;
 	}
+
+	if (password)
+		memset ((char *)password, 0, strlen (password));
+
+	return creds;
 }
 
 GVariant *

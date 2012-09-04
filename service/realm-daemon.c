@@ -167,7 +167,8 @@ realm_daemon_check_dbus_action (const gchar *sender,
 
 	/* failed */
 	if (result == NULL) {
-		g_warning ("couldn't check polkit authorization: %s", error->message);
+		g_warning ("couldn't check polkit authorization%s%s",
+		           error ? ": " : "", error ? error->message : "");
 		g_error_free (error);
 		return FALSE;
 	}

@@ -30,7 +30,7 @@ on_join_process (GObject *source,
 	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
 	RealmIniConfig *config;
-	GString *output;
+	GString *output = NULL;
 	gint status;
 
 	status = realm_command_run_finish (result, &output, &error);
@@ -62,7 +62,8 @@ on_join_process (GObject *source,
 
 	}
 
-	g_string_free (output, TRUE);
+	if (output)
+		g_string_free (output, TRUE);
 	g_simple_async_result_complete (async);
 	g_object_unref (async);
 }

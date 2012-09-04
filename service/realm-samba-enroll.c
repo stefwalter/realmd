@@ -150,7 +150,8 @@ on_list_complete (GObject *source,
 	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
 
-	g_string_free (output, TRUE);
+	if (output)
+		g_string_free (output, TRUE);
 	g_simple_async_result_complete (res);
 	g_object_unref (res);
 }
@@ -195,7 +196,7 @@ on_join_do_keytab (GObject *source,
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
 	GError *error = NULL;
-	GString *output;
+	GString *output = NULL;
 	gint status;
 
 	status = realm_command_run_finish (result, &output, &error);
@@ -228,7 +229,9 @@ on_join_do_keytab (GObject *source,
 			             "Joining the domain %s failed", join->realm);
 		}
 	}
-	g_string_free (output, TRUE);
+
+	if (output)
+		g_string_free (output, TRUE);
 
 	if (error == NULL) {
 		begin_net_process (join, on_keytab_do_list, g_object_ref (res),

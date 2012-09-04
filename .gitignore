@@ -59,6 +59,7 @@ temp.txt
 /doc/realmd-org.freedesktop.*.xml
 
 /po/realmd.pot
+/po/*.gmo
 
 /service/identity-config-service
 /service/org.freedesktop.realmd.policy

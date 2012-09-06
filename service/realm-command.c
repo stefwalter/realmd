@@ -436,6 +436,7 @@ realm_command_runv_async (gchar **argv,
 	int input_fd = -1;
 	ProcessSource *process_source;
 	GSource *source;
+	gchar *string;
 	GPid pid;
 	guint i;
 
@@ -453,17 +454,14 @@ realm_command_runv_async (gchar **argv,
 	child_fds[FD_OUTPUT] = 1;
 	child_fds[FD_ERROR] = 2;
 
-	if (g_getenv ("G_MESSAGES_DEBUG")) {
-		gchar *command = g_strjoinv (" ", argv);
-		g_debug ("running command: %s", command);
-		realm_diagnostics_info (invocation, "%s", command);
-		g_free (command);
+	string = g_strjoinv (" ", argv);
+	realm_diagnostics_info (invocation, "%s", string);
+	g_free (string);
 
-		if (environ) {
-			gchar *environment = g_strjoinv (", ", (gchar**)environ);
-			g_debug ("process environment: %s", environment);
-			g_free (environment);
-		}
+	if (environ) {
+		string = g_strjoinv (", ", (gchar **)environ);
+		g_debug ("process environment: %s", string);
+		g_free (string);
 	}
 
 	g_spawn_async_with_pipes (NULL, argv, environ,

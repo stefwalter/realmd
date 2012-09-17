@@ -24,7 +24,6 @@
 
 typedef struct {
 	PkTask *task;
-	gchar **packages;
 	GDBusMethodInvocation *invocation;
 } InstallClosure;
 
@@ -33,7 +32,6 @@ install_closure_free (gpointer data)
 {
 	InstallClosure *install = data;
 	g_object_ref (install->task);
-	g_strfreev (install->packages);
 	g_clear_object (&install->invocation);
 	g_slice_free (InstallClosure, install);
 }
@@ -192,32 +190,6 @@ on_install_resolved (GObject *source,
 }
 
 static void
-on_install_refresh (GObject *source,
-                    GAsyncResult *result,
-                    gpointer user_data)
-{
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	InstallClosure *install = g_simple_async_result_get_op_res_gpointer (res);
-	GError *error = NULL;
-	PkResults *results;
-	PkBitfield filter;
-
-	results = pk_task_generic_finish (install->task, result, &error);
-	if (error == NULL) {
-		filter = pk_filter_bitfield_from_string ("arch");
-		pk_task_resolve_async (install->task, filter, install->packages, NULL,
-		                       on_install_progress, install, on_install_resolved, g_object_ref (res));
-		g_object_unref (results);
-
-	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
-	}
-
-	g_object_unref (res);
-}
-
-static void
 lookup_required_files_and_packages (const gchar **package_sets,
                                     gchar ***result_packages,
                                     gchar ***result_files,
@@ -286,9 +258,9 @@ realm_packages_install_async (const gchar **package_sets,
 
 	res = g_simple_async_result_new (NULL, callback, user_data, realm_packages_install_async);
 	install = g_slice_new (InstallClosure);
-	install->packages = packages;
 	install->task = pk_task_new ();
 	pk_task_set_interactive (install->task, FALSE);
+	pk_client_set_background (PK_CLIENT (install->task), FALSE);
 	install->invocation = invocation ? g_object_ref (invocation) : NULL;
 	g_simple_async_result_set_op_res_gpointer (res, install, install_closure_free);
 
@@ -308,15 +280,16 @@ realm_packages_install_async (const gchar **package_sets,
 
 	if (have) {
 		g_simple_async_result_complete_in_idle (res);
-		g_object_unref (res);
-		return;
+
+	} else {
+		pk_task_resolve_async (install->task,
+		                       pk_filter_bitfield_from_string ("arch"),
+		                       packages, NULL,
+		                       on_install_progress, install,
+		                       on_install_resolved, g_object_ref (res));
 	}
 
-	realm_diagnostics_info (invocation, "Refreshing package cache");
-
-	pk_task_refresh_cache_async (install->task, FALSE, NULL, on_install_progress, install,
-	                             on_install_refresh, g_object_ref (res));
-
+	g_strfreev (packages);
 	g_object_unref (res);
 }
 
@@ -352,4 +325,3 @@ realm_packages_check_paths (const gchar **paths,
 
 	return TRUE;
 }
-

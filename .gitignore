@@ -65,6 +65,7 @@ temp.txt
 /service/realmd
 
 /tests/frob-install-packages
+/tests/frob-package-set
 /tests/test-ini-config
 /tests/test-samba-config
 /tests/test-login-name

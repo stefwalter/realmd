@@ -515,7 +515,7 @@ on_connection_event (GSocketClient      *client,
 			g_object_ref (self->peer_certificate);
 
 	} else if (event == G_SOCKET_CLIENT_RESOLVED) {
-		if (self->peer_identity)
+		if (!self->peer_identity)
 			self->peer_identity = g_object_ref (connectable);
 
 	/* Once connected, raise the timeout, so TLS can succeed */

@@ -105,12 +105,18 @@ realm_sssd_ad_constructed (GObject *obj)
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	RealmKerberosCredential cred_type;
-	gchar *ccache_file;
 	gchar *computer_ou;
 	gchar *realm_name;
 	gboolean use_adcli;
-	GBytes *one_time_password;
 	const gchar **packages;
+
+	/* Used for adcli enroll */
+	GBytes *one_time_password;
+	gchar *ccache_file;
+
+	/* Used for samba enroll */
+	gchar *user_name;
+	GBytes *user_password;
 } JoinClosure;
 
 static void
@@ -122,6 +128,8 @@ join_closure_free (gpointer data)
 	if (join->ccache_file)
 		realm_keberos_ccache_delete_and_free (join->ccache_file);
 	g_free (join->computer_ou);
+	g_free (join->user_name);
+	g_bytes_unref (join->user_password);
 	g_bytes_unref (join->one_time_password);
 	g_slice_free (JoinClosure, join);
 }
@@ -300,8 +308,9 @@ on_install_do_join (GObject *source,
 			                                         g_object_ref (async));
 
 		} else {
-			g_assert (join->ccache_file != NULL);
-			realm_samba_enroll_join_async (join->realm_name, join->ccache_file,
+			g_assert (join->user_name != NULL);
+			g_assert (join->user_password != NULL);
+			realm_samba_enroll_join_async (join->realm_name, join->user_name, join->user_password,
 			                               join->computer_ou, join->invocation,
 			                               on_join_do_sssd, g_object_ref (async));
 		}
@@ -511,15 +520,14 @@ realm_sssd_ad_join_secret_async (RealmKerberosMembership *membership,
 
 static void
 realm_sssd_ad_join_password_async (RealmKerberosMembership *membership,
-                                   const char *name,
-                                   const char *password,
+                                   const gchar *user_name,
+                                   GBytes *password,
                                    RealmKerberosFlags flags,
                                    GVariant *options,
                                    GDBusMethodInvocation *invocation,
                                    GAsyncReadyCallback callback,
                                    gpointer user_data)
 {
-	const krb5_enctype *enctypes;
 	GSimpleAsyncResult *async;
 	JoinClosure *join;
 
@@ -530,15 +538,17 @@ realm_sssd_ad_join_password_async (RealmKerberosMembership *membership,
 		join = g_simple_async_result_get_op_res_gpointer (async);
 
 		/* If using samba, then only for a subset of enctypes */
-		if (join->use_adcli)
-			enctypes = NULL;
-		else
-			enctypes = REALM_SAMBA_ENROLL_ENC_TYPES;
-
-		realm_kerberos_kinit_ccache_async (REALM_KERBEROS (membership),
-		                                   name, password, enctypes,
-		                                   invocation, on_kinit_do_install,
-		                                   g_object_ref (async));
+		if (join->use_adcli) {
+			realm_kerberos_kinit_ccache_async (REALM_KERBEROS (membership),
+			                                   user_name, password, NULL,
+			                                   invocation, on_kinit_do_install,
+			                                   g_object_ref (async));
+		} else {
+			join->user_name = g_strdup (user_name);
+			join->user_password = g_bytes_ref (password);
+			realm_packages_install_async (join->packages, join->invocation,
+			                              on_install_do_join, g_object_ref (async));
+		}
 
 		g_object_unref (async);
 	}
@@ -636,33 +646,9 @@ on_leave_do_sssd (GObject *source,
 }
 
 static void
-on_kinit_do_leave (GObject *source,
-                   GAsyncResult *result,
-                   gpointer user_data)
-{
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	UnenrollClosure *unenroll = g_simple_async_result_get_op_res_gpointer (async);
-	RealmSssd *self = REALM_SSSD (source);
-	GError *error = NULL;
-
-	unenroll->ccache_file = realm_kerberos_kinit_ccache_finish (REALM_KERBEROS (self), result, &error);
-	if (error == NULL) {
-		realm_samba_enroll_leave_async (unenroll->realm_name, unenroll->ccache_file,
-		                                unenroll->invocation, on_leave_do_sssd,
-		                                g_object_ref (async));
-
-	} else {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete (async);
-	}
-
-	g_object_unref (async);
-}
-
-static void
 realm_sssd_ad_unenroll_async (RealmKerberosMembership *membership,
-                              const gchar *name,
-                              const gchar *password,
+                              const gchar *user_name,
+                              GBytes *password,
                               RealmKerberosFlags flags,
                               GVariant *options,
                               GDBusMethodInvocation *invocation,
@@ -694,8 +680,9 @@ realm_sssd_ad_unenroll_async (RealmKerberosMembership *membership,
 		g_simple_async_result_complete_in_idle (res);
 
 	} else {
-		realm_kerberos_kinit_ccache_async (realm, name, password, REALM_SAMBA_ENROLL_ENC_TYPES,
-		                                   invocation, on_kinit_do_leave, g_object_ref (res));
+		realm_samba_enroll_leave_async (unenroll->realm_name, user_name, password,
+		                                unenroll->invocation, on_leave_do_sssd,
+		                                g_object_ref (res));
 	}
 
 	g_object_unref (res);

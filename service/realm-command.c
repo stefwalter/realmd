@@ -354,6 +354,14 @@ on_unix_process_child_setup (gpointer user_data)
 	guint i;
 
 	/*
+	 * Become a process leader in order to close the controlling terminal.
+	 * This allows us to avoid the sub-processes blocking on reading from
+	 * the terminal. We can also pipe passwords and such into stdin since
+	 * getpass() will fall back to that.
+	 */
+	setsid ();
+
+	/*
 	 * Clear close-on-exec flag for these file descriptors, so that
 	 * gnupg can write to them
 	 */
@@ -388,37 +396,6 @@ on_cancellable_cancelled (GCancellable *cancellable,
 }
 
 void
-realm_command_run_async (gchar **environ,
-                         GDBusMethodInvocation *invocation,
-                         GCancellable *cancellable,
-                         GAsyncReadyCallback callback,
-                         gpointer user_data,
-                         const gchar *name_or_path,
-                         ...)
-{
-	GPtrArray *array;
-	va_list va;
-	gchar *arg;
-
-	g_return_if_fail (name_or_path != NULL);
-	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
-	g_return_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable));
-
-	array = g_ptr_array_new ();
-	g_ptr_array_add (array, (gchar *)name_or_path);
-
-	va_start (va, name_or_path);
-	do {
-		arg = va_arg (va, gchar *);
-		g_ptr_array_add (array, arg);
-	} while (arg != NULL);
-	va_end (va);
-
-	realm_command_runv_async ((gchar **)array->pdata, environ, NULL, invocation,
-	                          cancellable, callback, user_data);
-}
-
-void
 realm_command_runv_async (gchar **argv,
                           gchar **environ,
                           GBytes *input,
@@ -436,7 +413,10 @@ realm_command_runv_async (gchar **argv,
 	int input_fd = -1;
 	ProcessSource *process_source;
 	GSource *source;
-	gchar *string;
+	gchar *cmd_string;
+	gchar *env_string;
+	gchar **parts;
+	gchar **env;
 	GPid pid;
 	guint i;
 
@@ -454,20 +434,34 @@ realm_command_runv_async (gchar **argv,
 	child_fds[FD_OUTPUT] = 1;
 	child_fds[FD_ERROR] = 2;
 
-	string = g_strjoinv (" ", argv);
-	realm_diagnostics_info (invocation, "%s", string);
-	g_free (string);
-
+	env = g_get_environ ();
+	env_string = NULL;
 	if (environ) {
-		string = g_strjoinv (", ", (gchar **)environ);
-		g_debug ("process environment: %s", string);
-		g_free (string);
+		env_string = g_strjoinv (" ", environ);
+		for (i = 0; environ != NULL && environ[i] != NULL; i++) {
+			parts = g_strsplit (environ[i], "=", 2);
+			if (!parts[0] || !parts[1])
+				g_warning ("invalid environment variable: %s", environ[i]);
+			else
+				env = g_environ_setenv (env, parts[0], parts[1], TRUE);
+			g_strfreev (parts);
+		}
 	}
 
-	g_spawn_async_with_pipes (NULL, argv, environ,
+	cmd_string = g_strjoinv (" ", argv);
+	realm_diagnostics_info (invocation, "%s%s%s",
+	                        env_string ? env_string : "",
+	                        env_string ? " " : "",
+	                        cmd_string);
+	g_free (env_string);
+	g_free (cmd_string);
+
+	g_spawn_async_with_pipes (NULL, argv, env,
 	                          G_SPAWN_DO_NOT_REAP_CHILD,
 	                          on_unix_process_child_setup, child_fds,
 	                          &pid, &input_fd, &output_fd, &error_fd, &error);
+
+	g_strfreev (env);
 
 	res = g_simple_async_result_new (NULL, callback, user_data, realm_command_runv_async);
 	command = g_slice_new0 (CommandClosure);

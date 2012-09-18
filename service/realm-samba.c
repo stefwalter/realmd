@@ -144,6 +144,8 @@ typedef struct {
 	gchar *ccache_file;
 	gchar *computer_ou;
 	gchar *realm_name;
+	gchar *user_name;
+	GBytes *password;
 } EnrollClosure;
 
 static void
@@ -152,6 +154,8 @@ enroll_closure_free (gpointer data)
 	EnrollClosure *enroll = data;
 	g_free (enroll->realm_name);
 	g_free (enroll->computer_ou);
+	g_free (enroll->user_name);
+	g_bytes_unref (enroll->password);
 	g_object_unref (enroll->invocation);
 	if (enroll->ccache_file)
 		realm_keberos_ccache_delete_and_free (enroll->ccache_file);
@@ -228,7 +232,7 @@ on_install_do_join (GObject *source,
 
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
-		realm_samba_enroll_join_async (enroll->realm_name, enroll->ccache_file,
+		realm_samba_enroll_join_async (enroll->realm_name, enroll->user_name, enroll->password,
 		                               enroll->computer_ou, enroll->invocation,
 		                               on_join_do_winbind, g_object_ref (res));
 
@@ -238,29 +242,6 @@ on_install_do_join (GObject *source,
 	}
 
 	g_object_unref (res);
-}
-
-static void
-on_kinit_do_install (GObject *source,
-                     GAsyncResult *result,
-                     gpointer user_data)
-{
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (async);
-	const gchar *packages[] = { REALM_DBUS_IDENTIFIER_WINBIND, REALM_DBUS_IDENTIFIER_SAMBA, NULL };
-	GError *error = NULL;
-
-	enroll->ccache_file = realm_kerberos_kinit_ccache_finish (REALM_KERBEROS (source), result, &error);
-	if (error == NULL) {
-		realm_packages_install_async (packages, enroll->invocation,
-		                              on_install_do_join, g_object_ref (async));
-
-	} else {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete (async);
-	}
-
-	g_object_unref (async);
 }
 
 static gboolean
@@ -284,13 +265,14 @@ validate_membership_options (GVariant *options,
 static void
 realm_samba_enroll_async (RealmKerberosMembership *membership,
                           const gchar *name,
-                          const gchar *password,
+                          GBytes *password,
                           RealmKerberosFlags flags,
                           GVariant *options,
                           GDBusMethodInvocation *invocation,
                           GAsyncReadyCallback callback,
                           gpointer user_data)
 {
+	const gchar *packages[] = { REALM_DBUS_IDENTIFIER_WINBIND, REALM_DBUS_IDENTIFIER_SAMBA, NULL };
 	RealmKerberos *realm = REALM_KERBEROS (membership);
 	RealmSamba *self = REALM_SAMBA (realm);
 	GSimpleAsyncResult *res;
@@ -304,6 +286,8 @@ realm_samba_enroll_async (RealmKerberosMembership *membership,
 	enroll->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
 	enroll->invocation = g_object_ref (invocation);
 	enroll->computer_ou = realm_kerberos_calculate_join_computer_ou (realm, options);
+	enroll->user_name = g_strdup (name);
+	enroll->password = g_bytes_ref (password);
 	g_simple_async_result_set_op_res_gpointer (res, enroll, enroll_closure_free);
 
 	/* Make sure not already enrolled in a realm */
@@ -318,8 +302,8 @@ realm_samba_enroll_async (RealmKerberosMembership *membership,
 		g_simple_async_result_complete_in_idle (res);
 
 	} else {
-		realm_kerberos_kinit_ccache_async (realm, name, password, REALM_SAMBA_ENROLL_ENC_TYPES,
-		                                   invocation, on_kinit_do_install, g_object_ref (res));
+		realm_packages_install_async (packages, enroll->invocation,
+		                              on_install_do_join, g_object_ref (res));
 	}
 
 	g_free (enrolled);
@@ -393,33 +377,9 @@ on_leave_do_winbind (GObject *source,
 }
 
 static void
-on_kinit_do_leave (GObject *source,
-                   GAsyncResult *result,
-                   gpointer user_data)
-{
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	UnenrollClosure *unenroll = g_simple_async_result_get_op_res_gpointer (async);
-	RealmSamba *self = REALM_SAMBA (source);
-	GError *error = NULL;
-
-	unenroll->ccache_file = realm_kerberos_kinit_ccache_finish (REALM_KERBEROS (self), result, &error);
-	if (error == NULL) {
-		realm_samba_enroll_leave_async (unenroll->realm_name, unenroll->ccache_file,
-		                                unenroll->invocation, on_leave_do_winbind,
-		                                g_object_ref (async));
-
-	} else {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete (async);
-	}
-
-	g_object_unref (async);
-}
-
-static void
 realm_samba_unenroll_async (RealmKerberosMembership *membership,
                             const gchar *name,
-                            const gchar *password,
+                            GBytes *password,
                             RealmKerberosFlags flags,
                             GVariant *options,
                             GDBusMethodInvocation *invocation,
@@ -456,8 +416,9 @@ realm_samba_unenroll_async (RealmKerberosMembership *membership,
 		g_simple_async_result_complete_in_idle (res);
 
 	} else {
-		realm_kerberos_kinit_ccache_async (realm, name, password, REALM_SAMBA_ENROLL_ENC_TYPES,
-		                                   invocation, on_kinit_do_leave, g_object_ref (res));
+		realm_samba_enroll_leave_async (unenroll->realm_name, name, password,
+		                                unenroll->invocation, on_leave_do_winbind,
+		                                g_object_ref (res));
 	}
 
 	g_object_unref (res);

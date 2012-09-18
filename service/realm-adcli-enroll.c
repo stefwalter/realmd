@@ -82,8 +82,8 @@ begin_join_process (GBytes *input,
                     gpointer user_data,
                     ...)
 {
+	gchar *environ[] = { "LANG=C", NULL };
 	GSimpleAsyncResult *async;
-	gchar **environ;
 	GPtrArray *args;
 	gchar *arg;
 	va_list va;
@@ -107,13 +107,11 @@ begin_join_process (GBytes *input,
 	va_end (va);
 
 	g_ptr_array_add (args, NULL);
-	environ = g_environ_setenv (g_get_environ (), "LANG", "C", TRUE);
 
 	realm_command_runv_async ((gchar **)args->pdata, environ, input,
 	                          invocation, NULL, on_join_process,
 	                          g_object_ref (async));
 
-	g_strfreev (environ);
 	g_ptr_array_free (args, TRUE);
 	g_object_unref (async);
 }

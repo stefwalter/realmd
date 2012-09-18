@@ -37,9 +37,18 @@ typedef struct {
 	GDBusMethodInvocation *invocation;
 	gchar *create_computer_arg;
 	GHashTable *settings;
-	gchar **environ;
 	gchar *realm;
+	gchar *user_name;
+	GBytes *password_input;
 } JoinClosure;
+
+static void
+clear_and_free_password (gpointer data)
+{
+	gchar *password = data;
+	memset ((char *)password, 0, strlen (password));
+	g_free (password);
+}
 
 static void
 join_closure_free (gpointer data)
@@ -48,10 +57,10 @@ join_closure_free (gpointer data)
 
 	g_clear_object (&join->cancellable);
 
-
+	g_bytes_unref (join->password_input);
+	g_free (join->user_name);
 	g_free (join->create_computer_arg);
 	g_free (join->realm);
-	g_strfreev (join->environ);
 	if (join->settings)
 		g_hash_table_unref (join->settings);
 	g_clear_object (&join->invocation);
@@ -61,39 +70,64 @@ join_closure_free (gpointer data)
 
 static JoinClosure *
 join_closure_init (const gchar *realm,
-                   const gchar *ccache_file,
+                   const gchar *user_name,
+                   GBytes *password,
                    GDBusMethodInvocation *invocation,
                    GError **error)
 {
 	JoinClosure *join;
+	GByteArray *array;
+	const guchar *data;
+	guchar *input;
+	gsize length;
 
 	join = g_slice_new0 (JoinClosure);
 	join->realm = g_strdup (realm);
 	join->invocation = invocation ? g_object_ref (invocation) : NULL;
 
-	join->environ = g_environ_setenv (g_get_environ (),
-	                                  "LC_ALL", "C",
-	                                  TRUE);
+	if (password) {
+		array = g_byte_array_new ();
+		data = g_bytes_get_data (password, &length);
+		g_byte_array_append (array, data, length);
 
-	join->environ = g_environ_setenv (join->environ,
-	                                  "KRB5CCNAME", ccache_file,
-	                                  TRUE);
+		/*
+		 * We add a new line, which getpass() used inside net
+		 * command expects
+		 */
+		g_byte_array_append (array, (guchar *)"\n", 1);
+		length = array->len;
+
+		/*
+		 * In addition we add null terminator. This is not
+		 * written to 'net' command, but used by clear_and_free_password().
+		 */
+		g_byte_array_append (array, (guchar *)"\0", 1);
+
+		input = g_byte_array_free (array, FALSE);
+		join->password_input = g_bytes_new_with_free_func (input, length,
+		                                                   clear_and_free_password, input);
+	}
+
+	join->user_name = g_strdup (user_name);
 
 	return join;
 }
 
 static void
 begin_net_process (JoinClosure *join,
+                   GBytes *input,
                    GAsyncReadyCallback callback,
                    gpointer user_data,
                    ...) G_GNUC_NULL_TERMINATED;
 
 static void
 begin_net_process (JoinClosure *join,
+                   GBytes *input,
                    GAsyncReadyCallback callback,
                    gpointer user_data,
                    ...)
 {
+	gchar *environ[] = { "LANG=C", NULL };
 	GPtrArray *args;
 	gchar *arg;
 	va_list va;
@@ -112,7 +146,7 @@ begin_net_process (JoinClosure *join,
 	} while (arg != NULL);
 	va_end (va);
 
-	realm_command_runv_async ((gchar **)args->pdata, join->environ, NULL,
+	realm_command_runv_async ((gchar **)args->pdata, environ, input,
 	                          join->invocation, join->cancellable, callback, user_data);
 
 	g_ptr_array_free (args, TRUE);
@@ -177,7 +211,8 @@ on_keytab_do_list (GObject *source,
 	 * main smb.conf
 	 */
 	if (error == NULL) {
-		begin_net_process (join, on_list_complete, g_object_ref (res),
+		begin_net_process (join, NULL,
+		                   on_list_complete, g_object_ref (res),
 		                   "conf", "list", NULL);
 
 	} else {
@@ -234,8 +269,9 @@ on_join_do_keytab (GObject *source,
 		g_string_free (output, TRUE);
 
 	if (error == NULL) {
-		begin_net_process (join, on_keytab_do_list, g_object_ref (res),
-		                   "-k", "ads", "keytab", "create", NULL);
+		begin_net_process (join, join->password_input,
+		                   on_keytab_do_list, g_object_ref (res),
+		                   "-U", join->user_name, "ads", "keytab", "create", NULL);
 	} else {
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete (res);
@@ -261,8 +297,9 @@ on_conf_do_join (GObject *source,
 	}
 
 	if (error == NULL) {
-		begin_net_process (join,  on_join_do_keytab, g_object_ref (res),
-		                   "-k", "ads", "join", join->realm,
+		begin_net_process (join, join->password_input,
+		                   on_join_do_keytab, g_object_ref (res),
+		                   "-U", join->user_name, "ads", "join", join->realm,
 		                   join->create_computer_arg, NULL);
 
 	} else {
@@ -275,7 +312,8 @@ on_conf_do_join (GObject *source,
 
 void
 realm_samba_enroll_join_async (const gchar *realm,
-                               const gchar *ccache_file,
+                               const gchar *user_name,
+                               GBytes *password,
                                const gchar *computer_ou,
                                GDBusMethodInvocation *invocation,
                                GAsyncReadyCallback callback,
@@ -287,12 +325,13 @@ realm_samba_enroll_join_async (const gchar *realm,
 	gchar *strange_ou;
 
 	g_return_if_fail (realm != NULL);
-	g_return_if_fail (ccache_file != NULL);
+	g_return_if_fail (user_name != NULL);
+	g_return_if_fail (password != NULL);
 
 	res = g_simple_async_result_new (NULL, callback, user_data,
 	                                 realm_samba_enroll_join_async);
 
-	join = join_closure_init (realm, ccache_file, invocation, &error);
+	join = join_closure_init (realm, user_name, password, invocation, &error);
 
 	if (error == NULL) {
 		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
@@ -313,7 +352,8 @@ realm_samba_enroll_join_async (const gchar *realm,
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete_in_idle (res);
 	} else {
-		begin_net_process (join, on_conf_do_join, g_object_ref (res),
+		begin_net_process (join, NULL,
+		                   on_conf_do_join, g_object_ref (res),
 		                   "conf", "setparm", REALM_SAMBA_CONFIG_GLOBAL,
 		                   "realm", join->realm, NULL);
 	}
@@ -382,14 +422,16 @@ on_flush_do_leave (GObject *source,
 		realm_diagnostics_error (join->invocation, error, "Flushing entries from the keytab failed");
 	g_clear_error (&error);
 
-	begin_net_process (join, on_leave_complete, g_object_ref (res),
-	                   "-k", "ads", "leave", NULL);
+	begin_net_process (join, join->password_input,
+	                   on_leave_complete, g_object_ref (res),
+	                   "-U", join->user_name, "ads", "leave", NULL);
 	g_object_unref (res);
 }
 
 void
 realm_samba_enroll_leave_async (const gchar *realm,
-                                const gchar *ccache_file,
+                                const gchar *user_name,
+                                GBytes *password,
                                 GDBusMethodInvocation *invocation,
                                 GAsyncReadyCallback callback,
                                 gpointer user_data)
@@ -401,11 +443,12 @@ realm_samba_enroll_leave_async (const gchar *realm,
 	res = g_simple_async_result_new (NULL, callback, user_data,
 	                                 realm_samba_enroll_leave_async);
 
-	join = join_closure_init (realm, ccache_file, invocation, &error);
+	join = join_closure_init (realm, user_name, password, invocation, &error);
 	if (error == NULL) {
 		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
-		begin_net_process (join, on_flush_do_leave, g_object_ref (res),
-		                   "-k", "ads", "keytab", "flush", NULL);
+		begin_net_process (join, join->password_input,
+		                   on_flush_do_leave, g_object_ref (res),
+		                   "-U", join->user_name, "ads", "keytab", "flush", NULL);
 
 	} else {
 		g_simple_async_result_take_error (res, error);

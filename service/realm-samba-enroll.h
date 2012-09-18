@@ -23,15 +23,9 @@
 
 G_BEGIN_DECLS
 
-const static krb5_enctype REALM_SAMBA_ENROLL_ENC_TYPES[] = {
-	ENCTYPE_ARCFOUR_HMAC,
-	ENCTYPE_DES_CBC_MD5,
-	ENCTYPE_DES_CBC_CRC,
-	0
-};
-
 void               realm_samba_enroll_join_async     (const gchar *realm,
-                                                      const gchar *ccache_file,
+                                                      const gchar *user_name,
+                                                      GBytes *password,
                                                       const gchar *computer_ou,
                                                       GDBusMethodInvocation *invocation,
                                                       GAsyncReadyCallback callback,
@@ -42,7 +36,8 @@ gboolean           realm_samba_enroll_join_finish    (GAsyncResult *result,
                                                       GError **error);
 
 void               realm_samba_enroll_leave_async    (const gchar *realm,
-                                                      const gchar *ccache_file,
+                                                      const gchar *user_name,
+                                                      GBytes *password,
                                                       GDBusMethodInvocation *invocation,
                                                       GAsyncReadyCallback callback,
                                                       gpointer user_data);

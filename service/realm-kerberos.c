@@ -253,11 +253,13 @@ enroll_or_unenroll_with_password (RealmKerberos *self,
                                   RealmKerberosFlags flags,
                                   GVariant *options,
                                   GDBusMethodInvocation *invocation,
-                                  const gchar *name,
-                                  const gchar *password,
+                                  GVariant *creds,
                                   gboolean enroll)
 {
 	RealmKerberosMembershipIface *iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (self);
+	const gchar *name;
+	const gchar *password;
+	GBytes *bytes;
 
 	if ((enroll && iface && iface->enroll_password_async == NULL) ||
 	    (!enroll && iface && iface->unenroll_password_async == NULL)) {
@@ -274,16 +276,23 @@ enroll_or_unenroll_with_password (RealmKerberos *self,
 		return;
 	}
 
+	g_variant_get (creds, "(&s&s)", &name, &password);
+	bytes = g_bytes_new_with_free_func (password, strlen (password),
+	                                    (GDestroyNotify)g_variant_unref,
+	                                    g_variant_ref (creds));
+
 	if (enroll) {
 		g_return_if_fail (iface->enroll_finish != NULL);
-		(iface->enroll_password_async) (REALM_KERBEROS_MEMBERSHIP (self), name, password, flags, options, invocation,
+		(iface->enroll_password_async) (REALM_KERBEROS_MEMBERSHIP (self), name, bytes, flags, options, invocation,
 		                                on_enroll_complete, method_closure_new (self, invocation));
 
 	} else {
 		g_return_if_fail (iface->unenroll_finish != NULL);
-		(iface->unenroll_password_async) (REALM_KERBEROS_MEMBERSHIP (self), name, password, flags, options, invocation,
+		(iface->unenroll_password_async) (REALM_KERBEROS_MEMBERSHIP (self), name, bytes, flags, options, invocation,
 		                                  on_unenroll_complete, method_closure_new (self, invocation));
 	}
+
+	g_bytes_unref (bytes);
 }
 
 static void
@@ -407,7 +416,6 @@ handle_join (RealmDbusKerberosMembership *membership,
              gpointer user_data)
 {
 	RealmKerberos *self = REALM_KERBEROS (user_data);
-	const char *name, *password;
 	RealmKerberosFlags flags = 0;
 	GVariant *creds;
 	RealmKerberosCredential cred_type;
@@ -423,8 +431,7 @@ handle_join (RealmDbusKerberosMembership *membership,
 		enroll_or_unenroll_with_ccache (self, flags, options, invocation, creds, TRUE);
 		break;
 	case REALM_KERBEROS_CREDENTIAL_PASSWORD:
-		g_variant_get (creds, "(&s&s)", &name, &password);
-		enroll_or_unenroll_with_password (self, flags, options, invocation, name, password, TRUE);
+		enroll_or_unenroll_with_password (self, flags, options, invocation, creds, TRUE);
 		break;
 	case REALM_KERBEROS_CREDENTIAL_SECRET:
 		enroll_or_unenroll_with_secret (self, flags, options, invocation, creds, TRUE);
@@ -448,7 +455,6 @@ handle_leave (RealmDbusKerberosMembership *membership,
               gpointer user_data)
 {
 	RealmKerberos *self = REALM_KERBEROS (user_data);
-	const char *name, *password;
 	RealmKerberosFlags flags = 0;
 	GVariant *creds;
 	RealmKerberosCredential cred_type;
@@ -464,8 +470,7 @@ handle_leave (RealmDbusKerberosMembership *membership,
 		enroll_or_unenroll_with_ccache (self, flags, options, invocation, creds, FALSE);
 		break;
 	case REALM_KERBEROS_CREDENTIAL_PASSWORD:
-		g_variant_get (creds, "(&s&s)", &name, &password);
-		enroll_or_unenroll_with_password (self, flags, options, invocation, name, password, FALSE);
+		enroll_or_unenroll_with_password (self, flags, options, invocation, creds, FALSE);
 		break;
 	case REALM_KERBEROS_CREDENTIAL_SECRET:
 		enroll_or_unenroll_with_secret (self, flags, options, invocation, creds, FALSE);
@@ -857,7 +862,7 @@ realm_kerberos_format_login (RealmKerberos *self,
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	gchar *principal;
-	gchar *password;
+	GBytes *password;
 	krb5_enctype *enctypes;
 	gint n_enctypes;
 	gchar *ccache_file;
@@ -869,7 +874,7 @@ kinit_closure_free (gpointer data)
 	KinitClosure *kinit = data;
 	g_object_unref (kinit->invocation);
 	g_free (kinit->principal);
-	g_free (kinit->password);
+	g_bytes_unref (kinit->password);
 	g_free (kinit->enctypes);
 	realm_keberos_ccache_delete_and_free (kinit->ccache_file);
 	g_slice_free (KinitClosure, kinit);
@@ -893,6 +898,41 @@ kinit_handle_error (GSimpleAsyncResult *async,
 	g_simple_async_result_set_error (async, REALM_KRB5_ERROR, code,
 	                                 "%s: %s", string, krb5_get_error_message (context, code));
 	g_free (string);
+}
+
+static krb5_error_code
+bytes_prompter(krb5_context context,
+               void *data,
+               const char *name,
+               const char *banner,
+               int num_prompts,
+               krb5_prompt prompts[])
+{
+	krb5_prompt_type *prompt_types;
+	const guchar *password;
+	gsize length;
+	gint i;
+
+	/* Pull out the password data */
+	password = g_bytes_get_data (data, &length);
+
+	prompt_types = krb5_get_prompt_types (context);
+	g_return_val_if_fail (prompt_types != NULL, KRB5_LIBOS_CANTREADPWD);
+
+	for (i = 0; i < num_prompts; i++) {
+		if (prompt_types[i] == KRB5_PROMPT_TYPE_PASSWORD) {
+			if (length > prompts[i].reply->length) {
+				g_warning ("Password too long for kerberos library");
+				return KRB5_LIBOS_CANTREADPWD;
+			}
+			memcpy (prompts[i].reply->data, password, length);
+			prompts[i].reply->length = length;
+		} else {
+			prompts[i].reply->length = 0;
+		}
+	}
+
+	return 0;
 }
 
 static void
@@ -957,7 +997,8 @@ kinit_ccache_thread_func (GSimpleAsyncResult *async,
 	}
 
 	code = krb5_get_init_creds_password (context, &my_creds, principal,
-	                                     kinit->password, NULL, 0, 0, NULL, options);
+	                                     NULL, bytes_prompter, kinit->password,
+	                                     0, NULL, options);
 	if (code != 0) {
 		kinit_handle_error (async, code, context,
 		                    "Couldn't authenticate as: %s", kinit->principal);
@@ -981,7 +1022,7 @@ cleanup:
 void
 realm_kerberos_kinit_ccache_async (RealmKerberos *self,
                                    const gchar *name,
-                                   const gchar *password,
+                                   GBytes *password,
                                    const krb5_enctype *enctypes,
                                    GDBusMethodInvocation *invocation,
                                    GAsyncReadyCallback callback,
@@ -997,7 +1038,7 @@ realm_kerberos_kinit_ccache_async (RealmKerberos *self,
 	async = g_simple_async_result_new (G_OBJECT (self), callback, user_data,
 	                                   realm_kerberos_kinit_ccache_async);
 	kinit = g_slice_new0 (KinitClosure);
-	kinit->password = g_strdup (password);
+	kinit->password = g_bytes_ref (password);
 	kinit->invocation = g_object_ref (invocation);
 
 	if (enctypes != NULL) {

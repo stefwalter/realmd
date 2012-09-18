@@ -58,7 +58,7 @@ struct _RealmKerberosMembershipIface {
 
 	void       (* enroll_password_async)    (RealmKerberosMembership *realm,
 	                                         const char *name,
-	                                         const char *password,
+	                                         GBytes *password,
 	                                         RealmKerberosFlags flags,
 	                                         GVariant *options,
 	                                         GDBusMethodInvocation *invocation,
@@ -94,7 +94,7 @@ struct _RealmKerberosMembershipIface {
 
 	void       (* unenroll_password_async)  (RealmKerberosMembership *realm,
 	                                         const char *name,
-	                                         const char *password,
+	                                         GBytes *password,
 	                                         RealmKerberosFlags flags,
 	                                         GVariant *options,
 	                                         GDBusMethodInvocation *invocation,

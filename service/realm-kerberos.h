@@ -82,7 +82,7 @@ gchar *             realm_kerberos_format_login          (RealmKerberos *self,
 
 void                realm_kerberos_kinit_ccache_async    (RealmKerberos *self,
                                                           const gchar *name,
-                                                          const gchar *password,
+                                                          GBytes *password,
                                                           const krb5_enctype *enctypes,
                                                           GDBusMethodInvocation *invocation,
                                                           GAsyncReadyCallback callback,

@@ -19,14 +19,6 @@
 
 G_BEGIN_DECLS
 
-void                realm_command_run_async                    (gchar **environ,
-                                                                GDBusMethodInvocation *invocation,
-                                                                GCancellable *cancellable,
-                                                                GAsyncReadyCallback callback,
-                                                                gpointer user_data,
-                                                                const gchar *name_or_path,
-                                                                ...) G_GNUC_NULL_TERMINATED;
-
 void                realm_command_runv_async                   (gchar **name_or_path_and_arguments,
                                                                 gchar **environ,
                                                                 GBytes *input,

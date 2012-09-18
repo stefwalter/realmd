@@ -45,6 +45,7 @@ typedef struct {
 	gint outstanding_kerberos;
 	gboolean found_msdcs;
 	gint outstanding_msdcs;
+	gboolean started_ipa;
 	gboolean found_ipa;
 	gint outstanding_ipa;
 	gboolean completed;
@@ -61,6 +62,8 @@ typedef struct {
 #define REALM_IS_KERBEROS_DISCOVER(inst)  (G_TYPE_CHECK_INSTANCE_TYPE ((inst), REALM_TYPE_KERBEROS_DISCOVER))
 
 static GHashTable *discover_cache = NULL;
+
+static void maybe_complete_discover (RealmKerberosDiscover *self);
 
 GType realm_kerberos_discover_get_type (void) G_GNUC_CONST;
 
@@ -151,33 +154,6 @@ kerberos_discover_complete (RealmKerberosDiscover *self)
 }
 
 static void
-maybe_complete_discover (RealmKerberosDiscover *self)
-{
-	GDBusMethodInvocation *invocation = self->key.invocation;
-	gboolean complete;
-
-	/* If discovered either AD or IPA successfully, then complete */
-	complete = (!self->outstanding_kerberos &&
-	            (self->found_msdcs || self->found_ipa ||
-	             (!self->outstanding_msdcs && !self->outstanding_ipa)));
-
-	if (!complete)
-		return;
-
-	if (self->found_kerberos) {
-		realm_diagnostics_info (invocation, "Found kerberos DNS records for: %s", self->domain);
-		if (self->found_msdcs)
-			realm_diagnostics_info (invocation, "Found AD style DNS records for: %s", self->domain);
-		else if (self->found_ipa)
-			realm_diagnostics_info (invocation, "Found IPA style certificate for: %s", self->domain);
-	} else {
-		realm_diagnostics_info (invocation, "Couldn't find kerberos DNS records for: %s", self->domain);
-	}
-
-	kerberos_discover_complete (self);
-}
-
-static void
 on_discover_ipa (GObject *source,
                  GAsyncResult *result,
                  gpointer user_data)
@@ -208,6 +184,47 @@ on_discover_ipa (GObject *source,
 }
 
 static void
+maybe_complete_discover (RealmKerberosDiscover *self)
+{
+	GDBusMethodInvocation *invocation = self->key.invocation;
+	GList *l;
+	gint i;
+
+	/* If still discovering whether kerberos, then not complete */
+	if (self->outstanding_kerberos)
+		return;
+
+	/* If found either IPA or AD then finish regardless of other check */
+	if (!self->found_msdcs && !self->found_ipa) {
+		if (!self->outstanding_msdcs && !self->started_ipa) {
+			self->started_ipa = TRUE;
+
+			/* If domain is not AD, start IPA discovery, for first N KDCs */
+			for (l = self->servers, i = 0; l != NULL && i < 3; l = g_list_next (l), i++) {
+				realm_ipa_discover_async (l->data, invocation,
+				                          on_discover_ipa, g_object_ref (self));
+				self->outstanding_ipa++;
+			}
+		}
+
+		if (self->outstanding_msdcs || self->outstanding_ipa)
+			return;
+	}
+
+	if (self->found_kerberos) {
+		realm_diagnostics_info (invocation, "Found kerberos DNS records for: %s", self->domain);
+		if (self->found_msdcs)
+			realm_diagnostics_info (invocation, "Found AD style DNS records for: %s", self->domain);
+		else if (self->found_ipa)
+			realm_diagnostics_info (invocation, "Found IPA style certificate for: %s", self->domain);
+	} else {
+		realm_diagnostics_info (invocation, "Couldn't find kerberos DNS records for: %s", self->domain);
+	}
+
+	kerberos_discover_complete (self);
+}
+
+static void
 on_resolve_kerberos (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
@@ -217,7 +234,6 @@ on_resolve_kerberos (GObject *source,
 	GError *error = NULL;
 	GString *info;
 	GList *l;
-	gint i;
 
 	self->outstanding_kerberos = 0;
 
@@ -246,15 +262,6 @@ on_resolve_kerberos (GObject *source,
 			realm_diagnostics_info (invocation, "%s", info->str);
 
 		g_string_free (info, TRUE);
-
-		/* Unless sure domain is AD, start IPA discovery, for first N KDCs */
-		if (!self->found_msdcs) {
-			for (l = self->servers, i = 0; l != NULL && i < 3; l = g_list_next (l), i++) {
-				realm_ipa_discover_async (l->data, invocation,
-				                          on_discover_ipa, g_object_ref (self));
-				self->outstanding_ipa++;
-			}
-		}
 
 	} else {
 		realm_diagnostics_error (invocation, error, "Couldn't lookup SRV records for domain");

@@ -1,3 +1,6 @@
+0.8.1
+ * Distribute debian settings file correctly
+
 0.8
  * Cleaner, faster and robuster IPA discovery
  * Don't refret the PackageKit cache when installing

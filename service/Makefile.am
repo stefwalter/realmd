@@ -5,7 +5,9 @@ private_PROGRAMS = \
 
 REALMD_CONFIGS = \
 	realmd-defaults.conf \
-	realmd-redhat.conf
+	realmd-redhat.conf \
+	realmd-debian.conf \
+	$(NULL)
 
 private_DATA = \
 	net-ads-smb.conf \

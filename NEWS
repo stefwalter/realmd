@@ -1,3 +1,19 @@
+0.8
+ * Cleaner, faster and robuster IPA discovery
+ * Don't refret the PackageKit cache when installing
+ * Add first translation, although gettext not hooked up yet
+ * Pass passwords directly to the samba 'net' command
+ * Better prompting for realm administrator/user password in realm tool
+ * Remove custom debug code, just use glib
+ * Support basic one-time-password and automatic joining
+ * Ignore temporarily DNS failures when discovering
+ * Add a generic kerberos provider, for discovering non AD/IPA realms
+ * Add support for specifying a computer OU LDAP DN when joining
+ * Don't require unstable glib
+ * Fix timeout in the realm tool
+ * Some build and testing fixes
+ * Other bug fixes
+
 0.7
  * Refactor the DBus interface so we can add other realm types later
  * Implement o.f.DBus.ObjectManager

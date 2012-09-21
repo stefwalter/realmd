@@ -57,6 +57,7 @@ temp.txt
 /doc/*.types
 /doc/tmpl/
 /doc/realmd-org.freedesktop.*.xml
+/doc/realm.xml
 
 /po/realmd.pot
 /po/*.gmo

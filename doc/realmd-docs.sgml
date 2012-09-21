@@ -11,6 +11,10 @@
 		<releaseinfo>for &version;</releaseinfo>
 	</bookinfo>
 
+	<chapter xml:id="realm-manual">
+		<title>Command manual pages</title>
+		<xi:include href="realm.xml"/>
+	</chapter>
 	<chapter xml:id="dbus-interface-reference">
 		<title>DBus Interface Reference</title>
 		<xi:include href="realmd-org.freedesktop.realmd.Provider.xml"/>

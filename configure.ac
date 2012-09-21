@@ -70,6 +70,11 @@ AC_SUBST(GLIB_LIBS)
 
 GTK_DOC_CHECK(1.9)
 
+AC_PATH_PROG([XSLTPROC], [xsltproc])
+if test x$XSLTPROC = x; then
+	AC_MSG_ERROR([xsltproc is required to build documentation])
+fi
+
 # --------------------------------------------------------------------
 # PackageKit
 

@@ -31,7 +31,10 @@ DBUS_GENERATED = \
 
 # Extra SGML files that are included by $(DOC_MAIN_SGML_FILE).
 # e.g. content_files=running.sgml building.sgml changes-2.0.sgml
-content_files= $(DBUS_GENERATED) $(DBUS_ESCAPED)
+content_files= \
+	$(DBUS_GENERATED) \
+	$(DBUS_ESCAPED) \
+	realm.xml
 
 # SGML files where gtk-doc abbrevations (#GtkWidget) are expanded
 # These files must be listed here *and* in content_files
@@ -41,9 +44,26 @@ expand_content_files=
 # This includes the standard gtk-doc make rules, copied by gtkdocize.
 include $(top_srcdir)/gtk-doc.make
 
+XSLTPROC_FLAGS = \
+	--nonet \
+	--stringparam man.output.quietly 1 \
+	--stringparam funcsynopsis.style ansi \
+	--stringparam man.th.extra1.suppress 1 \
+	--stringparam man.authors.section.enabled 0 \
+	--stringparam man.copyright.section.enabled 0
+
+.xml.1:
+	$(AM_V_GEN) $(XSLTPROC) $(XSLTPROC_FLAGS) http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl $<
+
+man_MANS = \
+	realm.1
+
+xml_files = $(man_MANS:.1=.xml)
+
 EXTRA_DIST += \
 	$(DBUS_GENERATED) \
 	$(DBUS_ESCAPED) \
+	$(xml_files) \
 	escape-xml-to-text.xsl \
 	version.xml.in \
 	version.xml \
@@ -52,6 +72,7 @@ EXTRA_DIST += \
 CLEANFILES += \
 	$(DBUS_GENERATED) \
 	$(DBUS_ESCAPED) \
+	$(man_MANS) \
 	style.stamp
 
 noinst_DATA = style.stamp
@@ -66,6 +87,6 @@ $(DBUS_GENERATED): $(DBUS_INTERFACE)
 		--generate-docbook realmd $<
 
 $(DBUS_ESCAPED): $(DBUS_INTERFACE) $(srcdir)/escape-xml-to-text.xsl
-	$(AM_V_GEN) xsltproc --nonet --novalid --output $(DBUS_ESCAPED) \
+	$(AM_V_GEN) $(XSLTPROC) --nonet --novalid --output $(DBUS_ESCAPED) \
 		$(srcdir)/escape-xml-to-text.xsl $(DBUS_INTERFACE)
 	@sed -i '/^[	 ]*$$/d' $(DBUS_ESCAPED)

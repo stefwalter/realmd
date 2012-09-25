@@ -43,8 +43,6 @@ realmd_SOURCES = \
 	realm-samba-util.c realm-samba-util.h \
 	realm-samba-winbind.c realm-samba-winbind.h \
 	realm-service.c realm-service.h \
-	realm-service-systemd.c realm-service-systemd.h \
-	realm-service-upstart.c realm-service-upstart.h \
 	realm-settings.c realm-settings.h \
 	realm-sssd.c realm-sssd.h \
 	realm-sssd-ad.c realm-sssd-ad.h \

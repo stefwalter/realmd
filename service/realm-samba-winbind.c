@@ -77,7 +77,6 @@ realm_samba_winbind_configure_async (RealmIniConfig *config,
 {
 	GSimpleAsyncResult *res;
 	GError *error = NULL;
-	const gchar *service;
 
 	g_return_if_fail (config != NULL);
 	g_return_if_fail (invocation != NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
@@ -101,8 +100,7 @@ realm_samba_winbind_configure_async (RealmIniConfig *config,
 	                         NULL);
 
 	if (error == NULL) {
-		service = realm_settings_string ("services", "winbind");
-		realm_service_enable_and_restart (service, invocation,
+		realm_service_enable_and_restart ("winbind", invocation,
 		                                  on_enable_do_nss, g_object_ref (res));
 	} else {
 		g_simple_async_result_take_error (res, error);

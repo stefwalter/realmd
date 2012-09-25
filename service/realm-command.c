@@ -33,6 +33,7 @@ enum {
 	NUM_FDS
 };
 
+#define DEBUG_VERBOSE 0
 
 typedef struct {
 	GBytes *input;
@@ -74,7 +75,9 @@ command_closure_free (gpointer data)
 static void
 complete_source_is_done (ProcessSource *process_source)
 {
+#if DEBUG_VERBOSE
 	g_debug ("all fds closed and process exited, completing");
+#endif
 
 	g_assert (process_source->child_sig == 0);
 
@@ -95,7 +98,9 @@ close_fd (int *fd)
 {
 	g_assert (fd);
 	if (*fd >= 0) {
+#if DEBUG_VERBOSE
 		g_debug ("closing fd: %d", *fd);
+#endif
 		close (*fd);
 	}
 	*fd = -1;
@@ -380,7 +385,7 @@ on_cancellable_cancelled (GCancellable *cancellable,
 {
 	ProcessSource *process_source = user_data;
 
-	g_debug ("process cancelled");
+	g_debug ("process cancelled: %d", process_source->child_pid);
 
 	/* Set an error, which is respected when this actually completes. */
 	g_simple_async_result_set_error (process_source->res, G_IO_ERROR, G_IO_ERROR_CANCELLED,

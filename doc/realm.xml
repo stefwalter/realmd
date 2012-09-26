@@ -1,0 +1,332 @@
+<?xml version='1.0'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+        "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<refentry id="realm">
+
+<refentryinfo>
+	<title>realm</title>
+	<productname>realmd</productname>
+	<authorgroup>
+		<author>
+			<contrib>Maintainer</contrib>
+			<firstname>Stef</firstname>
+			<surname>Walter</surname>
+			<email>stef@thewalter.net</email>
+		</author>
+	</authorgroup>
+</refentryinfo>
+
+<refmeta>
+	<refentrytitle>realm</refentrytitle>
+	<manvolnum>1</manvolnum>
+	<refmiscinfo class="manual">User Commands</refmiscinfo>
+</refmeta>
+
+<refnamediv>
+	<refname>realm</refname>
+	<refpurpose>Manage enrollment in realms</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+	<cmdsynopsis>
+		<command>realm discover <arg choice="plain">-v</arg> <arg choice="opt">realm-name</arg></command>
+	</cmdsynopsis>
+	<cmdsynopsis>
+		<command>realm join <arg choice="plain">-v</arg> <arg choice="opt">-U user</arg> <arg choice="opt">realm-name</arg></command>
+	</cmdsynopsis>
+	<cmdsynopsis>
+		<command>realm leave <arg choice="plain">-v</arg> <arg choice="opt">-U user</arg> <arg choice="opt">realm-name</arg></command>
+	</cmdsynopsis>
+	<cmdsynopsis>
+		<command>realm list</command>
+	</cmdsynopsis>
+	<cmdsynopsis>
+		<command>realm permit <arg choice="opt">-a</arg> <arg choice="opt">-R realm</arg> <arg choice="req">user</arg> ...</command>
+	</cmdsynopsis>
+	<cmdsynopsis>
+		<command>realm deny <arg choice="opt">-a</arg> <arg choice="opt">-R realm</arg> <arg choice="req">user</arg> ...</command>
+	</cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1>
+	<title>Description</title>
+	<para><command>realm</command> is a command line tool that
+	can be used to manage enrollment in kerberos realms, like Active
+	Directory domains or IPA domains.</para>
+</refsect1>
+
+<refsect1>
+	<title>Discover</title>
+
+	<para>Discover a realm and its capabilities.</para>
+
+	<informalexample>
+<programlisting>
+$ realm discover
+</programlisting>
+<programlisting>
+$ realm discover domain.example.com
+</programlisting>
+	</informalexample>
+
+	<para>After discovering a realm,
+	its name, type and capabilities are displayed.</para>
+
+	<para>If no domain is specified, then the domain assigned through
+	DHCP is used as a default.</para>
+
+	<para>The following options can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--client-software=xxx</option></term>
+			<listitem><para>Only discover realms for which we can
+			use the given client software. Possible values include
+			<replaceable>sssd</replaceable> or
+			<replaceable>winbind</replaceable>.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--server-software=xxx</option></term>
+			<listitem><para>Only discover realms for run the
+			given server software. Possible values include
+			<replaceable>active-directory</replaceable> or
+			<replaceable>freeipa</replaceable>.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--verbose, -v</option></term>
+			<listitem><para>Display verbose diagnostics while doing
+			the discovery.</para></listitem>
+		</varlistentry>
+	</variablelist>
+
+</refsect1>
+
+<refsect1>
+	<title>Join</title>
+
+	<para>Configure the local machine for use with a realm.</para>
+
+	<informalexample>
+<programlisting>
+$ realm join domain.example.com
+</programlisting>
+<programlisting>
+$ realm join -user=admin --computer-ou=OU=Special domain.example.com
+</programlisting>
+	</informalexample>
+
+	<para>The realm is first discovered, as we would with the
+	<option>discover</option> command. If no domain is specified, then the
+	domain assigned through DHCP is used as a default.</para>
+
+	<para>After a successful join, the computer will be in a state where
+	it is able to resolve remote user and group names from the realm.
+	For kerberos realms, a computer account and host keytab is created.</para>
+
+	<para>Joining arbitrary kerberos realms is not supported. The realm
+	must have a supported mechanism for joining from a client machine, such
+	as Active Directory or FreeIPA.</para>
+
+	<para>Unless a <arg>--user</arg> is explicitly specified, then if
+	possible, an automatic join is attempted first.</para>
+
+	<para>The following options can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--client-software=xxx</option></term>
+			<listitem><para>Only join realms for which we can
+			use the given client software. Possible values include
+			<replaceable>sssd</replaceable> or
+			<replaceable>winbind</replaceable>. Not all values are
+			supported for all realms. By default the client software
+			is automatically selected.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--computer-ou=OU=xxx</option></term>
+			<listitem><para>The distinguished name of an organizational
+			unit to create the computer account. The exact format
+			of the distinguished name depends on the client software
+			and membership software. You can usually omit the root
+			DSE portion of distinguished name.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--membership-software=xxx</option></term>
+			<listitem><para>The software to use when joining to the
+			realm. Possible values include <replaceable>samba</replaceable> or
+			<replaceable>adcli</replaceable>. Not all values are
+			supported for all realms. By default the membership software
+			is automatically selected.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--one-time-password=xxxx</option></term>
+			<listitem><para>Perform the join using a one time password
+			specified on the command line. This is not possible with
+			all types of realms.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--server-software=xxx</option></term>
+			<listitem><para>Only join realms for run the
+			given server software. Possible values include
+			<replaceable>active-directory</replaceable> or
+			<replaceable>freeipa</replaceable>.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--user</option></term>
+			<listitem><para>The user name to be used to authenticate
+			with when joining the machine to the realm. You will
+			be prompted for a password.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--verbose, -v</option></term>
+			<listitem><para>Display verbose diagnostics while doing
+			the discovery and join.</para></listitem>
+		</varlistentry>
+	</variablelist>
+
+</refsect1>
+
+<refsect1>
+	<title>Leave</title>
+
+	<para>Deconfigure the local machine for use with a realm.</para>
+
+	<informalexample>
+<programlisting>
+$ realm leave
+</programlisting>
+<programlisting>
+$ realm leave domain.example.com
+</programlisting>
+	</informalexample>
+
+	<para>If no realm name is specified, then the first configured realm
+	will be used.</para>
+
+	<para>The following options can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--user</option></term>
+			<listitem><para>The user name to be used to authenticate
+			with when leaving the realm. You will be prompted for a
+			password.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--verbose, -v</option></term>
+			<listitem><para>Display verbose diagnostics while doing
+			the leave operation.</para></listitem>
+		</varlistentry>
+	</variablelist>
+
+</refsect1>
+
+<refsect1>
+	<title>List</title>
+
+	<para>List all the discovered and configured realms.</para>
+
+	<informalexample>
+<programlisting>
+$ realm list
+</programlisting>
+	</informalexample>
+
+	<para>The following options can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--verbose, -v</option></term>
+			<listitem><para>Display verbose diagnostics while
+			listing.</para></listitem>
+		</varlistentry>
+	</variablelist>
+
+</refsect1>
+
+<refsect1>
+	<title>Permit</title>
+
+	<para>Permit local login by users of the realm.</para>
+
+	<informalexample>
+<programlisting>
+$ realm permit -a
+</programlisting>
+<programlisting>
+$ realm permit DOMAIN\User
+</programlisting>
+	</informalexample>
+
+	<para>If more than one realm is configured, then use the <option>--realm</option>
+	option to specify which realm to permit the users on.</para>
+
+	<para>The format of the user name can be seen by using the
+	<option>list</option> command.</para>
+
+	<para>The following options can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--all, -a</option></term>
+			<listitem><para>Permit login by any valid user of the
+			realm.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--realm, -R</option></term>
+			<listitem><para>Specify the name of the realm to permit
+			users to log into.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--verbose, -v</option></term>
+			<listitem><para>Display verbose diagnostics while
+			doing the operation.</para></listitem>
+		</varlistentry>
+	</variablelist>
+
+</refsect1>
+
+<refsect1>
+	<title>Deny</title>
+
+	<para>Deny local login by users of the realm.</para>
+
+	<informalexample>
+<programlisting>
+$ realm deny -a
+</programlisting>
+<programlisting>
+$ realm deny DOMAIN\User
+</programlisting>
+	</informalexample>
+
+	<para>If more than one realm is configured, then use the <option>--realm</option>
+	option to specify which realm to deny the users' login via.</para>
+
+	<para>The format of the user name can be seen by using the
+	<option>list</option> command.</para>
+
+	<para>The following options can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--all, -a</option></term>
+			<listitem><para>Deny login by any validuser of the
+			realm.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--realm, -R</option></term>
+			<listitem><para>Specify the name of the realm to deny
+			users login to.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--verbose, -v</option></term>
+			<listitem><para>Display verbose diagnostics while
+			doing the operation.</para></listitem>
+		</varlistentry>
+	</variablelist>
+
+</refsect1>
+
+</refentry>

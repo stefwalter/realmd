@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
+               "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
+[
+  <!ENTITY % local.common.attrib "xmlns:xi  CDATA  #FIXED 'http://www.w3.org/2003/XInclude'">
+]>
+
+<chapter id="guide-freeipa">
+	<title>Using with other Kerberos realms</title>
+
+	<para><command>realmd</command> can discover generic Kerberos realms.
+	Since there is no standard way to enroll a computer against a Kerberos
+	server, it is not possible to do this with <command>realmd</command>.</para>
+
+	<section>
+		<title>Discovering Kerberos realms</title>
+		<para><command>realmd</command> discovers which domains or
+		realms it can use or configure. It can discover and identify
+		Kerberos domains by looking up the appropriate DNS SRV
+		records.</para>
+
+		<para>The following DNS SRV record is required to be present
+		for <command>realmd</command> to identify a provided realm as
+		a Kerberos domain.</para>
+
+		<informalexample>
+<screen>
+# In this example the Kerberos domain is 'domain.example.com'
+<emphasis>_kerberos._udp.</emphasis>domain.example.com.
+</screen>
+		</informalexample>
+
+		<informalexample>
+<screen>
+$ <command>realm --verbose discover domain.example.com</command>
+ * Searching for kerberos SRV records for domain: _kerberos._udp.domain.example.com
+ * Searching for MSDCS SRV records on domain: _kerberos._tcp.dc._msdcs.domain.example.com
+ * dc.domain.example.com:88
+ * Trying to retrieve IPA certificate from dc.domain.example.com
+ ! Couldn't read certificate via HTTP: No PEM-encoded certificate found
+ ! Couldn't discover IPA KDC: No PEM-encoded certificate found
+ * Found kerberos DNS records for: domain.example.com
+ * Successfully discovered: domain.example.com
+...
+</screen>
+		</informalexample>
+
+	</section>
+
+</chapter>

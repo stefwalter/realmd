@@ -1,0 +1,128 @@
+<?xml version="1.0"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
+               "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
+[
+  <!ENTITY % local.common.attrib "xmlns:xi  CDATA  #FIXED 'http://www.w3.org/2003/XInclude'">
+]>
+
+<chapter id="guide-configuring">
+	<title>Configuring realmd</title>
+
+	<para><command>realmd</command> can be tweaked by network administrators
+	to act in specific ways. This is done by placing settings in a
+	<filename>/etc/realmd.conf</filename>. The syntax of this file is the
+	same as an INI file or Desktop Entry file.</para>
+
+	<para>Only specify the settings you wish to override in the
+	<filename>/etc/realmd.conf</filename> file. Settings not specified will
+	be loaded either from their packaged defaults. Only override the settings
+	below. You may find other settings if you root around the
+	<command>realmd</command> source code. However these are not guaranteed
+	to remain stable.</para>
+
+	<section id="guide-configuring-active-directory">
+		<title>active-directory</title>
+		<para>These options should go in an <option>[active-directory]</option>
+		section of the <filename>/etc/realmd.conf</filename> file. Only
+		specify the settings you wish to override.</para>
+
+	<section>
+		<title>default-client</title>
+
+		<para>Specify the <option>default-client</option> setting in
+		order to control which client software is the preferred default
+		for use with Active Directory.</para>
+
+		<informalexample>
+<programlisting language="js">
+[active-directory]
+default-client = sssd
+# default-client = winbind
+</programlisting>
+	</informalexample>
+
+		<para>The default setting for this is
+		<option>sssd</option> which uses
+		<ulink url="https://fedorahosted.org/sssd/">SSSD</ulink> as
+		the Active Directory client. You can also specify
+		<option>winbind</option> to use
+		<ulink url="http://www.samba.org/samba/docs/man/Samba-HOWTO-Collection/winbind.html">Samba Winbind</ulink>.
+		</para>
+
+		<para>Some callers of <command>realmd</command> such as the
+		<link linkend="realm"><command>realm</command></link>
+		command line tool allow specifying which client software should
+		be used. Others, such as GNOME Control Center, simplify choose
+		the default.</para>
+
+		<para>You can verify the preferred default client softawre by
+		running the following command. The realm with the preferred
+		client software will be listed first.</para>
+
+		<informalexample>
+<screen>
+$ <command>realm discover domain.example.com</command>
+domain.example.com
+  configured: no
+  server-software: active-directory
+  client-software: sssd
+  type: kerberos
+  realm-name: AD.THEWALTER.LAN
+  domain-name: ad.thewalter.lan
+domain.example.com
+  configured: no
+  server-software: active-directory
+  client-software: winbind
+  type: kerberos
+  realm-name: AD.THEWALTER.LAN
+  domain-name: ad.thewalter.lan
+</screen>
+	</informalexample>
+
+	</section>
+	</section>
+
+	<section id="guide-configuring-realm">
+		<title>Realm specific settings</title>
+		<para>These options should go in an section with the same name
+		as the realm in the <filename>/etc/realmd.conf</filename> file.
+		For example for the <option>domain.example.com</option> domain
+		the section would be called <option>[domain.example.com]</option>.
+		To figure out the canonical name for a realm use the
+		<command>realm</command> command:</para>
+
+		<informalexample>
+<screen>
+$ <command>realm discover --name DOMAIN.example.com</command>
+domain.example.com
+...
+</screen>
+		</informalexample>
+
+		<para>Only specify the settings you wish to override.</para>
+	<section>
+		<title>computer-ou</title>
+
+		<para>Specify this option to create directory computer accounts
+		in a location other than the default. This currently only works
+		with Active Directory domains.</para>
+
+		<informalexample>
+<programlisting>
+[domain.example.com]
+computer-ou = OU=Linux Computers,DC=domain,DC=example,DC=com
+# computer-ou = OU=Linux Computers,
+</programlisting>
+	</informalexample>
+
+		<para>Specify the OU as an LDAP DN. It can be relative to the
+		Root DSE, or a complete LDAP DN. Obviously the OU must exist
+		in the directory.</para>
+
+		<para>It is also possible to use the <option>--computer-ou</option>
+		argument of the <link linkend="realm">realm</link> command to
+		create a computer account at a specific OU.</para>
+
+	</section>
+	</section>
+</chapter>

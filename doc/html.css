@@ -91,3 +91,14 @@ H3 {
 	left: -1em;
 	font-weight: normal !important;
 }
+
+DD > DL {
+	margin-top: 0.3em;
+	margin-bottom: 0.3em;
+}
+
+PRE.screen {
+	border: solid 1px #729fcf;
+	padding: 0.5em;
+	background: #e6f3ff;
+}

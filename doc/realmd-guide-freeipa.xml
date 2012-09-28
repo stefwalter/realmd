@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
+               "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
+[
+  <!ENTITY % local.common.attrib "xmlns:xi  CDATA  #FIXED 'http://www.w3.org/2003/XInclude'">
+]>
+
+<chapter id="guide-freeipa">
+	<title>Using with FreeIPA</title>
+
+	<para><command>realmd</command> can discover FreeIPA domains. It is not
+	yet possible to join the computer to the domain.</para>
+
+	<section>
+		<title>Discovering FreeIPA domains</title>
+		<para><command>realmd</command> discovers which domains or
+		realms it can use or configure. It can discover and identify
+		FreeIPA domains by looking up the appropriate DNS SRV
+		records and by connecting to the server and retrieving
+		its TLS certificate.</para>
+
+		<para>The following DNS SRV records are required to be present
+		for <command>realmd</command> to identify a provided realm as
+		an Kerberos domain.</para>
+
+		<informalexample>
+<screen>
+# In this example the FreeIPA domain is 'domain.example.com'
+<emphasis>_kerberos._udp.</emphasis>domain.example.com.
+</screen>
+		</informalexample>
+
+		<para>In addition <command>realmd</command> connects to the first
+		three KDC's listed and tests if they are FreeIPA servers. It
+		does this by connecting via HTTPS and retrieving their certificate
+		from the <filename>/ipa/config/ca.crt</filename> location. It
+		compares this certificate with the one being used on KDC HTTPS
+		server. If they match the domain is treated as a FreeIPA domain.</para>
+
+		<para>To see how <command>realmd</command> is discovering a
+		particular domain name, try a command like the following. Using
+		the <option>--verbose</option> argument displays verbose
+		discovery information.</para>
+
+		<informalexample>
+<screen>
+$ <command>realm --verbose discover domain.example.com</command>
+ * Searching for kerberos SRV records for domain: _kerberos._udp.ipa.thewalter.lan
+ * Searching for MSDCS SRV records on domain: _kerberos._tcp.dc._msdcs.ipa.thewalter.lan
+ * dc.domain.example.com:88
+ * Trying to retrieve IPA certificate from dc.domain.example.com
+ * Retrieved IPA CA certificate verifies the HTTPS connection
+ * Found kerberos DNS records for: domain.example.com
+ * Found IPA style certificate for: domain.example.com
+ * Successfully discovered: domain.example.com
+...
+</screen>
+		</informalexample>
+
+	</section>
+
+</chapter>

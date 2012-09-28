@@ -1,0 +1,208 @@
+<?xml version="1.0"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
+               "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
+[
+  <!ENTITY % local.common.attrib "xmlns:xi  CDATA  #FIXED 'http://www.w3.org/2003/XInclude'">
+]>
+
+<chapter id="guide-active-directory">
+	<title>Using with Active Directory</title>
+
+	<para><command>realmd</command> can discover Active Directory domains
+	and join the current computer as an account on that domain. This allows
+	using domain users locally, as well as use a domain account to log
+	into the machine.</para>
+
+	<section id="guide-active-directory-discover">
+		<title>Discovering Active Directory domains</title>
+		<para><command>realmd</command> discovers which domains or
+		realms it can use or configure. It can discover and identify
+		Active Directory domains by looking up the appropriate DNS SRV
+		records.</para>
+
+		<para>The following DNS SRV records are required to be present
+		for <command>realmd</command> to identify a provided realm as
+		an Active Directory domain. The DNS server that comes with
+		Active Directory on Windows Server automatically creates
+		these DNS records.</para>
+
+		<informalexample>
+<screen>
+# In this example the Active Directory domain is 'domain.example.com'
+<emphasis>_kerberos._udp.</emphasis>domain.example.com.
+<emphasis>_kerberos._tcp.dc._msdcs.</emphasis>domain.example.com.
+</screen>
+		</informalexample>
+
+		<para>To see how <command>realmd</command> is discovering a
+		particular domain name, try a command like the following. Using
+		the <option>--verbose</option> argument displays verbose
+		discovery information.</para>
+
+		<informalexample>
+<screen>
+$ <command>realm --verbose domain.example.com</command>
+ * Searching for kerberos SRV records for domain: _kerberos._udp.domain.example.com
+ * Searching for MSDCS SRV records on domain: _kerberos._tcp.dc._msdcs.domain.example.com
+ * dc.domain.example.com:88
+ * Found kerberos DNS records for: domain.example.com
+ * Found AD style DNS records for: domain.example.com
+ * Successfully discovered: domain.example.com
+...
+</screen>
+		</informalexample>
+
+	</section>
+
+	<section id="guide-active-directory-client">
+		<title>Active Directory client software</title>
+		<para>As part of configuring an Active Directory domain for use
+		on the local computer, <command>realmd</command> will configure
+		client software to enable domain accounts to be used on the local
+		computer.</para>
+
+		<para><command>realmd</command> supports two types of client
+		software for Active Directory:
+		<ulink url="https://fedorahosted.org/sssd/">SSSD</ulink> and
+		<ulink url="http://www.samba.org/samba/docs/man/Samba-HOWTO-Collection/winbind.html">Winbind</ulink>.
+		By default SSSD is used.</para>
+
+		<section>
+			<title>Using SSSD with Active Directory</title>
+			<para><ulink url="https://fedorahosted.org/sssd/">SSSD</ulink>
+			provides client software for various kerberos and/or LDAP
+			directories. Since version 1.9.x it provides good support
+			for Active Directory.</para>
+
+			<para>When joining a computer to an Active Directory domain,
+			<command>realmd</command> will use SSSD as the client software
+			by default. You can force use of SSSD by specifying the
+			<option>--client-software=sssd</option> when joining the
+			domain with the
+			<link linkend="realm"><command>realm</command></link>
+			command like this:</para>
+
+			<informalexample>
+<screen>
+$ <command>realm join --client-software=sssd domain.example.com</command>
+</screen>
+			</informalexample>
+		</section>
+
+		<section>
+			<title>Using Winbind with Active Directory</title>
+			<para>Samba
+			<ulink url="http://www.samba.org/samba/docs/man/Samba-HOWTO-Collection/winbind.html">Winbind</ulink>
+			provides client software for use with Active Directory.</para>
+
+			<para>To have <command>realmd</command> use Winbind as the
+			client software, configure the
+			<link linkend="guide-configuring-active-directory"><option>default-client</option> setting</link>.
+			You can force use of Winbind by specifying the
+			<option>--client-software=winbind</option> when joining the
+			domain with the
+			<link linkend="realm"><command>realm</command></link>
+			command like this:</para>
+
+		<informalexample>
+<screen>
+$ <command>realm join --client-software=winbind domain.example.com</command>
+</screen>
+		</informalexample>
+
+		</section>
+	</section>
+
+	<section id="guide-active-directory-join">
+		<title>Joining an Active Directory domain</title>
+
+		<para>To join an Active Directory domain with <command>realmd</command>
+		you can use the <link linkend="realm"><command>realm</command></link>
+		command line tool:</para>
+
+		<informalexample>
+<screen>
+$ <command>realm join --verbose domain.example.com</command>
+</screen>
+		</informalexample>
+
+		<para>By specifying the <option>--verbose</option> it's easier
+		to see what went wrong if the join fails.</para>
+
+		<para>Other tools also use <command>realmd</command> which can
+		be used to perform the join operation, for example: GNOME
+		Control Center.</para>
+
+		<para>The join operation does the following:</para>
+		<itemizedlist>
+			<listitem><para>Discovers information about the domain.</para></listitem>
+			<listitem><para>Installs the necessary software to join the domain, such as SSSD or Winbind.</para></listitem>
+			<listitem><para>Tries to join the domain automatically, without administrative credentials.</para></listitem>
+			<listitem><para>If administrative credentials are required, a password will be prompted for.</para></listitem>
+			<listitem><para>A computer account in the domain will be created, and or updated.</para></listitem>
+			<listitem><para>A host keytab file at <filename>/etc/krb5.keytab</filename> is created.</para></listitem>
+			<listitem><para>Configures the SSSD or Winbind services, and restarts and enables them as appropriate.</para></listitem>
+			<listitem><para>Enables domain users in <filename>/etc/nsswitch.conf</filename></para></listitem>
+		</itemizedlist>
+
+		<para>After the join operation is complete, domain accounts should
+		be usable locally, although logins using domain accounts are
+		not necessarily enabled.</para>
+
+		<para>You verify that domain accounts are working with with a
+		command like this:</para>
+
+		<informalexample>
+<screen>
+$ <command>getent passwd DOMAIN\Administrator</command>
+</screen>
+		</informalexample>
+
+		<para>The join operation will create or update a computer account
+		in the domain. If you wish to specify a specific organizational unit
+		where this account is created, you can use the
+		<link linkend="guide-configuring-realm"><option>computer-ou</option> setting</link>.</para>
+
+	</section>
+
+	<section id="guide-active-directory-permit">
+		<title>Logins using Domain Accounts</title>
+
+		<para>Once the
+		<link linkend="guide-active-directory-join">computer is joined</link>
+		to an Active Directory domain, you can configure the machine so
+		that you can log in with domain accounts.</para>
+
+		<para>To permit any domain account to log in, use the following
+		command.</para>
+
+		<informalexample>
+<screen>
+$ <command>realm permit --realm domain.example.com --all</command>
+</screen>
+		</informalexample>
+
+		<para>To permit only specific accounts from the domain to log in
+		use the following command. The first time this command is run
+		it will change the mode to only allow logins by specific accounts,
+		and then add the specified accounts to the list of accounts
+		to permit.</para>
+
+		<informalexample>
+<screen>
+$ <command>realm permit --realm domain.example.com DOMAIN\\User1 DOMAIN\\User2</command>
+</screen>
+		</informalexample>
+
+		<para>To deny logins from any domain account, use the following
+		command.</para>
+
+		<informalexample>
+<screen>
+$ <command>realm deny --realm domain.example.com --all</command>
+</screen>
+		</informalexample>
+
+	</section>
+
+</chapter>

@@ -1,5 +1,7 @@
 abs_top_builddir = @abs_top_builddir@
 
+NULL =
+
 # We require automake 1.6 at least.
 AUTOMAKE_OPTIONS = 1.6
 
@@ -34,7 +36,12 @@ DBUS_GENERATED = \
 content_files= \
 	$(DBUS_GENERATED) \
 	$(DBUS_ESCAPED) \
-	realm.xml
+	html.css \
+	realm.xml \
+	realmd-guide-active-directory.xml \
+	realmd-guide-configuring.xml \
+	realmd-guide-freeipa.xml \
+	$(NULL)
 
 # SGML files where gtk-doc abbrevations (#GtkWidget) are expanded
 # These files must be listed here *and* in content_files

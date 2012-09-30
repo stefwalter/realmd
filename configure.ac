@@ -129,13 +129,16 @@ AC_SUBST(KRB5_LIBS)
 # -------------------------------------------------------------------
 # LDAP
 
+AC_CHECK_LIB(ldap, ldap_search, , [ldap_invalid=yes])
+AC_CHECK_LIB(lber, ber_pvt_opt_on, , [ldap_invalid=yes])
+AC_CHECK_HEADERS([ldap.h], , [ldap_invalid=yes])
+
+if test "$ldap_invalid" = "yes"; then
+	AC_MSG_ERROR(["Couldn't find OpenLDAP headers or libraries"])
+fi
+
 LDAP_LIBS=""
-
-AC_CHECK_LIB(ldap, ldap_search)
-AC_CHECK_LIB(lber, ber_pvt_opt_on)
-AC_CHECK_HEADERS(ldap.h)
 AC_CHECK_LIB(resolv, res_query, LDAP_LIBS="-lresolv")
-
 LDAP_LIBS="$LDAP_LIBS -lldap -llber"
 LDAP_CFLAGS=""
 

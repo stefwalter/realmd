@@ -432,9 +432,7 @@ realm_samba_change_logins (RealmKerberos *realm,
                            GError **error)
 {
 	RealmSamba *self = REALM_SAMBA (realm);
-	gchar **remove_names = NULL;
-	gchar **add_names = NULL;
-	gboolean ret = FALSE;
+	gchar **names;
 
 	if (!lookup_is_enrolled (self)) {
 		g_set_error (error, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
@@ -442,23 +440,30 @@ realm_samba_change_logins (RealmKerberos *realm,
 		return FALSE;
 	}
 
-	add_names = realm_kerberos_parse_logins (realm, TRUE, add, error);
-	if (add_names != NULL)
-		remove_names = realm_kerberos_parse_logins (realm, TRUE, add, error);
-
-	if (add_names && remove_names) {
-		ret = realm_ini_config_change_list (self->config,
-		                                    REALM_SAMBA_CONFIG_GLOBAL,
-		                                    "realmd permitted logins", ",",
-		                                    (const gchar **)add_names,
-		                                    (const gchar **)remove_names,
-		                                    error);
+	/* We cannot handle removing logins */
+	names = realm_kerberos_parse_logins (realm, TRUE, remove, error);
+	if (names == NULL)
+		return FALSE;
+	if (names[0] != NULL) {
+		g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
+		             _("The Samba provider cannot restrict permitted logins."));
+		g_strfreev (names);
+		return FALSE;
 	}
 
-	g_strfreev (remove_names);
-	g_strfreev (add_names);
+	g_strfreev (names);
+	names = realm_kerberos_parse_logins (realm, TRUE, add, error);
+	if (names == NULL)
+		return FALSE;
 
-	return ret;
+	/*
+	 * Samba cannot restrict the set of logins. We allow specific logins to be
+	 * added, but not changing the mode to only allow the permitted logins.
+	 * In addition we don't keep track of the list of permitted logins.
+	 */
+
+	g_strfreev (names);
+	return TRUE;
 }
 
 static void
@@ -500,9 +505,7 @@ update_properties (RealmSamba *self)
 	const gchar *name;
 	gchar *domain;
 	gchar *realm;
-	gchar **values;
 	gchar *prefix;
-	gint i;
 
 	g_object_freeze_notify (G_OBJECT (self));
 
@@ -531,16 +534,10 @@ update_properties (RealmSamba *self)
 	}
 
 	permitted = g_ptr_array_new_full (0, g_free);
-	values = realm_ini_config_get_list (self->config, REALM_SAMBA_CONFIG_GLOBAL,
-	                                    "realmd permitted logins", ",");
-
-	for (i = 0; values != NULL && values[i] != NULL; i++)
-		g_ptr_array_add (permitted, realm_kerberos_format_login (REALM_KERBEROS (self), values[i]));
 	g_ptr_array_add (permitted, NULL);
 
 	realm_kerberos_set_permitted_logins (kerberos, (const gchar **)permitted->pdata);
 	g_ptr_array_free (permitted, TRUE);
-	g_strfreev (values);
 
 	g_object_thaw_notify (G_OBJECT (self));
 }

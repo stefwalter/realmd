@@ -111,6 +111,7 @@ typedef struct {
 	const gchar **packages;
 
 	/* Used for adcli enroll */
+	gboolean automatic;
 	GBytes *one_time_password;
 	gchar *ccache_file;
 
@@ -240,8 +241,15 @@ on_join_do_sssd (GObject *source,
 
 
 	if (join->use_adcli) {
-		if (!realm_adcli_enroll_join_finish (result, &workgroup, &error))
+		if (!realm_adcli_enroll_join_finish (result, &workgroup, &error)) {
 			workgroup = NULL;
+			if (join->automatic &&
+			    g_error_matches (error, REALM_ERROR, REALM_ERROR_AUTH_FAILED)) {
+				g_clear_error (&error);
+				g_set_error (&error, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
+				             _("Unable to automatically join the domain"));
+			}
+		}
 	} else {
 		if (realm_samba_enroll_join_finish (result, &settings, &error)) {
 			workgroup = g_strdup (g_hash_table_lookup (settings, "workgroup"));
@@ -301,6 +309,7 @@ on_install_do_join (GObject *source,
 			                                      g_object_ref (async));
 
 		} else if (join->use_adcli) {
+			g_assert (join->automatic);
 			realm_adcli_enroll_join_automatic_async (join->realm_name,
 			                                         join->computer_ou,
 			                                         join->invocation,
@@ -488,6 +497,7 @@ realm_sssd_ad_join_automatic_async (RealmKerberosMembership *membership,
 
 	if (async) {
 		join = g_simple_async_result_get_op_res_gpointer (async);
+		join->automatic = TRUE;
 		realm_packages_install_async (join->packages, join->invocation,
 		                              on_install_do_join, g_object_ref (async));
 		g_object_unref (async);
@@ -537,7 +547,6 @@ realm_sssd_ad_join_password_async (RealmKerberosMembership *membership,
 	if (async) {
 		join = g_simple_async_result_get_op_res_gpointer (async);
 
-		/* If using samba, then only for a subset of enctypes */
 		if (join->use_adcli) {
 			realm_kerberos_kinit_ccache_async (REALM_KERBEROS (membership),
 			                                   user_name, password, NULL,

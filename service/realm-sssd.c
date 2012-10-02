@@ -326,7 +326,7 @@ update_properties (RealmSssd *self)
 	for (i = 0; domains && domains[i]; i++) {
 		section = realm_sssd_config_domain_to_section (domains[i]);
 		realm = realm_ini_config_get (self->pv->config, section, "krb5_realm");
-		if (g_strcmp0 (realm, name) == 0) {
+		if (realm && name && g_ascii_strcasecmp (realm, name) == 0) {
 			domain = g_strdup (domains[i]);
 			break;
 		} else {

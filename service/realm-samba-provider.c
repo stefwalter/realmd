@@ -61,8 +61,9 @@ static void
 realm_samba_provider_constructed (GObject *obj)
 {
 	RealmSambaProvider *self;
-	gchar *name = NULL;
+	gchar *krb_realm = NULL;
 	gchar *security;
+	gchar *name;
 
 	G_OBJECT_CLASS (realm_samba_provider_parent_class)->constructed (obj);
 
@@ -72,14 +73,16 @@ realm_samba_provider_constructed (GObject *obj)
 
 	security = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "security");
 	if (security != NULL && g_ascii_strcasecmp (security, "ADS") == 0)
-		name = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
+		krb_realm = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "realm");
 
-	if (name != NULL) {
+	if (krb_realm != NULL) {
+		name = g_ascii_strdown (krb_realm, -1);
 		realm_provider_lookup_or_register_realm (REALM_PROVIDER (self),
 		                                         REALM_TYPE_SAMBA, name, NULL);
+		g_free (name);
 	}
 
-	g_free (name);
+	g_free (krb_realm);
 	g_free (security);
 }
 

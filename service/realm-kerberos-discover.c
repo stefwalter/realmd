@@ -493,6 +493,7 @@ realm_kerberos_discover_finish (GAsyncResult *result,
 {
 	RealmKerberosDiscover *self;
 	gchar *realm;
+	gchar *name;
 
 	g_return_val_if_fail (REALM_IS_KERBEROS_DISCOVER (result), NULL);
 	g_return_val_if_fail (error == NULL || *error == NULL, NULL);
@@ -511,6 +512,7 @@ realm_kerberos_discover_finish (GAsyncResult *result,
 		return NULL;
 
 	realm = g_ascii_strup (self->domain, -1);
+	name = g_ascii_strdown (self->domain, -1);
 
 	if (discovery) {
 		*discovery = realm_discovery_new ();
@@ -539,5 +541,6 @@ realm_kerberos_discover_finish (GAsyncResult *result,
 		}
 	}
 
-	return realm;
+	g_free (realm);
+	return name;
 }

@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-dbus-generated.h"
@@ -98,6 +99,26 @@ enroll_method_reply (GDBusMethodInvocation *invocation,
 }
 
 static void
+on_name_caches_flush (GObject *source,
+                      GAsyncResult *result,
+                      gpointer user_data)
+{
+	MethodClosure *closure = user_data;
+	GError *error = NULL;
+	gint status;
+
+	status = realm_command_run_finish (result, NULL, &error);
+	if (status != 0) {
+		realm_diagnostics_error (closure->invocation, error,
+		                         "Flushing name caches failed");
+	}
+
+	g_clear_error (&error);
+	enroll_method_reply (closure->invocation, NULL);
+	method_closure_free (closure);
+}
+
+static void
 on_enroll_complete (GObject *source,
                     GAsyncResult *result,
                     gpointer user_data)
@@ -110,10 +131,16 @@ on_enroll_complete (GObject *source,
 	g_return_if_fail (iface->unenroll_finish != NULL);
 
 	(iface->enroll_finish) (REALM_KERBEROS_MEMBERSHIP (closure->self), result, &error);
-	enroll_method_reply (closure->invocation, error);
 
-	g_clear_error (&error);
-	method_closure_free (closure);
+	if (error == NULL) {
+		realm_command_run_known_async ("name-caches-flush", NULL, closure->invocation,
+		                               NULL, on_name_caches_flush, closure);
+
+	} else {
+		enroll_method_reply (closure->invocation, error);
+		method_closure_free (closure);
+		g_clear_error (&error);
+	}
 }
 
 static void

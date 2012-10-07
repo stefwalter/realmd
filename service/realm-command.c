@@ -26,12 +26,14 @@
 #include <errno.h>
 #include <string.h>
 
+#if 0
 enum {
 	FD_INPUT,
 	FD_OUTPUT,
 	FD_ERROR,
 	NUM_FDS
 };
+#endif
 
 #define DEBUG_VERBOSE 0
 
@@ -39,25 +41,12 @@ typedef struct {
 	GBytes *input;
 	gsize input_offset;
 	GString *output;
-	guint source_sig;
 	gint exit_code;
 	gboolean cancelled;
 	GDBusMethodInvocation *invocation;
+	GSubprocess *process;
+	gint cancel_sig;
 } CommandClosure;
-
-typedef struct {
-	GSource source;
-	GPollFD polls[NUM_FDS];         /* The various fd's we're listening to */
-
-	GPid child_pid;
-	guint child_sig;
-
-	GSimpleAsyncResult *res;
-	CommandClosure *command;
-
-	GCancellable *cancellable;
-	guint cancel_sig;
-} ProcessSource;
 
 static void
 command_closure_free (gpointer data)
@@ -67,11 +56,14 @@ command_closure_free (gpointer data)
 		g_bytes_unref (command->input);
 	if (command->invocation)
 		g_object_unref (command->invocation);
+	if (command->process)
+		g_object_unref (command->process);
 	g_string_free (command->output, TRUE);
-	g_assert (command->source_sig == 0);
+	g_assert (command->cancel_sig == 0);
 	g_slice_free (CommandClosure, command);
 }
 
+#if 0
 static void
 complete_source_is_done (ProcessSource *process_source)
 {
@@ -188,42 +180,46 @@ read_output (int fd,
 
 	return TRUE;
 }
+#endif
 
-static gboolean
-on_process_source_input (CommandClosure *command,
-                         ProcessSource *process_source,
-                         gint fd)
+static void
+on_process_input (GObject *source,
+                  GAsyncResult *result,
+                  gpointer user_data)
 {
-	const guchar *data;
-	gsize length;
-	gssize result;
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	CommandClosure *command = g_simple_async_result_get_op_res_gpointer (async);
+	GError *error = NULL;
+	gssize written;
 
-	if (command->input == NULL)
-		return FALSE; /* don't call again */
+	written = g_output_stream_write_finish (G_OUTPUT_STREAM (source),
+	                                        result, &error);
 
-	data = g_bytes_get_data (command->input, &length);
-	if (command->input_offset < length) {
-		result = write (fd, data + command->input_offset,
-		                length - command->input_offset);
-		if (result < 0) {
-			if (errno != EINTR && errno != EAGAIN) {
-				g_warning ("couldn't write output data to process");
-				g_bytes_unref (command->input);
-				command->input = NULL;
-				return FALSE;
-			}
-		} else {
-			command->input_offset += result;
+	if (written < 0) {
+		g_warning ("couldn't write output data to process: %s", error->message);
+
+	} else {
+		command->input_offset += result;
+		if (command->input_offset < length) {
+			data = g_bytes_get_data (command->input, &length);
+			g_output_stream_write_async (G_OUTPUT_STREAM (source),
+			                             data + command->input_offset,
+			                             length - command->input_offset,
+			                             G_PRIORITY_DEFAULT, NULL,
+			                             on_process_input, g_object_ref (async));
 		}
 	}
 
-	if (command->input_offset >= length) {
-		g_bytes_unref (command->input);
-		command->input = NULL;
-		return FALSE; /* close, don't call again */
-	}
+	g_object_unref (async);
+}
 
-	return TRUE; /* call again */
+static void
+on_process_output (GObject *source,
+                   GAsyncResult *result,
+                   gpointer user_data)
+{
+	GAsyncResult *result =
+	g_object_unref (async);
 }
 
 static gboolean
@@ -231,6 +227,32 @@ on_process_source_output (CommandClosure *command,
                           ProcessSource *process_source,
                           gint fd)
 {
+	static gboolean
+	read_output (int fd,
+	             GString *buffer)
+	{
+		gchar block[1024];
+		gssize result;
+
+		g_return_val_if_fail (fd >= 0, FALSE);
+
+		do {
+			result = read (fd, block, sizeof (block));
+			if (result < 0) {
+				if (errno == EINTR || errno == EAGAIN)
+					continue;
+				return FALSE;
+			} else {
+				g_string_append_len (buffer, block, result);
+			}
+		} while (result == sizeof (block));
+
+		return TRUE;
+	}
+	#endif
+
+
+
 	if (!read_output (fd, command->output)) {
 		g_warning ("couldn't read output data from process");
 		return FALSE;
@@ -383,21 +405,16 @@ static void
 on_cancellable_cancelled (GCancellable *cancellable,
                           gpointer user_data)
 {
-	ProcessSource *process_source = user_data;
+	CommandClosure *command = user_data;
 
-	g_debug ("process cancelled: %d", process_source->child_pid);
+	g_debug ("process cancelled: %d", (int)g_subprocess_get_pid (command->process));
 
 	/* Set an error, which is respected when this actually completes. */
 	g_simple_async_result_set_error (process_source->res, G_IO_ERROR, G_IO_ERROR_CANCELLED,
 	                                 _("The operation was cancelled"));
 	process_source->command->cancelled = TRUE;
 
-	/* Try and kill the child process */
-	if (process_source->child_pid) {
-		g_debug ("sending term signal to process: %d",
-		            (int)process_source->child_pid);
-		kill (process_source->child_pid, SIGTERM);
-	}
+	g_subprocess_request_exit (command->process);
 }
 
 void
@@ -429,15 +446,6 @@ realm_command_runv_async (gchar **argv,
 	g_return_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable));
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
-	for (i = 0; i < NUM_FDS; i++)
-		child_fds[i] = -1;
-
-	/* TODO: Figure out if it's a name, and lookup the path */
-
-	/* Spawn/child will close all other attributes, besides thesthose in child_fds */
-	child_fds[FD_INPUT] = 0;
-	child_fds[FD_OUTPUT] = 1;
-	child_fds[FD_ERROR] = 2;
 
 	env = g_get_environ ();
 	env_string = NULL;
@@ -461,10 +469,12 @@ realm_command_runv_async (gchar **argv,
 	g_free (env_string);
 	g_free (cmd_string);
 
-	g_spawn_async_with_pipes (NULL, argv, env,
-	                          G_SPAWN_DO_NOT_REAP_CHILD,
-	                          on_unix_process_child_setup, child_fds,
-	                          &pid, &input_fd, &output_fd, &error_fd, &error);
+	process = g_subprocess_new (NULL, argv, env,
+	                            G_SUBPROCESS_FLAGS_NEW_SESSION |
+	                            G_SUBPROCESS_FLAGS_STDIN_PIPE |
+	                            G_SUBPROCESS_FLAGS_STDOUT_PIPE |
+	                            G_SUBPROCESS_FLAGS_STDERR_PIPE,
+	                            &error);
 
 	g_strfreev (env);
 
@@ -473,6 +483,7 @@ realm_command_runv_async (gchar **argv,
 	command->input = input ? g_bytes_ref (input) : NULL;
 	command->output = g_string_sized_new (128);
 	command->invocation = invocation ? g_object_ref (invocation) : NULL;
+	command->process = process;
 	g_simple_async_result_set_op_res_gpointer (res, command, command_closure_free);
 
 	if (error) {
@@ -482,54 +493,18 @@ realm_command_runv_async (gchar **argv,
 		return;
 	}
 
-	g_debug ("process started: %d", (int)pid);
+	g_debug ("process started: %d", (int)g_subprocess_get_pid (process));
 
-	source = g_source_new (&process_source_funcs, sizeof (ProcessSource));
-
-	/* Initialize the source */
-	process_source = (ProcessSource *)source;
-	for (i = 0; i < NUM_FDS; i++)
-		process_source->polls[i].fd = -1;
-	process_source->res = g_object_ref (res);
-	process_source->command = command;
-	process_source->child_pid = pid;
-
-	process_source->polls[FD_INPUT].fd = input_fd;
-	if (input_fd >= 0) {
-		process_source->polls[FD_INPUT].events = G_IO_HUP | G_IO_OUT;
-		g_source_add_poll (source, &process_source->polls[FD_INPUT]);
-	}
-	process_source->polls[FD_OUTPUT].fd = output_fd;
-	if (output_fd >= 0) {
-		process_source->polls[FD_OUTPUT].events = G_IO_HUP | G_IO_IN;
-		g_source_add_poll (source, &process_source->polls[FD_OUTPUT]);
-	}
-	process_source->polls[FD_ERROR].fd = error_fd;
-	if (error_fd >= 0) {
-		process_source->polls[FD_ERROR].events = G_IO_HUP | G_IO_IN;
-		g_source_add_poll (source, &process_source->polls[FD_ERROR]);
-	}
+	g_subprocess_wait (process, NULL,
+	                   on_unix_process_child_exited, g_object_ref (res));
 
 	if (cancellable) {
-		process_source->cancellable = g_object_ref (cancellable);
-		process_source->cancel_sig = g_cancellable_connect (cancellable,
-		                                                    G_CALLBACK (on_cancellable_cancelled),
-		                                                    g_source_ref (source),
-		                                                    (GDestroyNotify)g_source_unref);
+		command->cancel_sig = g_cancellable_connect (cancellable,
+		                                             G_CALLBACK (on_cancellable_cancelled),
+		                                             command, NULL);
 	}
 
-	g_assert (command->source_sig == 0);
-	g_source_set_callback (source, unused_callback, NULL, NULL);
-	command->source_sig = g_source_attach (source, g_main_context_default ());
-
-	/* This assumes the outstanding reference to source */
-	g_assert (process_source->child_sig == 0);
-	process_source->child_sig = g_child_watch_add_full (G_PRIORITY_DEFAULT, pid,
-	                                                    on_unix_process_child_exited,
-	                                                    g_source_ref (source),
-	                                                    (GDestroyNotify)g_source_unref);
-
-	/* source is unreffed in complete_if_source_is_done() */
+	g_object_unref (res);
 }
 
 static gboolean

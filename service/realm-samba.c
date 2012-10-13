@@ -28,6 +28,7 @@
 #include "realm-samba-config.h"
 #include "realm-samba-enroll.h"
 #include "realm-samba-winbind.h"
+#include "realm-settings.h"
 
 #include <glib/gstdio.h>
 #include <glib/gi18n.h>
@@ -204,6 +205,8 @@ on_join_do_winbind (GObject *source,
 		                         "security", "ads",
 		                         "realm", enroll->realm_name,
 		                         "workgroup", workgroup,
+		                         "template homedir", realm_settings_string ("active-directory", "default-home"),
+		                         "template shell", realm_settings_string ("active-directory", "default-shell"),
 		                         NULL);
 	}
 

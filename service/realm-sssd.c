@@ -28,6 +28,8 @@
 
 #include <glib/gstdio.h>
 
+#include <string.h>
+
 struct _RealmSssdPrivate {
 	gchar *domain;
 	gchar *section;
@@ -441,4 +443,22 @@ realm_sssd_get_config_domain (RealmSssd *self)
 {
 	g_return_val_if_fail (REALM_IS_SSSD (self), NULL);
 	return self->pv->domain;
+}
+
+gchar *
+realm_sssd_build_default_home (const gchar *value)
+{
+	gchar *home;
+	char *pos;
+
+	/* Change from our format to the sssd format place-holders */
+	home = g_strdup (value);
+	pos = strstr (home, "%U");
+	if (pos)
+		pos[1] = 'u';
+	pos = strstr (home, "%D");
+	if (pos)
+		pos[1] = 'd';
+
+	return home;
 }

@@ -23,6 +23,7 @@
 #include "realm-packages.h"
 #include "realm-samba-enroll.h"
 #include "realm-service.h"
+#include "realm-settings.h"
 #include "realm-sssd.h"
 #include "realm-sssd-ad.h"
 #include "realm-sssd-config.h"
@@ -189,6 +190,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	gchar **parts;
 	gchar *rdn;
 	gchar *dn;
+	gchar *home;
 	gint i;
 
 	/* Calculate the domain and dn */
@@ -201,6 +203,8 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	}
 	dn = g_strjoinv (",", parts);
 	g_strfreev (parts);
+
+	home = realm_sssd_build_default_home (realm_settings_string ("active-directory", "default-home"));
 
 	ret = realm_sssd_config_add_domain (config, workgroup, error,
 	                                    "enumerate", "False",
@@ -219,8 +223,10 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	                                    "krb5_realm", realm,
 	                                    "krb5_store_password_if_offline", "True",
 
+	                                    "fallback_homedir", home,
 	                                    NULL);
 
+	g_free (home);
 	g_free (domain);
 	g_free (dn);
 

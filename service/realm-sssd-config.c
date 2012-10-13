@@ -108,6 +108,7 @@ realm_sssd_config_add_domain (RealmIniConfig *config,
 	const gchar *value;
 	const gchar *domains[2];
 	gchar *section;
+	gchar *shell;
 	va_list va;
 
 	g_return_val_if_fail (REALM_IS_INI_CONFIG (config), FALSE);
@@ -131,6 +132,14 @@ realm_sssd_config_add_domain (RealmIniConfig *config,
 		realm_ini_config_set (config, "sssd", "services", "nss, pam");
 		realm_ini_config_set (config, "sssd", "config_file_version", "2");
 	}
+
+	/* Always make sure this is set */
+	shell = realm_ini_config_get (config, "nss", "default_shell");
+	if (shell == NULL) {
+		realm_ini_config_set (config, "nss", "default_shell",
+		                      realm_settings_string ("active-directory", "default-shell"));
+	}
+	g_free (shell);
 
 	domains[0] = domain;
 	domains[1] = NULL;

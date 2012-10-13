@@ -80,6 +80,69 @@ domain.example.com
 	</informalexample>
 
 	</section>
+
+	<section>
+		<title>default-home</title>
+
+		<para>Specify the <option>default-home</option> setting in
+		order to control how to set the home directory for Active
+		Directory domain accounts.</para>
+
+		<informalexample>
+<programlisting language="js">
+[active-directory]
+default-home = /home/%D/%U
+# default-home = /nfs/home/%D-%U
+</programlisting>
+		</informalexample>
+
+		<para>The default setting for this is <option>/home/%D/%U</option>. The
+		<option>%D</option> format is replaced by the short Active Directory
+		domain name. The <option>%U</option> format is replaced by the user name.</para>
+
+		<para>You can verify the home directory for a user by running the
+		following command.</para>
+
+		<informalexample>
+<screen>
+$ <command>getent passwd 'DOMAIN/User'</command>
+DOMAIN\user:*:1344600500:1344600513:User Name:/home/DOMAIN/user:/bin/bash
+</screen>
+		</informalexample>
+
+	</section>
+
+	<section>
+		<title>default-shell</title>
+
+		<para>Specify the <option>default-shell</option> setting in
+		order to control how to set the Unix shell for Active
+		Directory domain accounts.</para>
+
+		<informalexample>
+<programlisting language="js">
+[active-directory]
+default-shell = /bin/bash
+# default-shell = /bin/sh
+</programlisting>
+		</informalexample>
+
+		<para>The default setting for this is <option>/bin/bash</option> shell. The
+		shell should be a valid shell if you expect the domain users be able to log
+		in. For example it should exist in the <filename>/etc/shells</filename> file.</para>
+
+		<para>You can verify the shell for a user by running the
+		following command.</para>
+
+		<informalexample>
+<screen>
+$ <command>getent passwd 'DOMAIN/User'</command>
+DOMAIN\user:*:1344600500:1344600513:User Name:/home/DOMAIN/user:/bin/bash
+</screen>
+		</informalexample>
+
+	</section>
+
 	</section>
 
 	<section id="guide-configuring-realm">

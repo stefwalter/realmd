@@ -281,7 +281,7 @@ on_join_do_keytab (GObject *source,
 }
 
 static void
-on_conf_do_join (GObject *source,
+on_conf_kerberos_method_do_join (GObject *source,
                  GAsyncResult *result,
                  gpointer user_data)
 {
@@ -302,6 +302,35 @@ on_conf_do_join (GObject *source,
 		                   "-U", join->user_name, "ads", "join", join->realm,
 		                   join->create_computer_arg, NULL);
 
+	} else {
+		g_simple_async_result_take_error (res, error);
+		g_simple_async_result_complete (res);
+	}
+
+	g_object_unref (res);
+}
+
+static void
+on_conf_realm_do_kerberos_method (GObject *source,
+                                  GAsyncResult *result,
+                                  gpointer user_data)
+{
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
+	GError *error = NULL;
+	gint status;
+
+	status = realm_command_run_finish (result, NULL, &error);
+	if (error == NULL && status != 0) {
+		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
+		             "Configuring samba failed");
+	}
+
+	if (error == NULL) {
+		begin_net_process (join, NULL,
+		                   on_conf_kerberos_method_do_join, g_object_ref (res),
+		                   "conf", "setparm", REALM_SAMBA_CONFIG_GLOBAL,
+		                   "kerberos method", "system keytab", NULL);
 	} else {
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete (res);
@@ -353,7 +382,7 @@ realm_samba_enroll_join_async (const gchar *realm,
 		g_simple_async_result_complete_in_idle (res);
 	} else {
 		begin_net_process (join, NULL,
-		                   on_conf_do_join, g_object_ref (res),
+		                   on_conf_realm_do_kerberos_method, g_object_ref (res),
 		                   "conf", "setparm", REALM_SAMBA_CONFIG_GLOBAL,
 		                   "realm", join->realm, NULL);
 	}

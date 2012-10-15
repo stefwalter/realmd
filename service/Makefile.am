@@ -46,10 +46,9 @@ realmd_SOURCES = \
 	realm-settings.c realm-settings.h \
 	realm-sssd.c realm-sssd.h \
 	realm-sssd-ad.c realm-sssd-ad.h \
-	realm-sssd-ad-provider.c realm-sssd-ad-provider.h \
+	realm-sssd-provider.c realm-sssd-provider.h \
 	realm-sssd-config.c realm-sssd-config.h \
 	realm-sssd-ipa.c realm-sssd-ipa.h \
-	realm-sssd-ipa-provider.c realm-sssd-ipa-provider.h \
 	$(NULL)
 
 realmd_CFLAGS = \

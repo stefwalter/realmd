@@ -208,6 +208,20 @@ $ realm leave domain.example.com
 
 	<variablelist>
 		<varlistentry>
+			<term><option>--client-software=xxx</option></term>
+			<listitem><para>Only leave the realm which is using
+			the given client software. Possible values include
+			<replaceable>sssd</replaceable> or
+			<replaceable>winbind</replaceable>.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--server-software=xxx</option></term>
+			<listitem><para>Only leave the realm which is using the
+			given server software. Possible values include
+			<replaceable>active-directory</replaceable> or
+			<replaceable>freeipa</replaceable>.</para></listitem>
+		</varlistentry>
+		<varlistentry>
 			<term><option>--user</option></term>
 			<listitem><para>The user name to be used to authenticate
 			with when leaving the realm. You will be prompted for a

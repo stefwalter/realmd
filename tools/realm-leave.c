@@ -67,9 +67,36 @@ call_leave (RealmDbusKerberosMembership *membership,
 	return ret ? 0 : 1;
 }
 
+static gboolean
+match_kerberos_realm_to_detail (RealmDbusRealm *realm,
+                                const gchar *field,
+                                const gchar *value)
+{
+	GVariantIter iter;
+	const gchar *vfield;
+	const gchar *vvalue;
+	gboolean matching = FALSE;
+
+	/* If not set then anything matches */
+	if (value == NULL)
+		return TRUE;
+
+	g_variant_iter_init (&iter, realm_dbus_realm_get_details (realm));
+	while (g_variant_iter_loop (&iter, "(&s&s)", &vfield, &vvalue)) {
+		if (g_str_equal (field, vfield) && g_str_equal (value, vvalue)) {
+			matching = TRUE;
+			break;
+		}
+	}
+
+	return matching;
+}
+
 static RealmDbusKerberosMembership *
 locate_configured_matching_kerberos_realm (RealmClient *client,
-                                           const gchar *realm_name)
+                                           const gchar *realm_name,
+                                           const gchar *client_software,
+                                           const gchar *server_software)
 {
 	RealmDbusKerberosMembership *membership = NULL;
 	RealmDbusProvider *provider;
@@ -98,6 +125,11 @@ locate_configured_matching_kerberos_realm (RealmClient *client,
 				matched = (g_ascii_strcasecmp (name, realm_name) == 0);
 			}
 		}
+
+		if (matched)
+			matched = match_kerberos_realm_to_detail (realm, "client-software", client_software);
+		if (matched)
+			matched = match_kerberos_realm_to_detail (realm, "server-software", server_software);
 
 		g_object_unref (realm);
 
@@ -140,17 +172,20 @@ perform_user_leave (RealmClient *client,
 static int
 perform_leave (RealmClient *client,
                const gchar *realm_name,
-               const gchar *user_name)
+               const gchar *user_name,
+               const gchar *client_software,
+               const gchar *server_software)
 {
 	RealmDbusKerberosMembership *membership;
 	gint ret;
 
-	membership = locate_configured_matching_kerberos_realm (client, realm_name);
+	membership = locate_configured_matching_kerberos_realm (client, realm_name,
+	                                                        client_software, server_software);
 	if (membership == NULL) {
-		if (realm_name == NULL)
+		if (!realm_name && !client_software && !server_software)
 			realm_handle_error (NULL, "Couldn't find a configured realm");
 		else
-			realm_handle_error (NULL, "Couldn't find the configured realm: %s", realm_name);
+			realm_handle_error (NULL, "Couldn't find a matching realm");
 		return 1;
 	}
 
@@ -168,11 +203,17 @@ realm_leave (int argc,
 	GOptionContext *context;
 	gchar *arg_user = NULL;
 	gboolean arg_verbose = FALSE;
+	gchar *arg_client_software = NULL;
+	gchar *arg_server_software = NULL;
 	GError *error = NULL;
 	const gchar *realm_name;
 	gint ret = 0;
 
 	GOptionEntry option_entries[] = {
+		{ "client-software", 0, 0, G_OPTION_ARG_STRING, &arg_client_software,
+		  N_("Use specific client software"), NULL },
+		{ "server-software", 0, 0, G_OPTION_ARG_STRING, &arg_server_software,
+		  N_("Use specific server software"), NULL },
 		{ "user", 'U', 0, G_OPTION_ARG_STRING, &arg_user, N_("User name to use for enrollment"), NULL },
 		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
 		{ NULL, }
@@ -191,7 +232,9 @@ realm_leave (int argc,
 		client = realm_client_new (arg_verbose);
 		if (client) {
 			realm_name = argc < 2 ? NULL : argv[1];
-			ret = perform_leave (client, realm_name, arg_user);
+			ret = perform_leave (client, realm_name, arg_user,
+			                     arg_client_software,
+			                     arg_server_software);
 			g_object_unref (client);
 		} else {
 			ret = 1;
@@ -199,6 +242,8 @@ realm_leave (int argc,
 	}
 
 	g_free (arg_user);
+	g_free (arg_client_software);
+	g_free (arg_server_software);
 	g_option_context_free (context);
 	return ret;
 }

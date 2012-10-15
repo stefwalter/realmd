@@ -54,6 +54,26 @@ enum {
 
 G_DEFINE_TYPE (RealmKerberos, realm_kerberos, G_TYPE_DBUS_OBJECT_SKELETON);
 
+#define return_if_krb5_failed(ctx, code) G_STMT_START \
+	if G_LIKELY ((code) == 0) { } else { \
+		g_warn_message (G_LOG_DOMAIN, __FILE__, __LINE__, G_STRFUNC, \
+		                krb5_get_error_message ((ctx), (code))); \
+		 return; \
+	} G_STMT_END
+
+#define return_val_if_krb5_failed(ctx, code, val) G_STMT_START \
+	if G_LIKELY ((code) == 0) { } else { \
+		g_warn_message (G_LOG_DOMAIN, __FILE__, __LINE__, G_STRFUNC, \
+		                krb5_get_error_message ((ctx), (code))); \
+		 return (val); \
+	} G_STMT_END
+
+#define warn_if_krb5_failed(ctx, code) G_STMT_START \
+	if G_LIKELY ((code) == 0) { } else { \
+		g_warn_message (G_LOG_DOMAIN, __FILE__, __LINE__, G_STRFUNC, \
+		                krb5_get_error_message ((ctx), (code))); \
+	} G_STMT_END
+
 typedef struct {
 	RealmKerberos *self;
 	GDBusMethodInvocation *invocation;
@@ -909,11 +929,11 @@ kinit_closure_free (gpointer data)
 
 
 static void
-kinit_handle_error (GSimpleAsyncResult *async,
-                    krb5_error_code code,
-                    krb5_context context,
-                    const gchar *message,
-                    ...)
+set_krb5_error (GError **error,
+                krb5_error_code code,
+                krb5_context context,
+                const gchar *message,
+                ...)
 {
 	gchar *string;
 	va_list va;
@@ -922,8 +942,8 @@ kinit_handle_error (GSimpleAsyncResult *async,
 	string = g_strdup_vprintf (message, va);
 	va_end (va);
 
-	g_simple_async_result_set_error (async, REALM_KRB5_ERROR, code,
-	                                 "%s: %s", string, krb5_get_error_message (context, code));
+	g_set_error (error, REALM_KRB5_ERROR, code,
+	             "%s: %s", string, krb5_get_error_message (context, code));
 	g_free (string);
 }
 
@@ -974,27 +994,25 @@ kinit_ccache_thread_func (GSimpleAsyncResult *async,
 	krb5_error_code code;
 	krb5_ccache ccache = NULL;
 	krb5_creds my_creds;
+	GError *error = NULL;
 	int temp_fd;
 
 	code = krb5_init_context (&context);
 	if (code != 0) {
-		kinit_handle_error (async, code, NULL, "Couldn't initialize kerberos");
+		set_krb5_error (&error, code, NULL, "Couldn't initialize kerberos");
+		g_simple_async_result_take_error (async, error);
 		goto cleanup;
 	}
 
 	code = krb5_parse_name (context, kinit->principal, &principal);
 	if (code != 0) {
-		kinit_handle_error (async, code, context,
-		                   "Couldn't parse principal: %s", kinit->principal);
+		set_krb5_error (&error, code, context, "Couldn't parse principal: %s", kinit->principal);
+		g_simple_async_result_take_error (async, error);
 		goto cleanup;
 	}
 
 	code = krb5_get_init_creds_opt_alloc (context, &options);
-	if (code != 0) {
-		g_warning ("Couldn't setup kerberos options: %s",
-		           krb5_get_error_message (context, code));
-		goto cleanup;
-	}
+	warn_if_krb5_failed (context, code);
 
 	kinit->ccache_file = g_build_filename (g_get_tmp_dir (), "realmd-krb5-cache.XXXXXX", NULL);
 	temp_fd = g_mkstemp_full (kinit->ccache_file, O_RDWR, S_IRUSR | S_IWUSR);
@@ -1008,8 +1026,8 @@ kinit_ccache_thread_func (GSimpleAsyncResult *async,
 
 	code = krb5_cc_resolve (context, kinit->ccache_file, &ccache);
 	if (code != 0) {
-		kinit_handle_error (async, code, context,
-		                    "Couldn't resolve credential cache: %s", kinit->ccache_file);
+		set_krb5_error (&error, code, context, "Couldn't resolve credential cache: %s", kinit->ccache_file);
+		g_simple_async_result_take_error (async, error);
 		goto cleanup;
 	}
 
@@ -1017,18 +1035,14 @@ kinit_ccache_thread_func (GSimpleAsyncResult *async,
 		krb5_get_init_creds_opt_set_etype_list (options, kinit->enctypes, kinit->n_enctypes);
 
 	code = krb5_get_init_creds_opt_set_out_ccache (context, options, ccache);
-	if (code != 0) {
-		g_warning ("Couldn't setup credential cache: %s",
-		           krb5_get_error_message (context, code));
-		goto cleanup;
-	}
+	warn_if_krb5_failed (context, code);
 
 	code = krb5_get_init_creds_password (context, &my_creds, principal,
 	                                     NULL, bytes_prompter, kinit->password,
 	                                     0, NULL, options);
 	if (code != 0) {
-		kinit_handle_error (async, code, context,
-		                    "Couldn't authenticate as: %s", kinit->principal);
+		set_krb5_error (&error, code, context, "Couldn't authenticate as: %s", kinit->principal);
+		g_simple_async_result_take_error (async, error);
 		goto cleanup;
 	}
 

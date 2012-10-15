@@ -504,10 +504,17 @@ handle_leave (RealmDbusKerberosMembership *membership,
 	RealmKerberos *self = REALM_KERBEROS (user_data);
 	RealmKerberosFlags flags = 0;
 	GVariant *creds;
+	const gchar *computer_ou;
 	RealmKerberosCredential cred_type;
 
 	/* Make note of the current operation id, for diagnostics */
 	realm_diagnostics_setup_options (invocation, options);
+
+	if (g_variant_lookup (options, REALM_DBUS_OPTION_COMPUTER_OU, "&s", &computer_ou)) {
+		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+		                                       "The computer-ou argument is not supported when leaving a domain.");
+		return TRUE;
+	}
 
 	if (!validate_and_parse_credentials (invocation, credentials, &flags, &cred_type, &creds))
 		return TRUE;

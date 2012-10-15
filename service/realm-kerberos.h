@@ -94,6 +94,9 @@ gchar *             realm_kerberos_kinit_ccache_finish   (RealmKerberos *self,
 
 void                realm_keberos_ccache_delete_and_free (gchar *ccache_file);
 
+gboolean            realm_kerberos_flush_keytab                (const gchar *realm_name,
+                                                                GError **error);
+
 const gchar *       realm_kerberos_get_name                    (RealmKerberos *self);
 
 const gchar *       realm_kerberos_get_realm_name              (RealmKerberos *self);

@@ -78,12 +78,13 @@ realm_samba_constructed (GObject *obj)
 
 	/*
 	 * Each line is a combination of owner and what kind of credentials are supported,
-	 * same for enroll/unenroll. We can't accept a ccache, because samba3 needs
+	 * same for enroll/leave. We can't accept a ccache, because samba3 needs
 	 * to have credentials limited to RC4.
 	 */
 	supported = realm_kerberos_membership_build_supported (
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_ADMIN,
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_USER,
+			REALM_KERBEROS_CREDENTIAL_AUTOMATIC, REALM_KERBEROS_OWNER_NONE,
 			0);
 	g_variant_ref_sink (supported);
 	realm_kerberos_set_supported_join_creds (kerberos, supported);
@@ -317,114 +318,168 @@ typedef struct {
 	GDBusMethodInvocation *invocation;
 	gchar *realm_name;
 	gchar *ccache_file;
-} UnenrollClosure;
+} LeaveClosure;
 
 static void
-unenroll_closure_free (gpointer data)
+leave_closure_free (gpointer data)
 {
-	UnenrollClosure *unenroll = data;
-	g_free (unenroll->realm_name);
-	if (unenroll->ccache_file)
-		realm_keberos_ccache_delete_and_free (unenroll->ccache_file);
-	g_object_unref (unenroll->invocation);
-	g_slice_free (UnenrollClosure, unenroll);
+	LeaveClosure *leave = data;
+	g_free (leave->realm_name);
+	if (leave->ccache_file)
+		realm_keberos_ccache_delete_and_free (leave->ccache_file);
+	g_object_unref (leave->invocation);
+	g_slice_free (LeaveClosure, leave);
 }
 
 static void
-on_remove_winbind_done (GObject *source,
-                        GAsyncResult *result,
-                        gpointer user_data)
+on_deconfigure_done (GObject *source,
+                     GAsyncResult *result,
+                     gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
 	GError *error = NULL;
 
 	realm_samba_winbind_deconfigure_finish (result, &error);
 	if (error != NULL)
-		g_simple_async_result_take_error (res, error);
-	g_simple_async_result_complete (res);
-
-	g_object_unref (res);
+		g_simple_async_result_take_error (async, error);
+	g_simple_async_result_complete (async);
+	g_object_unref (async);
 }
 
 static void
-on_leave_do_winbind (GObject *source,
-                     GAsyncResult *result,
-                     gpointer user_data)
+leave_deconfigure_begin (RealmSamba *self,
+                         GSimpleAsyncResult *async)
+{
+	LeaveClosure *leave;
+	GError *error = NULL;
+
+	leave = g_simple_async_result_get_op_res_gpointer (async);
+
+	/* Flush the keytab of all the entries for this realm */
+	realm_diagnostics_info (leave->invocation, "Removing entries from keytab for realm");
+
+	if (!realm_kerberos_flush_keytab (leave->realm_name, &error)) {
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete_in_idle (async);
+		return;
+	}
+
+	/* Deconfigure smb.conf */
+	realm_diagnostics_info (leave->invocation, "Updating smb.conf file");
+	if (!realm_ini_config_change (self->config, REALM_SAMBA_CONFIG_GLOBAL, &error,
+	                              "workgroup", NULL,
+	                              "realm", NULL,
+	                              "security", "user",
+	                              NULL)) {
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete_in_idle (async);
+		return;
+	}
+
+	/* And then deconfigure winbind */
+	realm_samba_winbind_deconfigure_async (self->config, leave->invocation,
+	                                       on_deconfigure_done, g_object_ref (async));
+}
+
+static void
+on_leave_do_deconfigure (GObject *source,
+                         GAsyncResult *result,
+                         gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	UnenrollClosure *unenroll = g_simple_async_result_get_op_res_gpointer (res);
+	LeaveClosure *leave = g_simple_async_result_get_op_res_gpointer (res);
 	RealmSamba *self = REALM_SAMBA (g_async_result_get_source_object (user_data));
 	GError *error = NULL;
 
 	/* We don't care if we can leave or not, just continue with other steps */
-	realm_samba_enroll_leave_finish (result, NULL);
-
-	realm_ini_config_change (self->config, REALM_SAMBA_CONFIG_GLOBAL, &error,
-	                         "workgroup", NULL,
-	                         "realm", NULL,
-	                         "security", "user",
-	                         NULL);
-
-	if (error == NULL) {
-		realm_samba_winbind_deconfigure_async (self->config,
-		                                       unenroll->invocation,
-		                                       on_remove_winbind_done,
-		                                       g_object_ref (res));
-	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
+	realm_samba_enroll_leave_finish (result, &error);
+	if (error != NULL) {
+		realm_diagnostics_error (leave->invocation, error, NULL);
+		g_error_free (error);
 	}
+
+	leave_deconfigure_begin (self, res);
 
 	g_object_unref (self);
 	g_object_unref (res);
 }
 
-static void
-realm_samba_unenroll_async (RealmKerberosMembership *membership,
-                            const gchar *name,
-                            GBytes *password,
-                            RealmKerberosFlags flags,
-                            GVariant *options,
-                            GDBusMethodInvocation *invocation,
-                            GAsyncReadyCallback callback,
-                            gpointer user_data)
+static GSimpleAsyncResult *
+setup_leave (RealmSamba *self,
+             GVariant *options,
+             GDBusMethodInvocation *invocation,
+             GAsyncReadyCallback callback,
+             gpointer user_data)
 {
-	RealmKerberos *realm = REALM_KERBEROS (membership);
-	RealmSamba *self = REALM_SAMBA (realm);
-	GSimpleAsyncResult *res;
-	UnenrollClosure *unenroll;
+	LeaveClosure *leave;
+	GSimpleAsyncResult *async;
 	const gchar *realm_name;
-	const gchar *computer_ou;
 	gchar *enrolled;
 
 	realm_name = realm_kerberos_get_realm_name (REALM_KERBEROS (self));
 
-	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
-	                                 realm_samba_unenroll_async);
-	unenroll = g_slice_new0 (UnenrollClosure);
-	unenroll->realm_name = g_strdup (realm_name);
-	unenroll->invocation = g_object_ref (invocation);
-	g_simple_async_result_set_op_res_gpointer (res, unenroll, unenroll_closure_free);
+	async = g_simple_async_result_new (G_OBJECT (self), callback, user_data, setup_leave);
+	leave = g_slice_new0 (LeaveClosure);
+	leave->realm_name = g_strdup (realm_name);
+	leave->invocation = g_object_ref (invocation);
+	g_simple_async_result_set_op_res_gpointer (async, leave, leave_closure_free);
 
 	/* Check that enrolled in this realm */
 	enrolled = lookup_enrolled_realm (self);
 	if (g_strcmp0 (enrolled, realm_name) != 0) {
-		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
-		                                 _("Not currently joined to a domain"));
-		g_simple_async_result_complete_in_idle (res);
+		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
+		                                 _("Not currently joined to this domain"));
+		g_simple_async_result_complete_in_idle (async);
+		g_object_unref (async);
+		return NULL;
 
-	} else if (g_variant_lookup (options, REALM_DBUS_OPTION_COMPUTER_OU, "&s", &computer_ou)) {
-		g_simple_async_result_set_error (res, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-		                                 "The computer-ou argument is not supported when leaving a domain (using samba).");
-		g_simple_async_result_complete_in_idle (res);
-
-	} else {
-		realm_samba_enroll_leave_async (unenroll->realm_name, name, password,
-		                                unenroll->invocation, on_leave_do_winbind,
-		                                g_object_ref (res));
 	}
 
-	g_object_unref (res);
+	return async;
+}
+
+static void
+realm_samba_leave_password_async (RealmKerberosMembership *membership,
+                                  const gchar *name,
+                                  GBytes *password,
+                                  RealmKerberosFlags flags,
+                                  GVariant *options,
+                                  GDBusMethodInvocation *invocation,
+                                  GAsyncReadyCallback callback,
+                                  gpointer user_data)
+{
+	RealmSamba *self = REALM_SAMBA (membership);
+	GSimpleAsyncResult *async;
+	LeaveClosure *leave;
+
+	async = setup_leave (self, options, invocation, callback, user_data);
+	if (async == NULL)
+		return;
+
+	leave = g_simple_async_result_get_op_res_gpointer (async);
+	realm_samba_enroll_leave_async (leave->realm_name, name, password,
+	                                leave->invocation, on_leave_do_deconfigure,
+	                                g_object_ref (async));
+	g_object_unref (async);
+}
+
+static void
+realm_samba_leave_automatic_async (RealmKerberosMembership *membership,
+                                   RealmKerberosFlags flags,
+                                   GVariant *options,
+                                   GDBusMethodInvocation *invocation,
+                                   GAsyncReadyCallback callback,
+                                   gpointer user_data)
+{
+	RealmSamba *self = REALM_SAMBA (membership);
+	GSimpleAsyncResult *async;
+
+	async = setup_leave (self, options, invocation, callback, user_data);
+	if (async == NULL)
+		return;
+
+	leave_deconfigure_begin (self, async);
+	g_object_unref (async);
 }
 
 static gboolean
@@ -643,7 +698,8 @@ realm_samba_kerberos_membership_iface (RealmKerberosMembershipIface *iface)
 {
 	iface->enroll_password_async = realm_samba_enroll_async;
 	iface->enroll_finish = realm_samba_membership_generic_finish;
-	iface->unenroll_password_async = realm_samba_unenroll_async;
+	iface->unenroll_password_async = realm_samba_leave_password_async;
+	iface->unenroll_automatic_async = realm_samba_leave_automatic_async;
 	iface->unenroll_finish = realm_samba_membership_generic_finish;
 }
 

@@ -72,8 +72,7 @@ static JoinClosure *
 join_closure_init (const gchar *realm,
                    const gchar *user_name,
                    GBytes *password,
-                   GDBusMethodInvocation *invocation,
-                   GError **error)
+                   GDBusMethodInvocation *invocation)
 {
 	JoinClosure *join;
 	GByteArray *array;
@@ -360,20 +359,18 @@ realm_samba_enroll_join_async (const gchar *realm,
 	res = g_simple_async_result_new (NULL, callback, user_data,
 	                                 realm_samba_enroll_join_async);
 
-	join = join_closure_init (realm, user_name, password, invocation, &error);
+	join = join_closure_init (realm, user_name, password, invocation);
 
-	if (error == NULL) {
-		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
+	g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
 
-		if (computer_ou != NULL) {
-			strange_ou = realm_samba_util_build_strange_ou (computer_ou, realm);
-			if (strange_ou) {
-				join->create_computer_arg = g_strdup_printf ("createcomputer=%s", strange_ou);
-				g_free (strange_ou);
-			} else {
-				g_set_error (&error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-				             "The computer-ou argument must be a valid LDAP DN and contain only OU=xxx RDN values.");
-			}
+	if (computer_ou != NULL) {
+		strange_ou = realm_samba_util_build_strange_ou (computer_ou, realm);
+		if (strange_ou) {
+			join->create_computer_arg = g_strdup_printf ("createcomputer=%s", strange_ou);
+			g_free (strange_ou);
+		} else {
+			g_set_error (&error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+			             "The computer-ou argument must be a valid LDAP DN and contain only OU=xxx RDN values.");
 		}
 	}
 
@@ -436,27 +433,6 @@ on_leave_complete (GObject *source,
 	g_object_unref (res);
 }
 
-static void
-on_flush_do_leave (GObject *source,
-                   GAsyncResult *result,
-                   gpointer user_data)
-{
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
-	GError *error = NULL;
-	gint status;
-
-	status = realm_command_run_finish (result, NULL, &error);
-	if (error != NULL || status != 0)
-		realm_diagnostics_error (join->invocation, error, "Flushing entries from the keytab failed");
-	g_clear_error (&error);
-
-	begin_net_process (join, join->password_input,
-	                   on_leave_complete, g_object_ref (res),
-	                   "-U", join->user_name, "ads", "leave", NULL);
-	g_object_unref (res);
-}
-
 void
 realm_samba_enroll_leave_async (const gchar *realm,
                                 const gchar *user_name,
@@ -465,26 +441,20 @@ realm_samba_enroll_leave_async (const gchar *realm,
                                 GAsyncReadyCallback callback,
                                 gpointer user_data)
 {
-	GSimpleAsyncResult *res;
+	GSimpleAsyncResult *async;
 	JoinClosure *join;
-	GError *error = NULL;
 
-	res = g_simple_async_result_new (NULL, callback, user_data,
-	                                 realm_samba_enroll_leave_async);
+	async = g_simple_async_result_new (NULL, callback, user_data,
+	                                   realm_samba_enroll_leave_async);
 
-	join = join_closure_init (realm, user_name, password, invocation, &error);
-	if (error == NULL) {
-		g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
-		begin_net_process (join, join->password_input,
-		                   on_flush_do_leave, g_object_ref (res),
-		                   "-U", join->user_name, "ads", "keytab", "flush", NULL);
+	join = join_closure_init (realm, user_name, password, invocation);
+	g_simple_async_result_set_op_res_gpointer (async, join, join_closure_free);
 
-	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete_in_idle (res);
-	}
+	begin_net_process (join, join->password_input,
+	                   on_leave_complete, g_object_ref (async),
+	                   "-U", join->user_name, "ads", "leave", NULL);
 
-	g_object_unref (res);
+	g_object_unref (async);
 }
 
 gboolean

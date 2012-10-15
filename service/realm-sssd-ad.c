@@ -81,7 +81,7 @@ realm_sssd_ad_constructed (GObject *obj)
 
 	/*
 	 * Each line is a combination of owner and what kind of credentials are supported,
-	 * same for enroll/unenroll. We can't accept a ccache, because samba3 needs
+	 * same for enroll/leave. We can't accept a ccache, because samba3 needs
 	 * to have credentials limited to RC4.
 	 */
 	supported = realm_kerberos_membership_build_supported (
@@ -96,6 +96,7 @@ realm_sssd_ad_constructed (GObject *obj)
 	supported = realm_kerberos_membership_build_supported (
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_ADMIN,
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_USER,
+			REALM_KERBEROS_CREDENTIAL_AUTOMATIC, REALM_KERBEROS_OWNER_NONE,
 			0);
 	realm_kerberos_set_supported_leave_creds (kerberos, supported);
 
@@ -573,17 +574,17 @@ typedef struct {
 	GDBusMethodInvocation *invocation;
 	gchar *realm_name;
 	gchar *ccache_file;
-} UnenrollClosure;
+} LeaveClosure;
 
 static void
-unenroll_closure_free (gpointer data)
+leave_closure_free (gpointer data)
 {
-	UnenrollClosure *unenroll = data;
-	g_free (unenroll->realm_name);
-	if (unenroll->ccache_file)
-		realm_keberos_ccache_delete_and_free (unenroll->ccache_file);
-	g_object_unref (unenroll->invocation);
-	g_slice_free (UnenrollClosure, unenroll);
+	LeaveClosure *leave = data;
+	g_free (leave->realm_name);
+	if (leave->ccache_file)
+		realm_keberos_ccache_delete_and_free (leave->ccache_file);
+	g_object_unref (leave->invocation);
+	g_slice_free (LeaveClosure, leave);
 }
 
 static void
@@ -591,15 +592,18 @@ on_service_disable_done (GObject *source,
                          GAsyncResult *result,
                          gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	LeaveClosure *leave = g_simple_async_result_get_op_res_gpointer (async);
 	GError *error = NULL;
 
 	realm_service_disable_and_stop_finish (result, &error);
-	if (error != NULL)
-		g_simple_async_result_take_error (res, error);
-	g_simple_async_result_complete (res);
+	if (error != NULL) {
+		realm_diagnostics_error (leave->invocation, error, NULL);
+		g_error_free (error);
+	}
 
-	g_object_unref (res);
+	g_simple_async_result_complete (async);
+	g_object_unref (async);
 }
 
 static void
@@ -607,100 +611,183 @@ on_service_restart_done (GObject *source,
                          GAsyncResult *result,
                          gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	LeaveClosure *leave = g_simple_async_result_get_op_res_gpointer (async);
 	GError *error = NULL;
 
 	realm_service_restart_finish (result, &error);
-	if (error != NULL)
-		g_simple_async_result_take_error (res, error);
-	g_simple_async_result_complete (res);
+	if (error != NULL) {
+		realm_diagnostics_error (leave->invocation, error, NULL);
+		g_error_free (error);
+	}
 
-	g_object_unref (res);
+	g_simple_async_result_complete (async);
+	g_object_unref (async);
 }
 
 static void
-on_leave_do_sssd (GObject *source,
-                  GAsyncResult *result,
-                  gpointer user_data)
+on_disable_nss_service (GObject *source,
+                        GAsyncResult *result,
+                        gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	UnenrollClosure *unenroll = g_simple_async_result_get_op_res_gpointer (res);
-	RealmSssd *sssd = REALM_SSSD (g_async_result_get_source_object (user_data));
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	LeaveClosure *leave = g_simple_async_result_get_op_res_gpointer (async);
 	GError *error = NULL;
+	gint status;
+
+	status = realm_command_run_finish (result, NULL, &error);
+	if (error == NULL && status != 0) {
+		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
+		             _("Disabling SSSD in nsswitch.conf and PAM failed."));
+	}
+	if (error != NULL) {
+		realm_diagnostics_error (leave->invocation, error, NULL);
+		g_error_free (error);
+	}
+
+	realm_service_disable_and_stop ("sssd", leave->invocation,
+	                                on_service_disable_done, g_object_ref (async));
+
+	g_object_unref (async);
+}
+
+static void
+leave_deconfigure_begin (RealmSssdAd *self,
+                         GSimpleAsyncResult *async)
+{
+	RealmSssd *sssd = REALM_SSSD (self);
+	LeaveClosure *leave;
 	RealmIniConfig *config;
+	GError *error = NULL;
 	gchar **domains;
 
-	realm_samba_enroll_leave_finish (result, NULL);
-
-	/* We don't care if we can leave or not, just continue with other steps */
+	leave = g_simple_async_result_get_op_res_gpointer (async);
 	config = realm_sssd_get_config (sssd);
-	realm_sssd_config_remove_domain (config, realm_sssd_get_config_domain (sssd), &error);
 
-	if (error != NULL) {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
-		g_error_free (error);
-
-	} else {
-		/* If no domains, then disable sssd */
-		domains = realm_sssd_config_get_domains (config);
-		if (domains == NULL || g_strv_length (domains) == 0) {
-			realm_service_disable_and_stop ("sssd", unenroll->invocation,
-			                                on_service_disable_done, g_object_ref (res));
-
-		/* If any domains left, then restart sssd */
-		} else {
-			realm_service_restart ("sssd", unenroll->invocation,
-			                       on_service_restart_done, g_object_ref (res));
-		}
-		g_strfreev (domains);
+	/* Flush the keytab of all the entries for this realm */
+	realm_diagnostics_info (leave->invocation, "Removing entries from keytab for realm");
+	if (!realm_kerberos_flush_keytab (leave->realm_name, &error)) {
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete_in_idle (async);
+		return;
 	}
 
-	g_object_unref (sssd);
-	g_object_unref (res);
+	/* Deconfigure sssd.conf */
+	realm_diagnostics_info (leave->invocation, "Removing domain configuration from sssd.conf");
+	if (!realm_sssd_config_remove_domain (config, realm_sssd_get_config_domain (sssd), &error)) {
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete_in_idle (async);
+		return;
+	}
+
+	/* If no domains, then disable sssd */
+	domains = realm_sssd_config_get_domains (config);
+	if (domains == NULL || g_strv_length (domains) == 0) {
+		realm_command_run_known_async ("sssd-disable-logins", NULL, leave->invocation,
+		                               NULL, on_disable_nss_service, g_object_ref (async));
+
+	/* If any domains left, then restart sssd */
+	} else {
+		realm_service_restart ("sssd", leave->invocation,
+		                       on_service_restart_done, g_object_ref (async));
+	}
+	g_strfreev (domains);
 }
 
 static void
-realm_sssd_ad_unenroll_async (RealmKerberosMembership *membership,
-                              const gchar *user_name,
-                              GBytes *password,
-                              RealmKerberosFlags flags,
-                              GVariant *options,
-                              GDBusMethodInvocation *invocation,
-                              GAsyncReadyCallback callback,
-                              gpointer user_data)
+on_leave_do_deconfigure (GObject *source,
+                         GAsyncResult *result,
+                         gpointer user_data)
 {
-	RealmKerberos *realm = REALM_KERBEROS (membership);
-	RealmSssd *sssd = REALM_SSSD (realm);
-	GSimpleAsyncResult *res;
-	UnenrollClosure *unenroll;
-	const gchar *computer_ou;
+	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	LeaveClosure *leave = g_simple_async_result_get_op_res_gpointer (res);
+	RealmSssdAd *self = REALM_SSSD_AD (g_async_result_get_source_object (user_data));
+	GError *error = NULL;
 
-	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
-	                                 realm_sssd_ad_unenroll_async);
-	unenroll = g_slice_new0 (UnenrollClosure);
-	unenroll->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
-	unenroll->invocation = g_object_ref (invocation);
-	g_simple_async_result_set_op_res_gpointer (res, unenroll, unenroll_closure_free);
-
-	/* Check that enrolled in this realm */
-	if (!realm_sssd_get_config_section (sssd)) {
-		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
-		                                 _("Not currently joined to this domain"));
-		g_simple_async_result_complete_in_idle (res);
-
-	} else if (g_variant_lookup (options, REALM_DBUS_OPTION_COMPUTER_OU, "&s", &computer_ou)) {
-		g_simple_async_result_set_error (res, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-		                                 "The computer-ou argument is not supported when leaving a domain (using samba).");
-		g_simple_async_result_complete_in_idle (res);
-
-	} else {
-		realm_samba_enroll_leave_async (unenroll->realm_name, user_name, password,
-		                                unenroll->invocation, on_leave_do_sssd,
-		                                g_object_ref (res));
+	/* We don't care if we can leave or not, just continue with other steps */
+	realm_samba_enroll_leave_finish (result, &error);
+	if (error != NULL) {
+		realm_diagnostics_error (leave->invocation, error, NULL);
+		g_error_free (error);
 	}
 
+	leave_deconfigure_begin (self, res);
+
+	g_object_unref (self);
 	g_object_unref (res);
+}
+
+static GSimpleAsyncResult *
+setup_leave (RealmSssdAd *self,
+             GVariant *options,
+             GDBusMethodInvocation *invocation,
+             GAsyncReadyCallback callback,
+             gpointer user_data)
+{
+	LeaveClosure *leave;
+	GSimpleAsyncResult *async;
+
+	async = g_simple_async_result_new (G_OBJECT (self), callback, user_data, setup_leave);
+	leave = g_slice_new0 (LeaveClosure);
+	leave->realm_name = g_strdup (realm_kerberos_get_realm_name (REALM_KERBEROS (self)));
+	leave->invocation = g_object_ref (invocation);
+	g_simple_async_result_set_op_res_gpointer (async, leave, leave_closure_free);
+
+	/* Check that enrolled in this realm */
+	if (!realm_sssd_get_config_section (REALM_SSSD (self))) {
+		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
+		                                 _("Not currently joined to this domain"));
+		g_simple_async_result_complete_in_idle (async);
+		g_object_unref (async);
+		return NULL;
+
+	}
+
+	return async;
+}
+
+static void
+realm_sssd_ad_leave_password_async (RealmKerberosMembership *membership,
+                                    const gchar *user_name,
+                                    GBytes *password,
+                                    RealmKerberosFlags flags,
+                                    GVariant *options,
+                                    GDBusMethodInvocation *invocation,
+                                    GAsyncReadyCallback callback,
+                                    gpointer user_data)
+{
+	RealmSssdAd *self = REALM_SSSD_AD (membership);
+	GSimpleAsyncResult *async;
+	LeaveClosure *leave;
+
+	async = setup_leave (self, options, invocation, callback, user_data);
+	if (async == NULL)
+		return;
+
+	leave = g_simple_async_result_get_op_res_gpointer (async);
+	realm_samba_enroll_leave_async (leave->realm_name, user_name, password,
+	                                leave->invocation, on_leave_do_deconfigure,
+	                                g_object_ref (async));
+	g_object_unref (async);
+}
+
+static void
+realm_sssd_ad_leave_automatic_async (RealmKerberosMembership *membership,
+                                      RealmKerberosFlags flags,
+                                      GVariant *options,
+                                      GDBusMethodInvocation *invocation,
+                                      GAsyncReadyCallback callback,
+                                      gpointer user_data)
+{
+	RealmSssdAd *self = REALM_SSSD_AD (membership);
+	GSimpleAsyncResult *async;
+
+	async = setup_leave (self, options, invocation, callback, user_data);
+	if (async == NULL)
+		return;
+
+	leave_deconfigure_begin (self, async);
+	g_object_unref (async);
 }
 
 static gboolean
@@ -728,6 +815,7 @@ realm_sssd_ad_kerberos_membership_iface (RealmKerberosMembershipIface *iface)
 	iface->enroll_password_async = realm_sssd_ad_join_password_async;
 	iface->enroll_secret_async = realm_sssd_ad_join_secret_async;
 	iface->enroll_finish = realm_sssd_ad_generic_finish;
-	iface->unenroll_password_async = realm_sssd_ad_unenroll_async;
+	iface->unenroll_automatic_async = realm_sssd_ad_leave_automatic_async;
+	iface->unenroll_password_async = realm_sssd_ad_leave_password_async;
 	iface->unenroll_finish = realm_sssd_ad_generic_finish;
 }

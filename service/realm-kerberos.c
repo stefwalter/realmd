@@ -1324,3 +1324,79 @@ realm_kerberos_calculate_join_computer_ou (RealmKerberos *self,
 
 	return g_strdup (computer_ou);
 }
+
+static gboolean
+flush_keytab_entries (krb5_context ctx,
+                      krb5_keytab keytab,
+                      krb5_principal realm_princ,
+                      GError **error)
+{
+	krb5_error_code code;
+	krb5_kt_cursor cursor;
+	krb5_keytab_entry entry;
+
+	code = krb5_kt_start_seq_get (ctx, keytab, &cursor);
+	if (code == KRB5_KT_END || code == ENOENT )
+		return TRUE;
+
+	while (!krb5_kt_next_entry (ctx, keytab, &entry, &cursor)) {
+		if (krb5_realm_compare (ctx, realm_princ, entry.principal)) {
+			code = krb5_kt_end_seq_get (ctx, keytab, &cursor);
+			return_val_if_krb5_failed (ctx, code, FALSE);
+
+			code = krb5_kt_remove_entry (ctx, keytab, &entry);
+			return_val_if_krb5_failed (ctx, code, FALSE);
+
+			code = krb5_kt_start_seq_get (ctx, keytab, &cursor);
+			return_val_if_krb5_failed (ctx, code, FALSE);
+		}
+
+		code = krb5_kt_free_entry (ctx, &entry);
+		return_val_if_krb5_failed (ctx, code, FALSE);
+	}
+
+	code = krb5_kt_end_seq_get (ctx, keytab, &cursor);
+	return_val_if_krb5_failed (ctx, code, FALSE);
+
+	return TRUE;
+}
+
+gboolean
+realm_kerberos_flush_keytab (const gchar *realm_name,
+                             GError **error)
+{
+	krb5_error_code code;
+	krb5_keytab keytab;
+	krb5_context ctx;
+	krb5_principal princ;
+	gchar *name;
+	gboolean ret;
+
+	code = krb5_init_context (&ctx);
+	if (code != 0) {
+		set_krb5_error (error, code, NULL, "Couldn't initialize kerberos");
+		return FALSE;
+	}
+
+	code = krb5_kt_default (ctx, &keytab);
+	if (code != 0) {
+		set_krb5_error (error, code, NULL, "Couldn't open default host keytab");
+		krb5_free_context (ctx);
+		return FALSE;
+	}
+
+	name = g_strdup_printf ("user@%s", realm_name);
+	code = krb5_parse_name (ctx, name, &princ);
+	return_val_if_krb5_failed (ctx, code, FALSE);
+	g_free (name);
+
+	ret = flush_keytab_entries (ctx, keytab, princ, error);
+	krb5_free_principal (ctx, princ);
+
+	code = krb5_kt_close (ctx, keytab);
+	warn_if_krb5_failed (ctx, code);
+
+	krb5_free_context (ctx);
+	return ret;
+
+}

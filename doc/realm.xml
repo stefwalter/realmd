@@ -222,10 +222,16 @@ $ realm leave domain.example.com
 			<replaceable>freeipa</replaceable>.</para></listitem>
 		</varlistentry>
 		<varlistentry>
+			<term><option>--remove</option></term>
+			<listitem><para>Remove or disable computer account from the
+			directory while leaving the realm. This will usually prompt
+			for a pasword.</para></listitem>
+		</varlistentry>
+		<varlistentry>
 			<term><option>--user</option></term>
 			<listitem><para>The user name to be used to authenticate
 			with when leaving the realm. You will be prompted for a
-			password.</para></listitem>
+			password. Implies <option>--remove</option>.</para></listitem>
 		</varlistentry>
 		<varlistentry>
 			<term><option>--verbose, -v</option></term>

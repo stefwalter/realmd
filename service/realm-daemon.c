@@ -484,6 +484,8 @@ main (int argc,
 	RealmDbusService *service;
 	GOptionContext *context;
 	GError *error = NULL;
+	const gchar *env;
+	gchar *path;
 
 	GOptionEntry option_entries[] = {
 		{ "debug", 'd', 0, G_OPTION_ARG_NONE, &service_debug,
@@ -498,6 +500,15 @@ main (int argc,
 #endif
 
 	g_type_init ();
+
+	/*
+	 * Add /sbin to path as a around for problems with authconfig.
+	 * See bug:
+	 */
+	env = g_getenv ("PATH");
+	path = g_strdup_printf ("%s:/usr/sbin:/sbin", env ? env : "/usr/bin:/bin");
+	g_setenv ("PATH", path, TRUE);
+	g_free (path);
 
 	context = g_option_context_new ("realmd");
 	g_option_context_add_main_entries (context, option_entries, NULL);

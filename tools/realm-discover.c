@@ -101,11 +101,14 @@ print_realm_info (RealmClient *client,
 static int
 perform_discover (RealmClient *client,
                   const gchar *string,
+                  gboolean all,
                   const gchar *server_software,
                   const gchar *client_software)
 {
+	GHashTable *seen;
 	gboolean found = FALSE;
 	GError *error = NULL;
+	const gchar *name;
 	GList *realms;
 	GList *l;
 
@@ -117,11 +120,18 @@ perform_discover (RealmClient *client,
 		return 1;
 	}
 
+	seen = g_hash_table_new (g_str_hash, g_str_equal);
+
 	for (l = realms; l != NULL; l = g_list_next (l)) {
-		print_realm_info (client, l->data);
-		found = TRUE;
+		name = realm_dbus_realm_get_name (l->data);
+		if (all || !g_hash_table_lookup (seen, name)) {
+			print_realm_info (client, l->data);
+			g_hash_table_add (seen, (gchar *)name);
+			found = TRUE;
+		}
 	}
 
+	g_hash_table_destroy (seen);
 	g_list_free_full (realms, g_object_unref);
 
 	if (!found) {
@@ -145,11 +155,13 @@ realm_discover (int argc,
 	gchar *arg_client_software = NULL;
 	gchar *arg_server_software = NULL;
 	GError *error = NULL;
+	gboolean arg_all = FALSE;
 	gint result = 0;
 	gint ret;
 	gint i;
 
 	GOptionEntry option_entries[] = {
+		{ "all", 'a', 0, G_OPTION_ARG_NONE, &arg_all, N_("Show all discovered realms"), NULL },
 		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
 		{ "client-software", 0, 0, G_OPTION_ARG_STRING, &arg_client_software, N_("Use specific client software"), NULL },
 		{ "server-software", 0, 0, G_OPTION_ARG_STRING, &arg_server_software, N_("Use specific server software"), NULL },
@@ -174,14 +186,14 @@ realm_discover (int argc,
 
 	/* The default realm? */
 	} else if (argc == 1) {
-		ret = perform_discover (client, NULL, arg_server_software,
-		                        arg_client_software);
+		ret = perform_discover (client, NULL, arg_all,
+		                        arg_server_software, arg_client_software);
 		g_object_unref (client);
 
 	/* Specific realms */
 	} else {
 		for (i = 1; i < argc; i++) {
-			ret = perform_discover (client, argv[i],
+			ret = perform_discover (client, argv[i], arg_all,
 			                        arg_server_software, arg_client_software);
 			if (ret != 0)
 				result = ret;

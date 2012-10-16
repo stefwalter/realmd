@@ -197,11 +197,13 @@ realm_discover (int argc,
 
 static int
 perform_list (RealmClient *client,
+              gboolean all,
               gboolean verbose)
 {
 	RealmDbusProvider *provider;
 	const gchar *const *realms;
 	gboolean printed = FALSE;
+	const gchar *configured;
 	RealmDbusRealm *realm;
 	gint i;
 
@@ -210,13 +212,20 @@ perform_list (RealmClient *client,
 
 	for (i = 0; realms && realms[i] != NULL; i++) {
 		realm = realm_client_get_realm (client, realms[i]);
-		print_realm_info (client, realm);
-		printed = TRUE;
+		configured = realm_dbus_realm_get_configured (realm);
+		if (all || (configured && !g_str_equal (configured, ""))) {
+			print_realm_info (client, realm);
+			printed = TRUE;
+		}
 		g_object_unref (realm);
 	}
 
-	if (verbose && !printed)
-		g_printerr ("No known realms\n");
+	if (verbose && !printed) {
+		if (all)
+			g_printerr ("No known realms\n");
+		else
+			g_printerr ("No configured realms\n");
+	}
 
 	return 0;
 }
@@ -228,10 +237,12 @@ realm_list (int argc,
 	RealmClient *client;
 	GOptionContext *context;
 	gboolean arg_verbose = FALSE;
+	gboolean arg_all = FALSE;
 	GError *error = NULL;
 	gint ret = 0;
 
 	GOptionEntry option_entries[] = {
+		{ "all", 'a', 0, G_OPTION_ARG_NONE, &arg_all, N_("Show all realms"), NULL },
 		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
 		{ NULL, }
 	};
@@ -252,7 +263,7 @@ realm_list (int argc,
 	} else {
 		client = realm_client_new (arg_verbose);
 		if (client) {
-			ret = perform_list (client, arg_verbose);
+			ret = perform_list (client, arg_all, arg_verbose);
 			g_object_unref (client);
 		} else {
 			ret = 1;

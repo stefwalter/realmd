@@ -74,6 +74,8 @@ sssd_config_change_login_policy (RealmIniConfig *config,
                                  const gchar **remove_names,
                                  GError **error)
 {
+	gchar *allow;
+
 	if (!realm_ini_config_begin_change (config, error))
 		return FALSE;
 
@@ -81,6 +83,18 @@ sssd_config_change_login_policy (RealmIniConfig *config,
 		realm_ini_config_set (config, section, "access_provider", access_provider);
 	realm_ini_config_set_list_diff (config, section, "simple_allow_users", ",",
 	                                add_names, remove_names);
+
+	/*
+	 * HACK: Work around for sssd problem where it allows users if
+	 * simple_allow_users is empty. Set it to a comma in this case.
+	 */
+	allow = realm_ini_config_get (config, section, "simple_allow_users");
+	if (allow != NULL)
+		g_strstrip (allow);
+	if (allow == NULL || g_str_equal (allow, ""))
+		realm_ini_config_set (config, section, "simple_allow_users", ",");
+	g_free (allow);
+
 	return realm_ini_config_finish_change (config, error);
 }
 

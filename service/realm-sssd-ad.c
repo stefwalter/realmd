@@ -588,120 +588,13 @@ leave_closure_free (gpointer data)
 }
 
 static void
-on_service_disable_done (GObject *source,
-                         GAsyncResult *result,
-                         gpointer user_data)
-{
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	LeaveClosure *leave = g_simple_async_result_get_op_res_gpointer (async);
-	GError *error = NULL;
-
-	realm_service_disable_and_stop_finish (result, &error);
-	if (error != NULL) {
-		realm_diagnostics_error (leave->invocation, error, NULL);
-		g_error_free (error);
-	}
-
-	g_simple_async_result_complete (async);
-	g_object_unref (async);
-}
-
-static void
-on_service_restart_done (GObject *source,
-                         GAsyncResult *result,
-                         gpointer user_data)
-{
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	LeaveClosure *leave = g_simple_async_result_get_op_res_gpointer (async);
-	GError *error = NULL;
-
-	realm_service_restart_finish (result, &error);
-	if (error != NULL) {
-		realm_diagnostics_error (leave->invocation, error, NULL);
-		g_error_free (error);
-	}
-
-	g_simple_async_result_complete (async);
-	g_object_unref (async);
-}
-
-static void
-on_disable_nss_service (GObject *source,
-                        GAsyncResult *result,
-                        gpointer user_data)
-{
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	LeaveClosure *leave = g_simple_async_result_get_op_res_gpointer (async);
-	GError *error = NULL;
-	gint status;
-
-	status = realm_command_run_finish (result, NULL, &error);
-	if (error == NULL && status != 0) {
-		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             _("Disabling SSSD in nsswitch.conf and PAM failed."));
-	}
-	if (error != NULL) {
-		realm_diagnostics_error (leave->invocation, error, NULL);
-		g_error_free (error);
-	}
-
-	realm_service_disable_and_stop ("sssd", leave->invocation,
-	                                on_service_disable_done, g_object_ref (async));
-
-	g_object_unref (async);
-}
-
-static void
-leave_deconfigure_begin (RealmSssdAd *self,
-                         GSimpleAsyncResult *async)
-{
-	RealmSssd *sssd = REALM_SSSD (self);
-	LeaveClosure *leave;
-	RealmIniConfig *config;
-	GError *error = NULL;
-	gchar **domains;
-
-	leave = g_simple_async_result_get_op_res_gpointer (async);
-	config = realm_sssd_get_config (sssd);
-
-	/* Flush the keytab of all the entries for this realm */
-	realm_diagnostics_info (leave->invocation, "Removing entries from keytab for realm");
-	if (!realm_kerberos_flush_keytab (leave->realm_name, &error)) {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete_in_idle (async);
-		return;
-	}
-
-	/* Deconfigure sssd.conf */
-	realm_diagnostics_info (leave->invocation, "Removing domain configuration from sssd.conf");
-	if (!realm_sssd_config_remove_domain (config, realm_sssd_get_config_domain (sssd), &error)) {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete_in_idle (async);
-		return;
-	}
-
-	/* If no domains, then disable sssd */
-	domains = realm_sssd_config_get_domains (config);
-	if (domains == NULL || g_strv_length (domains) == 0) {
-		realm_command_run_known_async ("sssd-disable-logins", NULL, leave->invocation,
-		                               NULL, on_disable_nss_service, g_object_ref (async));
-
-	/* If any domains left, then restart sssd */
-	} else {
-		realm_service_restart ("sssd", leave->invocation,
-		                       on_service_restart_done, g_object_ref (async));
-	}
-	g_strfreev (domains);
-}
-
-static void
 on_leave_do_deconfigure (GObject *source,
                          GAsyncResult *result,
                          gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	LeaveClosure *leave = g_simple_async_result_get_op_res_gpointer (res);
-	RealmSssdAd *self = REALM_SSSD_AD (g_async_result_get_source_object (user_data));
+	RealmSssd *sssd = REALM_SSSD (g_async_result_get_source_object (user_data));
 	GError *error = NULL;
 
 	/* We don't care if we can leave or not, just continue with other steps */
@@ -711,9 +604,9 @@ on_leave_do_deconfigure (GObject *source,
 		g_error_free (error);
 	}
 
-	leave_deconfigure_begin (self, res);
+	realm_sssd_deconfigure_domain_tail (sssd, res, leave->invocation);
 
-	g_object_unref (self);
+	g_object_unref (sssd);
 	g_object_unref (res);
 }
 
@@ -724,14 +617,9 @@ setup_leave (RealmSssdAd *self,
              GAsyncReadyCallback callback,
              gpointer user_data)
 {
-	LeaveClosure *leave;
 	GSimpleAsyncResult *async;
 
 	async = g_simple_async_result_new (G_OBJECT (self), callback, user_data, setup_leave);
-	leave = g_slice_new0 (LeaveClosure);
-	leave->realm_name = g_strdup (realm_kerberos_get_realm_name (REALM_KERBEROS (self)));
-	leave->invocation = g_object_ref (invocation);
-	g_simple_async_result_set_op_res_gpointer (async, leave, leave_closure_free);
 
 	/* Check that enrolled in this realm */
 	if (!realm_sssd_get_config_section (REALM_SSSD (self))) {
@@ -740,7 +628,6 @@ setup_leave (RealmSssdAd *self,
 		g_simple_async_result_complete_in_idle (async);
 		g_object_unref (async);
 		return NULL;
-
 	}
 
 	return async;
@@ -764,7 +651,11 @@ realm_sssd_ad_leave_password_async (RealmKerberosMembership *membership,
 	if (async == NULL)
 		return;
 
-	leave = g_simple_async_result_get_op_res_gpointer (async);
+	leave = g_slice_new0 (LeaveClosure);
+	leave->realm_name = g_strdup (realm_kerberos_get_realm_name (REALM_KERBEROS (self)));
+	leave->invocation = g_object_ref (invocation);
+	g_simple_async_result_set_op_res_gpointer (async, leave, leave_closure_free);
+
 	realm_samba_enroll_leave_async (leave->realm_name, user_name, password,
 	                                leave->invocation, on_leave_do_deconfigure,
 	                                g_object_ref (async));
@@ -786,7 +677,7 @@ realm_sssd_ad_leave_automatic_async (RealmKerberosMembership *membership,
 	if (async == NULL)
 		return;
 
-	leave_deconfigure_begin (self, async);
+	realm_sssd_deconfigure_domain_tail (REALM_SSSD (self), async, invocation);
 	g_object_unref (async);
 }
 

@@ -53,6 +53,10 @@ const gchar *       realm_sssd_get_config_domain   (RealmSssd *self);
 
 gchar *             realm_sssd_build_default_home  (const gchar *value);
 
+void                realm_sssd_deconfigure_domain_tail  (RealmSssd *self,
+                                                         GSimpleAsyncResult *async,
+                                                         GDBusMethodInvocation *invocation);
+
 G_END_DECLS
 
 #endif /* __REALM_SSSD_H__ */

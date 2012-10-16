@@ -476,3 +476,152 @@ realm_sssd_build_default_home (const gchar *value)
 
 	return home;
 }
+
+typedef struct {
+	GSimpleAsyncResult *async;
+	GDBusMethodInvocation *invocation;
+	RealmIniConfig *config;
+	gchar *domain;
+} DeconfClosure;
+
+static void
+deconfigure_closure_free (gpointer data)
+{
+	DeconfClosure *deconf = data;
+	g_object_unref (deconf->async);
+	g_object_unref (deconf->invocation);
+	g_object_unref (deconf->config);
+	g_free (deconf->domain);
+	g_slice_free (DeconfClosure, deconf);
+}
+
+static void
+on_service_disable_done (GObject *source,
+                         GAsyncResult *result,
+                         gpointer user_data)
+{
+	DeconfClosure *deconf = user_data;
+	GError *error = NULL;
+
+	realm_service_disable_and_stop_finish (result, &error);
+	if (error != NULL) {
+		realm_diagnostics_error (deconf->invocation, error, NULL);
+		g_error_free (error);
+	}
+
+	g_simple_async_result_complete (deconf->async);
+	deconfigure_closure_free (deconf);
+}
+
+static void
+on_service_restart_done (GObject *source,
+                         GAsyncResult *result,
+                         gpointer user_data)
+{
+	DeconfClosure *deconf = user_data;
+	GError *error = NULL;
+
+	realm_service_restart_finish (result, &error);
+	if (error != NULL) {
+		realm_diagnostics_error (deconf->invocation, error, NULL);
+		g_error_free (error);
+	}
+
+	g_simple_async_result_complete (deconf->async);
+	deconfigure_closure_free (deconf);
+}
+
+static void
+on_disable_nss_service (GObject *source,
+                        GAsyncResult *result,
+                        gpointer user_data)
+{
+	DeconfClosure *deconf = user_data;
+	GError *error = NULL;
+	gint status;
+
+	status = realm_command_run_finish (result, NULL, &error);
+	if (error == NULL && status != 0) {
+		realm_diagnostics_error (deconf->invocation, error,
+		                         "Disabling sssd in PAM failed.");
+		g_clear_error (&error);
+	}
+
+	realm_service_disable_and_stop ("sssd", deconf->invocation,
+	                                on_service_disable_done, deconf);
+}
+
+static void
+on_sssd_clear_cache (GObject *source,
+                     GAsyncResult *result,
+                     gpointer user_data)
+{
+	DeconfClosure *deconf = user_data;
+	GError *error = NULL;
+	gchar **domains;
+	gint status;
+
+	status = realm_command_run_finish (result, NULL, &error);
+	if (status != 0) {
+		realm_diagnostics_error (deconf->invocation, error,
+		                         "Flushing the sssd cache failed");
+		g_clear_error (&error);
+	}
+
+	/* Deconfigure sssd.conf */
+	realm_diagnostics_info (deconf->invocation, "Removing domain configuration from sssd.conf");
+	if (!realm_sssd_config_remove_domain (deconf->config, deconf->domain, &error)) {
+		g_simple_async_result_take_error (deconf->async, error);
+		g_simple_async_result_complete (deconf->async);
+		deconfigure_closure_free (deconf);
+		return;
+	}
+
+	/* If no domains, then disable sssd */
+	domains = realm_sssd_config_get_domains (deconf->config);
+	if (domains == NULL || g_strv_length (domains) == 0) {
+		realm_command_run_known_async ("sssd-disable-logins", NULL, deconf->invocation,
+		                               NULL, on_disable_nss_service, deconf);
+
+	/* If any domains left, then restart sssd */
+	} else {
+		realm_service_restart ("sssd", deconf->invocation,
+		                       on_service_restart_done, deconf);
+	}
+
+	g_strfreev (domains);
+}
+
+void
+realm_sssd_deconfigure_domain_tail (RealmSssd *self,
+                                    GSimpleAsyncResult *async,
+                                    GDBusMethodInvocation *invocation)
+{
+	DeconfClosure *deconf;
+	GError *error = NULL;
+	const gchar *realm_name;
+
+	realm_name = realm_kerberos_get_realm_name (REALM_KERBEROS (self));
+
+	/* Flush the keytab of all the entries for this realm */
+	realm_diagnostics_info (invocation, "Removing entries from keytab for realm");
+	if (!realm_kerberos_flush_keytab (realm_name, &error)) {
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete_in_idle (async);
+		return;
+	}
+
+	deconf = g_new0 (DeconfClosure, 1);
+	deconf->async = g_object_ref (async);
+	deconf->invocation = g_object_ref (invocation);
+	deconf->config = g_object_ref (self->pv->config);
+	deconf->domain = g_strdup (self->pv->domain);
+
+	/*
+	 * TODO: We would really like to do this after removing the domain, to prevent races
+	 * but we can't because otherwise sss_cache doesn't clear that domain :S
+	 */
+
+	realm_command_run_known_async ("sssd-caches-flush", NULL, deconf->invocation,
+	                               NULL, on_sssd_clear_cache, deconf);
+}

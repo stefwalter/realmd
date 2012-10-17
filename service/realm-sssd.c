@@ -42,6 +42,8 @@ enum {
 	PROP_PROVIDER,
 };
 
+static void  update_properties   (RealmSssd *self);
+
 G_DEFINE_TYPE (RealmSssd, realm_sssd, REALM_TYPE_KERBEROS);
 
 static void
@@ -56,14 +58,18 @@ on_logins_restarted (GObject *source,
                      gpointer user_data)
 {
 	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	RealmSssd *self = REALM_SSSD (g_async_result_get_source_object (user_data));
 	GError *error = NULL;
 
 	realm_service_restart_finish (result, &error);
 	if (error != NULL)
 		g_simple_async_result_take_error (async, error);
 
+	update_properties (self);
 	g_simple_async_result_complete (async);
+
 	g_object_unref (async);
+	g_object_unref (self);
 }
 
 static gboolean

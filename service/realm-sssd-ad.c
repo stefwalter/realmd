@@ -218,6 +218,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	                                    "id_provider", "ad",
 	                                    "auth_provider", "ad",
 	                                    "access_provider", "simple",
+	                                    "simple_allow_users", ",",
 	                                    "chpass_provider", "ad",
 
 	                                    "ad_domain", domain,

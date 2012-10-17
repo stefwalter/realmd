@@ -1,3 +1,25 @@
+0.9
+ * Add support for deconfiguring a realm without removing computer account
+ * Cleanup the krb5.keytab from realmd itself, rather than relying on samba
+ * Fix problems running authconfig from a system service
+ * Automatically create home directories for logged in accounts on Fedora and RHEL
+ * Setup a default shell and home directory for AD users coming via sssd
+ * Restart the accouts-daemon after joining a domain
+ * Use lower case realm names
+ * Enable offline logins with sssd
+ * Make sure the allow-permitted-logins policy works with sssd even when
+   no permitted logins specified
+ * Use systemctl and service commands to manage services rather than DBus
+ * Move the realm command to /usr/sbin
+ * Make --verbose work with 'realm permit -all' and 'realm deny --all'
+ * Make sure realm permit/deny only work with configured realms
+ * Work around sssd simple access provider issues
+ * Use sss_cache to clear caches when removing a domain
+ * Make 'realm discover' only print out realm line per domain by default
+ * Only list configured realms in 'realm list' by default
+ * Bug fixes
+ * Documentation
+
 0.8.1
  * Distribute debian settings file correctly
 

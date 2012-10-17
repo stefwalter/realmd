@@ -59,13 +59,13 @@ XSLTPROC_FLAGS = \
 	--stringparam man.authors.section.enabled 0 \
 	--stringparam man.copyright.section.enabled 0
 
-.xml.1:
+.xml.8:
 	$(AM_V_GEN) $(XSLTPROC) $(XSLTPROC_FLAGS) http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl $<
 
 man_MANS = \
-	realm.1
+	realm.8
 
-xml_files = $(man_MANS:.1=.xml)
+xml_files = $(man_MANS:.8=.xml)
 
 EXTRA_DIST += \
 	$(DBUS_GENERATED) \

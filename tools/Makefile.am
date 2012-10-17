@@ -1,6 +1,6 @@
 include $(top_srcdir)/Makefile.decl
 
-bin_PROGRAMS = \
+sbin_PROGRAMS = \
 	realm
 
 realm_SOURCES = \

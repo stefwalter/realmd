@@ -41,6 +41,7 @@ content_files= \
 	realmd-guide-active-directory.xml \
 	realmd-guide-configuring.xml \
 	realmd-guide-freeipa.xml \
+	realmd-guide-kerberos.xml \
 	$(NULL)
 
 # SGML files where gtk-doc abbrevations (#GtkWidget) are expanded

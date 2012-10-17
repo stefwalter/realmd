@@ -140,6 +140,7 @@ perform_permit_or_deny_all (RealmClient *client,
                             gboolean permit)
 {
 	RealmDbusRealm *realm;
+	SyncClosure sync;
 	const gchar *policy;
 	const gchar *logins[] = { NULL };
 	GError *error = NULL;
@@ -149,16 +150,26 @@ perform_permit_or_deny_all (RealmClient *client,
 	if (realm == NULL)
 		return 1;
 
+	sync.result = NULL;
+	sync.loop = g_main_loop_new (NULL, FALSE);
+
 	options = realm_build_options (NULL, NULL);
 	g_variant_ref_sink (options);
 
 	policy = permit ? REALM_DBUS_LOGIN_POLICY_ANY : REALM_DBUS_LOGIN_POLICY_DENY;
-	realm_dbus_realm_call_change_login_policy_sync (realm, policy,
-	                                                (const gchar * const *)logins,
-	                                                (const gchar * const *)logins,
-	                                                options, NULL, &error);
+	realm_dbus_realm_call_change_login_policy (realm, policy,
+	                                           (const gchar * const *)logins,
+	                                           (const gchar * const *)logins,
+	                                           options, NULL, on_complete_get_result, &sync);
+
+	/* This mainloop is quit by on_complete_get_result */
+	g_main_loop_run (sync.loop);
+
+	realm_dbus_realm_call_change_login_policy_finish (realm, sync.result, &error);
 
 	g_variant_unref (options);
+	g_object_unref (sync.result);
+	g_main_loop_unref (sync.loop);
 	g_object_unref (realm);
 
 	if (error != NULL) {

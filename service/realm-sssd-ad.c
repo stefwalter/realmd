@@ -205,7 +205,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	dn = g_strjoinv (",", parts);
 	g_strfreev (parts);
 
-	home = realm_sssd_build_default_home (realm_settings_string ("active-directory", "default-home"));
+	home = realm_sssd_build_default_home (realm_settings_string ("users", "default-home"));
 
 	ret = realm_sssd_config_add_domain (config, workgroup, error,
 	                                    "enumerate", "False",

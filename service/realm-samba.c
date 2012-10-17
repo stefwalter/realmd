@@ -206,8 +206,8 @@ on_join_do_winbind (GObject *source,
 		                         "security", "ads",
 		                         "realm", enroll->realm_name,
 		                         "workgroup", workgroup,
-		                         "template homedir", realm_settings_string ("active-directory", "default-home"),
-		                         "template shell", realm_settings_string ("active-directory", "default-shell"),
+		                         "template homedir", realm_settings_string ("users", "default-home"),
+		                         "template shell", realm_settings_string ("users", "default-shell"),
 		                         NULL);
 	}
 

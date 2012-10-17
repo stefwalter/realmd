@@ -81,12 +81,20 @@ domain.example.com
 
 	</section>
 
+	</section>
+
+	<section id="guide-configuring-users">
+		<title>user</title>
+		<para>These options should go in an <option>[users]</option>
+		section of the <filename>/etc/realmd.conf</filename> file. Only
+		specify the settings you wish to override.</para>
+
 	<section>
 		<title>default-home</title>
 
 		<para>Specify the <option>default-home</option> setting in
-		order to control how to set the home directory for Active
-		Directory domain accounts.</para>
+		order to control how to set the home directory for accounts
+		that have no home directory explicitly set.</para>
 
 		<informalexample>
 <programlisting language="js">
@@ -97,8 +105,9 @@ default-home = /home/%D/%U
 		</informalexample>
 
 		<para>The default setting for this is <option>/home/%D/%U</option>. The
-		<option>%D</option> format is replaced by the short Active Directory
-		domain name. The <option>%U</option> format is replaced by the user name.</para>
+		<option>%D</option> format is replaced by the domain name. In the case of
+		Active Directory this is the short domain name. The <option>%U</option>
+		format is replaced by the user name.</para>
 
 		<para>You can verify the home directory for a user by running the
 		following command.</para>
@@ -116,8 +125,8 @@ DOMAIN\user:*:1344600500:1344600513:User Name:/home/DOMAIN/user:/bin/bash
 		<title>default-shell</title>
 
 		<para>Specify the <option>default-shell</option> setting in
-		order to control how to set the Unix shell for Active
-		Directory domain accounts.</para>
+		order to control how to set the Unix shell for accounts that
+		have no shell explicitly set.</para>
 
 		<informalexample>
 <programlisting language="js">

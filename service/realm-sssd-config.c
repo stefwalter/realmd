@@ -137,7 +137,7 @@ realm_sssd_config_add_domain (RealmIniConfig *config,
 	shell = realm_ini_config_get (config, "nss", "default_shell");
 	if (shell == NULL) {
 		realm_ini_config_set (config, "nss", "default_shell",
-		                      realm_settings_string ("active-directory", "default-shell"));
+		                      realm_settings_string ("users", "default-shell"));
 	}
 	g_free (shell);
 

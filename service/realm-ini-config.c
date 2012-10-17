@@ -774,6 +774,7 @@ config_set_value (RealmIniConfig *self,
 		line->bytes = g_bytes_new_take (data, strlen (data));
 		line->name = g_strdup (name);
 		insert_config_line (self, sect->tail, line);
+		g_hash_table_insert (sect->parameters, line->name, line);
 
 	/* Already have this line, replace the data */
 	} else {

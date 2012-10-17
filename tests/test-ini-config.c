@@ -329,6 +329,22 @@ test_set_middle (Test *test,
 }
 
 static void
+test_set_and_get (Test *test,
+                  gconstpointer unused)
+{
+	const gchar *data = "[section]\n1=one\n2=two\n\n[another]\n4=four";
+	gchar *output;
+
+	realm_ini_config_read_string (test->config, data);
+
+	realm_ini_config_set (test->config, "section", "3", "three");
+
+	output = realm_ini_config_get (test->config, "section", "3");
+	g_assert_cmpstr (output, ==, "three");
+	g_free (output);
+}
+
+static void
 test_set_section (Test *test,
                   gconstpointer unused)
 {
@@ -624,6 +640,7 @@ main (int argc,
 
 	g_test_add ("/realmd/ini-config/set", Test, NULL, setup, test_set, teardown);
 	g_test_add ("/realmd/ini-config/set-middle", Test, NULL, setup, test_set_middle, teardown);
+	g_test_add ("/realmd/ini-config/set-and-get", Test, NULL, setup, test_set_and_get, teardown);
 	g_test_add ("/realmd/ini-config/set-section", Test, NULL, setup, test_set_section, teardown);
 	g_test_add ("/realmd/ini-config/set-all", Test, NULL, setup, test_set_all, teardown);
 

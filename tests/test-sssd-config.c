@@ -248,6 +248,37 @@ test_remove_domain_only (Test *test,
 	g_free (output);
 }
 
+static void
+test_remove_and_add_domain (Test *test,
+                        gconstpointer unused)
+{
+	const gchar *data = "[domain/one]\nval = 1\n\n[nss]\ndefault_shell = /bin/bash\n\n[sssd]\ndomains = one, two\n\n[domain/two]\nval = 2\n";
+	GError *error = NULL;
+	gchar *output;
+	gboolean ret;
+
+	realm_ini_config_read_string (test->config, data);
+	ret = realm_ini_config_write_file (test->config, "/tmp/test-sssd.conf", &error);
+	g_assert_no_error (error);
+	g_assert (ret == TRUE);
+
+	ret = realm_sssd_config_remove_domain (test->config, "two", &error);
+	g_assert_no_error (error);
+	g_assert (ret == TRUE);
+
+	ret = realm_sssd_config_add_domain (test->config, "two", &error,
+	                                    "val", "2",
+	                                    NULL);
+	g_assert_no_error (error);
+	g_assert (ret == TRUE);
+
+	ret = g_file_get_contents ("/tmp/test-sssd.conf", &output, NULL, &error);
+	g_assert_no_error (error);
+	g_assert (ret == TRUE);
+
+	g_assert_cmpstr (output, ==, data);
+	g_free (output);
+}
 
 int
 main (int argc,
@@ -268,6 +299,7 @@ main (int argc,
 	g_test_add ("/realmd/sssd-config/remove-domain", Test, NULL, setup, test_remove_domain, teardown);
 	g_test_add ("/realmd/sssd-config/remove-domain-not-exist", Test, NULL, setup, test_remove_domain_not_exist, teardown);
 	g_test_add ("/realmd/sssd-config/remove-domain-only", Test, NULL, setup, test_remove_domain_only, teardown);
+	g_test_add ("/realmd/sssd-config/remove-and-add-domain", Test, NULL, setup, test_remove_and_add_domain, teardown);
 
 	return g_test_run ();
 }

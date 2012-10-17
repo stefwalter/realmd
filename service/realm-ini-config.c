@@ -977,6 +977,16 @@ realm_ini_config_have_section (RealmIniConfig *self,
 	return g_hash_table_lookup (self->sections, section) != NULL;
 }
 
+static gboolean
+is_blank_line (GBytes *bytes)
+{
+	const gchar *data;
+	gsize length;
+
+	data = g_bytes_get_data (bytes, &length);
+	return (length == 1 && data[0] == '\n');
+}
+
 void
 realm_ini_config_remove_section (RealmIniConfig *self,
                                  const gchar *section)
@@ -995,6 +1005,17 @@ realm_ini_config_remove_section (RealmIniConfig *self,
 	g_assert (sect->tail != NULL);
 	head = sect->head;
 	tail = sect->tail;
+
+	/*
+	 * If the prior line is a blank line, remove that too.
+	 * This matches the behavior of config_set_value() so that
+	 * when we add/remove sections we don't get a file full of
+	 * empty lines.
+	 */
+	if (head->prev != NULL) {
+		if (is_blank_line (head->prev->bytes))
+			head = head->prev;
+	}
 
 	g_hash_table_remove (self->sections, section);
 

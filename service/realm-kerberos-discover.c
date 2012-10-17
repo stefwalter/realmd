@@ -128,14 +128,10 @@ typedef struct {
 } DiscoverClosure;
 
 static void
-kerberos_discover_complete (RealmKerberosDiscover *self)
+kerberos_discover_call_callbacks (RealmKerberosDiscover *self)
 {
 	Callback *call, *next;
 
-	g_object_ref (self);
-
-	g_assert (!self->completed);
-	self->completed = TRUE;
 	call = self->callback;
 	self->callback = NULL;
 
@@ -149,7 +145,16 @@ kerberos_discover_complete (RealmKerberosDiscover *self)
 		g_slice_free (Callback, call);
 		call = next;
 	}
+}
 
+static void
+kerberos_discover_complete (RealmKerberosDiscover *self)
+{
+	g_object_ref (self);
+
+	g_assert (!self->completed);
+	self->completed = TRUE;
+	kerberos_discover_call_callbacks (self);
 	g_object_unref (self);
 }
 
@@ -423,7 +428,7 @@ on_idle_complete (gpointer user_data)
 {
 	RealmKerberosDiscover *self = REALM_KERBEROS_DISCOVER (user_data);
 	g_assert (self->completed);
-	kerberos_discover_complete (self);
+	kerberos_discover_call_callbacks (self);
 	return FALSE;
 }
 

@@ -1239,7 +1239,7 @@ realm_kerberos_set_login_policy (RealmKerberos *self,
 		policy = REALM_DBUS_LOGIN_POLICY_PERMITTED;
 		break;
 	case REALM_KERBEROS_DENY_ANY_LOGIN:
-		policy = REALM_DBUS_LOGIN_POLICY_ANY;
+		policy = REALM_DBUS_LOGIN_POLICY_DENY;
 		break;
 	case REALM_KERBEROS_POLICY_NOT_SET:
 		policy = "";

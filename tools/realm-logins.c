@@ -44,7 +44,8 @@ locate_configured_matching_realm (RealmClient *client,
 {
 	RealmDbusProvider *provider;
 	const gchar *const *paths;
-	RealmDbusRealm *realm;
+	RealmDbusRealm *realm = NULL;
+	const gchar *configured;
 	gboolean matched;
 	gint i;
 
@@ -55,9 +56,11 @@ locate_configured_matching_realm (RealmClient *client,
 		matched = FALSE;
 
 		realm = realm_client_get_realm (client, paths[i]);
-		if (realm != NULL && realm_dbus_realm_get_configured (realm)) {
+		if (realm != NULL) {
+			configured = realm_dbus_realm_get_configured (realm);
 			matched = (realm_name == NULL ||
-			           g_strcmp0 (realm_dbus_realm_get_name (realm), realm_name) == 0);
+			           g_strcmp0 (realm_dbus_realm_get_name (realm), realm_name) == 0) &&
+			          (configured && !g_str_equal (configured, ""));
 		}
 
 		if (matched)
@@ -65,6 +68,14 @@ locate_configured_matching_realm (RealmClient *client,
 
 		g_object_unref (realm);
 		realm = NULL;
+	}
+
+	if (realm == NULL) {
+		if (!realm_name)
+			realm_handle_error (NULL, "Couldn't find a configured realm");
+		else
+			realm_handle_error (NULL, "Couldn't find a matching realm");
+		return NULL;
 	}
 
 	return realm;

@@ -95,10 +95,21 @@ sssd_config_change_login_policy (RealmIniConfig *config,
 	 * simple_allow_users is empty. Set it to a comma in this case.
 	 */
 	allow = realm_ini_config_get (config, section, "simple_allow_users");
-	if (allow != NULL)
+	if (allow != NULL) {
 		g_strstrip (allow);
-	if (allow == NULL || g_str_equal (allow, ""))
-		realm_ini_config_set (config, section, "simple_allow_users", ",");
+		if (g_str_equal (allow, "") || g_str_equal (allow, ",")) {
+			g_free (allow);
+			allow = NULL;
+		}
+	}
+
+	if (allow == NULL) {
+		if (g_str_equal (access_provider, "simple"))
+			realm_ini_config_set (config, section, "simple_allow_users", ",");
+		else
+			realm_ini_config_set (config, section, "simple_allow_users", NULL);
+	}
+
 	g_free (allow);
 
 	return realm_ini_config_finish_change (config, error);
@@ -308,8 +319,10 @@ update_login_policy (RealmSssd *self)
 	if (g_strcmp0 (access, "simple") == 0) {
 		values = realm_ini_config_get_list (self->pv->config, self->pv->section,
 		                                    "simple_allow_users", ",");
-		for (i = 0; values != NULL && values[i] != NULL; i++)
-			g_ptr_array_add (permitted, realm_kerberos_format_login (kerberos, values[i]));
+		for (i = 0; values != NULL && values[i] != NULL; i++) {
+			if (!g_str_equal (values[i], ""))
+				g_ptr_array_add (permitted, realm_kerberos_format_login (kerberos, values[i]));
+		}
 		g_strfreev (values);
 		g_free (access);
 		policy = REALM_KERBEROS_ALLOW_PERMITTED_LOGINS;

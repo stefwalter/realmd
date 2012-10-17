@@ -125,7 +125,7 @@ realm_client_new (gboolean verbose)
 	GDBusConnection *connection;
 	RealmDbusProvider *provider;
 	GError *error = NULL;
-	RealmClient *client;
+	RealmClient *client = NULL;
 	GInitable *ret;
 
 	connection = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, &error);

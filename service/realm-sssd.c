@@ -172,23 +172,20 @@ realm_sssd_logins_async (RealmKerberos *realm,
 		return;
 	}
 
-	if (add_names && remove_names) {
-		ret = sssd_config_change_login_policy (self->pv->config,
-		                                       self->pv->section,
-		                                       access_provider,
-		                                       (const gchar **)add_names,
-		                                       (const gchar **)remove_names,
-		                                       &error);
+	ret = sssd_config_change_login_policy (self->pv->config,
+	                                       self->pv->section,
+	                                       access_provider,
+	                                       (const gchar **)add_names,
+	                                       (const gchar **)remove_names,
+	                                       &error);
 
-		if (ret) {
-			realm_service_restart ("sssd", invocation,
-			                       on_logins_restarted,
-			                       g_object_ref (async));
-
-		} else {
-			g_simple_async_result_take_error (async, error);
-			g_simple_async_result_complete_in_idle (async);
-		}
+	if (ret) {
+		realm_service_restart ("sssd", invocation,
+		                       on_logins_restarted,
+		                       g_object_ref (async));
+	} else {
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete_in_idle (async);
 	}
 
 	g_strfreev (remove_names);

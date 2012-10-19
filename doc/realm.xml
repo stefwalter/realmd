@@ -112,7 +112,7 @@ $ realm discover domain.example.com
 $ realm join domain.example.com
 </programlisting>
 <programlisting>
-$ realm join -user=admin --computer-ou=OU=Special domain.example.com
+$ realm join --user=admin --computer-ou=OU=Special domain.example.com
 </programlisting>
 	</informalexample>
 

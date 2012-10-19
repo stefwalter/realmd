@@ -168,7 +168,8 @@ on_process_source_finalize (GSource *source)
 
 static gboolean
 read_output (int fd,
-             GString *buffer)
+             GString *buffer,
+             GDBusMethodInvocation *invocation)
 {
 	gchar block[1024];
 	gssize result;
@@ -181,7 +182,8 @@ read_output (int fd,
 			if (errno == EINTR || errno == EAGAIN)
 				continue;
 			return FALSE;
-		} else {
+		} else if (result > 0) {
+			realm_diagnostics_info_data (invocation, block, result);
 			g_string_append_len (buffer, block, result);
 		}
 	} while (result == sizeof (block));
@@ -231,7 +233,7 @@ on_process_source_output (CommandClosure *command,
                           ProcessSource *process_source,
                           gint fd)
 {
-	if (!read_output (fd, command->output)) {
+	if (!read_output (fd, command->output, command->invocation)) {
 		g_warning ("couldn't read output data from process");
 		return FALSE;
 	}
@@ -244,7 +246,7 @@ on_process_source_error (CommandClosure *command,
                          ProcessSource *process_source,
                          gint fd)
 {
-	if (!read_output (fd, command->output)) {
+	if (!read_output (fd, command->output, command->invocation)) {
 		g_warning ("couldn't read error data from process");
 		return FALSE;
 	}
@@ -611,10 +613,6 @@ realm_command_run_finish (GAsyncResult *result,
 		return -1;
 
 	command = g_simple_async_result_get_op_res_gpointer (res);
-	if (command->output->len)
-		realm_diagnostics_info_data (command->invocation,
-		                             command->output->str,
-		                             command->output->len);
 	if (output) {
 		*output = command->output;
 		command->output = NULL;

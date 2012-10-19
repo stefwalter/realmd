@@ -463,15 +463,26 @@ handle_join (RealmDbusKerberosMembership *membership,
              gpointer user_data)
 {
 	RealmKerberos *self = REALM_KERBEROS (user_data);
+	gchar hostname[HOST_NAME_MAX + 1];
 	RealmKerberosFlags flags = 0;
 	GVariant *creds;
 	RealmKerberosCredential cred_type;
+	gint ret;
 
 	/* Make note of the current operation id, for diagnostics */
 	realm_diagnostics_setup_options (invocation, options);
 
 	if (!validate_and_parse_credentials (invocation, credentials, &flags, &cred_type, &creds))
 		return TRUE;
+
+	/* Check the host name */
+	ret = gethostname (hostname, sizeof (hostname));
+	if (ret < 0 || g_ascii_strcasecmp (hostname, "localhost") == 0 ||
+	    g_ascii_strncasecmp (hostname, "localhost.", 10) == 0) {
+		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_FAILED,
+		                                       "This computer's host name is not set correctly.");
+		return TRUE;
+	}
 
 	switch (cred_type) {
 	case REALM_KERBEROS_CREDENTIAL_CCACHE:

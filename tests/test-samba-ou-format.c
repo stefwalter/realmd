@@ -53,6 +53,8 @@ static const Fixture samba_ou_fixtures[] = {
 	{ "OU=One,", "domain.example.com", NULL },
 	{ "CN=Unsupported", "domain.example.com", NULL },
 	{ "OU=One+CN=Unsupported", "domain.example.com", NULL },
+	{ "DC=radi07, DC=segad, DC=lab, DC=sjc, DC=redhat, DC=com", "radi08.segad.lab.sjc.redhat.com", NULL },
+
 };
 
 int

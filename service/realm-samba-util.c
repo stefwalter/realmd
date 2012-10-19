@@ -58,7 +58,7 @@ dn_equals_domain (LDAPDN dn,
 
 	for (i = 0; dn[i] != NULL && domain_dn[i] != NULL; i++) {
 		for (j = 0; dn[i][j] != NULL && domain_dn[i][j] != NULL; j++) {
-			if (!berval_case_equals (&(dn[i][j]->la_attr), &(domain_dn[i][j]->la_attr)) &&
+			if (!berval_case_equals (&(dn[i][j]->la_attr), &(domain_dn[i][j]->la_attr)) ||
 			    !berval_case_equals (&(dn[i][j]->la_value), &(domain_dn[i][j]->la_value)))
 				break;
 		}

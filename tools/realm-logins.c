@@ -209,7 +209,9 @@ realm_permit_or_deny (gboolean permit,
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
 		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
 		g_error_free (error);
-		ret = 2;
+		g_free (realm_name);
+		g_option_context_free (context);
+		return 2;
 	}
 
 	if (arg_all) {

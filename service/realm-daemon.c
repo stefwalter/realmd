@@ -380,7 +380,7 @@ on_name_lost (GDBusConnection *connection,
               gpointer user_data)
 {
 	if (!service_bus_name_claimed)
-		g_printerr ("couldn't claim service name on DBus bus: %s", name);
+		g_message ("couldn't claim service name on DBus bus: %s", name);
 	else
 		g_warning ("lost service name on DBus bus: %s", name);
 }

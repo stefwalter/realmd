@@ -366,7 +366,8 @@ realm_samba_enroll_join_async (const gchar *realm,
 	if (computer_ou != NULL) {
 		strange_ou = realm_samba_util_build_strange_ou (computer_ou, realm);
 		if (strange_ou) {
-			join->create_computer_arg = g_strdup_printf ("createcomputer=%s", strange_ou);
+			if (!g_str_equal (strange_ou, ""))
+				join->create_computer_arg = g_strdup_printf ("createcomputer=%s", strange_ou);
 			g_free (strange_ou);
 		} else {
 			g_set_error (&error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,

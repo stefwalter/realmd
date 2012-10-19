@@ -183,6 +183,7 @@ on_client_vanished (GDBusConnection *connection,
                     const gchar *name,
                     gpointer user_data)
 {
+	g_debug ("client gone away: %s", name);
 	g_hash_table_remove (service_clients, name);
 }
 
@@ -197,6 +198,7 @@ lookup_or_register_client (const gchar *sender)
 		client->watch = g_bus_watch_name (G_BUS_TYPE_SYSTEM, sender,
 		                                  G_BUS_NAME_WATCHER_FLAGS_NONE,
 		                                  NULL, on_client_vanished, NULL, NULL);
+		g_debug ("client using service: %s", sender);
 		g_hash_table_insert (service_clients, g_strdup (sender), client);
 	}
 
@@ -217,6 +219,7 @@ realm_daemon_hold (const gchar *hold)
 
 	if (g_hash_table_lookup (service_clients, hold))
 		g_critical ("realm_daemon_hold: already have hold: %s", hold);
+	g_debug ("holding service: %s", hold);
 	g_hash_table_insert (service_clients, g_strdup (hold), g_slice_new0 (RealmClient));
 }
 
@@ -226,6 +229,7 @@ realm_daemon_release (const gchar *hold)
 	g_assert (hold != NULL);
 	g_assert (!g_dbus_is_unique_name (hold));
 
+	g_debug ("releasing service: %s", hold);
 	if (!g_hash_table_remove (service_clients, hold))
 		g_critical ("realm_daemon_release: don't have hold: %s", hold);
 }
@@ -326,6 +330,7 @@ on_service_release (RealmDbusService *object,
 	const char *sender;
 
 	sender = g_dbus_method_invocation_get_sender (invocation);
+	g_debug ("explicitly releasing service: %s", sender);
 	g_hash_table_remove (service_clients, sender);
 
 	return TRUE;

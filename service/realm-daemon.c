@@ -308,10 +308,10 @@ on_connection_filter (GDBusConnection *connection,
 		if (type == G_DBUS_MESSAGE_TYPE_METHOD_CALL) {
 
 			/* All methods besides 'Release' on the Service interface cause us to watch client */
-			if (g_str_equal (own_name , g_dbus_message_get_sender (message)) &&
-			    (!g_str_equal (g_dbus_message_get_path (message), REALM_DBUS_SERVICE_PATH) ||
-			     !g_str_equal (g_dbus_message_get_member (message), "Release") ||
-			     !g_str_equal (g_dbus_message_get_interface (message), REALM_DBUS_SERVICE_INTERFACE))) {
+			if (!g_str_equal (own_name, g_dbus_message_get_sender (message)) &&
+			    !(g_str_equal (g_dbus_message_get_path (message), REALM_DBUS_SERVICE_PATH) &&
+			      g_str_equal (g_dbus_message_get_member (message), "Release") &&
+			      g_str_equal (g_dbus_message_get_interface (message), REALM_DBUS_SERVICE_INTERFACE))) {
 				g_idle_add_full (G_PRIORITY_DEFAULT,
 				                 on_idle_hold_for_message,
 				                 g_object_ref (message),

@@ -48,6 +48,7 @@ static const Fixture samba_ou_fixtures[] = {
 	{ "OU=One,OU=Two Here,DC=domain,dc=example,Dc=COM", "domain.example.com", "Two Here/One" },
 	{ "OU=One,OU=Two Here,DC=invalid,Dc=COM", "domain.example.com", NULL },
 	{ " ", "domain.example.com", NULL },
+	{ "", "domain.example.com", NULL },
 	{ "OU", "domain.example.com", NULL },
 	{ "OU=One,", "domain.example.com", NULL },
 	{ "CN=Unsupported", "domain.example.com", NULL },
@@ -67,7 +68,10 @@ main (int argc,
 	g_set_prgname ("test-samba-ou-format");
 
 	for (i = 0; i < G_N_ELEMENTS (samba_ou_fixtures); i++) {
-		escaped = g_strdup (samba_ou_fixtures[i].ldap_dn);
+		if (g_str_equal (samba_ou_fixtures[i].ldap_dn, ""))
+			escaped = g_strdup ("_empty_");
+		else
+			escaped = g_strdup (samba_ou_fixtures[i].ldap_dn);
 		g_strdelimit (escaped, ", =\\/", '_');
 		name = g_strdup_printf ("/realmd/samba-ou-format/%s", escaped);
 		g_free (escaped);

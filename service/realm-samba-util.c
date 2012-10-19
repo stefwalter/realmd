@@ -100,6 +100,12 @@ realm_samba_util_build_strange_ou (const gchar *ldap_dn,
 	 *                        need to be doubled or even quadrupled.  It is not used as a separator.
 	 */
 
+	/* ldap_str2dn doesn't like empty strings */
+	while (g_ascii_isspace (ldap_dn[0]))
+		ldap_dn++;
+	if (g_str_equal (ldap_dn, ""))
+		return NULL;
+
 	rc = ldap_str2dn (ldap_dn, &dn, LDAP_DN_FORMAT_LDAPV3);
 	if (rc != LDAP_SUCCESS)
 		return NULL;

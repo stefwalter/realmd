@@ -96,8 +96,21 @@ typedef struct {
 	GQueue failures;
 	GQueue results;
 	gint relevance;
-	GVariant *realms;
+	GList *realms;
 } DiscoverClosure;
+
+typedef struct {
+	GList *realms;
+	gint relevance;
+} DiscoverResult;
+
+static void
+discover_result_free (gpointer data)
+{
+	DiscoverResult *disco = data;
+	g_list_free_full (disco->realms, g_object_unref);
+	g_slice_free (DiscoverResult, disco);
+}
 
 static void
 discover_closure_free (gpointer data)
@@ -106,11 +119,10 @@ discover_closure_free (gpointer data)
 	g_free (discover->operation_id);
 	g_object_unref (discover->invocation);
 	while (!g_queue_is_empty (&discover->results))
-		g_variant_unref (g_queue_pop_head (&discover->results));
+		discover_result_free (g_queue_pop_head (&discover->results));
 	while (!g_queue_is_empty (&discover->failures))
 		g_error_free (g_queue_pop_head (&discover->failures));
-	if (discover->realms)
-		g_variant_unref (discover->realms);
+	g_list_free_full (discover->realms, g_object_unref);
 	g_slice_free (DiscoverClosure, discover);
 }
 
@@ -119,55 +131,33 @@ compare_relevance (gconstpointer a,
                    gconstpointer b,
                    gpointer user_data)
 {
-	gint relevance_a = 0;
-	gint relevance_b = 0;
-	GVariant *realms;
+	const DiscoverResult *disco_a = a;
+	const DiscoverResult *disco_b = b;
 
-	g_variant_get ((GVariant *)a, "(i@ao)", &relevance_a, &realms);
-	g_variant_unref (realms);
-
-	g_variant_get ((GVariant *)b, "(i@ao)", &relevance_b, &realms);
-	g_variant_unref (realms);
-
-	return relevance_b - relevance_a;
+	return disco_b->relevance - disco_a->relevance;
 }
 
 static void
 discover_process_results (GSimpleAsyncResult *res,
                           DiscoverClosure *discover)
 {
-	gint relevance = 0;
 	GError *error;
-	GVariant *result;
-	GVariant *realms;
+	DiscoverResult *disco;
 	gboolean any = FALSE;
-	GPtrArray *results;
-	GVariantIter iter;
-	GVariant *realm;
 
 	g_queue_sort (&discover->results, compare_relevance, NULL);
-	results = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
 	for (;;) {
-		result = g_queue_pop_head (&discover->results);
-		if (result == NULL)
+		disco = g_queue_pop_head (&discover->results);
+		if (disco == NULL)
 			break;
-		g_variant_get (result, "(i@ao)", &relevance, &realms);
-		g_variant_iter_init (&iter, realms);
-		while ((realm = g_variant_iter_next_value (&iter)) != NULL)
-			g_ptr_array_add (results, realm);
-		if (relevance > discover->relevance)
-			discover->relevance = relevance;
-		g_variant_unref (realms);
-		g_variant_unref (result);
+		discover->realms = g_list_concat (discover->realms, disco->realms);
+		disco->realms = NULL;
+		if (disco->relevance > discover->relevance)
+			discover->relevance = disco->relevance;
+		discover_result_free (disco);
 		any = TRUE;
 	}
-
-	discover->realms = g_variant_new_array (G_VARIANT_TYPE ("o"),
-	                                        (GVariant *const *)results->pdata,
-	                                        results->len);
-	g_variant_ref_sink (discover->realms);
-	g_ptr_array_free (results, TRUE);
 
 	if (!any) {
 		/* If there was a failure, return one of them */
@@ -185,21 +175,20 @@ on_provider_discover (GObject *source,
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	DiscoverClosure *discover = g_simple_async_result_get_op_res_gpointer (res);
 	RealmAllProvider *self = REALM_ALL_PROVIDER (g_async_result_get_source_object (user_data));
+	DiscoverResult *disco;
 	GError *error = NULL;
-	GVariant *retval;
-	GVariant *realms;
+	GList *realms;
 	gint relevance;
 
-	relevance = realm_provider_discover_finish (REALM_PROVIDER (source), result, &realms, &error);
+	realms = realm_provider_discover_finish (REALM_PROVIDER (source), result, &relevance, &error);
 	if (error == NULL) {
-		retval = g_variant_new ("(i@ao)", relevance, realms);
-		g_queue_push_tail (&discover->results, g_variant_ref_sink (retval));
+		disco = g_slice_new (DiscoverResult);
+		disco->realms = realms;
+		disco->relevance = relevance;
+		g_queue_push_tail (&discover->results, disco);
 	} else {
 		g_queue_push_tail (&discover->failures, error);
 	}
-
-	if (realms)
-		g_variant_unref (realms);
 
 	g_assert (discover->outstanding > 0);
 	discover->outstanding--;
@@ -251,24 +240,26 @@ realm_all_provider_discover_async (RealmProvider *provider,
 	g_object_unref (res);
 }
 
-static gint
+static GList *
 realm_all_provider_discover_finish (RealmProvider *provider,
                                     GAsyncResult *result,
-                                    GVariant **realms,
+                                    gint *relevance,
                                     GError **error)
 {
 	GSimpleAsyncResult *res;
 	DiscoverClosure *discover;
+	GList *realms;
 
 	res = G_SIMPLE_ASYNC_RESULT (result);
 
 	if (g_simple_async_result_propagate_error (res, error))
-		return -1;
+		return NULL;
 
 	discover = g_simple_async_result_get_op_res_gpointer (res);
-	*realms = discover->realms;
+	*relevance = discover->relevance;
+	realms = discover->realms;
 	discover->realms = NULL;
-	return discover->relevance;
+	return realms;
 }
 
 static void

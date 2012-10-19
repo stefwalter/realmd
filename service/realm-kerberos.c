@@ -1308,6 +1308,16 @@ realm_kerberos_set_details (RealmKerberos *self,
 	g_ptr_array_free (tuples, TRUE);
 }
 
+gboolean
+realm_kerberos_is_configured (RealmKerberos *self)
+{
+	const gchar *configured;
+
+	g_return_val_if_fail (REALM_IS_KERBEROS (self), FALSE);
+	configured = realm_dbus_realm_get_configured (self->pv->realm_iface);
+	return configured && !g_str_equal (configured, "");
+}
+
 void
 realm_kerberos_set_configured (RealmKerberos *self,
                                gboolean configured)

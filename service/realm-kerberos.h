@@ -128,6 +128,8 @@ void                realm_kerberos_set_login_formats           (RealmKerberos *s
 void                realm_kerberos_set_details                 (RealmKerberos *self,
                                                                 ...) G_GNUC_NULL_TERMINATED;
 
+gboolean            realm_kerberos_is_configured               (RealmKerberos *self);
+
 void                realm_kerberos_set_configured              (RealmKerberos *self,
                                                                 gboolean configured);
 

@@ -50,9 +50,9 @@ struct _RealmProviderClass {
 	                                  GAsyncReadyCallback callback,
 	                                  gpointer user_data);
 
-	gint         (* discover_finish) (RealmProvider *provider,
+	GList *      (* discover_finish) (RealmProvider *provider,
 	                                  GAsyncResult *result,
-	                                  GVariant **realms,
+	                                  gint *relevance,
 	                                  GError **error);
 };
 
@@ -78,9 +78,9 @@ void                     realm_provider_discover                 (RealmProvider 
                                                                   GAsyncReadyCallback callback,
                                                                   gpointer user_data);
 
-gint                     realm_provider_discover_finish          (RealmProvider *self,
+GList *                  realm_provider_discover_finish          (RealmProvider *self,
                                                                   GAsyncResult *result,
-                                                                  GVariant **realms,
+                                                                  gint *relevance,
                                                                   GError **error);
 
 void                     realm_provider_set_name                 (RealmProvider *self,

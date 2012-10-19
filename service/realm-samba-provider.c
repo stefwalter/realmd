@@ -123,27 +123,26 @@ realm_samba_provider_discover_async (RealmProvider *provider,
 	g_object_unref (async);
 }
 
-static gint
+static GList *
 realm_samba_provider_discover_finish (RealmProvider *provider,
                                       GAsyncResult *result,
-                                      GVariant **realms,
+                                      gint *relevance,
                                       GError **error)
 {
 	RealmKerberos *realm = NULL;
 	GSimpleAsyncResult *async;
 	GHashTable *discovery;
 	GAsyncResult *ad_result;
-	const gchar *object_path;
 	gchar *name;
 
 	async = G_SIMPLE_ASYNC_RESULT (result);
 	ad_result = g_simple_async_result_get_op_res_gpointer (async);
 	if (ad_result == NULL)
-		return 0;
+		return NULL;
 
 	name = realm_kerberos_discover_finish (ad_result, &discovery, error);
 	if (name == NULL)
-		return 0;
+		return NULL;
 
 	if (realm_discovery_has_string (discovery,
 	                                REALM_DBUS_OPTION_SERVER_SOFTWARE,
@@ -158,14 +157,11 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
 	g_hash_table_unref (discovery);
 
 	if (realm == NULL)
-		return 0;
-
-	object_path = g_dbus_object_get_object_path (G_DBUS_OBJECT (realm));
-	*realms = g_variant_new_objv (&object_path, 1);
-	g_variant_ref_sink (*realms);
+		return NULL;
 
 	/* Return a higher priority if we're the default */
-	return realm_provider_is_default (REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY, REALM_DBUS_IDENTIFIER_WINBIND) ? 100 : 50;
+	*relevance = realm_provider_is_default (REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY, REALM_DBUS_IDENTIFIER_WINBIND) ? 100 : 50;
+	return g_list_append (NULL, g_object_ref (realm));
 }
 
 static void

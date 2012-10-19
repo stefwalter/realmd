@@ -57,6 +57,15 @@ method_closure_free (MethodClosure *closure)
 	g_slice_free (MethodClosure, closure);
 }
 
+static gint
+sort_configured_first (gconstpointer a,
+                       gconstpointer b)
+{
+	gint a_val = realm_kerberos_is_configured (REALM_KERBEROS (a)) ? 0 : 1;
+	gint b_val = realm_kerberos_is_configured (REALM_KERBEROS (b)) ? 0 : 1;
+	return a_val - b_val;
+}
+
 static void
 on_discover_complete (GObject *source,
                       GAsyncResult *result,
@@ -65,14 +74,29 @@ on_discover_complete (GObject *source,
 	MethodClosure *closure = user_data;
 	GVariant *retval;
 	GError *error = NULL;
-	GVariant *realms = NULL;
+	GPtrArray *results;
+	const gchar *path;
+	GList *realms;
 	gint relevance;
+	GList *l;
 
-	relevance = realm_provider_discover_finish (closure->self, result, &realms, &error);
+	realms = realm_provider_discover_finish (closure->self, result, &relevance, &error);
 	if (error == NULL) {
-		retval = g_variant_new ("(i@ao)", relevance, realms);
+		realms = g_list_sort (realms, sort_configured_first);
+		results = g_ptr_array_new ();
+		for (l = realms; l != NULL; l = g_list_next (l)) {
+			path = g_dbus_object_get_object_path (l->data);
+			g_ptr_array_add (results, g_variant_new_object_path (path));
+		}
+		g_list_free_full (realms, g_object_unref);
+
+		retval = g_variant_new ("(i@ao)", relevance,
+		                        g_variant_new_array (G_VARIANT_TYPE ("o"),
+		                                             (GVariant *const *)results->pdata,
+		                                             results->len));
+		g_ptr_array_free (results, TRUE);
+
 		g_dbus_method_invocation_return_value (closure->invocation, retval);
-		g_variant_unref (realms);
 	} else {
 		if (error->domain == REALM_ERROR || error->domain == G_DBUS_ERROR) {
 			g_dbus_error_strip_remote_error (error);
@@ -313,32 +337,28 @@ realm_provider_discover (RealmProvider *self,
 	(klass->discover_async) (self, string, options, invocation, callback, user_data);
 }
 
-gint
+GList *
 realm_provider_discover_finish (RealmProvider *self,
                                 GAsyncResult *result,
-                                GVariant **realms,
+                                gint *relevance,
                                 GError **error)
 {
 	RealmProviderClass *klass;
-	gint relevance;
 	GError *sub_error = NULL;
+	GList *realms;
 
 	klass = REALM_PROVIDER_GET_CLASS (self);
-	g_return_val_if_fail (klass->discover_finish != NULL, -1);
+	g_return_val_if_fail (klass->discover_finish != NULL, NULL);
 
-	*realms = NULL;
-
-	relevance = (klass->discover_finish) (self, result, realms, &sub_error);
+	realms = (klass->discover_finish) (self, result, relevance, &sub_error);
 	if (sub_error == NULL) {
-		if (realms != NULL && *realms == NULL) {
-			*realms =  g_variant_new_array (G_VARIANT_TYPE ("o"), NULL, 0);
-			g_variant_ref_sink (*realms);
-		}
+		if (realms == NULL)
+			*relevance = 0;
 	} else {
 		g_propagate_error (error, sub_error);
 	}
 
-	return relevance;
+	return realms;
 }
 
 gboolean

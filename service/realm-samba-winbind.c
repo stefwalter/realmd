@@ -94,7 +94,7 @@ realm_samba_winbind_configure_async (RealmIniConfig *config,
 	                         "idmap gid", "10000-20000",
 	                         "winbind enum users", "no",
 	                         "winbind enum groups", "no",
-	                         "template shell", realm_settings_string ("user", "shell"),
+	                         "template shell", realm_settings_string ("users", "default-shell"),
 	                         "winbind offline logon", "yes",
 	                         "winbind refresh tickets", "yes",
 	                         NULL);

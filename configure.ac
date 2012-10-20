@@ -1,6 +1,6 @@
 AC_PREREQ(2.63)
 
-AC_INIT([realmd], [0.9],
+AC_INIT([realmd], [0.10],
         [http://bugs.freedesktop.org/enter_bug.cgi?product=realmd],
         [realmd])
 

@@ -1,3 +1,14 @@
+0.10
+ * Send diagnostics from subcommand to client as they come in
+ * Return configured realms back to callers
+ * Refuse to join a domain if hostname is localhost
+ * In realm permit or deny commands, fail when options are invalid
+ * Fix samba package names for Fedora changes
+ * Fix typo in realm manual
+ * Fix case where base dn in computer-ou doesn't match domain
+ * Don't crash when computer-ou is empty
+ * Fix problem where daemon goes away unexpectedly
+
 0.9
  * Add support for deconfiguring a realm without removing computer account
  * Cleanup the krb5.keytab from realmd itself, rather than relying on samba

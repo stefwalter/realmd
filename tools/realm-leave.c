@@ -250,13 +250,12 @@ perform_leave (RealmClient *client,
 }
 
 int
-realm_leave (int argc,
-            char *argv[])
+realm_leave (RealmClient *client,
+             int argc,
+             char *argv[])
 {
-	RealmClient *client;
 	GOptionContext *context;
 	gchar *arg_user = NULL;
-	gboolean arg_verbose = FALSE;
 	gboolean arg_remove = FALSE;
 	gchar *arg_client_software = NULL;
 	gchar *arg_server_software = NULL;
@@ -271,13 +270,13 @@ realm_leave (int argc,
 		{ "server-software", 0, 0, G_OPTION_ARG_STRING, &arg_server_software,
 		  N_("Use specific server software"), NULL },
 		{ "user", 'U', 0, G_OPTION_ARG_STRING, &arg_user, N_("User name to use for removal"), NULL },
-		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
 		{ NULL, }
 	};
 
 	context = g_option_context_new ("realm");
 	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
 	g_option_context_add_main_entries (context, option_entries, NULL);
+	g_option_context_add_main_entries (context, realm_global_options, NULL);
 
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
 		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
@@ -285,15 +284,9 @@ realm_leave (int argc,
 		ret = 2;
 
 	} else {
-		client = realm_client_new (arg_verbose);
-		if (client) {
-			realm_name = argc < 2 ? NULL : argv[1];
-			ret = perform_leave (client, realm_name, arg_remove, arg_user,
-			                     arg_client_software, arg_server_software);
-			g_object_unref (client);
-		} else {
-			ret = 1;
-		}
+		realm_name = argc < 2 ? NULL : argv[1];
+		ret = perform_leave (client, realm_name, arg_remove, arg_user,
+		                     arg_client_software, arg_server_software);
 	}
 
 	g_free (arg_user);

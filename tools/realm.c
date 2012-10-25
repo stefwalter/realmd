@@ -30,7 +30,7 @@
 
 struct {
 	const char *name;
-	int (* function) (int argc, char *argv[]);
+	int (* function) (RealmClient *client, int argc, char *argv[]);
 	const char *usage;
 	const char *description;
 } realm_commands[] = {
@@ -283,11 +283,22 @@ usage (int code)
 	return code;
 }
 
+gboolean realm_verbose = FALSE;
+
+GOptionEntry realm_global_options[] = {
+	{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &realm_verbose, N_("Verbose output"), NULL },
+	{ NULL, }
+};
+
 int
 main (int argc,
       char *argv[])
 {
 	const gchar *command = NULL;
+	GOptionContext *context;
+	RealmClient *client;
+	GError *error = NULL;
+	gint ret;
 	gint i;
 
 	setlocale (LC_ALL, "");
@@ -297,8 +308,6 @@ main (int argc,
 	bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
 	textdomain (GETTEXT_PACKAGE);
 #endif
-
-	g_type_init ();
 
 	/* Find/remove the first non-flag argument: the command */
 	for (i = 1; i < argc; i++) {
@@ -315,9 +324,33 @@ main (int argc,
 	if (command == NULL)
 		return usage (2);
 
+	g_type_init ();
+
+	/* Parse the global options, don't display help or failure here */
+	context = g_option_context_new ("realm");
+	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
+	g_option_context_add_main_entries (context, realm_global_options, NULL);
+	g_option_context_set_help_enabled (context, FALSE);
+	g_option_context_set_ignore_unknown_options (context, TRUE);
+
+	if (!g_option_context_parse (context, &argc, &argv, &error)) {
+		g_warning ("Unexpected error: %s", error->message);
+		g_error_free (error);
+	}
+
+	g_option_context_free (context);
+
+
 	for (i = 0; i < G_N_ELEMENTS (realm_commands); i++) {
-		if (g_str_equal (realm_commands[i].name, command))
-			return (realm_commands[i].function) (argc, argv);
+		if (g_str_equal (realm_commands[i].name, command)) {
+			client = realm_client_new (realm_verbose);
+			if (!client)
+				return 1;
+
+			ret = (realm_commands[i].function) (client, argc, argv);
+			g_object_unref (client);
+			return ret;
+		}
 	}
 
 	return usage(2);

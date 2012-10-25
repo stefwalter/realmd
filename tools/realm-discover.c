@@ -146,12 +146,11 @@ perform_discover (RealmClient *client,
 }
 
 int
-realm_discover (int argc,
+realm_discover (RealmClient *client,
+                int argc,
                 char *argv[])
 {
-	RealmClient *client;
 	GOptionContext *context;
-	gboolean arg_verbose = FALSE;
 	gchar *arg_client_software = NULL;
 	gchar *arg_server_software = NULL;
 	GError *error = NULL;
@@ -162,7 +161,6 @@ realm_discover (int argc,
 
 	GOptionEntry option_entries[] = {
 		{ "all", 'a', 0, G_OPTION_ARG_NONE, &arg_all, N_("Show all discovered realms"), NULL },
-		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
 		{ "client-software", 0, 0, G_OPTION_ARG_STRING, &arg_client_software, N_("Use specific client software"), NULL },
 		{ "server-software", 0, 0, G_OPTION_ARG_STRING, &arg_server_software, N_("Use specific server software"), NULL },
 		{ NULL, }
@@ -173,22 +171,17 @@ realm_discover (int argc,
 	context = g_option_context_new ("realm-or-domain");
 	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
 	g_option_context_add_main_entries (context, option_entries, NULL);
+	g_option_context_add_main_entries (context, realm_global_options, NULL);
 
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
 		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
 		g_error_free (error);
 		ret = 2;
-	}
-
-	client = realm_client_new (arg_verbose);
-	if (!client) {
-		ret = 1;
 
 	/* The default realm? */
 	} else if (argc == 1) {
 		ret = perform_discover (client, NULL, arg_all,
 		                        arg_server_software, arg_client_software);
-		g_object_unref (client);
 
 	/* Specific realms */
 	} else {
@@ -198,7 +191,6 @@ realm_discover (int argc,
 			if (ret != 0)
 				result = ret;
 		}
-		g_object_unref (client);
 	}
 
 	g_free (arg_server_software);
@@ -209,8 +201,7 @@ realm_discover (int argc,
 
 static int
 perform_list (RealmClient *client,
-              gboolean all,
-              gboolean verbose)
+              gboolean all)
 {
 	RealmDbusProvider *provider;
 	const gchar *const *realms;
@@ -232,7 +223,7 @@ perform_list (RealmClient *client,
 		g_object_unref (realm);
 	}
 
-	if (verbose && !printed) {
+	if (realm_verbose && !printed) {
 		if (all)
 			g_printerr ("No known realms\n");
 		else
@@ -243,25 +234,24 @@ perform_list (RealmClient *client,
 }
 
 int
-realm_list (int argc,
+realm_list (RealmClient *client,
+            int argc,
             char *argv[])
 {
-	RealmClient *client;
 	GOptionContext *context;
-	gboolean arg_verbose = FALSE;
 	gboolean arg_all = FALSE;
 	GError *error = NULL;
 	gint ret = 0;
 
 	GOptionEntry option_entries[] = {
 		{ "all", 'a', 0, G_OPTION_ARG_NONE, &arg_all, N_("Show all realms"), NULL },
-		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
 		{ NULL, }
 	};
 
 	context = g_option_context_new ("realm");
 	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
 	g_option_context_add_main_entries (context, option_entries, NULL);
+	g_option_context_add_main_entries (context, realm_global_options, NULL);
 
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
 		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
@@ -273,13 +263,7 @@ realm_list (int argc,
 		ret = 2;
 
 	} else {
-		client = realm_client_new (arg_verbose);
-		if (client) {
-			ret = perform_list (client, arg_all, arg_verbose);
-			g_object_unref (client);
-		} else {
-			ret = 1;
-		}
+		return perform_list (client, arg_all);
 	}
 
 	g_option_context_free (context);

@@ -25,22 +25,32 @@ G_BEGIN_DECLS
 
 #define               realm_operation_id           "realm-enroll"
 
-int                   realm_join                   (int argc,
+extern GOptionEntry   realm_global_options[];
+
+extern gboolean       realm_verbose;
+
+int                   realm_join                   (RealmClient *client,
+                                                    int argc,
                                                     char *argv[]);
 
-int                   realm_leave                  (int argc,
+int                   realm_leave                  (RealmClient *client,
+                                                    int argc,
                                                     char *argv[]);
 
-int                   realm_discover               (int argc,
+int                   realm_discover               (RealmClient *client,
+                                                    int argc,
                                                     char *argv[]);
 
-int                   realm_list                   (int argc,
+int                   realm_list                   (RealmClient *client,
+                                                    int argc,
                                                     char *argv[]);
 
-int                   realm_permit                 (int argc,
+int                   realm_permit                 (RealmClient *client,
+                                                    int argc,
                                                     char *argv[]);
 
-int                   realm_deny                   (int argc,
+int                   realm_deny                   (RealmClient *client,
+                                                    int argc,
                                                     char *argv[]);
 
 GVariant *            realm_build_options          (const gchar *first,

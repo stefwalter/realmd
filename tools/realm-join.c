@@ -213,13 +213,12 @@ perform_join (RealmClient *client,
 }
 
 int
-realm_join (int argc,
+realm_join (RealmClient *client,
+            int argc,
             char *argv[])
 {
 	GOptionContext *context;
-	RealmClient *client;
 	gchar *arg_user = NULL;
-	gboolean arg_verbose = FALSE;
 	GError *error = NULL;
 	const gchar *realm_name;
 	gchar *arg_computer_ou = NULL;
@@ -232,8 +231,6 @@ realm_join (int argc,
 	GOptionEntry option_entries[] = {
 		{ "user", 'U', 0, G_OPTION_ARG_STRING, &arg_user,
 		  N_("User name to use for enrollment"), NULL },
-		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose,
-		  N_("Verbose output"), NULL },
 		{ "computer-ou", 0, 0, G_OPTION_ARG_STRING, &arg_computer_ou,
 		  N_("Computer OU DN to join"), NULL },
 		{ "client-software", 0, 0, G_OPTION_ARG_STRING, &arg_client_software,
@@ -250,6 +247,7 @@ realm_join (int argc,
 	context = g_option_context_new ("realm");
 	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
 	g_option_context_add_main_entries (context, option_entries, NULL);
+	g_option_context_add_main_entries (context, realm_global_options, NULL);
 
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
 		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
@@ -261,17 +259,11 @@ realm_join (int argc,
 		ret = 2;
 
 	} else {
-		client = realm_client_new (arg_verbose);
-		if (client) {
-			realm_name = argc < 2 ? "" : argv[1];
-			ret = perform_join (client, realm_name, arg_user,
-			                    arg_computer_ou, arg_client_software,
-			                    arg_server_software, arg_membership_software,
-			                    arg_one_time_password);
-			g_object_unref (client);
-		} else {
-			ret = 1;
-		}
+		realm_name = argc < 2 ? "" : argv[1];
+		ret = perform_join (client, realm_name, arg_user,
+		                    arg_computer_ou, arg_client_software,
+		                    arg_server_software, arg_membership_software,
+		                    arg_one_time_password);
 	}
 
 	g_free (arg_user);

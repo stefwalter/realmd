@@ -182,14 +182,13 @@ perform_permit_or_deny_all (RealmClient *client,
 }
 
 static int
-realm_permit_or_deny (gboolean permit,
+realm_permit_or_deny (RealmClient *client,
+                      gboolean permit,
                       int argc,
                       char *argv[])
 {
-	RealmClient *client;
 	GOptionContext *context;
 	gboolean arg_all = FALSE;
-	gboolean arg_verbose = FALSE;
 	gchar *realm_name = NULL;
 	GError *error = NULL;
 	gint ret = 0;
@@ -198,13 +197,13 @@ realm_permit_or_deny (gboolean permit,
 		{ "all", 'a', 0, G_OPTION_ARG_NONE, &arg_all,
 		  permit ? N_("Permit any domain user login") : N_("Deny any domain user login"), NULL },
 		{ "realm", 'R', 0, G_OPTION_ARG_STRING, &realm_name, N_("Realm to permit/deny logins for"), NULL },
-		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, N_("Verbose output"), NULL },
 		{ NULL, }
 	};
 
 	context = g_option_context_new ("realm");
 	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
 	g_option_context_add_main_entries (context, option_entries, NULL);
+	g_option_context_add_main_entries (context, realm_global_options, NULL);
 
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
 		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
@@ -219,13 +218,7 @@ realm_permit_or_deny (gboolean permit,
 			g_printerr ("%s: %s\n", _("No users should be specified with -a or --all"), g_get_prgname ());
 			ret = 2;
 		} else {
-			client = realm_client_new (arg_verbose);
-			if (client) {
-				ret = perform_permit_or_deny_all (client, realm_name, permit);
-				g_object_unref (client);
-			} else {
-				ret = 1;
-			}
+			ret = perform_permit_or_deny_all (client, realm_name, permit);
 		}
 	} else if (argc < 2) {
 		g_printerr ("%s: %s\n", g_get_prgname (),
@@ -233,15 +226,9 @@ realm_permit_or_deny (gboolean permit,
 		ret = 2;
 
 	} else {
-		client = realm_client_new (arg_verbose);
-		if (client) {
-			ret = perform_permit_or_deny_logins (client, realm_name,
-			                                     (const gchar **)(argv + 1),
-			                                     argc - 1, permit);
-			g_object_unref (client);
-		} else {
-			ret = 1;
-		}
+		ret = perform_permit_or_deny_logins (client, realm_name,
+		                                     (const gchar **)(argv + 1),
+		                                     argc - 1, permit);
 	}
 
 	g_free (realm_name);
@@ -250,15 +237,17 @@ realm_permit_or_deny (gboolean permit,
 }
 
 int
-realm_permit (int argc,
+realm_permit (RealmClient *client,
+              int argc,
               char *argv[])
 {
-	return realm_permit_or_deny (TRUE, argc, argv);
+	return realm_permit_or_deny (client, TRUE, argc, argv);
 }
 
 int
-realm_deny (int argc,
+realm_deny (RealmClient *client,
+            int argc,
             char *argv[])
 {
-	return realm_permit_or_deny (FALSE, argc, argv);
+	return realm_permit_or_deny (client, FALSE, argc, argv);
 }

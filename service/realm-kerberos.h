@@ -122,6 +122,8 @@ void                realm_kerberos_set_permitted_logins        (RealmKerberos *s
 void                realm_kerberos_set_login_policy            (RealmKerberos *self,
                                                                 RealmKerberosLoginPolicy value);
 
+const gchar *       realm_kerberos_login_policy_to_string      (RealmKerberosLoginPolicy value);
+
 void                realm_kerberos_set_login_formats           (RealmKerberos *self,
                                                                 const gchar **value);
 

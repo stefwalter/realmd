@@ -1244,29 +1244,29 @@ realm_kerberos_set_permitted_logins (RealmKerberos *self,
 	realm_dbus_realm_set_permitted_logins (self->pv->realm_iface, (const gchar * const*)value);
 }
 
+const gchar *
+realm_kerberos_login_policy_to_string (RealmKerberosLoginPolicy value)
+{
+	switch (value) {
+	case REALM_KERBEROS_ALLOW_ANY_LOGIN:
+		return REALM_DBUS_LOGIN_POLICY_ANY;
+	case REALM_KERBEROS_ALLOW_PERMITTED_LOGINS:
+		return REALM_DBUS_LOGIN_POLICY_PERMITTED;
+	case REALM_KERBEROS_DENY_ANY_LOGIN:
+		return REALM_DBUS_LOGIN_POLICY_DENY;
+	case REALM_KERBEROS_POLICY_NOT_SET:
+		return "";
+	default:
+		g_return_val_if_reached ("");
+	}
+}
+
 void
 realm_kerberos_set_login_policy (RealmKerberos *self,
                                  RealmKerberosLoginPolicy value)
 {
-	const gchar *policy = "";
-
-	g_return_if_fail (REALM_IS_KERBEROS (self));
-	switch (value) {
-	case REALM_KERBEROS_ALLOW_ANY_LOGIN:
-		policy = REALM_DBUS_LOGIN_POLICY_ANY;
-		break;
-	case REALM_KERBEROS_ALLOW_PERMITTED_LOGINS:
-		policy = REALM_DBUS_LOGIN_POLICY_PERMITTED;
-		break;
-	case REALM_KERBEROS_DENY_ANY_LOGIN:
-		policy = REALM_DBUS_LOGIN_POLICY_DENY;
-		break;
-	case REALM_KERBEROS_POLICY_NOT_SET:
-		policy = "";
-		break;
-	}
-
-	realm_dbus_realm_set_login_policy (self->pv->realm_iface, policy);
+	realm_dbus_realm_set_login_policy (self->pv->realm_iface,
+	                                   realm_kerberos_login_policy_to_string (value));
 }
 
 void

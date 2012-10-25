@@ -26,6 +26,8 @@ realmd_SOURCES = \
 	realm-diagnostics.c realm-diagnostics.h \
 	realm-discovery.c realm-discovery.h \
 	realm-errors.c realm-errors.h \
+	realm-example.c realm-example.h \
+	realm-example-provider.c realm-example-provider.h \
 	realm-ini-config.c realm-ini-config.h \
 	realm-ipa-discover.c realm-ipa-discover.h \
 	realm-kerberos.c realm-kerberos.h \
@@ -58,6 +60,7 @@ realmd_CFLAGS = \
 	-DSYSCONF_DIR="\"$(sysconfdir)\"" \
 	-DPROVIDER_DIR="\"$(privatedir)/provider.d\"" \
 	-DLOCALEDIR=\""$(datadir)/locale"\" \
+	-DSTATE_DIR="\"$(localstatedir)/realmd\"" \
 	$(PACKAGEKIT_CFLAGS) \
 	$(POLKIT_CFLAGS) \
 	$(GLIB_CFLAGS) \

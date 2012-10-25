@@ -1,5 +1,6 @@
 service/org.freedesktop.realmd.policy.in
 service/realm-command.c
+service/realm-example.c
 service/realm-kerberos.c
 service/realm-provider.c
 service/realm-samba.c

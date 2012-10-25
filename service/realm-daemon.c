@@ -20,6 +20,7 @@
 #include "realm-dbus-generated.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
+#include "realm-example-provider.h"
 #include "realm-kerberos-provider.h"
 #include "realm-samba-provider.h"
 #include "realm-settings.h"
@@ -439,6 +440,13 @@ initialize_service (GDBusConnection *connection)
 	g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
 	realm_all_provider_register (all_provider, provider);
 	g_object_unref (provider);
+
+	if (realm_settings_boolean (REALM_DBUS_IDENTIFIER_EXAMPLE, "enabled")) {
+		provider = realm_example_provider_new ();
+		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
+		realm_all_provider_register (all_provider, provider);
+		g_object_unref (provider);
+	}
 
 	g_dbus_object_manager_server_set_connection (object_server, connection);
 

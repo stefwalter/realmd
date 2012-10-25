@@ -181,3 +181,20 @@ realm_settings_string (const gchar *section,
 
 	return string;
 }
+
+gboolean
+realm_settings_boolean (const gchar *section,
+                        const gchar *key)
+{
+	const gchar *string;
+
+	string = realm_settings_value (section, key);
+	if (string == NULL) {
+		g_warning ("no value found for '%s/%s' in realmd config", section, key);
+		return FALSE;
+	}
+
+	return g_ascii_strcasecmp (string, "true") == 0 ||
+	       g_ascii_strcasecmp (string, "1") == 0 ||
+	       g_ascii_strcasecmp (string, "yes") == 0;
+}

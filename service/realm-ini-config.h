@@ -105,6 +105,8 @@ void                realm_ini_config_set_all                  (RealmIniConfig *s
                                                                const gchar *section,
                                                                GHashTable *parameters);
 
+gchar **            realm_ini_config_get_sections             (RealmIniConfig *self);
+
 gboolean            realm_ini_config_have_section             (RealmIniConfig *self,
                                                                const gchar *section);
 

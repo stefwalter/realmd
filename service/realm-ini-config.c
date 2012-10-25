@@ -967,6 +967,24 @@ realm_ini_config_set_list_diff (RealmIniConfig *self,
 	g_free (delim);
 }
 
+gchar **
+realm_ini_config_get_sections (RealmIniConfig *self)
+{
+	GHashTableIter iter;
+	gpointer section;
+	gchar **sections;
+	gint i = 0;
+
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), NULL);
+
+	sections = g_new0 (gchar *, g_hash_table_size (self->sections) + 1);
+	g_hash_table_iter_init (&iter, self->sections);
+	while (g_hash_table_iter_next (&iter, &section, NULL))
+		sections[i++] = g_strdup (section);
+
+	return sections;
+}
+
 gboolean
 realm_ini_config_have_section (RealmIniConfig *self,
                                const gchar *section)

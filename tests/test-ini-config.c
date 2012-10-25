@@ -391,6 +391,20 @@ test_set_all (Test *test,
 }
 
 static void
+test_get_sections (Test *test,
+                   gconstpointer unused)
+{
+	const gchar *data = "[section]\n\t1= one\r\n2=two\n3=three\n[section2]\n[three]";
+	gchar **sections;
+
+	realm_ini_config_read_string (test->config, data);
+	sections = realm_ini_config_get_sections (test->config);
+	g_assert (sections != NULL);
+	g_assert_cmpint (g_strv_length (sections), ==, 3);
+	g_strfreev (sections);
+}
+
+static void
 test_have_section (Test *test,
                    gconstpointer unused)
 {
@@ -644,6 +658,7 @@ main (int argc,
 	g_test_add ("/realmd/ini-config/set-section", Test, NULL, setup, test_set_section, teardown);
 	g_test_add ("/realmd/ini-config/set-all", Test, NULL, setup, test_set_all, teardown);
 
+	g_test_add ("/realmd/ini-config/get-sections", Test, NULL, setup, test_get_sections, teardown);
 	g_test_add ("/realmd/ini-config/have-section", Test, NULL, setup, test_have_section, teardown);
 	g_test_add ("/realmd/ini-config/remove-section-first", Test, NULL, setup, test_remove_section_first, teardown);
 	g_test_add ("/realmd/ini-config/remove-section-middle", Test, NULL, setup, test_remove_section_middle, teardown);

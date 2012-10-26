@@ -31,6 +31,7 @@
 #include <polkit/polkit.h>
 
 #include <stdio.h>
+#include <errno.h>
 
 #define TIMEOUT        60 /* seconds */
 #define HOLD_INTERNAL  (GUINT_TO_POINTER (~0))
@@ -46,6 +47,8 @@ static guint service_bus_name_owner_id = 0;
 static gboolean service_bus_name_claimed = FALSE;
 static GDBusObjectManagerServer *object_server = NULL;
 static gboolean service_debug = FALSE;
+static gchar *service_install = NULL;
+static gint service_dbus_fd = -1;
 
 typedef struct {
 	guint watch;
@@ -105,6 +108,18 @@ realm_daemon_unlock_for_action (GDBusMethodInvocation *invocation)
 }
 
 gboolean
+realm_daemon_is_dbus_peer (void)
+{
+	return service_dbus_fd != -1;
+}
+
+gboolean
+realm_daemon_is_install_mode (void)
+{
+	return service_install != NULL;
+}
+
+gboolean
 realm_daemon_has_debug_flag (void)
 {
 	return service_debug;
@@ -118,13 +133,17 @@ realm_daemon_set_locale_until_loop (GDBusMethodInvocation *invocation)
 
 gboolean
 realm_daemon_check_dbus_action (const gchar *sender,
-                                 const gchar *action_id)
+                                const gchar *action_id)
 {
 	PolkitAuthorizationResult *result;
 	PolkitAuthority *authority;
 	PolkitSubject *subject;
 	GError *error = NULL;
 	gboolean ret;
+
+	/* If we're a dbus peer, just allow all calls */
+	if (realm_daemon_is_dbus_peer ())
+		return TRUE;
 
 	g_return_val_if_fail (sender != NULL, FALSE);
 	g_return_val_if_fail (action_id != NULL, FALSE);
@@ -367,7 +386,7 @@ on_service_set_locale (RealmDbusService *object,
 static void
 on_name_acquired (GDBusConnection *connection,
                   const gchar *name,
-                  gpointer user_data)
+                  gpointer unused)
 {
 	service_bus_name_claimed = TRUE;
 	g_debug ("claimed name on bus: %s", name);
@@ -377,7 +396,7 @@ on_name_acquired (GDBusConnection *connection,
 static void
 on_name_lost (GDBusConnection *connection,
               const gchar *name,
-              gpointer user_data)
+              gpointer unused)
 {
 	if (!service_bus_name_claimed)
 		g_message ("couldn't claim service name on DBus bus: %s", name);
@@ -394,6 +413,43 @@ realm_daemon_export_object (GDBusObjectSkeleton *object)
 }
 
 static void
+initialize_service (GDBusConnection *connection)
+{
+	RealmProvider *all_provider;
+	RealmProvider *provider;
+
+	realm_diagnostics_initialize (connection);
+
+	object_server = g_dbus_object_manager_server_new (REALM_DBUS_SERVICE_PATH);
+
+	all_provider = realm_all_provider_new_and_export (connection);
+
+	provider = realm_sssd_provider_new ();
+	g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
+	realm_all_provider_register (all_provider, provider);
+	g_object_unref (provider);
+
+	provider = realm_samba_provider_new ();
+	g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
+	realm_all_provider_register (all_provider, provider);
+	g_object_unref (provider);
+
+	provider = realm_kerberos_provider_new ();
+	g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
+	realm_all_provider_register (all_provider, provider);
+	g_object_unref (provider);
+
+	g_dbus_object_manager_server_set_connection (object_server, connection);
+
+	/* Use this to control the life time of the providers */
+	g_object_set_data_full (G_OBJECT (object_server), "the-provider",
+	                        all_provider, g_object_unref);
+
+	/* Matches the hold() in main() */
+	realm_daemon_release ("main");
+}
+
+static void
 on_bus_get_connection (GObject *source,
                        GAsyncResult *result,
                        gpointer unused)
@@ -401,8 +457,6 @@ on_bus_get_connection (GObject *source,
 	GError *error = NULL;
 	GDBusConnection *connection;
 	const gchar *self_name;
-	RealmProvider *all_provider;
-	RealmProvider *provider;
 	guint owner_id;
 
 	connection = g_bus_get_finish (result, &error);
@@ -419,40 +473,73 @@ on_bus_get_connection (GObject *source,
 		g_dbus_connection_add_filter (connection, on_connection_filter,
 		                              (gchar *)self_name, NULL);
 
-		realm_diagnostics_initialize (connection);
-
-		object_server = g_dbus_object_manager_server_new (REALM_DBUS_SERVICE_PATH);
-
-		all_provider = realm_all_provider_new_and_export (connection);
-
-		provider = realm_sssd_provider_new ();
-		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
-		realm_all_provider_register (all_provider, provider);
-		g_object_unref (provider);
-
-		provider = realm_samba_provider_new ();
-		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
-		realm_all_provider_register (all_provider, provider);
-		g_object_unref (provider);
-
-		provider = realm_kerberos_provider_new ();
-		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
-		realm_all_provider_register (all_provider, provider);
-		g_object_unref (provider);
-
-		g_dbus_object_manager_server_set_connection (object_server, connection);
+		initialize_service (connection);
 
 		owner_id = g_bus_own_name_on_connection (connection,
 		                                         REALM_DBUS_BUS_NAME,
 		                                         G_BUS_NAME_OWNER_FLAGS_NONE,
 		                                         on_name_acquired, on_name_lost,
-		                                         all_provider, g_object_unref);
+		                                         NULL, NULL);
+
 		service_bus_name_owner_id = owner_id;
 		g_object_unref (connection);
 	}
+}
 
-	/* Matches the hold() in main() */
-	realm_daemon_release ("main");
+static void
+on_peer_connection_new (GObject *source,
+                        GAsyncResult *result,
+                        gpointer unused)
+{
+	GDBusConnection *connection;
+	GError *error = NULL;
+
+	connection = g_dbus_connection_new_finish (result, &error);
+	if (error != NULL) {
+		g_warning ("Couldn't connect to peer: %s", error->message);
+		g_main_loop_quit (main_loop);
+		g_error_free (error);
+
+	} else {
+		g_debug ("connected to peer");
+		initialize_service (connection);
+		g_object_unref (connection);
+	}
+}
+
+static gboolean
+connect_to_bus_or_peer (void)
+{
+	GSocketConnection *stream;
+	GSocket *socket;
+	GError *error = NULL;
+	gchar *guid;
+
+	if (service_dbus_fd == -1) {
+		g_bus_get (G_BUS_TYPE_SYSTEM, NULL, on_bus_get_connection, NULL);
+		return TRUE;
+	}
+
+	socket = g_socket_new_from_fd (service_dbus_fd, &error);
+	if (error != NULL) {
+		g_warning ("Couldn't create socket: %s", error->message);
+		g_error_free (error);
+		return FALSE;
+	}
+
+	stream = g_socket_connection_factory_create_connection (socket);
+	g_return_val_if_fail (stream != NULL, FALSE);
+	g_object_unref (socket);
+
+	guid = g_dbus_generate_guid ();
+	g_dbus_connection_new (G_IO_STREAM (stream), guid,
+	                       G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_SERVER |
+	                       G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_ALLOW_ANONYMOUS,
+	                       NULL, NULL, on_peer_connection_new, NULL);
+
+	g_free (guid);
+	g_object_unref (stream);
+	return TRUE;
 }
 
 static void
@@ -495,6 +582,10 @@ main (int argc,
 	GOptionEntry option_entries[] = {
 		{ "debug", 'd', 0, G_OPTION_ARG_NONE, &service_debug,
 		  "Turn on debug output, prevent timeout exit", NULL },
+		{ "install", 0, 0, G_OPTION_ARG_STRING, &service_install,
+		  "Turn on installer mode, install to this prefix", NULL },
+		{ "dbus-peer", 0, 0, G_OPTION_ARG_INT, &service_dbus_fd,
+		  "Use a peer to peer dbus connection on this fd", NULL },
 		{ NULL }
 	};
 
@@ -518,15 +609,33 @@ main (int argc,
 	context = g_option_context_new ("realmd");
 	g_option_context_add_main_entries (context, option_entries, NULL);
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
-		g_printerr ("%s", error->message);
+		g_message ("%s", error->message);
 		g_option_context_free (context);
 		g_error_free (error);
 		return 2;
 	}
 
+	g_option_context_free (context);
+
+	/* Load the platform specific data */
+	realm_settings_init ();
+
+	if (service_install) {
+		if (chdir (service_install) < 0) {
+			g_message ("Couldn't use install prefix: %s: %s",
+			           service_install, g_strerror (errno));
+			return 1;
+		}
+		if (chroot (service_install) < 0) {
+			g_message ("Couldn't chroot into install prefix: %s: %s",
+			           service_install, g_strerror (errno));
+			return 1;
+		}
+	}
+
 	if (g_getenv ("REALM_DEBUG"))
 		service_debug = TRUE;
-	if (g_getenv ("REALM_PERSIST") || service_debug)
+	if (g_getenv ("REALM_PERSIST") || service_debug || service_install)
 		service_persist = TRUE;
 
 	if (service_debug) {
@@ -539,16 +648,13 @@ main (int argc,
 	                                         g_free, realm_client_unwatch_and_free);
 	realm_daemon_hold ("main");
 
-	/* Load the platform specific data */
-	realm_settings_init ();
-
 	service = realm_dbus_service_skeleton_new ();
 	g_signal_connect (service, "handle-release", G_CALLBACK (on_service_release), NULL);
 	g_signal_connect (service, "handle-set-locale", G_CALLBACK (on_service_set_locale), NULL);
 	g_signal_connect (service, "handle-cancel", G_CALLBACK (on_service_cancel), NULL);
 
 	g_debug ("starting service");
-	g_bus_get (G_BUS_TYPE_SYSTEM, NULL, on_bus_get_connection, &object_server);
+	connect_to_bus_or_peer ();
 
 	main_loop = g_main_loop_new (NULL, FALSE);
 
@@ -568,9 +674,9 @@ main (int argc,
 	g_debug ("stopping service");
 	realm_settings_uninit ();
 	g_main_loop_unref (main_loop);
-	g_option_context_free (context);
 
 	g_object_unref (service);
 	g_hash_table_unref (service_clients);
+	g_free (service_install);
 	return 0;
 }

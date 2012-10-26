@@ -35,6 +35,10 @@ void                 realm_daemon_set_locale                 (const gchar *sende
                                                               const gchar *locale,
                                                               const gchar *operation_id);
 
+gboolean             realm_daemon_is_dbus_peer               (void);
+
+gboolean             realm_daemon_is_install_mode            (void);
+
 gboolean             realm_daemon_has_debug_flag             (void);
 
 void                 realm_daemon_poke                       (void);

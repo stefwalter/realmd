@@ -18,21 +18,27 @@
 #include "realm-client.h"
 #include "realm-dbus-constants.h"
 
+#include "eggdbusobjectproxy.h"
+#include "eggdbusobjectmanagerclient.h"
+
 #include <glib/gi18n.h>
+
+#include <sys/socket.h>
 
 #include <errno.h>
 #include <string.h>
 
 struct _RealmClient {
-	GDBusObjectManagerClient parent;
+	EggDBusObjectManagerClient parent;
 	RealmDbusProvider *provider;
+	GPid peer_pid;
 };
 
 struct _RealmClientClass {
-	GDBusObjectManagerClientClass parent;
+	EggDBusObjectManagerClientClass parent;
 };
 
-G_DEFINE_TYPE (RealmClient, realm_client, G_TYPE_DBUS_OBJECT_MANAGER_CLIENT);
+G_DEFINE_TYPE (RealmClient, realm_client, EGG_TYPE_DBUS_OBJECT_MANAGER_CLIENT);
 
 typedef struct {
 	GAsyncResult *result;
@@ -60,6 +66,11 @@ realm_client_finalize (GObject *obj)
 {
 	RealmClient *self = REALM_CLIENT (obj);
 
+	if (self->peer_pid) {
+		kill (self->peer_pid, SIGTERM);
+		g_spawn_close_pid (self->peer_pid);
+	}
+
 	if (self->provider)
 		g_object_unref (self->provider);
 
@@ -75,7 +86,7 @@ realm_client_class_init (RealmClientClass *klass)
 }
 
 static GType
-realm_object_client_get_proxy_type (GDBusObjectManagerClient *manager,
+realm_object_client_get_proxy_type (EggDBusObjectManagerClient *manager,
                                     const gchar *object_path,
                                     const gchar *interface_name,
                                     gpointer user_data)
@@ -85,7 +96,7 @@ realm_object_client_get_proxy_type (GDBusObjectManagerClient *manager,
 	GType ret;
 
 	if (interface_name == NULL)
-		return G_TYPE_DBUS_OBJECT_PROXY;
+		return EGG_TYPE_DBUS_OBJECT_PROXY;
 
 	if (g_once_init_enter (&once_init_value)) {
 		lookup_hash = g_hash_table_new (g_str_hash, g_str_equal);
@@ -99,7 +110,7 @@ realm_object_client_get_proxy_type (GDBusObjectManagerClient *manager,
 
 	ret = GPOINTER_TO_SIZE (g_hash_table_lookup (lookup_hash, interface_name));
 	if (ret == 0)
-		ret = G_TYPE_DBUS_OBJECT_PROXY;
+		ret = EGG_TYPE_DBUS_OBJECT_PROXY;
 	return ret;
 }
 
@@ -119,45 +130,43 @@ on_diagnostics_signal (GDBusConnection *connection,
 	g_printerr ("%s", data);
 }
 
-RealmClient *
-realm_client_new (gboolean verbose)
+static RealmClient *
+realm_client_new_on_connection (GDBusConnection *connection,
+                                gboolean verbose,
+                                const gchar *bus_name)
 {
-	GDBusConnection *connection;
 	RealmDbusProvider *provider;
 	GError *error = NULL;
-	RealmClient *client = NULL;
 	GInitable *ret;
+	RealmClient *client;
+	GDBusSignalFlags flags;
 
-	connection = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, &error);
-	if (error == NULL) {
-		if (verbose) {
-			g_dbus_connection_signal_subscribe (connection, REALM_DBUS_BUS_NAME,
-			                                    REALM_DBUS_SERVICE_INTERFACE,
-			                                    REALM_DBUS_DIAGNOSTICS_SIGNAL,
-			                                    REALM_DBUS_SERVICE_PATH,
-			                                    NULL, G_DBUS_SIGNAL_FLAGS_NONE,
-			                                    on_diagnostics_signal, NULL, NULL);
-		}
+	flags = G_DBUS_SIGNAL_FLAGS_NONE;
+	if (bus_name == NULL)
+		flags |= G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE;
 
-	} else {
-		realm_handle_error (error, _("Couldn't connect to system bus"));
-		return NULL;
+	if (verbose) {
+		g_dbus_connection_signal_subscribe (connection, bus_name,
+		                                    REALM_DBUS_SERVICE_INTERFACE,
+		                                    REALM_DBUS_DIAGNOSTICS_SIGNAL,
+		                                    REALM_DBUS_SERVICE_PATH,
+		                                    NULL, flags,
+		                                    on_diagnostics_signal, NULL, NULL);
 	}
 
 	provider = realm_dbus_provider_proxy_new_sync (connection,
 	                                               G_DBUS_PROXY_FLAGS_NONE,
-	                                               REALM_DBUS_BUS_NAME,
+	                                               bus_name,
 	                                               REALM_DBUS_SERVICE_PATH,
 	                                               NULL, &error);
 	if (error != NULL) {
 		realm_handle_error (error, _("Couldn't connect to realm service"));
-		g_object_unref (connection);
 		return NULL;
 	}
 
 	ret = g_initable_new (REALM_TYPE_CLIENT, NULL, &error,
 	                      "flags", G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_NONE,
-	                      "name", REALM_DBUS_BUS_NAME,
+	                      "name", bus_name,
 	                      "connection", connection,
 	                      "object-path", REALM_DBUS_SERVICE_PATH,
 	                      "get-proxy-type-func", realm_object_client_get_proxy_type,
@@ -170,14 +179,119 @@ realm_client_new (gboolean verbose)
 	}
 
 	g_object_unref (provider);
-	g_object_unref (connection);
 
 	if (error != NULL) {
 		realm_handle_error (error, _("Couldn't load the realm service"));
+		g_object_unref (client);
 		return NULL;
 	}
 
+
 	return client;
+}
+
+static RealmClient *
+realm_client_new_system (gboolean verbose)
+{
+	GDBusConnection *connection;
+	GError *error = NULL;
+	RealmClient *client = NULL;
+
+	connection = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, &error);
+	if (error != NULL) {
+		realm_handle_error (error, _("Couldn't connect to system bus"));
+		return NULL;
+	}
+
+	client = realm_client_new_on_connection (connection, verbose, REALM_DBUS_BUS_NAME);
+	g_object_unref (connection);
+	return client;
+}
+
+static RealmClient *
+realm_client_new_installer (gboolean verbose,
+                            const gchar *prefix)
+{
+	GDBusConnection *connection;
+	GSocketConnection *stream;
+	RealmClient *client;
+	GSocket *socket;
+	GError *error = NULL;
+	gchar buffer[16];
+	GPid pid = 0;
+	int pair[2];
+
+	const gchar *args[] = {
+		REALMD_EXECUTABLE,
+		"--install", prefix,
+		"--dbus-peer", buffer,
+		NULL
+	};
+
+	if (socketpair (AF_UNIX, SOCK_STREAM, 0, pair) < 0) {
+		realm_handle_error (NULL, _("Couldn't create socket pair: %s"), g_strerror (errno));
+		return NULL;
+	}
+
+	g_snprintf (buffer, sizeof (buffer), "%d", pair[1]);
+
+	socket = g_socket_new_from_fd (pair[0], &error);
+	if (error != NULL) {
+		realm_handle_error (error, _("Couldn't create socket"));
+		close(pair[0]);
+		close(pair[1]);
+		return NULL;
+	}
+
+	g_spawn_async (prefix ? prefix : "/", (gchar **)args, NULL,
+	               G_SPAWN_LEAVE_DESCRIPTORS_OPEN | G_SPAWN_DO_NOT_REAP_CHILD,
+	               NULL, NULL, &pid, &error);
+
+	close(pair[1]);
+
+	if (error != NULL) {
+		realm_handle_error (error, _("Couldn't run realmd"));
+		close(pair[0]);
+		return NULL;
+	}
+
+	stream = g_socket_connection_factory_create_connection (socket);
+	g_return_val_if_fail (stream != NULL, NULL);
+	g_object_unref (socket);
+
+	connection = g_dbus_connection_new_sync (G_IO_STREAM (stream), NULL,
+	                                         G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT |
+	                                         G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_ALLOW_ANONYMOUS,
+	                                         NULL, NULL, &error);
+	g_object_unref (stream);
+
+	if (error == NULL) {
+		client = realm_client_new_on_connection (connection, verbose, NULL);
+		g_object_unref (connection);
+	} else {
+		realm_handle_error (error, _("Couldn't create socket"));
+		client = NULL;
+	}
+
+	/* Make sure the process is owned */
+	if (client) {
+		client->peer_pid = pid;
+	} else {
+		kill (pid, SIGTERM);
+		g_spawn_close_pid (pid);
+	}
+
+	return client;
+}
+
+RealmClient *
+realm_client_new (gboolean verbose,
+                  const gchar *prefix)
+{
+	if (prefix)
+		return realm_client_new_installer (verbose, prefix);
+	else
+		return realm_client_new_system (verbose);
 }
 
 RealmDbusProvider *

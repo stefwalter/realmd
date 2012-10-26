@@ -283,9 +283,11 @@ usage (int code)
 	return code;
 }
 
+static gchar *arg_prefix = NULL;
 gboolean realm_verbose = FALSE;
 
 GOptionEntry realm_global_options[] = {
+	{ "install", 'i', 0, G_OPTION_ARG_STRING, &arg_prefix, N_("Install mode to a specific prefix"), NULL },
 	{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &realm_verbose, N_("Verbose output"), NULL },
 	{ NULL, }
 };
@@ -340,18 +342,25 @@ main (int argc,
 
 	g_option_context_free (context);
 
-
+	ret = 2;
 	for (i = 0; i < G_N_ELEMENTS (realm_commands); i++) {
 		if (g_str_equal (realm_commands[i].name, command)) {
-			client = realm_client_new (realm_verbose);
-			if (!client)
-				return 1;
+			client = realm_client_new (realm_verbose, arg_prefix);
+			if (!client) {
+				ret = 1;
+				break;
+			}
 
 			ret = (realm_commands[i].function) (client, argc, argv);
 			g_object_unref (client);
-			return ret;
+
+			g_free (arg_prefix);
+			break;
 		}
 	}
 
-	return usage(2);
+	if (ret == 2)
+		usage(2);
+	return ret;
+
 }

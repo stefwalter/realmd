@@ -152,14 +152,18 @@ on_enroll_complete (GObject *source,
 
 	(iface->enroll_finish) (REALM_KERBEROS_MEMBERSHIP (closure->self), result, &error);
 
-	if (error == NULL) {
+	if (error != NULL) {
+		enroll_method_reply (closure->invocation, error);
+		method_closure_free (closure);
+		g_clear_error (&error);
+
+	/* Only flush the name caches if not in install mode */
+	} else if (!realm_daemon_is_install_mode ()) {
 		realm_command_run_known_async ("name-caches-flush", NULL, closure->invocation,
 		                               NULL, on_name_caches_flush, closure);
 
 	} else {
-		enroll_method_reply (closure->invocation, error);
-		method_closure_free (closure);
-		g_clear_error (&error);
+		enroll_method_reply (closure->invocation, NULL);
 	}
 }
 

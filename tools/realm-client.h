@@ -33,7 +33,8 @@ typedef struct _RealmClientClass RealmClientClass;
 
 GType                          realm_client_get_type                 (void) G_GNUC_CONST;
 
-RealmClient *                  realm_client_new                      (gboolean verbose);
+RealmClient *                  realm_client_new                      (gboolean verbose,
+                                                                      const gchar *prefix);
 
 RealmDbusProvider *            realm_client_get_provider             (RealmClient *self);
 

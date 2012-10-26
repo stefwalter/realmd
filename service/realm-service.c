@@ -15,10 +15,45 @@
 #include "config.h"
 
 #include "realm-command.h"
+#include "realm-daemon.h"
 #include "realm-service.h"
 #include "realm-settings.h"
 
 #include <glib/gi18n.h>
+
+static void
+begin_service_command (const gchar *command,
+                       GDBusMethodInvocation *invocation,
+                       GAsyncReadyCallback callback,
+                       gpointer user_data)
+{
+	GSimpleAsyncResult *async;
+
+	/* If install mode, never do any service stuff */
+	if (realm_daemon_is_install_mode ()) {
+		g_debug ("skipping %s command in install mode", command);
+		async = g_simple_async_result_new (NULL, callback, user_data,
+		                                   begin_service_command);
+		g_simple_async_result_complete_in_idle (async);
+		g_object_unref (async);
+		return;
+	}
+
+	realm_command_run_known_async (command, NULL, invocation, NULL, callback, user_data);
+}
+
+static gboolean
+finish_service_command (GAsyncResult *result,
+                        GError **error)
+{
+	if (g_simple_async_result_is_valid (result, NULL, begin_service_command)) {
+		if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
+			return FALSE;
+		return TRUE;
+	}
+
+	return realm_command_run_finish (result, NULL, error) != -1;
+}
 
 void
 realm_service_enable (const gchar *service_name,
@@ -29,7 +64,7 @@ realm_service_enable (const gchar *service_name,
 	gchar *command;
 
 	command = g_strdup_printf ("%s-enable-service", service_name);
-	realm_command_run_known_async (command, NULL, invocation, NULL, callback, user_data);
+	begin_service_command (command, invocation, callback, user_data);
 	g_free (command);
 }
 
@@ -37,7 +72,7 @@ gboolean
 realm_service_enable_finish (GAsyncResult *result,
                              GError **error)
 {
-	return realm_command_run_finish (result, NULL, error) != -1;
+	return finish_service_command (result, error);
 }
 
 void
@@ -49,7 +84,7 @@ realm_service_disable (const gchar *service_name,
 	gchar *command;
 
 	command = g_strdup_printf ("%s-disable-service", service_name);
-	realm_command_run_known_async (command, NULL, invocation, NULL, callback, user_data);
+	begin_service_command (command, invocation, callback, user_data);
 	g_free (command);
 }
 
@@ -57,7 +92,7 @@ gboolean
 realm_service_disable_finish (GAsyncResult *result,
                               GError **error)
 {
-	return realm_command_run_finish (result, NULL, error) != -1;
+	return finish_service_command (result, error);
 }
 
 void
@@ -69,7 +104,7 @@ realm_service_restart (const gchar *service_name,
 	gchar *command;
 
 	command = g_strdup_printf ("%s-restart-service", service_name);
-	realm_command_run_known_async (command, NULL, invocation, NULL, callback, user_data);
+	begin_service_command (command, invocation, callback, user_data);
 	g_free (command);
 }
 
@@ -77,7 +112,7 @@ gboolean
 realm_service_restart_finish (GAsyncResult *result,
                               GError **error)
 {
-	return realm_command_run_finish (result, NULL, error) != -1;
+	return finish_service_command (result, error);
 }
 
 void
@@ -89,7 +124,7 @@ realm_service_stop (const gchar *service_name,
 	gchar *command;
 
 	command = g_strdup_printf ("%s-stop-service", service_name);
-	realm_command_run_known_async (command, NULL, invocation, NULL, callback, user_data);
+	begin_service_command (command, invocation, callback, user_data);
 	g_free (command);
 }
 
@@ -97,7 +132,7 @@ gboolean
 realm_service_stop_finish (GAsyncResult *result,
                            GError **error)
 {
-	return realm_command_run_finish (result, NULL, error) != -1;
+	return finish_service_command (result, error);
 }
 
 typedef struct {

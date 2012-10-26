@@ -11,12 +11,17 @@ realm_SOURCES = \
 	realm-join.c \
 	realm-leave.c \
 	realm-logins.c \
+	eggdbusobjectmanagerclient.c \
+	eggdbusobjectmanagerclient.h \
+	eggdbusobjectproxy.c \
+	eggdbusobjectproxy.h \
 	$(NULL)
 
 AM_CFLAGS = \
 	-I$(top_srcdir)/dbus \
 	-I$(top_builddir)/dbus \
 	-DLOCALEDIR=\""$(datadir)/locale"\" \
+	-DREALMD_EXECUTABLE=\""$(privatedir)/realmd"\" \
 	$(GLIB_CFLAGS) \
 	$(KRB5_CFLAGS) \
 	$(NULL)

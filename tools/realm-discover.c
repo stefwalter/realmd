@@ -53,9 +53,19 @@ print_realm_info (RealmClient *client,
 	gchar *string;
 	const gchar *policy;
 	GVariantIter iter;
+	const gchar *const *packages;
+	gint i;
 
 	g_return_if_fail (REALM_DBUS_IS_REALM (realm));
 	g_print ("%s\n", realm_dbus_realm_get_name (realm));
+
+	kerberos = realm_client_to_kerberos (client, realm);
+	if (kerberos) {
+		print_kerberos_info (client, kerberos);
+		g_object_unref (kerberos);
+	} else {
+		g_print ("  type: unknown\n");
+	}
 
 	is_configured = TRUE;
 	configured = realm_dbus_realm_get_configured (realm);
@@ -76,13 +86,9 @@ print_realm_info (RealmClient *client,
 			g_print ("  %s: %s\n", name, value);
 	}
 
-	kerberos = realm_client_to_kerberos (client, realm);
-	if (kerberos) {
-		print_kerberos_info (client, kerberos);
-		g_object_unref (kerberos);
-	} else {
-		g_print ("  type: unknown\n");
-	}
+	packages = realm_dbus_realm_get_required_packages (realm);
+	for (i = 0; packages != NULL && packages[i] != NULL; i++)
+		g_print ("  required-package: %s\n", packages[i]);
 
 	if (is_configured) {
 		string = g_strjoinv (", ", (gchar **)realm_dbus_realm_get_login_formats (realm));

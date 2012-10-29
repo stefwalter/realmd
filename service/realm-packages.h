@@ -21,6 +21,8 @@
 
 G_BEGIN_DECLS
 
+gchar **          realm_packages_expand_sets             (const gchar **package_sets);
+
 gboolean          realm_packages_check_paths             (const gchar **paths,
                                                           GDBusMethodInvocation *invocation);
 

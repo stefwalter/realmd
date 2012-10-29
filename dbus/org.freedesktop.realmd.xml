@@ -339,6 +339,19 @@
 		<property name="Details" type="a(ss)" access="read"/>
 
 		<!--
+		  RequiredPackages: prerequisite software
+
+		  Software packages that are required in order for a join to
+		  succeed. These are either simple strings like <literal>sssd</literal>,
+		  or strings with an operator and version number like
+		  <literal>sssd >= 1.9.0</literal>
+
+		  These values are specific to the packaging system that is
+		  being run.
+		-->
+		<property name="RequiredPackages" type="as" access="read"/>
+
+		<!--
 		  LoginFormats: supported formats for login names
 
 		  Supported formats for login to this realm. This is only

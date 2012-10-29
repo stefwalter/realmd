@@ -42,14 +42,21 @@ typedef struct {
 	RealmSssdClass parent_class;
 } RealmSssdAdClass;
 
-static const gchar *adcli_packages[] = {
+static const gchar *ADCLI_PACKAGES[] = {
 	REALM_DBUS_IDENTIFIER_SSSD,
 	REALM_DBUS_IDENTIFIER_ADCLI,
 	NULL
 };
 
-static const gchar *samba_packages[] = {
+static const gchar *SAMBA_PACKAGES[] = {
 	REALM_DBUS_IDENTIFIER_SSSD,
+	REALM_DBUS_IDENTIFIER_SAMBA,
+	NULL
+};
+
+static const gchar *ALL_PACKAGES[] = {
+	REALM_DBUS_IDENTIFIER_SSSD,
+	REALM_DBUS_IDENTIFIER_ADCLI,
 	REALM_DBUS_IDENTIFIER_SAMBA,
 	NULL
 };
@@ -102,6 +109,7 @@ realm_sssd_ad_constructed (GObject *obj)
 
 	realm_kerberos_set_suggested_admin (kerberos, "Administrator");
 	realm_kerberos_set_login_policy (kerberos, REALM_KERBEROS_ALLOW_ANY_LOGIN);
+	realm_kerberos_set_required_package_sets (kerberos, ALL_PACKAGES);
 }
 
 typedef struct {
@@ -432,10 +440,10 @@ parse_join_options (JoinClosure *join,
 
 	if (g_str_equal (software, REALM_DBUS_IDENTIFIER_ADCLI)) {
 		join->use_adcli = TRUE;
-		join->packages = adcli_packages;
+		join->packages = ADCLI_PACKAGES;
 	} else {
 		join->use_adcli = FALSE;
-		join->packages = samba_packages;
+		join->packages = SAMBA_PACKAGES;
 	}
 
 	return TRUE;

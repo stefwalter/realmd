@@ -193,18 +193,19 @@ static void
 lookup_required_files_and_packages (const gchar **package_sets,
                                     gchar ***result_packages,
                                     gchar ***result_files,
-                                    gboolean *unconditional)
+                                    gboolean *result_unconditional)
 {
 	GHashTable *settings;
 	GHashTableIter iter;
 	GPtrArray *packages;
 	GPtrArray *files;
+	gboolean unconditional;
 	gchar *section;
 	gchar *package;
 	gchar *file;
 	gint i;
 
-	*unconditional = FALSE;
+	unconditional = FALSE;
 	packages = g_ptr_array_new_with_free_func (g_free);
 	files = g_ptr_array_new_with_free_func (g_free);
 
@@ -218,7 +219,7 @@ lookup_required_files_and_packages (const gchar **package_sets,
 			file = g_strstrip (g_strdup (file));
 			if (g_str_equal (file, "")) {
 				g_free (file);
-				*unconditional = TRUE;
+				unconditional = TRUE;
 			} else {
 				g_ptr_array_add (files, file);
 			}
@@ -230,11 +231,33 @@ lookup_required_files_and_packages (const gchar **package_sets,
 		}
 	}
 
-	g_ptr_array_add (packages, NULL);
-	*result_packages = (gchar **)g_ptr_array_free (packages, FALSE);
+	if (result_packages) {
+		g_ptr_array_add (packages, NULL);
+		*result_packages = (gchar **)g_ptr_array_free (packages, FALSE);
+	} else {
+		g_ptr_array_free (files, TRUE);
+	}
 
-	g_ptr_array_add (files, NULL);
-	*result_files = (gchar **)g_ptr_array_free (files, FALSE);
+	if (result_files) {
+		g_ptr_array_add (files, NULL);
+		*result_files = (gchar **)g_ptr_array_free (files, FALSE);
+	} else {
+		g_ptr_array_free (files, TRUE);
+	}
+
+	if (result_unconditional)
+		*result_unconditional = unconditional;
+}
+
+gchar **
+realm_packages_expand_sets (const gchar **package_sets)
+{
+	gchar **packages = NULL;
+
+	g_return_val_if_fail (package_sets != NULL, NULL);
+
+	lookup_required_files_and_packages (package_sets, &packages, NULL, NULL);
+	return packages;
 }
 
 void

@@ -133,6 +133,9 @@ gboolean            realm_kerberos_is_configured               (RealmKerberos *s
 void                realm_kerberos_set_configured              (RealmKerberos *self,
                                                                 gboolean configured);
 
+void                realm_kerberos_set_required_package_sets   (RealmKerberos *self,
+                                                                const gchar **package_sets);
+
 gchar *             realm_kerberos_calculate_join_computer_ou  (RealmKerberos *self,
                                                                 GVariant *options);
 

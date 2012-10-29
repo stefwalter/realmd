@@ -24,6 +24,7 @@
 #include "realm-kerberos.h"
 #include "realm-kerberos-membership.h"
 #include "realm-login-name.h"
+#include "realm-packages.h"
 #include "realm-provider.h"
 #include "realm-settings.h"
 
@@ -1329,6 +1330,18 @@ realm_kerberos_set_configured (RealmKerberos *self,
 	g_return_if_fail (REALM_IS_KERBEROS (self));
 	realm_dbus_realm_set_configured (self->pv->realm_iface,
 	                                 configured ? REALM_DBUS_KERBEROS_MEMBERSHIP_INTERFACE : "");
+}
+
+void
+realm_kerberos_set_required_package_sets (RealmKerberos *self,
+                                          const gchar **package_sets)
+{
+	gchar **packages;
+
+	g_return_if_fail (REALM_IS_KERBEROS (self));
+	packages = realm_packages_expand_sets (package_sets);
+	realm_dbus_realm_set_required_packages (self->pv->realm_iface, (const gchar **)packages);
+	g_strfreev (packages);
 }
 
 gchar *

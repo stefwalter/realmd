@@ -51,6 +51,12 @@ enum {
 	PROP_PROVIDER,
 };
 
+static const gchar *SAMBA_PACKAGES[] = {
+	REALM_DBUS_IDENTIFIER_WINBIND,
+	REALM_DBUS_IDENTIFIER_SAMBA,
+	NULL
+};
+
 static void realm_samba_kerberos_membership_iface (RealmKerberosMembershipIface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (RealmSamba, realm_samba, REALM_TYPE_KERBEROS,
@@ -93,6 +99,7 @@ realm_samba_constructed (GObject *obj)
 
 	realm_kerberos_set_suggested_admin (kerberos, "Administrator");
 	realm_kerberos_set_login_policy (kerberos, REALM_KERBEROS_ALLOW_ANY_LOGIN);
+	realm_kerberos_set_required_package_sets (kerberos, SAMBA_PACKAGES);
 }
 
 static gchar *

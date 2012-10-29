@@ -54,7 +54,7 @@ realm_diagnostics_setup_options (GDBusMethodInvocation *invocation,
 	g_return_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation));
 	g_return_if_fail (options != NULL);
 
-	if (g_variant_lookup (options, REALM_DBUS_OPTION_OPERATION, "(s)", &operation_id)) {
+	if (g_variant_lookup (options, REALM_DBUS_OPTION_OPERATION, "s", &operation_id)) {
 		g_object_set_qdata_full (G_OBJECT (invocation), operation_id_quark,
 		                         operation_id, g_free);
 	}

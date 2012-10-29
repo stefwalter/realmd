@@ -61,6 +61,10 @@ static const gchar *ALL_PACKAGES[] = {
 	NULL
 };
 
+static const gchar *NO_PACKAGES[] = {
+	NULL,
+};
+
 static void realm_sssd_ad_kerberos_membership_iface (RealmKerberosMembershipIface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (RealmSssdAd, realm_sssd_ad, REALM_TYPE_SSSD,
@@ -489,6 +493,8 @@ prepare_join_async_result (RealmKerberosMembership *membership,
 
 	/* Prepared successfully without an error */
 	} else {
+		if (flags & REALM_KERBEROS_ASSUME_PACKAGES)
+			join->packages = NO_PACKAGES;
 		return async;
 	}
 

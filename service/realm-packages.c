@@ -293,10 +293,14 @@ realm_packages_install_async (const gchar **package_sets,
 
 	} else {
 		have = realm_packages_check_paths ((const gchar **)required_files, invocation);
-		string = g_strjoinv (", ", required_files);
-		realm_diagnostics_info (invocation, "Required files %s: %s",
-		                        have ? "present" : "not present, installing", string);
-		g_free (string);
+		if (required_files[0] != NULL) {
+			realm_diagnostics_info (invocation, "Assuming packages installed");
+		} else {
+			string = g_strjoinv (", ", required_files);
+			realm_diagnostics_info (invocation, "Required files %s: %s",
+			                        have ? "present" : "not present, installing", string);
+			g_free (string);
+		}
 	}
 
 	g_strfreev (required_files);

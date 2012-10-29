@@ -28,6 +28,9 @@
 #include <fcntl.h>
 #include <locale.h>
 
+static gchar *arg_install = NULL;
+gboolean realm_verbose = FALSE;
+
 struct {
 	const char *name;
 	int (* function) (RealmClient *client, int argc, char *argv[]);
@@ -115,6 +118,11 @@ realm_build_options (const gchar *first,
 	}
 
 	va_end (va);
+
+	if (arg_install) {
+		option = g_variant_new ("{sv}", "assume-packages", g_variant_new_boolean (TRUE));
+		g_ptr_array_add (opts, option);
+	}
 
 	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), (GVariant * const*)opts->pdata, opts->len);
 	g_ptr_array_free (opts, TRUE);
@@ -283,11 +291,8 @@ usage (int code)
 	return code;
 }
 
-static gchar *arg_prefix = NULL;
-gboolean realm_verbose = FALSE;
-
 GOptionEntry realm_global_options[] = {
-	{ "install", 'i', 0, G_OPTION_ARG_STRING, &arg_prefix, N_("Install mode to a specific prefix"), NULL },
+	{ "install", 'i', 0, G_OPTION_ARG_STRING, &arg_install, N_("Install mode to a specific prefix"), NULL },
 	{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &realm_verbose, N_("Verbose output"), NULL },
 	{ NULL, }
 };
@@ -345,7 +350,7 @@ main (int argc,
 	ret = 2;
 	for (i = 0; i < G_N_ELEMENTS (realm_commands); i++) {
 		if (g_str_equal (realm_commands[i].name, command)) {
-			client = realm_client_new (realm_verbose, arg_prefix);
+			client = realm_client_new (realm_verbose, arg_install);
 			if (!client) {
 				ret = 1;
 				break;
@@ -354,13 +359,14 @@ main (int argc,
 			ret = (realm_commands[i].function) (client, argc, argv);
 			g_object_unref (client);
 
-			g_free (arg_prefix);
 			break;
 		}
 	}
 
 	if (ret == 2)
 		usage(2);
+
+	g_free (arg_install);
 	return ret;
 
 }

@@ -472,6 +472,7 @@ handle_join (RealmDbusKerberosMembership *membership,
 	RealmKerberosFlags flags = 0;
 	GVariant *creds;
 	RealmKerberosCredential cred_type;
+	gboolean assume = FALSE;
 	gint ret;
 
 	/* Make note of the current operation id, for diagnostics */
@@ -488,6 +489,9 @@ handle_join (RealmDbusKerberosMembership *membership,
 		                                       "This computer's host name is not set correctly.");
 		return TRUE;
 	}
+
+	if (g_variant_lookup (options, REALM_DBUS_OPTION_ASSUME_PACKAGES, "b", &assume) && assume)
+		flags |= REALM_KERBEROS_ASSUME_PACKAGES;
 
 	switch (cred_type) {
 	case REALM_KERBEROS_CREDENTIAL_CCACHE:

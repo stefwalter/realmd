@@ -601,6 +601,9 @@
 		    <listitem><para><literal>computer-ou</literal>: a string
 		      containing an LDAP DN for an organizational unit where the
 		      computer account should be created</para></listitem>
+		    <listitem><para><literal>assume-packages</literal>: a boolean
+		      which overrides makes the join assume that all needed
+		      software packages have already been installed</para></listitem>
 		  </itemizedlist>
 
 		  This method requires authorization for the PolicyKit action

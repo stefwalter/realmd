@@ -316,21 +316,6 @@ main (int argc,
 	textdomain (GETTEXT_PACKAGE);
 #endif
 
-	/* Find/remove the first non-flag argument: the command */
-	for (i = 1; i < argc; i++) {
-		if (command == NULL) {
-			if (argv[i][0] != '-') {
-				command = argv[i];
-				argc--;
-			}
-		}
-		if (command != NULL)
-			argv[i] = argv[i + 1];
-	}
-
-	if (command == NULL)
-		return usage (2);
-
 	g_type_init ();
 
 	/* Parse the global options, don't display help or failure here */
@@ -346,6 +331,21 @@ main (int argc,
 	}
 
 	g_option_context_free (context);
+
+	/* Find/remove the first non-flag argument: the command */
+	for (i = 1; i < argc; i++) {
+		if (command == NULL) {
+			if (argv[i][0] != '-') {
+				command = argv[i];
+				argc--;
+			}
+		}
+		if (command != NULL)
+			argv[i] = argv[i + 1];
+	}
+
+	if (command == NULL)
+		return usage (2);
 
 	ret = 2;
 	for (i = 0; i < G_N_ELEMENTS (realm_commands); i++) {

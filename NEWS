@@ -1,3 +1,8 @@
+0.11
+ * Support install mode, where we try not to use the DBus system bus
+ * Support caller based package installation
+ * Fix various bugs
+
 0.10
  * Send diagnostics from subcommand to client as they come in
  * Return configured realms back to callers

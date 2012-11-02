@@ -45,19 +45,19 @@ temp.txt
 /dbus/realm-dbus-generated-*.xml
 
 /doc/version.xml
-/doc/*.stamp
-/doc/xml/
-/doc/html/
-/doc/*.txt
-/doc/*.args
-/doc/*.hierarchy
-/doc/*.interfaces
-/doc/*.prerequisites
-/doc/*.signals
-/doc/*.types
-/doc/tmpl/
-/doc/realmd-org.freedesktop.*.xml
-/doc/realm.8
+/doc/manual/*.stamp
+/doc/manual/xml/
+/doc/manual/html/
+/doc/manual/*.txt
+/doc/manual/*.args
+/doc/manual/*.hierarchy
+/doc/manual/*.interfaces
+/doc/manual/*.prerequisites
+/doc/manual/*.signals
+/doc/manual/*.types
+/doc/manual/tmpl/
+/doc/manual/realmd-org.freedesktop.*.xml
+/doc/manual/realm.8
 
 /po/realmd.pot
 /po/*.gmo

@@ -286,6 +286,7 @@ AC_CONFIG_FILES([
 	build/Makefile
 	dbus/Makefile
 	doc/Makefile
+	doc/manual/Makefile
 	doc/version.xml
 	po/Makefile.in
 	po/Makefile

@@ -32,8 +32,11 @@ check-memory:
 			make -C $(builddir)/$$subdir/tests check-memory; \
 	done
 
-upload-doc: all
-	rsync -Hvax doc/html/./ anarchy.freedesktop.org:/srv/www.freedesktop.org/www/software/realmd/docs/./
+website:
+	make -C doc website
+
+upload-website:
+	make -C doc upload
 
 upload-release: $(DIST_ARCHIVES)
 	gpg --detach-sign --local-user 'stef@thewalter.net' $(DIST_ARCHIVES)

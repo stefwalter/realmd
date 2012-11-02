@@ -38,11 +38,11 @@ BODY {
 }
 
 
-/* Target all Firefox, since firefox has bug wrt TABLE + position: fixed */ 
-@-moz-document url-prefix() { 
+/* Target all Firefox, since firefox has bug wrt TABLE + position: fixed */
+@-moz-document url-prefix() {
 	TABLE.navigation { position: static !important; }
 	BODY { padding-top: 0 !important; }
-} 
+}
 
 DIV.book,
 DIV.refentry,

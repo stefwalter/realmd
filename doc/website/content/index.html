@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}realmd{% endblock %}
+
+{% block sidebar %}
+<ul>
+	<li>
+		<h2><a name="documentation">Documentation</a></h2>
+		<p><a href="docs/">Guide and manual</a><br>
+		<a href="docs/realm.html">Command line manual page</a><br>
+		<a href="docs/guide-active-directory.html">Using with Active Directory</a><br>
+		<a href="docs/guide-freeipa.html">Using with FreeIPA</a></p>
+	</li>
+	<li>
+		<h2><a name="developer">Developer Info</a></h2>
+		<p><a href="docs/development.html">Developer Reference</a><br>
+		<a href="docs/dbus-interface-reference.html">DBus Interface</a></p>
+	</li>
+	<li>
+		<h2><a name="contributing">Contributing</a></h2>
+		<p><a href="http://lists.freedesktop.org/mailman/listinfo/authentication">Mailing list</a><br>
+		IRC Channel: #realmd on freenode<br>
+		<a href="https://bugs.freedesktop.org/enter_bug.cgi?product=realmd">Bugs</a> in Bugzilla<br>
+		<a href="http://cgit.freedesktop.org/realmd/realmd/">Git repository</a></p>
+	</li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<h1>Introduction</h1>
+<p>realmd is an on demand system DBus service, which allows callers to
+configure network authentication and domain membership in a standard way.
+realmd discovers information about the domain or realm automatically and does
+not require complicated configuration in order to join a domain or realm.</p>
+
+<p>realmd configures sssd or winbind to do the actual network authentication
+and user account lookups.</p>
+
+<p>realmd has been integrated into kickstart and GNOME control center, and is
+being integrated into other spots too.</p>
+
+<p>The latest release of realmd is available here:</p>
+
+<ul>
+	<li><a href="http://www.freedesktop.org/software/realmd/releases/realmd-{{ version }}.tar.gz">realmd-{{ version }}.tar.gz</a></li>
+	<li><a href="http://www.freedesktop.org/software/realmd/releases/realmd-{{ version }}.tar.gz.sig">realmd-{{ version }}.tar.gz.sig</a></li>
+	<li><a href="http://www.freedesktop.org/software/realmd/releases/">Older releases</a></li>
+</ul>
+
+<br class="clear">
+{% endblock %}

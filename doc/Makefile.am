@@ -1,13 +1,9 @@
 SUBDIRS = manual
 
-manual:
-	make -C manual all
-website:
-	make -C website all
-
 if ENABLE_GTK_DOC
 upload: website manual
-	rsync -Hvax manual/html/./ anarchy.freedesktop.org:/srv/www.freedesktop.org/www/software/realmd/docs/./
+	make -C manual upload
+	make -C website upload
 
 else
 upload:

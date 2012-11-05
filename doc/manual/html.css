@@ -49,7 +49,8 @@ DIV.refentry,
 DIV.chapter,
 DIV.index,
 DIV.footer,
-DIV.section {
+DIV.section,
+DIV.part {
 	font-family: Verdana, Arial, 'Bitstream Vera Sans', Helvetica, sans-serif;
 	font-size: 9.5pt;
 	line-height: 150%;

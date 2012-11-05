@@ -98,3 +98,6 @@ $(DBUS_ESCAPED): $(DBUS_INTERFACE) $(srcdir)/escape-xml-to-text.xsl
 	$(AM_V_GEN) $(XSLTPROC) --nonet --novalid --output $(DBUS_ESCAPED) \
 		$(srcdir)/escape-xml-to-text.xsl $(DBUS_INTERFACE)
 	@sed -i '/^[	 ]*$$/d' $(DBUS_ESCAPED)
+
+upload: all
+	rsync -Hvax html/./ anarchy.freedesktop.org:/srv/www.freedesktop.org/www/software/realmd/docs/./

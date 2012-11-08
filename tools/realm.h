@@ -68,6 +68,8 @@ GVariant *            realm_kinit_to_kerberos_cache     (const gchar *name,
                                                          const gchar *password,
                                                          GError **error);
 
+gboolean              realm_is_configured               (RealmDbusRealm *realm);
+
 G_END_DECLS
 
 #endif /* __REALM_H__ */

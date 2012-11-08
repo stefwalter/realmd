@@ -180,6 +180,17 @@ read_file_into_variant (const gchar *filename)
 	return g_variant_ref_sink (variant);
 }
 
+gboolean
+realm_is_configured (RealmDbusRealm *realm)
+{
+	const gchar *configured;
+
+	g_return_val_if_fail (REALM_DBUS_IS_REALM (realm), FALSE);
+
+	configured = realm_dbus_realm_get_configured (realm);
+	return (configured && !g_str_equal (configured, ""));
+}
+
 GVariant *
 realm_kinit_to_kerberos_cache (const gchar *name,
                                const gchar *realm,

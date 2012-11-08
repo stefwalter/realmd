@@ -212,7 +212,6 @@ perform_list (RealmClient *client,
 	RealmDbusProvider *provider;
 	const gchar *const *realms;
 	gboolean printed = FALSE;
-	const gchar *configured;
 	RealmDbusRealm *realm;
 	gint i;
 
@@ -221,8 +220,7 @@ perform_list (RealmClient *client,
 
 	for (i = 0; realms && realms[i] != NULL; i++) {
 		realm = realm_client_get_realm (client, realms[i]);
-		configured = realm_dbus_realm_get_configured (realm);
-		if (all || (configured && !g_str_equal (configured, ""))) {
+		if (all || realm_is_configured (realm)) {
 			print_realm_info (client, realm);
 			printed = TRUE;
 		}

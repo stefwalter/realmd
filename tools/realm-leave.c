@@ -128,7 +128,6 @@ locate_configured_matching_kerberos_realm (RealmClient *client,
 	RealmDbusProvider *provider;
 	const gchar *const *paths;
 	RealmDbusRealm *realm;
-	const gchar *configured;
 	const gchar *name;
 	gboolean matched;
 	gint i;
@@ -142,9 +141,8 @@ locate_configured_matching_kerberos_realm (RealmClient *client,
 
 		realm = realm_client_get_realm (client, paths[i]);
 		*membership = realm_client_to_kerberos_membership (client, realm);
-		configured = realm_dbus_realm_get_configured (realm);
 
-		if (*membership != NULL && configured != NULL && !g_str_equal (configured, "")) {
+		if (*membership != NULL && realm_is_configured (realm)) {
 			if (realm_name == NULL) {
 				matched = TRUE;
 			} else {

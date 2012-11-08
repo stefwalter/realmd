@@ -169,6 +169,7 @@ perform_join (RealmClient *client,
               const gchar *client_software,
               const gchar *server_software,
               const gchar *membership_software,
+              gboolean no_password,
               const gchar *one_time_password)
 {
 	RealmDbusKerberosMembership *membership;
@@ -202,7 +203,10 @@ perform_join (RealmClient *client,
 	                               NULL);
 	g_variant_ref_sink (options);
 
-	if (one_time_password) {
+	if (no_password) {
+		ret = perform_automatic_join (client, membership, options, &try_other);
+
+	} else if (one_time_password) {
 		ret = perform_otp_join (client, membership, one_time_password, options);
 
 	} else if (user_name) {
@@ -232,6 +236,7 @@ realm_join (RealmClient *client,
 	gchar *arg_client_software = NULL;
 	gchar *arg_server_software = NULL;
 	gchar *arg_membership_software = NULL;
+	gboolean arg_no_password = FALSE;
 	gchar *arg_one_time_password = NULL;
 	gint ret = 0;
 
@@ -246,6 +251,8 @@ realm_join (RealmClient *client,
 		  N_("Use specific server software"), NULL },
 		{ "membership-software", 0, 0, G_OPTION_ARG_STRING, &arg_membership_software,
 		  N_("Use specific membership software"), NULL },
+		{ "no-password", 0, 0, G_OPTION_ARG_NONE, &arg_no_password,
+		  N_("Join automatically without a password"), NULL },
 		{ "one-time-password", 0, 0, G_OPTION_ARG_STRING, &arg_one_time_password,
 		  N_("Join using a preset one time password"), NULL },
 		{ NULL, }
@@ -265,12 +272,24 @@ realm_join (RealmClient *client,
 		g_printerr ("%s: %s\n", _("Specify one realm to join"), g_get_prgname ());
 		ret = 2;
 
+	} else if (arg_no_password && (arg_one_time_password || arg_user)) {
+		g_printerr ("%s: %s\n",
+		            _("The --no-password argument cannot be used with --one-time-password or --user"),
+		            g_get_prgname ());
+		ret = 2;
+
+	} else if (arg_one_time_password && arg_user) {
+		g_printerr ("%s: %s\n",
+		            _("The --one-time-password argument cannot be used with --user"),
+		            g_get_prgname ());
+		ret = 2;
+
 	} else {
 		realm_name = argc < 2 ? "" : argv[1];
 		ret = perform_join (client, realm_name, arg_user,
 		                    arg_computer_ou, arg_client_software,
 		                    arg_server_software, arg_membership_software,
-		                    arg_one_time_password);
+		                    arg_no_password, arg_one_time_password);
 	}
 
 	g_free (arg_user);

@@ -173,6 +173,7 @@ perform_join (RealmClient *client,
 {
 	RealmDbusKerberosMembership *membership;
 	gboolean try_other = FALSE;
+	RealmDbusRealm *realm;
 	GError *error = NULL;
 	GVariant *options;
 	GList *realms;
@@ -190,6 +191,12 @@ perform_join (RealmClient *client,
 	}
 
 	membership = realms->data;
+	realm = realm_client_to_realm (client, membership);
+	if (realm_is_configured (realm)) {
+		realm_handle_error (NULL, _("Already joined to this domain"));
+		return 1;
+	}
+
 	options = realm_build_options (REALM_DBUS_OPTION_COMPUTER_OU, computer_ou,
 	                               REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, membership_software,
 	                               NULL);

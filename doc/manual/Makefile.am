@@ -73,8 +73,6 @@ EXTRA_DIST += \
 	$(DBUS_ESCAPED) \
 	$(xml_files) \
 	escape-xml-to-text.xsl \
-	version.xml.in \
-	version.xml \
 	html.css
 
 CLEANFILES += \

@@ -1,5 +1,13 @@
 SUBDIRS = manual
 
+EXTRA_DIST = \
+	version.xml.in \
+	version.xml \
+	website/Makefile.in
+
+DISTCLEANFILES = \
+	website/Makefile
+
 if ENABLE_GTK_DOC
 upload: website manual
 	make -C manual upload

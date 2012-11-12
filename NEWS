@@ -1,3 +1,9 @@
+0.12
+ * Add a --no-password option to realm join
+ * Check if domain is configured before trying to join
+ * Updated translations
+ * Build fixes
+
 0.11
  * Support install mode, where we try not to use the DBus system bus
  * Support caller based package installation

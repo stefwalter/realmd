@@ -182,7 +182,6 @@ realm_client_new_on_connection (GDBusConnection *connection,
 
 	if (error != NULL) {
 		realm_handle_error (error, _("Couldn't load the realm service"));
-		g_object_unref (client);
 		return NULL;
 	}
 

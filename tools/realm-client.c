@@ -138,7 +138,7 @@ realm_client_new_on_connection (GDBusConnection *connection,
 	RealmDbusProvider *provider;
 	GError *error = NULL;
 	GInitable *ret;
-	RealmClient *client;
+	RealmClient *client = NULL;
 	GDBusSignalFlags flags;
 
 	flags = G_DBUS_SIGNAL_FLAGS_NONE;

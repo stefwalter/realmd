@@ -206,9 +206,9 @@ maybe_complete_discover (RealmKerberosDiscover *self)
 
 			/* If domain is not AD, start IPA discovery, for first N KDCs */
 			for (l = self->servers, i = 0; l != NULL && i < 3; l = g_list_next (l), i++) {
+				self->outstanding_ipa++;
 				realm_ipa_discover_async (l->data, invocation,
 				                          on_discover_ipa, g_object_ref (self));
-				self->outstanding_ipa++;
 			}
 		}
 

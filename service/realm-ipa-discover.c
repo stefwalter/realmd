@@ -524,9 +524,6 @@ on_connection_event (GSocketClient      *client,
 	}
 }
 
-#define VALID_DNS_CHARS \
-	"abcdefghijklnmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-."
-
 void
 realm_ipa_discover_async (GSrvTarget *kdc,
                           GDBusMethodInvocation *invocation,
@@ -546,13 +543,6 @@ realm_ipa_discover_async (GSrvTarget *kdc,
 	self->kdc = g_srv_target_copy (kdc);
 
 	hostname = g_srv_target_get_hostname (self->kdc);
-
-	/* If an invalid hostname, skip and go to next step */
-	if (strspn (hostname, VALID_DNS_CHARS) != strlen (hostname)) {
-		ipa_discover_complete (self);
-		return;
-	}
-
 	client = g_socket_client_new ();
 
 	/* Initial socket connections are limited to a low timeout*/

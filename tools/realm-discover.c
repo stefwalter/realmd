@@ -109,7 +109,8 @@ perform_discover (RealmClient *client,
                   const gchar *string,
                   gboolean all,
                   const gchar *server_software,
-                  const gchar *client_software)
+                  const gchar *client_software,
+                  const gchar *membership_software)
 {
 	GHashTable *seen;
 	gboolean found = FALSE;
@@ -118,7 +119,8 @@ perform_discover (RealmClient *client,
 	GList *realms;
 	GList *l;
 
-	realms = realm_client_discover (client, string, client_software, server_software,
+	realms = realm_client_discover (client, string, client_software,
+	                                server_software, membership_software,
 	                                REALM_DBUS_REALM_INTERFACE, &error);
 
 	if (error != NULL) {
@@ -159,6 +161,7 @@ realm_discover (RealmClient *client,
 	GOptionContext *context;
 	gchar *arg_client_software = NULL;
 	gchar *arg_server_software = NULL;
+	gchar *arg_membership_software = NULL;
 	GError *error = NULL;
 	gboolean arg_all = FALSE;
 	gint result = 0;
@@ -168,6 +171,7 @@ realm_discover (RealmClient *client,
 	GOptionEntry option_entries[] = {
 		{ "all", 'a', 0, G_OPTION_ARG_NONE, &arg_all, N_("Show all discovered realms"), NULL },
 		{ "client-software", 0, 0, G_OPTION_ARG_STRING, &arg_client_software, N_("Use specific client software"), NULL },
+		{ "membership-software", 0, 0, G_OPTION_ARG_STRING, &arg_membership_software, N_("Use specific membership software"), NULL },
 		{ "server-software", 0, 0, G_OPTION_ARG_STRING, &arg_server_software, N_("Use specific server software"), NULL },
 		{ NULL, }
 	};
@@ -187,13 +191,17 @@ realm_discover (RealmClient *client,
 	/* The default realm? */
 	} else if (argc == 1) {
 		ret = perform_discover (client, NULL, arg_all,
-		                        arg_server_software, arg_client_software);
+		                        arg_server_software,
+		                        arg_client_software,
+		                        arg_membership_software);
 
 	/* Specific realms */
 	} else {
 		for (i = 1; i < argc; i++) {
 			ret = perform_discover (client, argv[i], arg_all,
-			                        arg_server_software, arg_client_software);
+			                        arg_server_software,
+			                        arg_client_software,
+			                        arg_membership_software);
 			if (ret != 0)
 				result = ret;
 		}
@@ -201,6 +209,7 @@ realm_discover (RealmClient *client,
 
 	g_free (arg_server_software);
 	g_free (arg_client_software);
+	g_free (arg_membership_software);
 	g_option_context_free (context);
 	return result;
 }

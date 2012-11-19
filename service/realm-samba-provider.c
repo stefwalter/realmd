@@ -110,9 +110,10 @@ realm_samba_provider_discover_async (RealmProvider *provider,
 	async = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
 	                                   realm_samba_provider_discover_async);
 
-	if (!realm_provider_match_options (options,
-	                                   REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY,
-	                                   REALM_DBUS_IDENTIFIER_WINBIND)) {
+	if (!realm_provider_match_software (options,
+	                                    REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY,
+	                                    REALM_DBUS_IDENTIFIER_WINBIND,
+	                                    REALM_DBUS_IDENTIFIER_SAMBA)) {
 		g_simple_async_result_complete_in_idle (async);
 
 	} else {

@@ -305,6 +305,7 @@ realm_client_discover (RealmClient *self,
                        const gchar *string,
                        const gchar *client_software,
                        const gchar *server_software,
+                       const gchar *membership_software,
                        const gchar *dbus_interface,
                        GError **error)
 {
@@ -328,6 +329,7 @@ realm_client_discover (RealmClient *self,
 
 	options = realm_build_options (REALM_DBUS_OPTION_CLIENT_SOFTWARE, client_software,
 	                               REALM_DBUS_OPTION_SERVER_SOFTWARE, server_software,
+	                               REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, membership_software,
 	                               NULL);
 
 	/* Start actual operation */

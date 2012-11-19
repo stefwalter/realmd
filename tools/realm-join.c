@@ -180,7 +180,8 @@ perform_join (RealmClient *client,
 	GList *realms;
 	gint ret;
 
-	realms = realm_client_discover (client, string, client_software, server_software,
+	realms = realm_client_discover (client, string, client_software,
+	                                server_software, membership_software,
 	                                REALM_DBUS_KERBEROS_MEMBERSHIP_INTERFACE, &error);
 
 	if (error != NULL) {

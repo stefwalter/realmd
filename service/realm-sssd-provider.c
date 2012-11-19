@@ -133,10 +133,18 @@ realm_sssd_provider_discover_async (RealmProvider *provider,
 	async = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
 	                                   realm_sssd_provider_discover_async);
 
-	if (!realm_provider_match_options (options, REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY,
-	                                   REALM_DBUS_IDENTIFIER_SSSD) &&
-	    !realm_provider_match_options (options, REALM_DBUS_IDENTIFIER_FREEIPA,
-	                                   REALM_DBUS_IDENTIFIER_SSSD)) {
+	if (!realm_provider_match_software (options,
+	                                    REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY,
+	                                    REALM_DBUS_IDENTIFIER_SSSD,
+	                                    REALM_DBUS_IDENTIFIER_SAMBA) &&
+	    !realm_provider_match_software (options,
+	                                    REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY,
+	                                    REALM_DBUS_IDENTIFIER_SSSD,
+	                                    REALM_DBUS_IDENTIFIER_ADCLI) &&
+	    !realm_provider_match_software (options,
+	                                    REALM_DBUS_IDENTIFIER_FREEIPA,
+	                                    REALM_DBUS_IDENTIFIER_SSSD,
+	                                    REALM_DBUS_IDENTIFIER_FREEIPA)) {
 		g_simple_async_result_complete_in_idle (async);
 
 	} else {

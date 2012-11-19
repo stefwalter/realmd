@@ -91,9 +91,10 @@ const gchar **           realm_provider_get_realms               (RealmProvider 
 void                     realm_provider_set_realms               (RealmProvider *self,
                                                                   const gchar **value);
 
-gboolean                 realm_provider_match_options            (GVariant *options,
+gboolean                 realm_provider_match_software           (GVariant *options,
                                                                   const gchar *server_software,
-                                                                  const gchar *client_software);
+                                                                  const gchar *client_software,
+                                                                  const gchar *membership_software);
 
 G_END_DECLS
 

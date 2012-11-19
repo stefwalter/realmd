@@ -42,6 +42,7 @@ GList *                        realm_client_discover                 (RealmClien
                                                                       const gchar *string,
                                                                       const gchar *client_software,
                                                                       const gchar *server_software,
+                                                                      const gchar *membership_software,
                                                                       const gchar *dbus_interface,
                                                                       GError **error);
 

@@ -26,6 +26,7 @@
 #include "realm-sssd-provider.h"
 
 #include <glib.h>
+#include <glib-unix.h>
 #include <glib/gi18n.h>
 
 #include <polkit/polkit.h>
@@ -569,6 +570,13 @@ on_realm_log_debug (const gchar *log_domain,
 	g_string_free (string, TRUE);
 }
 
+static gboolean
+on_signal_quit (gpointer data)
+{
+	g_main_loop_quit (data);
+	return FALSE;
+}
+
 int
 main (int argc,
       char *argv[])
@@ -657,6 +665,9 @@ main (int argc,
 	connect_to_bus_or_peer ();
 
 	main_loop = g_main_loop_new (NULL, FALSE);
+
+	g_unix_signal_add (SIGINT, on_signal_quit, main_loop);
+	g_unix_signal_add (SIGTERM, on_signal_quit, main_loop);
 
 	g_main_loop_run (main_loop);
 

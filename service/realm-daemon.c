@@ -448,6 +448,8 @@ initialize_service (GDBusConnection *connection)
 
 	/* Matches the hold() in main() */
 	realm_daemon_release ("main");
+
+	g_dbus_connection_start_message_processing (connection);
 }
 
 static void
@@ -535,7 +537,8 @@ connect_to_bus_or_peer (void)
 	guid = g_dbus_generate_guid ();
 	g_dbus_connection_new (G_IO_STREAM (stream), guid,
 	                       G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_SERVER |
-	                       G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_ALLOW_ANONYMOUS,
+	                       G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_ALLOW_ANONYMOUS |
+	                       G_DBUS_CONNECTION_FLAGS_DELAY_MESSAGE_PROCESSING,
 	                       NULL, NULL, on_peer_connection_new, NULL);
 
 	g_free (guid);

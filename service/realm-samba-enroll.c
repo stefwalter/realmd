@@ -42,14 +42,6 @@ typedef struct {
 } JoinClosure;
 
 static void
-clear_and_free_password (gpointer data)
-{
-	gchar *password = data;
-	memset ((char *)password, 0, strlen (password));
-	g_free (password);
-}
-
-static void
 join_closure_free (gpointer data)
 {
 	JoinClosure *join = data;
@@ -72,37 +64,13 @@ join_closure_init (const gchar *realm,
                    GDBusMethodInvocation *invocation)
 {
 	JoinClosure *join;
-	GByteArray *array;
-	const guchar *data;
-	guchar *input;
-	gsize length;
 
 	join = g_slice_new0 (JoinClosure);
 	join->realm = g_strdup (realm);
 	join->invocation = invocation ? g_object_ref (invocation) : NULL;
 
-	if (password) {
-		array = g_byte_array_new ();
-		data = g_bytes_get_data (password, &length);
-		g_byte_array_append (array, data, length);
-
-		/*
-		 * We add a new line, which getpass() used inside net
-		 * command expects
-		 */
-		g_byte_array_append (array, (guchar *)"\n", 1);
-		length = array->len;
-
-		/*
-		 * In addition we add null terminator. This is not
-		 * written to 'net' command, but used by clear_and_free_password().
-		 */
-		g_byte_array_append (array, (guchar *)"\0", 1);
-
-		input = g_byte_array_free (array, FALSE);
-		join->password_input = g_bytes_new_with_free_func (input, length,
-		                                                   clear_and_free_password, input);
-	}
+	if (password)
+		join->password_input = realm_command_build_password_line (password);
 
 	join->user_name = g_strdup (user_name);
 

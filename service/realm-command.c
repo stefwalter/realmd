@@ -626,3 +626,40 @@ realm_command_run_finish (GAsyncResult *result,
 
 	return command->exit_code;
 }
+
+static void
+clear_and_free_password (gpointer data)
+{
+	gchar *password = data;
+	memset ((char *)password, 0, strlen (password));
+	g_free (password);
+}
+
+GBytes *
+realm_command_build_password_line (GBytes *password)
+{
+	GByteArray *array;
+	gconstpointer data;
+	gsize length;
+	guchar *result;
+
+	array = g_byte_array_new ();
+	data = g_bytes_get_data (password, &length);
+	g_byte_array_append (array, data, length);
+
+	/*
+	 * We add a new line, which getpass() used inside command expects
+	 */
+	g_byte_array_append (array, (guchar *)"\n", 1);
+	length = array->len;
+
+	/*
+	 * In addition we add null terminator. This is not
+	 * written to 'net' command, but used by clear_and_free_password().
+	 */
+	g_byte_array_append (array, (guchar *)"\0", 1);
+
+	result = g_byte_array_free (array, FALSE);
+	return g_bytes_new_with_free_func (result, length,
+	                                   clear_and_free_password, result);
+}

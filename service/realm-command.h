@@ -36,6 +36,8 @@ gint                realm_command_run_finish                   (GAsyncResult *re
                                                                 GString **output,
                                                                 GError **error);
 
+GBytes *            realm_command_build_password_line          (GBytes *password);
+
 G_END_DECLS
 
 #endif /* REALM_COMMAND_H */

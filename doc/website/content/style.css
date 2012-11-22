@@ -27,7 +27,7 @@ h3 { }
 
 p, ul, ol {
 	margin-top: 0;
-	line-height: 200%;
+	line-height: 170%;
 }
 
 ul, ol { }
@@ -58,6 +58,13 @@ img.center {
 }
 
 hr { display: none; }
+
+pre {
+	display: block;
+	border-left: 3px solid #DDDDDD;
+	padding-left: 0.75em;
+	margin-left: 0.75em;
+}
 
 .list1 {
 }

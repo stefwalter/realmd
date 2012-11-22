@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Contributing to realmd{% endblock %}
+
+{% block content %}
+<h2>Installing dependencies</h2>
+
+<p>To build realmd you need the following installed, and their development
+packages where relevant:</p>
+
+<ul>
+<li>OpenLDAP libraries</li>
+<li>Kerberos libraries</li>
+<li>PackageKit GLib library</li>
+<li>PolicyKit GObject library</li>
+<li>GTK Doc tools</li>
+<li>Intltool</li>
+</ul>
+
+<p>In addition if you're building from git, you'll need to have the various
+tools like Autoconf, Automake, GCC, git and so on.</p>
+
+<p>On <b>Debian</b> or <b>Ubuntu</b> you can use the following command to
+install the dependencies:</p>
+
+<pre>$ sudo apt-get install build-essential autoconf automake intltool \
+         gtk-doc-tools libglib2.0-dev libpackagekit-glib2-dev \
+         libpolkit-gobject-1-dev libkrb5-dev libldap2-dev libsasl2-dev</pre>
+
+<p>On <b>Fedora</b> you can use the following command to install the
+dependencies:</p>
+
+<pre>$ sudo yum groupinstall "Development Tools"
+$ sudo yum install automake autoconf intltool gtk-doc glib-devel \
+    PackageKit-glib-devel polkit-devel krb5-devel openldap-devel \
+    cyrus-sasl-devel</pre>
+
+<h2>Getting the source code</h2>
+
+<p>Use git to get the source code like this:</p>
+
+<pre>$ git clone git://anongit.freedesktop.org/realmd/realmd</pre>
+
+<h2>Building</h2>
+
+<p>To build realmd, once you have the source and dependencies
+run commands like this. They may need to be adapted to your system:</p>
+
+<pre>$ sh autogen.sh --prefix=/usr --sysconfdir=/etc --libdir=/usr/lib64 \
+        --enable-strict --enable-debug
+$ make all
+$ make check</pre>
+
+<h2>Collaborating</h2>
+
+<ul>
+<li><a href="http://lists.freedesktop.org/mailman/listinfo/authentication">Mailing list</a></li>
+<li>IRC Channel: #realmd on freenode</li>
+<li><a href="https://bugs.freedesktop.org/enter_bug.cgi?product=realmd">Bugs</a> in Bugzilla</li>
+<li><a href="http://cgit.freedesktop.org/realmd/realmd/">Git repository</a></li>
+</ul>
+{% endblock %}

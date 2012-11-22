@@ -67,7 +67,7 @@ struct _RealmKerberosMembershipIface {
 	                                         gpointer user_data);
 
 	void       (* enroll_ccache_async)      (RealmKerberosMembership *realm,
-	                                         GBytes *ccache,
+	                                         const gchar *ccache_file,
 	                                         RealmKerberosFlags flags,
 	                                         GVariant *options,
 	                                         GDBusMethodInvocation *invocation,
@@ -103,7 +103,7 @@ struct _RealmKerberosMembershipIface {
 	                                         gpointer user_data);
 
 	void       (* unenroll_ccache_async)    (RealmKerberosMembership *realm,
-	                                         GBytes *ccache,
+	                                         const gchar *ccache_file,
 	                                         RealmKerberosFlags flags,
 	                                         GVariant *options,
 	                                         GDBusMethodInvocation *invocation,

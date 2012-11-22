@@ -100,6 +100,7 @@ perform_automatic_join (RealmClient *client,
                         GVariant *options,
                         gboolean *try_other)
 {
+	RealmDbusKerberos *kerberos;
 	GVariant *supported;
 	GVariant *credentials;
 	GError *error = NULL;
@@ -107,7 +108,9 @@ perform_automatic_join (RealmClient *client,
 	int ret;
 
 	supported = realm_dbus_kerberos_membership_get_supported_join_credentials (membership);
-	credentials = realm_client_build_automatic_creds (client, supported, &error);
+	kerberos = realm_client_to_kerberos (client, membership);
+
+	credentials = realm_client_build_automatic_creds (client, kerberos, supported, &error);
 	if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED)) {
 		*try_other = TRUE;
 		return 1;

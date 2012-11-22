@@ -22,11 +22,15 @@
 #include "eggdbusobjectmanagerclient.h"
 
 #include <glib/gi18n.h>
+#include <glib/gstdio.h>
 #include <glib-unix.h>
+
+#include <krb5/krb5.h>
 
 #include <sys/socket.h>
 
 #include <errno.h>
+#include <fcntl.h>
 #include <string.h>
 
 struct _RealmClient {
@@ -465,10 +469,11 @@ realm_client_to_kerberos (RealmClient *self,
 	return realm_client_get_kerberos (self, g_dbus_proxy_get_object_path (proxy));
 }
 
-static gboolean
-is_credential_supported (GVariant *supported,
-                         const gchar *desired_type,
-                         const gchar **ret_owner)
+static const gchar *
+are_credentials_supported (GVariant *supported,
+                           const gchar *credential_type_1,
+                           const gchar *credential_type_2,
+                           const gchar **ret_owner)
 {
 	GVariantIter iter;
 	const gchar *type;
@@ -476,13 +481,309 @@ is_credential_supported (GVariant *supported,
 
 	g_variant_iter_init (&iter, supported);
 	while (g_variant_iter_loop (&iter, "(&s&s)", &type, &owner)) {
-		if (g_str_equal (desired_type, type)) {
+		if (g_strcmp0 (credential_type_1, type) == 0 ||
+		    g_strcmp0 (credential_type_2, type) == 0) {
 			*ret_owner = owner;
-			return TRUE;
+			return type;
 		}
 	}
 
-	return FALSE;
+	return NULL;
+}
+
+static void
+propagate_krb5_error (GError **dest,
+                      krb5_context context,
+                      krb5_error_code code,
+                      const gchar *format,
+                      ...) G_GNUC_PRINTF (4, 5);
+
+static void
+propagate_krb5_error (GError **dest,
+                      krb5_context context,
+                      krb5_error_code code,
+                      const gchar *format,
+                      ...)
+{
+	GString *message;
+	va_list va;
+
+	message = g_string_new ("");
+
+	if (format) {
+		va_start (va, format);
+		g_string_append_vprintf (message, format, va);
+		va_end (va);
+	}
+
+	if (code != 0) {
+		if (format)
+			g_string_append (message, ": ");
+		g_string_append (message, krb5_get_error_message (context, code));
+	}
+
+	g_set_error_literal (dest, g_quark_from_static_string ("krb5"),
+	                     code, message->str);
+	g_string_free (message, TRUE);
+}
+
+static krb5_ccache
+prepare_temporary_ccache (krb5_context krb5,
+                          gchar **filename,
+                          GError **error)
+{
+	const gchar *directory;
+	krb5_error_code code;
+	krb5_ccache ccache;
+	gchar *temp_name;
+	gint temp_fd;
+	int errn;
+
+	directory = g_get_user_runtime_dir ();
+	if (!g_file_test (directory, G_FILE_TEST_IS_DIR))
+		directory = g_get_tmp_dir ();
+
+	if (g_mkdir_with_parents (directory, S_IRWXU) < 0) {
+		errn = errno;
+		g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errn),
+		             _("Couldn't create runtime directory: %s: %s"),
+		             directory, g_strerror (errn));
+		return NULL;
+	}
+
+	temp_name = g_build_filename (directory, "realmd-krb5-cache.XXXXXX", NULL);
+	temp_fd = g_mkstemp_full (temp_name, O_RDWR, S_IRUSR | S_IWUSR);
+	if (temp_fd == -1) {
+		errn = errno;
+		g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errn),
+		             _("Couldn't create credential cache file: %s: %s"),
+		             temp_name, g_strerror (errn));
+		g_free (temp_name);
+		return NULL;
+	}
+
+	close (temp_fd);
+
+	code = krb5_cc_resolve (krb5, temp_name, &ccache);
+	if (code != 0) {
+		propagate_krb5_error (error, krb5, code, _("Couldn't resolve credential cache"));
+		g_free (temp_name);
+		return NULL;
+	}
+
+	g_debug ("Temporary credential cache: %s", temp_name);
+	*filename = temp_name;
+	return ccache;
+}
+
+static gboolean
+copy_to_ccache (krb5_context krb5,
+                const gchar *realm_name,
+                krb5_principal principal,
+                krb5_ccache ccache)
+{
+	krb5_principal server;
+	krb5_ccache def_ccache;
+	krb5_error_code code;
+	krb5_creds mcred;
+	krb5_creds creds;
+
+	code = krb5_cc_default (krb5, &def_ccache);
+	if (code != 0) {
+		g_debug ("krb5_cc_default failed: %s", krb5_get_error_message (krb5, code));
+		return FALSE;
+	}
+
+	code = krb5_build_principal (krb5, &server,
+	                             strlen (realm_name), realm_name,
+	                             KRB5_TGS_NAME, realm_name, NULL);
+	g_return_val_if_fail (code == 0, FALSE);
+
+	memset (&mcred, 0, sizeof (mcred));
+	mcred.client = principal;
+	mcred.server = server;
+	mcred.times.starttime = g_get_real_time () / G_TIME_SPAN_MILLISECOND;
+	mcred.times.endtime = mcred.times.starttime;
+
+	code = krb5_cc_retrieve_cred (krb5, def_ccache, KRB5_TC_MATCH_TIMES,
+	                              &mcred, &creds);
+
+	krb5_free_principal (krb5, server);
+	krb5_cc_close (krb5, def_ccache);
+
+	if (code == KRB5_CC_NOTFOUND) {
+		g_debug ("no matching principal found in %s", krb5_cc_default_name (krb5));
+		return FALSE;
+	} else if (code != 0) {
+		g_debug ("krb5_cc_retrieve_cred failed: %s", krb5_get_error_message (krb5, code));
+		return FALSE;
+	}
+
+	code = krb5_cc_store_cred (krb5, ccache, &creds);
+	krb5_free_cred_contents (krb5, &creds);
+
+	if (code != 0) {
+		g_debug ("krb5_cc_store_cred failed: %s", krb5_get_error_message (krb5, code));
+		return FALSE;
+	}
+
+	g_debug ("retrieved credentials from: %s", krb5_cc_default_name (krb5));
+	return TRUE;
+}
+
+static gboolean
+kinit_to_ccache (krb5_context krb5,
+                 krb5_principal principal,
+                 const gchar *name,
+                 krb5_ccache ccache,
+                 GError **error)
+{
+	krb5_get_init_creds_opt *options = NULL;
+	krb5_error_code code;
+	krb5_creds my_creds;
+
+	code = krb5_get_init_creds_opt_alloc (krb5, &options);
+	g_return_val_if_fail (code == 0, FALSE);
+
+	code = krb5_get_init_creds_opt_set_out_ccache (krb5, options, ccache);
+	g_return_val_if_fail (code == 0, FALSE);
+
+	code = krb5_get_init_creds_password (krb5, &my_creds, principal, NULL,
+	                                     krb5_prompter_posix, 0, 0, NULL, options);
+
+	krb5_get_init_creds_opt_free (krb5, options);
+
+	if (code == KRB5KDC_ERR_PREAUTH_FAILED) {
+		propagate_krb5_error (error, krb5, code, _("Invalid password for %s"), name);
+		return FALSE;
+
+	} else if (code != 0) {
+		propagate_krb5_error (error, krb5, code, _("Couldn't authenticate as %s"), name);
+		return FALSE;
+	}
+
+	krb5_free_cred_contents (krb5, &my_creds);
+	return TRUE;
+}
+
+static gboolean
+copy_or_kinit_to_ccache (krb5_context krb5,
+                         krb5_ccache ccache,
+                         const gchar *user_name,
+                         const gchar *realm_name,
+                         GError **error)
+{
+	krb5_principal principal;
+	krb5_error_code code;
+	gchar *full_name;
+	gboolean ret;
+
+	if (strchr (user_name, '@') == NULL)
+		user_name = full_name = g_strdup_printf ("%s@%s", user_name, realm_name);
+
+	code = krb5_parse_name (krb5, user_name, &principal);
+	if (code != 0) {
+		propagate_krb5_error (error, krb5, code, _("Couldn't parse user name: %s"), user_name);
+		g_free (full_name);
+		return FALSE;
+	}
+
+	ret = copy_to_ccache (krb5, realm_name, principal, ccache) ||
+	      kinit_to_ccache (krb5, principal, user_name, ccache, error);
+
+	g_free (full_name);
+	krb5_free_principal (krb5, principal);
+
+	return ret;
+}
+
+static GVariant *
+read_file_into_variant (const gchar *filename)
+{
+	GVariant *variant;
+	GError *error = NULL;
+	gchar *contents;
+	gsize length;
+
+	g_file_get_contents (filename, &contents, &length, &error);
+	if (error != NULL) {
+		realm_handle_error (error, _("Couldn't read credential cache"));
+		return NULL;
+	}
+
+	variant = g_variant_new_from_data (G_VARIANT_TYPE ("ay"),
+	                                   contents, length,
+	                                   TRUE, g_free, contents);
+
+	return g_variant_ref_sink (variant);
+}
+
+static GVariant *
+build_ccache_credential (const gchar *user_name,
+                         const gchar *realm_name,
+                         const gchar *credential_owner,
+                         GError **error)
+{
+	krb5_error_code code;
+	krb5_context krb5;
+	gboolean ret = FALSE;
+	krb5_ccache ccache;
+	gchar *filename;
+	GVariant *result;
+
+	code = krb5_init_context (&krb5);
+	if (code != 0) {
+		propagate_krb5_error (error, NULL, code, _("Couldn't initialize kerberos"));
+		return NULL;
+	}
+
+	ccache = prepare_temporary_ccache (krb5, &filename, error);
+	if (ccache) {
+		ret = copy_or_kinit_to_ccache (krb5, ccache, user_name, realm_name, error);
+		krb5_cc_close (krb5, ccache);
+		krb5_free_context (krb5);
+	}
+
+	if (!ret)
+		return NULL;
+
+	result = read_file_into_variant (filename);
+
+	g_unlink (filename);
+	g_free (filename);
+
+	if (result)
+		result = g_variant_new ("(ssv)", "ccache", credential_owner, result);
+
+	return result;
+}
+
+static GVariant *
+build_password_credential (const gchar *user_name,
+                           const gchar *credential_owner,
+                           GError **error)
+{
+	const gchar *password;
+	GVariant *result;
+	gchar *prompt;
+
+	prompt = g_strdup_printf (_("Password for %s: "), user_name);
+	password = getpass (prompt);
+	g_free (prompt);
+
+	if (password == NULL) {
+		g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+		             _("Couldn't prompt for password: %s"), g_strerror (errno));
+		return NULL;
+	}
+
+	result = g_variant_new ("(ssv)", "password", credential_owner,
+	                        g_variant_new ("(ss)", user_name, password));
+
+	if (password)
+		memset ((char *)password, 0, strlen (password));
+
+	return result;
 }
 
 GVariant *
@@ -494,69 +795,41 @@ realm_client_build_principal_creds (RealmClient *self,
 {
 	RealmDbusKerberos *kerberos;
 	const gchar *realm_name;
-	const gchar *password = NULL;
-	gboolean use_ccache;
-	GVariant *contents;
 	GVariant *creds;
-	const gchar *owner;
-	gchar *prompt;
+	const gchar *credential_type;
+	const gchar *credential_owner;
 
 	g_return_val_if_fail (REALM_IS_CLIENT (self), NULL);
 
-	if (is_credential_supported (supported, "ccache", &owner)) {
-		use_ccache = TRUE;
+	credential_type = are_credentials_supported (supported,
+	                                             "ccache", "password",
+	                                             &credential_owner);
 
-	} else if (is_credential_supported (supported, "password", &owner)) {
-		use_ccache = FALSE;
-
-	} else {
+	if (credential_type == NULL) {
 		g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
 		             _("Realm does not support membership using a password"));
 		return NULL;
 	}
+
+	g_debug ("Using credential type: %s/%s", credential_type, credential_owner);
 
 	if (user_name == NULL)
 		user_name = realm_dbus_kerberos_membership_get_suggested_administrator (membership);
 	if (user_name == NULL || g_str_equal (user_name, ""))
 		user_name = g_get_user_name ();
 
-	/* If passing in a credential cache, then let krb5 do the prompting */
-	if (use_ccache) {
-		password = NULL;
+	g_debug ("Using user: %s", user_name);
 
-	/* Passing in a password, we need to know it */
-	} else {
-		prompt = g_strdup_printf (_("Password for %s: "), user_name);
-		password = getpass (prompt);
-		g_free (prompt);
-
-		if (password == NULL) {
-			g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-			             _("Couldn't prompt for password: %s"), g_strerror (errno));
-			return NULL;
-		}
-	}
-
-	/* Do a kinit for the given realm */
-	if (use_ccache) {
+	/* A credential cache? */
+	if (g_str_equal (credential_type, "ccache")) {
 		kerberos = realm_client_to_kerberos (self, membership);
 		realm_name = realm_dbus_kerberos_get_realm_name (kerberos);
-		contents = realm_kinit_to_kerberos_cache (user_name, realm_name, password, error);
-		g_object_unref (kerberos);
+		creds = build_ccache_credential (user_name, realm_name, credential_owner, error);
 
-		if (!contents)
-			creds = NULL;
-		else
-			creds = g_variant_new ("(ssv)", "ccache", owner, contents);
-
-	/* Just prompt for a password, and pass it in */
+	/* A plain ol password */
 	} else {
-		creds = g_variant_new ("(ssv)", "password", owner,
-		                       g_variant_new ("(ss)", user_name, password));
+		creds = build_password_credential (user_name, credential_owner, error);
 	}
-
-	if (password)
-		memset ((char *)password, 0, strlen (password));
 
 	return creds;
 }
@@ -571,7 +844,7 @@ realm_client_build_otp_creds (RealmClient *self,
 
 	g_return_val_if_fail (REALM_IS_CLIENT (self), NULL);
 
-	if (!is_credential_supported (supported, "secret", &owner)) {
+	if (!are_credentials_supported (supported, "secret", NULL, &owner)) {
 		g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
 		             _("Realm does not support membership using a one time password"));
 		return NULL;
@@ -584,20 +857,127 @@ realm_client_build_otp_creds (RealmClient *self,
 	                                                 sizeof (unsigned char)));
 }
 
-GVariant *
-realm_client_build_automatic_creds (RealmClient *self,
-                                    GVariant *supported,
-                                    GError **error)
+static krb5_error_code
+copy_credential_cache (krb5_context krb5,
+                       krb5_ccache src,
+                       krb5_ccache dst)
 {
-	const gchar *owner;
+	krb5_error_code code = 0;
+	krb5_principal princ = NULL;
 
-	g_return_val_if_fail (REALM_IS_CLIENT (self), NULL);
+	code = krb5_cc_get_principal (krb5, src, &princ);
+	if (!code)
+		code = krb5_cc_initialize (krb5, dst, princ);
+	if (code)
+		return code;
 
-	if (!is_credential_supported (supported, "automatic", &owner)) {
-		g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-		             _("Realm does not support automatic membership"));
+	code = krb5_cc_copy_creds (krb5, src, dst);
+	if (princ)
+		krb5_free_principal (krb5, princ);
+
+	return code;
+}
+
+static GVariant *
+lookup_ccache_credential (const gchar *realm_name,
+                          const gchar *credential_owner,
+                          GError **error)
+{
+	GVariant *result = NULL;
+	krb5_error_code code;
+	krb5_context krb5;
+	krb5_ccache origin = NULL;
+	krb5_ccache ccache = NULL;
+	krb5_principal principal;
+	krb5_principal server;
+	gchar *filename;
+
+	code = krb5_init_context (&krb5);
+	if (code != 0) {
+		propagate_krb5_error (error, NULL, code, _("Couldn't initialize kerberos"));
 		return NULL;
 	}
 
-	return g_variant_new ("(ssv)", "automatic", owner, g_variant_new_string (""));
+	code = krb5_build_principal (krb5, &server,
+	                             strlen (realm_name), realm_name,
+	                             KRB5_TGS_NAME, realm_name, NULL);
+	g_return_val_if_fail (code == 0, FALSE);
+
+	code = krb5_cc_select (krb5, server, &origin, &principal);
+
+	krb5_free_principal (krb5, server);
+	if (principal)
+		krb5_free_principal (krb5, principal);
+
+	if (code == KRB5_CC_NOTFOUND) {
+		g_debug ("No ccache credentials found for: %s", realm_name);
+		origin = NULL;
+
+	} else if (code != 0) {
+		propagate_krb5_error (error, krb5, code, _("Couldn't select kerberos credentials"));
+		origin = NULL;
+	}
+
+	if (origin) {
+		ccache = prepare_temporary_ccache (krb5, &filename, error);
+		if (ccache) {
+			g_debug ("Copying credential cache");
+			code = copy_credential_cache (krb5, origin, ccache);
+			krb5_cc_close (krb5, ccache);
+
+			if (code == 0)
+				result = read_file_into_variant (filename);
+			else
+				propagate_krb5_error (error, krb5, code, _("Couldn't read kerberos credentials"));
+			if (result)
+				result = g_variant_new ("(ssv)", "ccache", credential_owner, result);
+
+			g_unlink (filename);
+			g_free (filename);
+		}
+
+		krb5_cc_close (krb5, origin);
+	}
+
+	krb5_free_context (krb5);
+
+	return result;
+}
+
+
+GVariant *
+realm_client_build_automatic_creds (RealmClient *self,
+                                    RealmDbusKerberos *realm,
+                                    GVariant *supported,
+                                    GError **error)
+{
+	const gchar *credential_owner;
+	const gchar *realm_name;
+	GVariant *result;
+	GError *erra = NULL;
+
+	g_return_val_if_fail (REALM_IS_CLIENT (self), NULL);
+
+	/* So first check if we have a kerberos ccache that matches */
+	if (are_credentials_supported (supported, "ccache", NULL, &credential_owner)) {
+		realm_name = realm_dbus_kerberos_get_realm_name (realm);
+		result = lookup_ccache_credential (realm_name, credential_owner, &erra);
+
+		/* If no credentials, then fall through to below */
+		if (erra != NULL) {
+			g_propagate_error (error, erra);
+			return NULL;
+		} else if (result != NULL) {
+			return result;
+		}
+	}
+
+	if (are_credentials_supported (supported, "automatic", NULL, &credential_owner)) {
+		return g_variant_new ("(ssv)", "automatic", credential_owner,
+		                      g_variant_new_string (""));
+	}
+
+	g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+	             _("Realm does not support automatic membership"));
+	return NULL;
 }

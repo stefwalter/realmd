@@ -79,13 +79,14 @@ G_DEFINE_TYPE (RealmKerberos, realm_kerberos, G_TYPE_DBUS_OBJECT_SKELETON);
 typedef struct {
 	RealmKerberos *self;
 	GDBusMethodInvocation *invocation;
+	gchar *ccache_file;
 } MethodClosure;
 
 static MethodClosure *
 method_closure_new (RealmKerberos *self,
                     GDBusMethodInvocation *invocation)
 {
-	MethodClosure *method = g_slice_new (MethodClosure);
+	MethodClosure *method = g_slice_new0 (MethodClosure);
 	method->self = g_object_ref (self);
 	method->invocation = g_object_ref (invocation);
 	return method;
@@ -96,6 +97,8 @@ method_closure_free (MethodClosure *closure)
 {
 	g_object_unref (closure->self);
 	g_object_unref (closure->invocation);
+	if (closure->ccache_file)
+		realm_keberos_ccache_delete_and_free (closure->ccache_file);
 	g_slice_free (MethodClosure, closure);
 }
 
@@ -226,6 +229,57 @@ on_unenroll_complete (GObject *source,
 	method_closure_free (closure);
 }
 
+static gchar *
+write_ccache_file (GVariant *ccache,
+                   GError **error)
+{
+	const gchar *directory;
+	gchar *filename;
+	const guchar *data;
+	gsize length;
+	gint fd;
+	int res;
+
+	data = g_variant_get_fixed_array (ccache, &length, 1);
+	g_return_val_if_fail (length > 0, NULL);
+
+	directory = g_get_tmp_dir ();
+	filename = g_build_filename (directory, "realm-ad-kerberos-XXXXXX", NULL);
+
+	fd = g_mkstemp_full (filename, O_WRONLY, 0600);
+	if (fd < 0) {
+		g_warning ("couldn't open temporary file in %s directory for kerberos cache: %s",
+		           directory, g_strerror (errno));
+		g_set_error (error, REALM_ERROR, REALM_ERROR_INTERNAL,
+		             "Problem writing out the kerberos cache data");
+		g_free (filename);
+		return NULL;
+	}
+
+	while (length > 0) {
+		res = write (fd, data, length);
+		if (res <= 0) {
+			if (errno == EAGAIN && errno == EINTR)
+				continue;
+			g_warning ("couldn't write kerberos cache to file %s: %s",
+			           directory, g_strerror (errno));
+			g_set_error (error, REALM_ERROR, REALM_ERROR_INTERNAL,
+			             "Problem writing out the kerberos cache data");
+			break;
+		} else  {
+			length -= res;
+			data += res;
+		}
+	}
+
+	if (length != 0) {
+		g_free (filename);
+		return NULL;
+	}
+
+	return filename;
+}
+
 static void
 enroll_or_unenroll_with_ccache (RealmKerberos *self,
                                 RealmKerberosFlags flags,
@@ -235,9 +289,9 @@ enroll_or_unenroll_with_ccache (RealmKerberos *self,
                                 gboolean enroll)
 {
 	RealmKerberosMembershipIface *iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (self);
-	const guchar *data;
-	GBytes *bytes;
-	gsize length;
+	MethodClosure *method;
+	gchar *ccache_file;
+	GError *error;
 
 	if ((enroll && iface && iface->enroll_ccache_async == NULL) ||
 	    (!enroll && iface && iface->unenroll_ccache_async == NULL)) {
@@ -254,22 +308,25 @@ enroll_or_unenroll_with_ccache (RealmKerberos *self,
 		return;
 	}
 
-	data = g_variant_get_fixed_array (ccache, &length, 1);
-	bytes = g_bytes_new_with_free_func (data, length,
-	                                    (GDestroyNotify)g_variant_unref,
-	                                    g_variant_ref (ccache));
+	ccache_file = write_ccache_file (ccache, &error);
+	if (ccache_file == NULL) {
+		enroll_method_reply (invocation, error);
+		g_error_free (error);
+		return;
+	}
+
+	method = method_closure_new (self, invocation);
+	method->ccache_file = ccache_file;
 
 	if (enroll) {
 		g_return_if_fail (iface->enroll_finish != NULL);
-		(iface->enroll_ccache_async) (REALM_KERBEROS_MEMBERSHIP (self), bytes, flags, options, invocation,
-		                              on_enroll_complete, method_closure_new (self, invocation));
+		(iface->enroll_ccache_async) (REALM_KERBEROS_MEMBERSHIP (self), ccache_file, flags,
+		                              options, invocation, on_enroll_complete, method);
 	} else {
 		g_return_if_fail (iface->unenroll_finish != NULL);
-		(iface->unenroll_ccache_async) (REALM_KERBEROS_MEMBERSHIP (self), bytes, flags, options, invocation,
-		                                on_unenroll_complete, method_closure_new (self, invocation));
+		(iface->unenroll_ccache_async) (REALM_KERBEROS_MEMBERSHIP (self), ccache_file, flags,
+		                                options, invocation, on_unenroll_complete, method);
 	}
-
-	g_bytes_unref (bytes);
 }
 
 static void

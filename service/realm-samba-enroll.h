@@ -23,28 +23,42 @@
 
 G_BEGIN_DECLS
 
-void               realm_samba_enroll_join_async     (const gchar *realm,
-                                                      const gchar *user_name,
-                                                      GBytes *password,
-                                                      const gchar *computer_ou,
-                                                      GHashTable *discovery,
-                                                      GDBusMethodInvocation *invocation,
-                                                      GAsyncReadyCallback callback,
-                                                      gpointer user_data);
+void               realm_samba_enroll_join_password_async  (const gchar *realm,
+                                                            const gchar *user_name,
+                                                            GBytes *password,
+                                                            const gchar *computer_ou,
+                                                            GHashTable *discovery,
+                                                            GDBusMethodInvocation *invocation,
+                                                            GAsyncReadyCallback callback,
+                                                            gpointer user_data);
 
-gboolean           realm_samba_enroll_join_finish    (GAsyncResult *result,
-                                                      GHashTable **settings,
-                                                      GError **error);
+void               realm_samba_enroll_join_ccache_async    (const gchar *realm,
+                                                            const gchar *ccache_file,
+                                                            const gchar *computer_ou,
+                                                            GHashTable *discovery,
+                                                            GDBusMethodInvocation *invocation,
+                                                            GAsyncReadyCallback callback,
+                                                            gpointer user_data);
 
-void               realm_samba_enroll_leave_async    (const gchar *realm,
-                                                      const gchar *user_name,
-                                                      GBytes *password,
-                                                      GDBusMethodInvocation *invocation,
-                                                      GAsyncReadyCallback callback,
-                                                      gpointer user_data);
+gboolean           realm_samba_enroll_join_finish          (GAsyncResult *result,
+                                                            GHashTable **settings,
+                                                            GError **error);
 
-gboolean           realm_samba_enroll_leave_finish   (GAsyncResult *result,
-                                                      GError **error);
+void               realm_samba_enroll_leave_password_async (const gchar *realm,
+                                                            const gchar *user_name,
+                                                            GBytes *password,
+                                                            GDBusMethodInvocation *invocation,
+                                                            GAsyncReadyCallback callback,
+                                                            gpointer user_data);
+
+void               realm_samba_enroll_leave_ccache_async   (const gchar *realm,
+                                                            const gchar *ccache_file,
+                                                            GDBusMethodInvocation *invocation,
+                                                            GAsyncReadyCallback callback,
+                                                            gpointer user_data);
+
+gboolean           realm_samba_enroll_leave_finish         (GAsyncResult *result,
+                                                            GError **error);
 
 G_END_DECLS
 

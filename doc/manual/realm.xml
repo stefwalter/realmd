@@ -156,6 +156,16 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
 	and <literal>--one-time-password </literal> options are mutually exclusive.
 	At most one of them can be specified.</para>
 
+	<para>It is generally possible to use kerberos credentials to perform
+	a join operation. Use the <command>kinit</command> command to
+	acquire credentials prior to starting the join. Do not specify the
+	<option>--user</option> argument, the user will be selected automatically
+	from the credential cache. The <command>realm</command> respects the
+	<literal>KRB5_CCACHE</literal> environment variable, but uses the default
+	kerberos credential cache if it's not present. Not all types of servers
+	can be joined using kerberos credentials, some (like FreeIPA) insist on
+	prompting for a password.</para>
+
 	<para>The following options can be used:</para>
 
 	<variablelist>

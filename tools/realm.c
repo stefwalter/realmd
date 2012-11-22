@@ -21,13 +21,10 @@
 
 #include <glib.h>
 #include <glib/gi18n.h>
-#include <glib/gstdio.h>
 #include <glib-object.h>
 
 #include <krb5/krb5.h>
 
-#include <errno.h>
-#include <fcntl.h>
 #include <locale.h>
 
 static gchar *arg_install = NULL;
@@ -135,63 +132,6 @@ realm_build_options (const gchar *first,
 	return options;
 }
 
-static void
-propagate_krb5_error (GError **dest,
-                      krb5_context context,
-                      krb5_error_code code,
-                      const gchar *format,
-                      ...) G_GNUC_PRINTF (4, 5);
-
-static void
-propagate_krb5_error (GError **dest,
-                      krb5_context context,
-                      krb5_error_code code,
-                      const gchar *format,
-                      ...)
-{
-	GString *message;
-	va_list va;
-
-	message = g_string_new ("");
-
-	if (format) {
-		va_start (va, format);
-		g_string_append_vprintf (message, format, va);
-		va_end (va);
-	}
-
-	if (code != 0) {
-		if (format)
-			g_string_append (message, ": ");
-		g_string_append (message, krb5_get_error_message (context, code));
-	}
-
-	g_set_error_literal (dest, g_quark_from_static_string ("krb5"),
-	                     code, message->str);
-	g_string_free (message, TRUE);
-}
-
-static GVariant *
-read_file_into_variant (const gchar *filename)
-{
-	GVariant *variant;
-	GError *error = NULL;
-	gchar *contents;
-	gsize length;
-
-	g_file_get_contents (filename, &contents, &length, &error);
-	if (error != NULL) {
-		realm_handle_error (error, _("Couldn't read credential cache"));
-		return NULL;
-	}
-
-	variant = g_variant_new_from_data (G_VARIANT_TYPE ("ay"),
-	                                   contents, length,
-	                                   TRUE, g_free, contents);
-
-	return g_variant_ref_sink (variant);
-}
-
 gboolean
 realm_is_configured (RealmDbusRealm *realm)
 {
@@ -201,107 +141,6 @@ realm_is_configured (RealmDbusRealm *realm)
 
 	configured = realm_dbus_realm_get_configured (realm);
 	return (configured && !g_str_equal (configured, ""));
-}
-
-GVariant *
-realm_kinit_to_kerberos_cache (const gchar *name,
-                               const gchar *realm,
-                               const gchar *password,
-                               GError **error)
-{
-	krb5_get_init_creds_opt *options = NULL;
-	krb5_context context = NULL;
-	krb5_principal principal = NULL;
-	krb5_error_code code;
-	int temp_fd;
-	gchar *full_name = NULL;
-	gchar *filename = NULL;
-	krb5_ccache ccache = NULL;
-	krb5_creds my_creds;
-	GVariant *result = NULL;
-	const gchar *directory;
-
-	code = krb5_init_context (&context);
-	if (code != 0) {
-		propagate_krb5_error (error, NULL, code, _("Couldn't initialize kerberos"));
-		goto cleanup;
-	}
-
-	if (strchr (name, '@') == NULL)
-		name = full_name = g_strdup_printf ("%s@%s", name, realm);
-
-	code = krb5_parse_name (context, name, &principal);
-	if (code != 0) {
-		propagate_krb5_error (error, context, code, _("Couldn't parse user name: %s"), name);
-		goto cleanup;
-	}
-
-	code = krb5_get_init_creds_opt_alloc (context, &options);
-	if (code != 0) {
-		propagate_krb5_error (error, context, code, _("Couldn't setup kerberos options"));
-		goto cleanup;
-	}
-
-	directory = g_get_user_runtime_dir ();
-	if (!g_file_test (directory, G_FILE_TEST_IS_DIR))
-		directory = g_get_tmp_dir ();
-
-	filename = g_build_filename (directory, "realmd-krb5-cache.XXXXXX", NULL);
-	temp_fd = g_mkstemp_full (filename, O_RDWR, S_IRUSR | S_IWUSR);
-	if (temp_fd == -1) {
-		int errn = errno;
-		g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errn),
-		             _("Couldn't create credential cache file: %s"), g_strerror (errn));
-		goto cleanup;
-	}
-	close (temp_fd);
-
-	code = krb5_cc_resolve (context, filename, &ccache);
-	if (code != 0) {
-		propagate_krb5_error (error, context, code, _("Couldn't resolve credential cache"));
-		goto cleanup;
-	}
-
-	code = krb5_get_init_creds_opt_set_out_ccache (context, options, ccache);
-	if (code != 0) {
-		propagate_krb5_error (error, context, code, _("Couldn't setup credential cache"));
-		goto cleanup;
-	}
-
-	code = krb5_get_init_creds_password (context, &my_creds, principal, (char *)password,
-	                                     password ? NULL : krb5_prompter_posix,
-	                                     0, 0, NULL, options);
-	if (code == KRB5KDC_ERR_PREAUTH_FAILED) {
-		propagate_krb5_error (error, context, code, _("Invalid password for %s"), name);
-		goto cleanup;
-	} else if (code != 0) {
-		propagate_krb5_error (error, context, code, _("Couldn't authenticate as %s"), name);
-		goto cleanup;
-	}
-
-	krb5_cc_close (context, ccache);
-	ccache = NULL;
-
-	result = read_file_into_variant (filename);
-	krb5_free_cred_contents (context, &my_creds);
-
-cleanup:
-	g_free (full_name);
-
-	if (filename) {
-		g_unlink (filename);
-		g_free (filename);
-	}
-
-	if (options)
-		krb5_get_init_creds_opt_free (context, options);
-	if (principal)
-		krb5_free_principal (context, principal);
-	if (ccache)
-		krb5_cc_close (context, ccache);
-	if (context)
-		krb5_free_context (context);
-	return result;
 }
 
 static int

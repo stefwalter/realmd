@@ -43,6 +43,7 @@ typedef struct {
 	GBytes *password_input;
 	RealmIniConfig *config;
 	gchar *custom_smb_conf;
+	gchar *envvar;
 } JoinClosure;
 
 static void
@@ -52,8 +53,8 @@ join_closure_free (gpointer data)
 
 	g_bytes_unref (join->password_input);
 	g_free (join->user_name);
-	g_free (join->create_computer_arg);
 	g_free (join->realm);
+	g_free (join->envvar);
 	g_clear_object (&join->invocation);
 	g_clear_object (&join->config);
 
@@ -66,9 +67,8 @@ join_closure_free (gpointer data)
 }
 
 static JoinClosure *
-join_closure_init (const gchar *realm,
-                   const gchar *user_name,
-                   GBytes *password,
+join_closure_init (GSimpleAsyncResult *async,
+                   const gchar *realm,
                    GDBusMethodInvocation *invocation)
 {
 	JoinClosure *join;
@@ -79,10 +79,7 @@ join_closure_init (const gchar *realm,
 	join->realm = g_strdup (realm);
 	join->invocation = invocation ? g_object_ref (invocation) : NULL;
 
-	if (password)
-		join->password_input = realm_command_build_password_line (password);
-
-	join->user_name = g_strdup (user_name);
+	g_simple_async_result_set_op_res_gpointer (async, join, join_closure_free);
 
 	join->config = realm_ini_config_new (REALM_INI_NO_WATCH | REALM_INI_PRIVATE);
 	realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL, "security", "ads");
@@ -121,7 +118,7 @@ begin_net_process (JoinClosure *join,
                    gpointer user_data,
                    ...)
 {
-	gchar *environ[] = { "LANG=C", NULL };
+	char *env[] = { "LANG=C", join->envvar, NULL };
 	GPtrArray *args;
 	gchar *arg;
 	va_list va;
@@ -142,7 +139,7 @@ begin_net_process (JoinClosure *join,
 	} while (arg != NULL);
 	va_end (va);
 
-	realm_command_runv_async ((gchar **)args->pdata, environ, input,
+	realm_command_runv_async ((gchar **)args->pdata, env, input,
 	                          join->invocation, callback, user_data);
 
 	g_ptr_array_free (args, TRUE);
@@ -221,13 +218,21 @@ on_join_do_keytab (GObject *source,
 	if (output)
 		g_string_free (output, TRUE);
 
-	if (error == NULL) {
+	if (error != NULL) {
+		g_simple_async_result_take_error (res, error);
+		g_simple_async_result_complete (res);
+
+	/* Do keytab with a user name */
+	} else if (join->user_name != NULL) {
 		begin_net_process (join, join->password_input,
 		                   on_keytab_do_finish, g_object_ref (res),
 		                   "-U", join->user_name, "ads", "keytab", "create", NULL);
+
+	/* Do keytab with a ccache file */
 	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
+		begin_net_process (join, NULL,
+		                   on_keytab_do_finish, g_object_ref (res),
+		                   "-k", "ads", "keytab", "create", NULL);
 	}
 
 	g_object_unref (res);
@@ -268,15 +273,23 @@ begin_config_and_join (JoinClosure *join,
 	/* Write out the config file for various changes */
 	realm_ini_config_write_file (join->config, NULL, &error);
 
-	if (error == NULL) {
+	if (error != NULL) {
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete (async);
+
+	/* Do join with a user name */
+	} else if (join->user_name) {
 		begin_net_process (join, join->password_input,
 		                   on_join_do_keytab, g_object_ref (async),
 		                   "-U", join->user_name, "ads", "join", join->realm,
 		                   join->create_computer_arg, NULL);
 
+	/* Do join with a ccache */
 	} else {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete (async);
+		begin_net_process (join, NULL,
+		                   on_join_do_keytab, g_object_ref (async),
+		                   "-k", "ads", "join", join->realm,
+		                   join->create_computer_arg, NULL);
 	}
 
 }
@@ -387,31 +400,15 @@ on_discover_do_lookup (GObject *source,
 	g_object_unref (async);
 }
 
-void
-realm_samba_enroll_join_async (const gchar *realm,
-                               const gchar *user_name,
-                               GBytes *password,
-                               const gchar *computer_ou,
-                               GHashTable *discovery,
-                               GDBusMethodInvocation *invocation,
-                               GAsyncReadyCallback callback,
-                               gpointer user_data)
+static void
+begin_join (GSimpleAsyncResult *async,
+            JoinClosure *join,
+            const gchar *realm,
+            const gchar *computer_ou,
+            GHashTable *discovery)
 {
-	GSimpleAsyncResult *res;
-	JoinClosure *join;
-	GError *error = NULL;
 	gchar *strange_ou;
-
-	g_return_if_fail (realm != NULL);
-	g_return_if_fail (user_name != NULL);
-	g_return_if_fail (password != NULL);
-
-	res = g_simple_async_result_new (NULL, callback, user_data,
-	                                 realm_samba_enroll_join_async);
-
-	join = join_closure_init (realm, user_name, password, invocation);
-
-	g_simple_async_result_set_op_res_gpointer (res, join, join_closure_free);
+	GError *error = NULL;
 
 	if (computer_ou != NULL) {
 		strange_ou = realm_samba_util_build_strange_ou (computer_ou, realm);
@@ -426,19 +423,74 @@ realm_samba_enroll_join_async (const gchar *realm,
 	}
 
 	if (error != NULL) {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete_in_idle (res);
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete_in_idle (async);
 
 	} else if (discovery) {
-		begin_net_lookup (join, res, discovery);
+		begin_net_lookup (join, async, discovery);
 
 	} else {
 		realm_kerberos_discover_async (join->realm, join->invocation,
-		                               on_discover_do_lookup, g_object_ref (res));
+		                               on_discover_do_lookup, g_object_ref (async));
 	}
-
-	g_object_unref (res);
 }
+
+void
+realm_samba_enroll_join_password_async (const gchar *realm,
+                                        const gchar *user_name,
+                                        GBytes *password,
+                                        const gchar *computer_ou,
+                                        GHashTable *discovery,
+                                        GDBusMethodInvocation *invocation,
+                                        GAsyncReadyCallback callback,
+                                        gpointer user_data)
+{
+	GSimpleAsyncResult *async;
+	JoinClosure *join;
+
+	g_return_if_fail (realm != NULL);
+	g_return_if_fail (user_name != NULL);
+	g_return_if_fail (password != NULL);
+
+	async = g_simple_async_result_new (NULL, callback, user_data,
+	                                   realm_samba_enroll_join_finish);
+
+	join = join_closure_init (async, realm, invocation);
+
+	join->password_input = realm_command_build_password_line (password);
+	join->user_name = g_strdup (user_name);
+
+	begin_join (async, join, realm, computer_ou, discovery);
+
+	g_object_unref (async);
+}
+
+void
+realm_samba_enroll_join_ccache_async (const gchar *realm,
+                                      const gchar *ccache_file,
+                                      const gchar *computer_ou,
+                                      GHashTable *discovery,
+                                      GDBusMethodInvocation *invocation,
+                                      GAsyncReadyCallback callback,
+                                      gpointer user_data)
+{
+	GSimpleAsyncResult *async;
+	JoinClosure *join;
+
+	g_return_if_fail (realm != NULL);
+	g_return_if_fail (ccache_file != NULL);
+
+	async = g_simple_async_result_new (NULL, callback, user_data,
+	                                   realm_samba_enroll_join_finish);
+
+	join = join_closure_init (async, realm, invocation);
+	join->envvar = g_strdup_printf ("KRB5CCNAME=%s", ccache_file);
+
+	begin_join (async, join, realm, computer_ou, discovery);
+
+	g_object_unref (async);
+}
+
 
 gboolean
 realm_samba_enroll_join_finish (GAsyncResult *result,
@@ -448,7 +500,7 @@ realm_samba_enroll_join_finish (GAsyncResult *result,
 	JoinClosure *join;
 
 	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      realm_samba_enroll_join_async), FALSE);
+	                      realm_samba_enroll_join_finish), FALSE);
 
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
 		return FALSE;
@@ -484,25 +536,49 @@ on_leave_complete (GObject *source,
 }
 
 void
-realm_samba_enroll_leave_async (const gchar *realm,
-                                const gchar *user_name,
-                                GBytes *password,
-                                GDBusMethodInvocation *invocation,
-                                GAsyncReadyCallback callback,
-                                gpointer user_data)
+realm_samba_enroll_leave_password_async (const gchar *realm,
+                                         const gchar *user_name,
+                                         GBytes *password,
+                                         GDBusMethodInvocation *invocation,
+                                         GAsyncReadyCallback callback,
+                                         gpointer user_data)
 {
 	GSimpleAsyncResult *async;
 	JoinClosure *join;
 
 	async = g_simple_async_result_new (NULL, callback, user_data,
-	                                   realm_samba_enroll_leave_async);
+	                                   realm_samba_enroll_leave_finish);
 
-	join = join_closure_init (realm, user_name, password, invocation);
-	g_simple_async_result_set_op_res_gpointer (async, join, join_closure_free);
+	join = join_closure_init (async, realm, invocation);
+	join->password_input = realm_command_build_password_line (password);
+	join->user_name = g_strdup (user_name);
 
 	begin_net_process (join, join->password_input,
 	                   on_leave_complete, g_object_ref (async),
 	                   "-U", join->user_name, "ads", "leave", NULL);
+
+	g_object_unref (async);
+}
+
+void
+realm_samba_enroll_leave_ccache_async (const gchar *realm,
+                                       const gchar *ccache_file,
+                                       GDBusMethodInvocation *invocation,
+                                       GAsyncReadyCallback callback,
+                                       gpointer user_data)
+{
+	GSimpleAsyncResult *async;
+	JoinClosure *join;
+
+	async = g_simple_async_result_new (NULL, callback, user_data,
+	                                   realm_samba_enroll_leave_finish);
+
+	join = join_closure_init (async, realm, invocation);
+	join->envvar = g_strdup_printf ("KRB5CCNAME=%s", ccache_file);
+
+	begin_net_process (join, join->password_input,
+	                   on_leave_complete, g_object_ref (async),
+	                   "-k", "ads", "leave", NULL);
 
 	g_object_unref (async);
 }
@@ -512,7 +588,7 @@ realm_samba_enroll_leave_finish (GAsyncResult *result,
                                  GError **error)
 {
 	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      realm_samba_enroll_leave_async), FALSE);
+	                      realm_samba_enroll_leave_finish), FALSE);
 
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
 		return FALSE;

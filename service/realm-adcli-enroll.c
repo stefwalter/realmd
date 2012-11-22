@@ -124,13 +124,19 @@ realm_adcli_enroll_join_ccache_async (const gchar *realm,
                                       GAsyncReadyCallback callback,
                                       gpointer user_data)
 {
+	char *ccache_arg;
+
+	/* Since this is an optional adcli argument it requires the equals */
+	ccache_arg = g_strdup_printf ("--login-ccache=%s", ccache_file);
+
 	begin_join_process (NULL, invocation, callback, user_data,
 	                    "--domain", realm,
 	                    "--login-type", "user",
-	                    "--login-ccache", ccache_file,
-	                    "--no-password",
+	                    ccache_arg, "--no-password",
 	                    computer_ou ? "--computer-ou": NULL, computer_ou,
 	                    NULL);
+
+	free (ccache_arg);
 }
 
 void

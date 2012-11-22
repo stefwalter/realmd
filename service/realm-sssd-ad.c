@@ -92,12 +92,14 @@ realm_sssd_ad_constructed (GObject *obj)
 
 	/*
 	 * Each line is a combination of owner and what kind of credentials are supported,
-	 * same for enroll/leave. We can't accept a ccache, because samba3 needs
-	 * to have credentials limited to RC4.
+	 * same for enroll/leave. We can't accept a ccache with samba because of certain
+	 * corner cases. However we do accept ccache for an admin user, and then we use
+	 * adcli with that ccache.
 	 */
 	supported = realm_kerberos_membership_build_supported (
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_ADMIN,
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_USER,
+			REALM_KERBEROS_CREDENTIAL_CCACHE, REALM_KERBEROS_OWNER_ADMIN,
 			REALM_KERBEROS_CREDENTIAL_AUTOMATIC, REALM_KERBEROS_OWNER_NONE,
 			REALM_KERBEROS_CREDENTIAL_SECRET, REALM_KERBEROS_OWNER_NONE,
 			0);
@@ -106,7 +108,7 @@ realm_sssd_ad_constructed (GObject *obj)
 	/* For leave, we don't support one-time-password (ie: secret/none) */
 	supported = realm_kerberos_membership_build_supported (
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_ADMIN,
-			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_USER,
+			REALM_KERBEROS_CREDENTIAL_CCACHE, REALM_KERBEROS_OWNER_ADMIN,
 			REALM_KERBEROS_CREDENTIAL_AUTOMATIC, REALM_KERBEROS_OWNER_NONE,
 			0);
 	realm_kerberos_set_supported_leave_creds (kerberos, supported);
@@ -339,9 +341,11 @@ on_install_do_join (GObject *source,
 		} else {
 			g_assert (join->user_name != NULL);
 			g_assert (join->user_password != NULL);
-			realm_samba_enroll_join_async (join->realm_name, join->user_name, join->user_password,
-			                               join->computer_ou, realm_kerberos_get_discovery (kerberos),
-			                               join->invocation, on_join_do_sssd, g_object_ref (async));
+			realm_samba_enroll_join_password_async (join->realm_name, join->user_name,
+			                                        join->user_password, join->computer_ou,
+			                                        realm_kerberos_get_discovery (kerberos),
+			                                        join->invocation, on_join_do_sssd,
+			                                        g_object_ref (async));
 		}
 
 	} else {
@@ -424,6 +428,15 @@ parse_join_options (JoinClosure *join,
 			             REALM_DBUS_IDENTIFIER_SAMBA);
 			return FALSE;
 		}
+
+	/*
+	 * If we are enrolling with a ccache, then prefer to use adcli over samba.
+	 * There have been some strange corner case problems when using samba with
+	 * a ccache.
+	 */
+	} else if (cred_type == REALM_KERBEROS_CREDENTIAL_CCACHE) {
+		if (!software)
+			software = REALM_DBUS_IDENTIFIER_ADCLI;
 
 	/*
 	 * For other supported enrolling credentials, we support either adcli or
@@ -586,6 +599,33 @@ realm_sssd_ad_join_password_async (RealmKerberosMembership *membership,
 	}
 }
 
+static void
+realm_sssd_ad_join_ccache_async (RealmKerberosMembership *membership,
+                                 const gchar *ccache_file,
+                                 RealmKerberosFlags flags,
+                                 GVariant *options,
+                                 GDBusMethodInvocation *invocation,
+                                 GAsyncReadyCallback callback,
+                                 gpointer user_data)
+{
+	GSimpleAsyncResult *async;
+	JoinClosure *join;
+
+	async = prepare_join_async_result (membership, REALM_KERBEROS_CREDENTIAL_CCACHE,
+	                                   flags, options, invocation, callback, user_data);
+
+	if (async) {
+		join = g_simple_async_result_get_op_res_gpointer (async);
+
+		join->ccache_file = g_strdup (ccache_file);
+		realm_packages_install_async (join->packages, join->invocation,
+		                              on_install_do_join, g_object_ref (async));
+
+		g_object_unref (async);
+	}
+
+}
+
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	gchar *realm_name;
@@ -672,9 +712,37 @@ realm_sssd_ad_leave_password_async (RealmKerberosMembership *membership,
 	leave->invocation = g_object_ref (invocation);
 	g_simple_async_result_set_op_res_gpointer (async, leave, leave_closure_free);
 
-	realm_samba_enroll_leave_async (leave->realm_name, user_name, password,
-	                                leave->invocation, on_leave_do_deconfigure,
-	                                g_object_ref (async));
+	realm_samba_enroll_leave_password_async (leave->realm_name, user_name, password,
+	                                         leave->invocation, on_leave_do_deconfigure,
+	                                         g_object_ref (async));
+	g_object_unref (async);
+}
+
+static void
+realm_sssd_ad_leave_ccache_async (RealmKerberosMembership *membership,
+                                  const gchar *ccache_file,
+                                  RealmKerberosFlags flags,
+                                  GVariant *options,
+                                  GDBusMethodInvocation *invocation,
+                                  GAsyncReadyCallback callback,
+                                  gpointer user_data)
+{
+	RealmSssdAd *self = REALM_SSSD_AD (membership);
+	GSimpleAsyncResult *async;
+	LeaveClosure *leave;
+
+	async = setup_leave (self, options, invocation, callback, user_data);
+	if (async == NULL)
+		return;
+
+	leave = g_slice_new0 (LeaveClosure);
+	leave->realm_name = g_strdup (realm_kerberos_get_realm_name (REALM_KERBEROS (self)));
+	leave->invocation = g_object_ref (invocation);
+	g_simple_async_result_set_op_res_gpointer (async, leave, leave_closure_free);
+
+	realm_samba_enroll_leave_ccache_async (leave->realm_name, ccache_file,
+	                                       leave->invocation, on_leave_do_deconfigure,
+	                                       g_object_ref (async));
 	g_object_unref (async);
 }
 
@@ -726,8 +794,10 @@ realm_sssd_ad_kerberos_membership_iface (RealmKerberosMembershipIface *iface)
 	iface->enroll_automatic_async = realm_sssd_ad_join_automatic_async;
 	iface->enroll_password_async = realm_sssd_ad_join_password_async;
 	iface->enroll_secret_async = realm_sssd_ad_join_secret_async;
+	iface->enroll_ccache_async = realm_sssd_ad_join_ccache_async;
 	iface->enroll_finish = realm_sssd_ad_generic_finish;
 	iface->unenroll_automatic_async = realm_sssd_ad_leave_automatic_async;
 	iface->unenroll_password_async = realm_sssd_ad_leave_password_async;
+	iface->unenroll_ccache_async = realm_sssd_ad_leave_ccache_async;
 	iface->unenroll_finish = realm_sssd_ad_generic_finish;
 }

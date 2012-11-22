@@ -163,6 +163,16 @@ $ <command>getent passwd DOMAIN\Administrator</command>
 		where this account is created, you can use the
 		<link linkend="guide-configuring-realm"><option>computer-ou</option> setting</link>.</para>
 
+		<para>Specify the <option>--user</option> to choose a different
+		user name than the default <literal>Administrator</literal> user.</para>
+
+		<para>You can use kerberos credentials to perform the join. Use the
+		<command>kinit</command> command to acquire credentials prior to
+		starting the join. Do not specify the <option>--user</option> argument,
+		the user will be selected automatically from the credential cache.
+		The <command>realm</command> respects the <literal>KRB5_CCACHE</literal>
+		environment variable, but uses the default kerberos credential cache
+		if it's not present.</para>
 	</section>
 
 	<section id="guide-active-directory-permit">

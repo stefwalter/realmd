@@ -154,7 +154,6 @@ lookup_login_prefix (RealmSamba *self)
 
 typedef struct {
 	GDBusMethodInvocation *invocation;
-	gchar *ccache_file;
 	gchar *computer_ou;
 	gchar *realm_name;
 	gchar *user_name;
@@ -170,8 +169,6 @@ enroll_closure_free (gpointer data)
 	g_free (enroll->user_name);
 	g_bytes_unref (enroll->password);
 	g_object_unref (enroll->invocation);
-	if (enroll->ccache_file)
-		realm_keberos_ccache_delete_and_free (enroll->ccache_file);
 	g_slice_free (EnrollClosure, enroll);
 }
 
@@ -248,9 +245,9 @@ on_install_do_join (GObject *source,
 
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
-		realm_samba_enroll_join_async (enroll->realm_name, enroll->user_name, enroll->password,
-		                               enroll->computer_ou, realm_kerberos_get_discovery (kerberos),
-		                               enroll->invocation, on_join_do_winbind, g_object_ref (res));
+		realm_samba_enroll_join_password_async (enroll->realm_name, enroll->user_name, enroll->password,
+		                                        enroll->computer_ou, realm_kerberos_get_discovery (kerberos),
+		                                        enroll->invocation, on_join_do_winbind, g_object_ref (res));
 
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -334,7 +331,6 @@ realm_samba_enroll_async (RealmKerberosMembership *membership,
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	gchar *realm_name;
-	gchar *ccache_file;
 } LeaveClosure;
 
 static void
@@ -342,8 +338,6 @@ leave_closure_free (gpointer data)
 {
 	LeaveClosure *leave = data;
 	g_free (leave->realm_name);
-	if (leave->ccache_file)
-		realm_keberos_ccache_delete_and_free (leave->ccache_file);
 	g_object_unref (leave->invocation);
 	g_slice_free (LeaveClosure, leave);
 }
@@ -474,9 +468,9 @@ realm_samba_leave_password_async (RealmKerberosMembership *membership,
 		return;
 
 	leave = g_simple_async_result_get_op_res_gpointer (async);
-	realm_samba_enroll_leave_async (leave->realm_name, name, password,
-	                                leave->invocation, on_leave_do_deconfigure,
-	                                g_object_ref (async));
+	realm_samba_enroll_leave_password_async (leave->realm_name, name, password,
+	                                         leave->invocation, on_leave_do_deconfigure,
+	                                         g_object_ref (async));
 	g_object_unref (async);
 }
 

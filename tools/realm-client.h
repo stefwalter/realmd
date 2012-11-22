@@ -76,6 +76,7 @@ GVariant *                     realm_client_build_otp_creds          (RealmClien
                                                                       GError **error);
 
 GVariant *                     realm_client_build_automatic_creds    (RealmClient *self,
+                                                                      RealmDbusKerberos *realm,
                                                                       GVariant *supported,
                                                                       GError **error);
 

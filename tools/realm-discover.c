@@ -42,6 +42,7 @@ print_kerberos_info (RealmClient *client,
 
 static void
 print_realm_info (RealmClient *client,
+                  gboolean name_only,
                   RealmDbusRealm *realm)
 {
 	RealmDbusKerberos *kerberos;
@@ -58,6 +59,9 @@ print_realm_info (RealmClient *client,
 
 	g_return_if_fail (REALM_DBUS_IS_REALM (realm));
 	g_print ("%s\n", realm_dbus_realm_get_name (realm));
+
+	if (name_only)
+		return;
 
 	kerberos = realm_client_to_kerberos (client, realm);
 	if (kerberos) {
@@ -108,6 +112,7 @@ static int
 perform_discover (RealmClient *client,
                   const gchar *string,
                   gboolean all,
+                  gboolean name_only,
                   const gchar *server_software,
                   const gchar *client_software,
                   const gchar *membership_software)
@@ -133,7 +138,7 @@ perform_discover (RealmClient *client,
 	for (l = realms; l != NULL; l = g_list_next (l)) {
 		name = realm_dbus_realm_get_name (l->data);
 		if (all || !g_hash_table_lookup (seen, name)) {
-			print_realm_info (client, l->data);
+			print_realm_info (client, name_only, l->data);
 			g_hash_table_add (seen, (gchar *)name);
 			found = TRUE;
 		}
@@ -164,12 +169,14 @@ realm_discover (RealmClient *client,
 	gchar *arg_membership_software = NULL;
 	GError *error = NULL;
 	gboolean arg_all = FALSE;
+	gboolean arg_name_only = FALSE;
 	gint result = 0;
 	gint ret;
 	gint i;
 
 	GOptionEntry option_entries[] = {
 		{ "all", 'a', 0, G_OPTION_ARG_NONE, &arg_all, N_("Show all discovered realms"), NULL },
+		{ "name-only", 'n', 0, G_OPTION_ARG_NONE, &arg_name_only, N_("Show only the names"), NULL },
 		{ "client-software", 0, 0, G_OPTION_ARG_STRING, &arg_client_software, N_("Use specific client software"), NULL },
 		{ "membership-software", 0, 0, G_OPTION_ARG_STRING, &arg_membership_software, N_("Use specific membership software"), NULL },
 		{ "server-software", 0, 0, G_OPTION_ARG_STRING, &arg_server_software, N_("Use specific server software"), NULL },
@@ -191,6 +198,7 @@ realm_discover (RealmClient *client,
 	/* The default realm? */
 	} else if (argc == 1) {
 		ret = perform_discover (client, NULL, arg_all,
+		                        arg_name_only,
 		                        arg_server_software,
 		                        arg_client_software,
 		                        arg_membership_software);
@@ -199,6 +207,7 @@ realm_discover (RealmClient *client,
 	} else {
 		for (i = 1; i < argc; i++) {
 			ret = perform_discover (client, argv[i], arg_all,
+			                        arg_name_only,
 			                        arg_server_software,
 			                        arg_client_software,
 			                        arg_membership_software);
@@ -216,7 +225,8 @@ realm_discover (RealmClient *client,
 
 static int
 perform_list (RealmClient *client,
-              gboolean all)
+              gboolean all,
+              gboolean name_only)
 {
 	RealmDbusProvider *provider;
 	const gchar *const *realms;
@@ -230,7 +240,7 @@ perform_list (RealmClient *client,
 	for (i = 0; realms && realms[i] != NULL; i++) {
 		realm = realm_client_get_realm (client, realms[i]);
 		if (all || realm_is_configured (realm)) {
-			print_realm_info (client, realm);
+			print_realm_info (client, name_only, realm);
 			printed = TRUE;
 		}
 		g_object_unref (realm);
@@ -253,11 +263,13 @@ realm_list (RealmClient *client,
 {
 	GOptionContext *context;
 	gboolean arg_all = FALSE;
+	gboolean arg_name_only = FALSE;
 	GError *error = NULL;
 	gint ret = 0;
 
 	GOptionEntry option_entries[] = {
 		{ "all", 'a', 0, G_OPTION_ARG_NONE, &arg_all, N_("Show all realms"), NULL },
+		{ "name-only", 'n', 0, G_OPTION_ARG_NONE, &arg_name_only, N_("Show only the names"), NULL },
 		{ NULL, }
 	};
 
@@ -276,7 +288,7 @@ realm_list (RealmClient *client,
 		ret = 2;
 
 	} else {
-		return perform_list (client, arg_all);
+		ret = perform_list (client, arg_all, arg_name_only);
 	}
 
 	g_option_context_free (context);

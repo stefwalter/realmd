@@ -555,23 +555,13 @@ realm_command_run_known_async (const gchar *known_command,
                                gpointer user_data)
 {
 	const gchar *command_line;
+	GSimpleAsyncResult *async;
+	CommandClosure *command;
 	GError *error = NULL;
+	gchar *message = NULL;
+	gint exit_code = -1;
 	gchar **argv;
 	gint unused;
-
-	const gchar *empty_argv[] = {
-		"/bin/true",
-		"empty-configured-command",
-		known_command,
-		NULL,
-	};
-
-	const gchar *invalid_argv[] = {
-		"/bin/false",
-		"invalid-configured-command",
-		known_command,
-		NULL
-	};
 
 	g_return_if_fail (known_command != NULL);
 	g_return_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable));
@@ -579,20 +569,36 @@ realm_command_run_known_async (const gchar *known_command,
 
 	command_line = realm_settings_value ("commands", known_command);
 	if (command_line == NULL) {
-		g_warning ("Couldn't find the configured string commands/%s", known_command);
-		argv = g_strdupv ((gchar **)invalid_argv);
+		message = g_strdup_printf (_("Configured command not found: %s"), known_command);
+		g_warning ("Configured command not found: %s", known_command);
+		exit_code = 127;
 
 	} else if (is_only_whitespace (command_line)) {
-		argv = g_strdupv ((gchar **)empty_argv);
+		message = g_strdup_printf (_("Skipped command: %s"), known_command);
+		exit_code = 0;
 
 	} else if (!g_shell_parse_argv (command_line, &unused, &argv, &error)) {
 		g_warning ("Couldn't parse the command line: %s: %s", command_line, error->message);
 		g_error_free (error);
-		argv = g_strdupv ((gchar **)invalid_argv);
+		message = g_strdup_printf (_("Configured command invalid: %s"), command_line);
+		exit_code = 127;
+
 	}
 
-	realm_command_runv_async (argv, environ, NULL, invocation, cancellable, callback, user_data);
-	g_strfreev (argv);
+	if (message == NULL) {
+		realm_command_runv_async (argv, environ, NULL, invocation, cancellable, callback, user_data);
+		g_free (argv);
+
+	} else {
+		async = g_simple_async_result_new (NULL, callback, user_data, realm_command_runv_async);
+		command = g_slice_new0 (CommandClosure);
+		command->output = g_string_new (message);
+		command->exit_code = exit_code;
+		g_simple_async_result_set_op_res_gpointer (async, command, command_closure_free);
+		g_simple_async_result_complete_in_idle (async);
+		g_object_unref (async);
+		g_free (message);
+	}
 }
 
 gint

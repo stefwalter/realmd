@@ -207,6 +207,7 @@ realm_kinit_to_kerberos_cache (const gchar *name,
 	krb5_ccache ccache = NULL;
 	krb5_creds my_creds;
 	GVariant *result = NULL;
+	const gchar *directory;
 
 	code = krb5_init_context (&context);
 	if (code != 0) {
@@ -229,7 +230,11 @@ realm_kinit_to_kerberos_cache (const gchar *name,
 		goto cleanup;
 	}
 
-	filename = g_build_filename (g_get_user_runtime_dir (), "realmd-krb5-cache.XXXXXX", NULL);
+	directory = g_get_user_runtime_dir ();
+	if (!g_file_test (directory, G_FILE_TEST_IS_DIR))
+		directory = g_get_tmp_dir ();
+
+	filename = g_build_filename (directory, "realmd-krb5-cache.XXXXXX", NULL);
 	temp_fd = g_mkstemp_full (filename, O_RDWR, S_IRUSR | S_IWUSR);
 	if (temp_fd == -1) {
 		int errn = errno;

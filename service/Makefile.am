@@ -7,6 +7,7 @@ REALMD_CONFIGS = \
 	realmd-defaults.conf \
 	realmd-redhat.conf \
 	realmd-debian.conf \
+	realmd-suse.conf \
 	$(NULL)
 
 private_DATA = \

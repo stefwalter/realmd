@@ -182,6 +182,28 @@ realm_settings_string (const gchar *section,
 	return string;
 }
 
+gdouble
+realm_settings_double (const gchar *section,
+                       const gchar *key,
+                       gdouble def)
+{
+	const gchar *string;
+	gchar *end_ptr = NULL;
+	gdouble val;
+
+	string = realm_settings_value (section, key);
+	if (string == NULL)
+		return def;
+
+	val = g_ascii_strtod (string, &end_ptr);
+	if (!end_ptr || *end_ptr != '\0') {
+		g_critical ("invalid %s/%s floating point value '%s' in realmd config",
+		            section, key, string);
+		return def;
+	}
+	return val;
+}
+
 gboolean
 realm_settings_boolean (const gchar *section,
                         const gchar *key)

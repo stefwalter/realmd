@@ -77,6 +77,7 @@ temp.txt
 /tests/test-login-name
 /tests/test-sssd-config
 /tests/test-samba-ou-format
+/tests/test-settings
 
 /tools/realm
 /tools/realm-enroll

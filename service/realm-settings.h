@@ -42,6 +42,10 @@ const gchar *        realm_settings_value                 (const gchar *section,
 const gchar *        realm_settings_string                (const gchar *section,
                                                            const gchar *key);
 
+gdouble              realm_settings_double                (const gchar *section,
+                                                           const gchar *key,
+                                                           gdouble def);
+
 gboolean             realm_settings_boolean               (const gchar *section,
                                                            const gchar *key);
 

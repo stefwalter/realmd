@@ -19,6 +19,7 @@ TEST_PROGS = \
 	test-sssd-config \
 	test-login-name \
 	test-samba-ou-format \
+	test-settings \
 	$(NULL)
 
 check_PROGRAMS = \
@@ -50,6 +51,11 @@ test_login_name_SOURCES = \
 test_samba_ou_format_SOURCES = \
 	test-samba-ou-format.c \
 	$(top_srcdir)/service/realm-samba-util.c \
+	$(NULL)
+
+test_settings_SOURCES = \
+	test-settings.c \
+	$(top_srcdir)/service/realm-settings.c \
 	$(NULL)
 
 frob_install_packages_CFLAGS = \

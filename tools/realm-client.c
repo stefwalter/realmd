@@ -504,21 +504,20 @@ realm_client_build_principal_creds (RealmClient *self,
 		}
 	}
 
-	kerberos = realm_client_to_kerberos (self, membership);
-	realm_name = realm_dbus_kerberos_get_realm_name (kerberos);
-	contents = realm_kinit_to_kerberos_cache (user_name, realm_name, password, error);
-	g_object_unref (kerberos);
-
-	if (!contents) {
-		creds = NULL;
-
 	/* Do a kinit for the given realm */
-	} else if (use_ccache) {
-		creds = g_variant_new ("(ssv)", "ccache", owner, contents);
+	if (use_ccache) {
+		kerberos = realm_client_to_kerberos (self, membership);
+		realm_name = realm_dbus_kerberos_get_realm_name (kerberos);
+		contents = realm_kinit_to_kerberos_cache (user_name, realm_name, password, error);
+		g_object_unref (kerberos);
+
+		if (!contents)
+			creds = NULL;
+		else
+			creds = g_variant_new ("(ssv)", "ccache", owner, contents);
 
 	/* Just prompt for a password, and pass it in */
 	} else {
-		g_variant_unref (contents);
 		creds = g_variant_new ("(ssv)", "password", owner,
 		                       g_variant_new ("(ss)", user_name, password));
 	}

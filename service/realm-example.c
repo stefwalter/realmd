@@ -153,7 +153,7 @@ realm_example_join_async (RealmKerberosMembership *membership,
 	GError *error = NULL;
 	const gchar *realm_name;
 
-	realm_name = realm_kerberos_get_realm_name (kerberos);
+	realm_name = realm_kerberos_get_name (kerberos);
 	async = g_simple_async_result_new (G_OBJECT (self), callback, user_data,
 	                                   realm_example_join_async);
 
@@ -200,11 +200,11 @@ setup_leave (RealmExample *self,
 	GSimpleAsyncResult *async;
 	const gchar *realm_name;
 
-	realm_name = realm_kerberos_get_realm_name (REALM_KERBEROS (self));
+	realm_name = realm_kerberos_get_name (REALM_KERBEROS (self));
 	async = g_simple_async_result_new (G_OBJECT (self), callback, user_data, setup_leave);
 
 	/* Check that enrolled in this realm */
-	if (realm_ini_config_have_section (self->config, realm_name)) {
+	if (!realm_ini_config_have_section (self->config, realm_name)) {
 		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
 		                                 _("Not currently joined to this domain"));
 		g_simple_async_result_complete_in_idle (async);
@@ -234,7 +234,7 @@ realm_example_leave_password_async (RealmKerberosMembership *membership,
 	if (async == NULL)
 		return;
 
-	realm_name = realm_kerberos_get_realm_name (REALM_KERBEROS (self));
+	realm_name = realm_kerberos_get_name (REALM_KERBEROS (self));
 
 	if (!match_admin_and_password (self->config, realm_name, name, password)) {
 		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
@@ -340,6 +340,7 @@ update_properties (RealmExample *self)
 	gchar **permitted;
 	gchar *policy;
 	const gchar *admin;
+        gboolean configured;
 
 	g_object_freeze_notify (G_OBJECT (self));
 
@@ -369,6 +370,9 @@ update_properties (RealmExample *self)
 
 	admin = realm_settings_value (name, "example-administrator");
 	realm_kerberos_set_suggested_admin (kerberos, admin ? admin : "");
+
+	configured = realm_ini_config_have_section (self->config, name);
+        realm_kerberos_set_configured (kerberos, configured);
 }
 
 static void

@@ -22,6 +22,7 @@
 #include "realm-example.h"
 #include "realm-example-provider.h"
 #include "realm-ini-config.h"
+#include "realm-settings.h"
 #include "realm-kerberos.h"
 
 #include <string.h>
@@ -128,7 +129,7 @@ parse_example_name (const char *string)
 	}
 
 	if (length > 11) {
-		if (domain[length - 11] != '.') {
+		if (domain[length - 12] != '.') {
 			g_free (domain);
 			return NULL;
 		}
@@ -185,7 +186,7 @@ realm_example_provider_discover_finish (RealmProvider *provider,
 
 	async = G_SIMPLE_ASYNC_RESULT (result);
 	domain = g_simple_async_result_get_op_res_gpointer (async);
-	if (domain == NULL)
+	if (domain == NULL || realm_settings_section (domain) == NULL)
 		return NULL;
 
 	realm = realm_provider_lookup_or_register_realm (provider,

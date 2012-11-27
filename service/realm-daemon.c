@@ -658,8 +658,8 @@ main (int argc,
 		service_persist = TRUE;
 
 	if (service_debug) {
-		g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,
-		                   on_realm_log_debug, NULL);
+		g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, on_realm_log_debug, NULL);
+		g_log_set_always_fatal (G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL | G_LOG_LEVEL_WARNING);
 	}
 
 	realm_error = realm_error_quark ();

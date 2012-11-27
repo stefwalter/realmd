@@ -212,6 +212,10 @@ lookup_required_files_and_packages (const gchar **package_sets,
 	for (i = 0; package_sets[i] != NULL; i++) {
 		section = g_strdup_printf ("%s-packages", package_sets[i]);
 		settings = realm_settings_section (section);
+		if (settings == NULL) {
+			g_critical ("No section found in settings: %s", section);
+			return;
+		}
 		g_free (section);
 
 		g_hash_table_iter_init (&iter, settings);

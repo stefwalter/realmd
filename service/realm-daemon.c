@@ -418,6 +418,7 @@ static void
 initialize_service (GDBusConnection *connection)
 {
 	RealmProvider *all_provider;
+	RealmDbusService *service;
 	RealmProvider *provider;
 
 	realm_diagnostics_initialize (connection);
@@ -425,6 +426,15 @@ initialize_service (GDBusConnection *connection)
 	object_server = g_dbus_object_manager_server_new (REALM_DBUS_SERVICE_PATH);
 
 	all_provider = realm_all_provider_new_and_export (connection);
+
+	service = realm_dbus_service_skeleton_new ();
+	g_signal_connect (service, "handle-release", G_CALLBACK (on_service_release), NULL);
+	g_signal_connect (service, "handle-set-locale", G_CALLBACK (on_service_set_locale), NULL);
+	g_signal_connect (service, "handle-cancel", G_CALLBACK (on_service_cancel), NULL);
+        g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (service),
+                                          connection,
+                                          g_dbus_object_get_object_path (G_DBUS_OBJECT (all_provider)),
+                                          NULL);
 
 	provider = realm_sssd_provider_new ();
 	g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
@@ -592,7 +602,6 @@ int
 main (int argc,
       char *argv[])
 {
-	RealmDbusService *service;
 	GOptionContext *context;
 	GError *error = NULL;
 	const gchar *env;
@@ -667,11 +676,6 @@ main (int argc,
 	                                         g_free, realm_client_unwatch_and_free);
 	realm_daemon_hold ("main");
 
-	service = realm_dbus_service_skeleton_new ();
-	g_signal_connect (service, "handle-release", G_CALLBACK (on_service_release), NULL);
-	g_signal_connect (service, "handle-set-locale", G_CALLBACK (on_service_set_locale), NULL);
-	g_signal_connect (service, "handle-cancel", G_CALLBACK (on_service_cancel), NULL);
-
 	g_debug ("starting service");
 	connect_to_bus_or_peer ();
 
@@ -697,7 +701,6 @@ main (int argc,
 	realm_settings_uninit ();
 	g_main_loop_unref (main_loop);
 
-	g_object_unref (service);
 	g_hash_table_unref (service_clients);
 	g_free (service_install);
 	return 0;

@@ -42,6 +42,12 @@ gboolean            realm_sssd_config_remove_domain            (RealmIniConfig *
                                                                 const gchar *domain,
                                                                 GError **error);
 
+gboolean            realm_sssd_config_load_domain              (RealmIniConfig *config,
+                                                                const gchar *domain,
+                                                                gchar **section,
+                                                                gchar **id_provider,
+                                                                gchar **realm_name);
+
 G_END_DECLS
 
 #endif /* __REALM_SSSD_CONFIG_H__ */

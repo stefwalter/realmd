@@ -61,12 +61,9 @@ realm_sssd_provider_constructed (GObject *obj)
 {
 	RealmSssdProvider *self;
 	GType realm_type;
-	const gchar *name;
 	gchar **domains;
-	gchar *section;
-	gchar *realm;
 	gchar *type;
-	gchar *domain;
+	gchar *name;
 	gint i;
 
 	G_OBJECT_CLASS (realm_sssd_provider_parent_class)->constructed (obj);
@@ -77,34 +74,20 @@ realm_sssd_provider_constructed (GObject *obj)
 
 	domains = realm_sssd_config_get_domains (self->config);
 	for (i = 0; domains && domains[i] != 0; i++) {
-		section = realm_sssd_config_domain_to_section (domains[i]);
-		type = realm_ini_config_get (self->config, section, "id_provider");
-		realm = realm_ini_config_get (self->config, section, "krb5_realm");
-		domain = NULL;
+		if (realm_sssd_config_load_domain (self->config, domains[i], NULL, &type, &name)) {
+			if (g_strcmp0 (type, "ad") == 0)
+				realm_type = REALM_TYPE_SSSD_AD;
+			else if (g_strcmp0 (type, "ipa") == 0)
+				realm_type = REALM_TYPE_SSSD_IPA;
+			else
+				realm_type = 0;
 
-		if (g_strcmp0 (type, "ad") == 0) {
-			name = domain = realm_ini_config_get (self->config, section, "ad_domain");
-			realm_type = REALM_TYPE_SSSD_AD;
-		} else if (g_strcmp0 (type, "ipa") == 0) {
-			name = domain = realm_ini_config_get (self->config, section, "ipa_domain");
-			realm_type = REALM_TYPE_SSSD_IPA;
-		} else {
-			name = domain = NULL;
-			realm_type = 0;
+			if (realm_type)
+				realm_provider_lookup_or_register_realm (REALM_PROVIDER (self), realm_type, name, NULL);
+
+			g_free (name);
+			g_free (type);
 		}
-
-		if (name == NULL)
-			name = realm;
-		if (name == NULL)
-			name = domains[i];
-
-		if (realm_type)
-			realm_provider_lookup_or_register_realm (REALM_PROVIDER (self), realm_type, name, NULL);
-
-		g_free (realm);
-		g_free (type);
-		g_free (domain);
-		g_free (section);
 	}
 	g_strfreev (domains);
 }

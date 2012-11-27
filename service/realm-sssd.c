@@ -341,35 +341,36 @@ void
 realm_sssd_update_properties (RealmSssd *self)
 {
 	GObject *obj = G_OBJECT (self);
-	const gchar *name;
+	const gchar *my_name;
+	gchar *name = NULL;
 	gchar *section = NULL;
-	gchar *domain = NULL;
 	gchar **domains;
-	gchar *realm;
 	gint i;
 
 	g_object_freeze_notify (obj);
 
+	g_free (self->pv->section);
+	self->pv->section = NULL;
+
+	g_free (self->pv->domain);
+	self->pv->domain = NULL;
+
 	/* Find the config domain with our realm */
 	domains = realm_sssd_config_get_domains (self->pv->config);
-	name = realm_kerberos_get_name (REALM_KERBEROS (self));
-	for (i = 0; domains && domains[i]; i++) {
-		section = realm_sssd_config_domain_to_section (domains[i]);
-		realm = realm_ini_config_get (self->pv->config, section, "krb5_realm");
-		if (realm && name && g_ascii_strcasecmp (realm, name) == 0) {
-			domain = g_strdup (domains[i]);
-			break;
-		} else {
+	my_name = realm_kerberos_get_name (REALM_KERBEROS (self));
+	for (i = 0; self->pv->section == NULL && domains && domains[i]; i++) {
+		if (realm_sssd_config_load_domain (self->pv->config, domains[i], &section, NULL, &name)) {
+			if (my_name && name && g_ascii_strcasecmp (my_name, name) == 0) {
+				self->pv->domain = g_strdup (domains[i]);
+				self->pv->section = section;
+				section = NULL;
+			}
+
 			g_free (section);
-			section = NULL;
+			g_free (name);
 		}
 	}
 	g_strfreev (domains);
-
-	g_free (self->pv->section);
-	self->pv->section = section;
-	g_free (self->pv->domain);
-	self->pv->domain = domain;
 
 	/* Update all the other properties */
 	update_enrolled (self);

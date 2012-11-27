@@ -185,3 +185,60 @@ realm_sssd_config_remove_domain (RealmIniConfig *config,
 
 	return realm_ini_config_finish_change (config, error);
 }
+
+gboolean
+realm_sssd_config_load_domain (RealmIniConfig *config,
+                               const gchar *domain,
+                               gchar **out_section,
+                               gchar **id_provider,
+                               gchar **realm_name)
+{
+	const gchar *field_name;
+	gchar *section;
+	gchar *type;
+	gchar *name;
+
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (config), FALSE);
+	g_return_val_if_fail (domain != NULL, FALSE);
+
+	section = realm_sssd_config_domain_to_section (domain);
+	type = realm_ini_config_get (config, section, "id_provider");
+
+	if (g_strcmp0 (type, "ad") == 0) {
+		field_name = "ad_domain";
+
+	} else if (g_strcmp0 (type, "ipa") == 0) {
+		field_name = "ipa_domain";
+
+	} else {
+		g_free (section);
+		g_free (type);
+		return FALSE;
+	}
+
+	name = realm_ini_config_get (config, section, field_name);
+	if (name == NULL)
+		name = realm_ini_config_get (config, section, "krb5_realm");
+	if (name == NULL)
+		name = g_strdup (domain);
+
+	if (realm_name) {
+		*realm_name = name;
+		name = NULL;
+	}
+
+	if (id_provider) {
+		*id_provider = type;
+		type = NULL;
+	}
+
+	if (out_section) {
+		*out_section = section;
+		section = NULL;
+	}
+
+	g_free (type);
+	g_free (section);
+	g_free (name);
+	return TRUE;
+}

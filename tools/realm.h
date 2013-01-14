@@ -23,7 +23,7 @@
 
 G_BEGIN_DECLS
 
-#define               realm_operation_id           "realm-enroll"
+#define               realm_operation_id           "client-operation"
 
 extern GOptionEntry   realm_global_options[];
 

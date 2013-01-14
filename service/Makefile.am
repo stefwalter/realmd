@@ -29,6 +29,7 @@ realmd_SOURCES = \
 	realm-example.c realm-example.h \
 	realm-example-provider.c realm-example-provider.h \
 	realm-ini-config.c realm-ini-config.h \
+	realm-invocation.c realm-invocation.h \
 	realm-ipa-discover.c realm-ipa-discover.h \
 	realm-kerberos.c realm-kerberos.h \
 	realm-kerberos-discover.c realm-kerberos-discover.h \

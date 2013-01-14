@@ -124,6 +124,9 @@ realm_build_options (const gchar *first,
 		g_ptr_array_add (opts, option);
 	}
 
+	option = g_variant_new ("{sv}", "operation", g_variant_new_string (realm_operation_id));
+	g_ptr_array_add (opts, option);
+
 	options = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), (GVariant * const*)opts->pdata, opts->len);
 	g_ptr_array_free (opts, TRUE);
 

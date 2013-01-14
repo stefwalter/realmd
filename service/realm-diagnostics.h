@@ -23,11 +23,6 @@ G_BEGIN_DECLS
 
 void          realm_diagnostics_initialize            (GDBusConnection *connection);
 
-void          realm_diagnostics_setup_options         (GDBusMethodInvocation *invocation,
-                                                       GVariant *options);
-
-const gchar * realm_diagnostics_get_operation_id      (GDBusMethodInvocation *invocation);
-
 void          realm_diagnostics_info                  (GDBusMethodInvocation *invocation,
                                                        const gchar *format,
                                                        ...) G_GNUC_PRINTF (2, 3);

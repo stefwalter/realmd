@@ -8,7 +8,8 @@ INCLUDES = \
 	$(NULL)
 
 AM_CFLAGS = \
-	$(GLIB_CFLAGS)
+	$(GLIB_CFLAGS) \
+	$(POLKIT_CFLAGS)
 
 LDADD = \
 	$(GLIB_LIBS)
@@ -25,7 +26,6 @@ check_PROGRAMS = \
 
 noinst_PROGRAMS =  \
 	frob-install-packages \
-	frob-package-set \
 	$(NULL)
 
 test_ini_config_SOURCES = \
@@ -59,24 +59,6 @@ frob_install_packages_CFLAGS = \
 
 frob_install_packages_LDADD = \
 	$(PACKAGEKIT_LIBS) \
-	$(NULL)
-
-frob_package_set_SOURCES = \
-	frob-package-set.c \
-	$(top_srcdir)/service/realm-packages.c \
-	$(top_srcdir)/service/realm-settings.c \
-	$(top_srcdir)/service/realm-diagnostics.c \
-	$(NULL)
-
-frob_package_set_CFLAGS = \
-	-I$(top_srcdir)/dbus \
-	$(PACKAGEKIT_CFLAGS) \
-	$(AM_CFLAGS) \
-	$(NULL)
-
-frob_package_set_LDADD = \
-	$(PACKAGEKIT_LIBS) \
-	$(LDADD) \
 	$(NULL)
 
 PY_TESTS = \

@@ -21,6 +21,7 @@
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
 #include "realm-example-provider.h"
+#include "realm-invocation.h"
 #include "realm-kerberos-provider.h"
 #include "realm-samba-provider.h"
 #include "realm-settings.h"
@@ -30,19 +31,15 @@
 #include <glib-unix.h>
 #include <glib/gi18n.h>
 
-#include <polkit/polkit.h>
-
 #include <stdio.h>
 #include <errno.h>
 
 #define TIMEOUT        60 /* seconds */
 #define HOLD_INTERNAL  (GUINT_TO_POINTER (~0))
 
-static GObject *current_invocation = NULL;
 static GMainLoop *main_loop = NULL;
 
-static gboolean service_persist = FALSE;
-static GHashTable *service_clients = NULL;
+static GHashTable *service_holds = NULL;
 static gint64 service_quit_at = 0;
 static guint service_timeout_id = 0;
 static guint service_bus_name_owner_id = 0;
@@ -52,62 +49,8 @@ static gboolean service_debug = FALSE;
 static gchar *service_install = NULL;
 static gint service_dbus_fd = -1;
 
-typedef struct {
-	guint watch;
-	gchar *locale;
-} RealmClient;
-
 /* We use this for registering the dbus errors */
 GQuark realm_error = 0;
-
-/* We use a lock here because it's called from dbus threads */
-G_LOCK_DEFINE(polkit_authority);
-static PolkitAuthority *polkit_authority = NULL;
-
-static void
-on_invocation_gone (gpointer unused,
-                    GObject *where_the_object_was)
-{
-	g_warning ("a GDBusMethodInvocation was released but the invocation was "
-	           "registered as part of a realm_daemon_lock_for_action()");
-	g_assert (where_the_object_was == current_invocation);
-	current_invocation = NULL;
-}
-
-gboolean
-realm_daemon_lock_for_action (GDBusMethodInvocation *invocation)
-{
-	g_return_val_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation), FALSE);
-
-	if (current_invocation)
-		return FALSE;
-
-	current_invocation = G_OBJECT (invocation);
-	g_object_weak_ref (current_invocation, on_invocation_gone, NULL);
-
-	/* Hold the daemon up while action */
-	realm_daemon_hold ("current-invocation");
-
-	return TRUE;
-}
-
-void
-realm_daemon_unlock_for_action (GDBusMethodInvocation *invocation)
-{
-	g_return_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation));
-
-	if (current_invocation != G_OBJECT (invocation)) {
-		g_warning ("trying to realm_daemon_unlock_for_action() with an invocation "
-		           "that is not registered as the current locked action.");
-		return;
-	}
-
-	g_object_weak_unref (current_invocation, on_invocation_gone, NULL);
-	current_invocation = NULL;
-
-	/* Matches the hold in realm_daemon_lock_for_action() */
-	realm_daemon_release ("current-invocation");
-}
 
 gboolean
 realm_daemon_is_dbus_peer (void)
@@ -128,105 +71,6 @@ realm_daemon_has_debug_flag (void)
 }
 
 void
-realm_daemon_set_locale_until_loop (GDBusMethodInvocation *invocation)
-{
-	/* TODO: Not yet implemented, need threadsafe implementation */
-}
-
-gboolean
-realm_daemon_check_dbus_action (const gchar *sender,
-                                const gchar *action_id)
-{
-	PolkitAuthorizationResult *result;
-	PolkitAuthority *authority;
-	PolkitSubject *subject;
-	GError *error = NULL;
-	gboolean ret;
-
-	/* If we're a dbus peer, just allow all calls */
-	if (realm_daemon_is_dbus_peer ())
-		return TRUE;
-
-	g_return_val_if_fail (sender != NULL, FALSE);
-	g_return_val_if_fail (action_id != NULL, FALSE);
-
-	G_LOCK (polkit_authority);
-
-	authority = polkit_authority ? g_object_ref (polkit_authority) : NULL;
-
-	G_UNLOCK (polkit_authority);
-
-	if (!authority) {
-		authority = polkit_authority_get_sync (NULL, &error);
-		if (authority == NULL) {
-			g_warning ("failure to get polkit authority: %s", error->message);
-			g_error_free (error);
-			return FALSE;
-		}
-
-		G_LOCK (polkit_authority);
-
-		if (polkit_authority == NULL) {
-			polkit_authority = g_object_ref (authority);
-
-		} else {
-			g_object_unref (authority);
-			authority = g_object_ref (polkit_authority);
-		}
-
-		G_UNLOCK (polkit_authority);
-	}
-
-	/* do authorization async */
-	subject = polkit_system_bus_name_new (sender);
-	result = polkit_authority_check_authorization_sync (authority, subject, action_id, NULL,
-			POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION, NULL, &error);
-
-	g_object_unref (authority);
-	g_object_unref (subject);
-
-	/* failed */
-	if (result == NULL) {
-		g_warning ("couldn't check polkit authorization%s%s",
-		           error ? ": " : "", error ? error->message : "");
-		g_error_free (error);
-		return FALSE;
-	}
-
-	ret = polkit_authorization_result_get_is_authorized (result);
-	g_object_unref (result);
-
-	return ret;
-}
-
-static void
-on_client_vanished (GDBusConnection *connection,
-                    const gchar *name,
-                    gpointer user_data)
-{
-	g_debug ("client gone away: %s", name);
-	g_hash_table_remove (service_clients, name);
-}
-
-static RealmClient *
-lookup_or_register_client (const gchar *sender)
-{
-	RealmClient *client;
-
-	client = g_hash_table_lookup (service_clients, sender);
-	if (!client) {
-		client = g_slice_new0 (RealmClient);
-		client->watch = g_bus_watch_name (G_BUS_TYPE_SYSTEM, sender,
-		                                  G_BUS_NAME_WATCHER_FLAGS_NONE,
-		                                  NULL, on_client_vanished, NULL, NULL);
-		g_debug ("client using service: %s", sender);
-		g_hash_table_insert (service_clients, g_strdup (sender), client);
-	}
-
-	return client;
-}
-
-void
 realm_daemon_hold (const gchar *hold)
 {
 	/*
@@ -237,11 +81,10 @@ realm_daemon_hold (const gchar *hold)
 	g_assert (hold != NULL);
 	g_assert (!g_dbus_is_unique_name (hold));
 
-
-	if (g_hash_table_lookup (service_clients, hold))
+	if (g_hash_table_lookup (service_holds, hold))
 		g_critical ("realm_daemon_hold: already have hold: %s", hold);
 	g_debug ("holding service: %s", hold);
-	g_hash_table_insert (service_clients, g_strdup (hold), g_slice_new0 (RealmClient));
+	g_hash_table_add (service_holds, g_strdup (hold));
 }
 
 void
@@ -251,7 +94,7 @@ realm_daemon_release (const gchar *hold)
 	g_assert (!g_dbus_is_unique_name (hold));
 
 	g_debug ("releasing service: %s", hold);
-	if (!g_hash_table_remove (service_clients, hold))
+	if (!g_hash_table_remove (service_holds, hold))
 		g_critical ("realm_daemon_release: don't have hold: %s", hold);
 }
 
@@ -263,7 +106,7 @@ on_service_timeout (gpointer data)
 
 	service_timeout_id = 0;
 
-	if (g_hash_table_size (service_clients) > 0)
+	if (g_hash_table_size (service_holds) > 0)
 		return FALSE;
 
 	now = g_get_monotonic_time ();
@@ -282,107 +125,11 @@ on_service_timeout (gpointer data)
 void
 realm_daemon_poke (void)
 {
-	if (service_persist)
-		return;
-	if (g_hash_table_size (service_clients) > 0)
+	if (g_hash_table_size (service_holds) > 0)
 		return;
 	service_quit_at = g_get_monotonic_time () + (TIMEOUT * G_TIME_SPAN_SECOND);
 	if (service_timeout_id == 0)
 		on_service_timeout (NULL);
-}
-
-static void
-realm_client_unwatch_and_free (gpointer data)
-{
-	RealmClient *client = data;
-
-	g_assert (data != NULL);
-	if (client->watch)
-		g_bus_unwatch_name (client->watch);
-	g_free (client->locale);
-	g_slice_free (RealmClient, client);
-
-	realm_daemon_poke ();
-}
-
-static gboolean
-on_idle_hold_for_message (gpointer user_data)
-{
-	GDBusMessage *message = user_data;
-	const gchar *sender = g_dbus_message_get_sender (message);
-	lookup_or_register_client (sender);
-	return FALSE; /* don't call again */
-}
-
-static GDBusMessage *
-on_connection_filter (GDBusConnection *connection,
-                      GDBusMessage *message,
-                      gboolean incoming,
-                      gpointer user_data)
-{
-	const gchar *own_name = user_data;
-	GDBusMessageType type;
-
-	/* Each time we see an incoming function call, keep the service alive */
-	if (incoming) {
-		type = g_dbus_message_get_message_type (message);
-		if (type == G_DBUS_MESSAGE_TYPE_METHOD_CALL) {
-
-			/* All methods besides 'Release' on the Service interface cause us to watch client */
-			if (!g_str_equal (own_name, g_dbus_message_get_sender (message)) &&
-			    !(g_str_equal (g_dbus_message_get_path (message), REALM_DBUS_SERVICE_PATH) &&
-			      g_str_equal (g_dbus_message_get_member (message), "Release") &&
-			      g_str_equal (g_dbus_message_get_interface (message), REALM_DBUS_SERVICE_INTERFACE))) {
-				g_idle_add_full (G_PRIORITY_DEFAULT,
-				                 on_idle_hold_for_message,
-				                 g_object_ref (message),
-				                 g_object_unref);
-			}
-		}
-	}
-
-	return message;
-}
-
-static gboolean
-on_service_release (RealmDbusService *object,
-                    GDBusMethodInvocation *invocation)
-{
-	const char *sender;
-
-	sender = g_dbus_method_invocation_get_sender (invocation);
-	g_debug ("explicitly releasing service: %s", sender);
-	g_hash_table_remove (service_clients, sender);
-
-	return TRUE;
-}
-
-static gboolean
-on_service_cancel (RealmDbusService *object,
-                   GDBusMethodInvocation *invocation,
-                   const gchar *operation_id)
-{
-	/* TODO: Needs implementation */
-	realm_dbus_service_complete_cancel (object, invocation);
-	return TRUE;
-}
-
-static gboolean
-on_service_set_locale (RealmDbusService *object,
-                       GDBusMethodInvocation *invocation,
-                       const gchar *arg_locale)
-{
-	RealmClient *client;
-	const gchar *sender;
-
-	sender = g_dbus_method_invocation_get_sender (invocation);
-	client = lookup_or_register_client (sender);
-
-	g_free (client->locale);
-	client->locale = g_strdup (arg_locale);
-
-	realm_dbus_service_complete_set_locale (object, invocation);
-	return TRUE;
 }
 
 static void
@@ -418,23 +165,14 @@ static void
 initialize_service (GDBusConnection *connection)
 {
 	RealmProvider *all_provider;
-	RealmDbusService *service;
 	RealmProvider *provider;
 
+	realm_invocation_initialize (connection);
 	realm_diagnostics_initialize (connection);
 
 	object_server = g_dbus_object_manager_server_new (REALM_DBUS_SERVICE_PATH);
 
 	all_provider = realm_all_provider_new_and_export (connection);
-
-	service = realm_dbus_service_skeleton_new ();
-	g_signal_connect (service, "handle-release", G_CALLBACK (on_service_release), NULL);
-	g_signal_connect (service, "handle-set-locale", G_CALLBACK (on_service_set_locale), NULL);
-	g_signal_connect (service, "handle-cancel", G_CALLBACK (on_service_cancel), NULL);
-        g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (service),
-                                          connection,
-                                          g_dbus_object_get_object_path (G_DBUS_OBJECT (all_provider)),
-                                          NULL);
 
 	provider = realm_sssd_provider_new ();
 	g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
@@ -465,7 +203,7 @@ initialize_service (GDBusConnection *connection)
 	                        all_provider, g_object_unref);
 
 	/* Matches the hold() in main() */
-	realm_daemon_release ("main");
+	realm_daemon_release ("startup");
 
 	g_dbus_connection_start_message_processing (connection);
 }
@@ -477,7 +215,6 @@ on_bus_get_connection (GObject *source,
 {
 	GError *error = NULL;
 	GDBusConnection *connection;
-	const gchar *self_name;
 	guint owner_id;
 
 	connection = g_bus_get_finish (result, &error);
@@ -488,11 +225,6 @@ on_bus_get_connection (GObject *source,
 
 	} else {
 		g_debug ("connected to bus");
-
-		/* Add a filter which keeps service alive */
-		self_name = g_dbus_connection_get_unique_name (connection);
-		g_dbus_connection_add_filter (connection, on_connection_filter,
-		                              (gchar *)self_name, NULL);
 
 		initialize_service (connection);
 
@@ -661,10 +393,12 @@ main (int argc,
 		}
 	}
 
+	service_holds = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+
 	if (g_getenv ("REALM_DEBUG"))
 		service_debug = TRUE;
 	if (g_getenv ("REALM_PERSIST") || service_debug || service_install)
-		service_persist = TRUE;
+		realm_daemon_hold ("persist-daemon");
 
 	if (service_debug) {
 		g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, on_realm_log_debug, NULL);
@@ -672,9 +406,7 @@ main (int argc,
 	}
 
 	realm_error = realm_error_quark ();
-	service_clients = g_hash_table_new_full (g_str_hash, g_str_equal,
-	                                         g_free, realm_client_unwatch_and_free);
-	realm_daemon_hold ("main");
+	realm_daemon_hold ("startup");
 
 	g_debug ("starting service");
 	connect_to_bus_or_peer ();
@@ -693,15 +425,12 @@ main (int argc,
 		g_object_unref (object_server);
 	}
 
-	G_LOCK (polkit_authority);
-	g_clear_object (&polkit_authority);
-	G_UNLOCK (polkit_authority);
-
 	g_debug ("stopping service");
 	realm_settings_uninit ();
+	realm_invocation_cleanup ();
 	g_main_loop_unref (main_loop);
 
-	g_hash_table_unref (service_clients);
+	g_hash_table_unref (service_holds);
 	g_free (service_install);
 	return 0;
 }

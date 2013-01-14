@@ -16,13 +16,13 @@
 
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
+#include "realm-invocation.h"
 
 #include <string.h>
 #include <syslog.h>
 
 static GDBusConnection *the_connection = NULL;
 static GString *line_buffer = NULL;
-static GQuark operation_id_quark = 0;
 
 void
 realm_diagnostics_initialize (GDBusConnection *connection)
@@ -35,29 +35,6 @@ realm_diagnostics_initialize (GDBusConnection *connection)
 
 	the_connection = connection;
 	g_object_add_weak_pointer (G_OBJECT (the_connection), (gpointer *)&the_connection);
-
-	operation_id_quark = g_quark_from_static_string ("realm-diagnostics-operation-id");
-}
-
-const gchar *
-realm_diagnostics_get_operation_id (GDBusMethodInvocation *invocation)
-{
-	return g_object_get_qdata (G_OBJECT (invocation), operation_id_quark);
-}
-
-void
-realm_diagnostics_setup_options (GDBusMethodInvocation *invocation,
-                                 GVariant *options)
-{
-	gchar *operation_id;
-
-	g_return_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation));
-	g_return_if_fail (options != NULL);
-
-	if (g_variant_lookup (options, REALM_DBUS_OPTION_OPERATION, "s", &operation_id)) {
-		g_object_set_qdata_full (G_OBJECT (invocation), operation_id_quark,
-		                         operation_id, g_free);
-	}
 }
 
 static void
@@ -192,19 +169,23 @@ void
 realm_diagnostics_signal (GDBusMethodInvocation *invocation,
                           const gchar *data)
 {
-	const gchar *operation_id;
+	const gchar *operation;
 	GError *error = NULL;
+	const gchar *sender;
 
 	if (!the_connection || !invocation)
 		return;
 
-	operation_id = g_object_get_qdata (G_OBJECT (invocation), operation_id_quark);
-	if (operation_id == NULL)
-		operation_id = "";
+	operation = realm_invocation_get_operation (invocation);
+	if (operation == NULL)
+		operation = "";
 
-	g_dbus_connection_emit_signal (the_connection, g_dbus_method_invocation_get_sender (invocation),
+	/* This might be NULL if operating in peer mode, but that's appropriate for use below */
+	sender = g_dbus_method_invocation_get_sender (invocation);
+
+	g_dbus_connection_emit_signal (the_connection, sender,
 	                               REALM_DBUS_SERVICE_PATH, REALM_DBUS_SERVICE_INTERFACE,
-	                               REALM_DBUS_DIAGNOSTICS_SIGNAL, g_variant_new ("(ss)", data, operation_id),
+	                               REALM_DBUS_DIAGNOSTICS_SIGNAL, g_variant_new ("(ss)", data, operation),
 	                               &error);
 
 	if (error != NULL) {

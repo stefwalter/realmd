@@ -22,6 +22,7 @@
 #include "eggdbusobjectmanagerclient.h"
 
 #include <glib/gi18n.h>
+#include <glib-unix.h>
 
 #include <sys/socket.h>
 
@@ -130,12 +131,25 @@ on_diagnostics_signal (GDBusConnection *connection,
 	g_printerr ("%s", data);
 }
 
+static gboolean
+on_ctrl_c_cancel_operation (gpointer data)
+{
+	RealmDbusService *service = REALM_DBUS_SERVICE (data);
+	realm_dbus_service_call_cancel (service, realm_operation_id,
+	                                NULL, NULL, NULL);
+	g_printerr ("Cancelling...\n");
+
+	/* Remove this handler */
+	return FALSE;
+}
+
 static RealmClient *
 realm_client_new_on_connection (GDBusConnection *connection,
                                 gboolean verbose,
                                 const gchar *bus_name)
 {
 	RealmDbusProvider *provider;
+	RealmDbusService *service;
 	GError *error = NULL;
 	GInitable *ret;
 	RealmClient *client = NULL;
@@ -164,6 +178,17 @@ realm_client_new_on_connection (GDBusConnection *connection,
 		return NULL;
 	}
 
+	service = realm_dbus_service_proxy_new_sync (connection,
+	                                             G_DBUS_PROXY_FLAGS_NONE,
+	                                             bus_name,
+	                                             REALM_DBUS_SERVICE_PATH,
+	                                             NULL, &error);
+	if (error != NULL) {
+		realm_handle_error (error, _("Couldn't connect to realm service"));
+		g_object_unref (provider);
+		return NULL;
+	}
+
 	ret = g_initable_new (REALM_TYPE_CLIENT, NULL, &error,
 	                      "flags", G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_NONE,
 	                      "name", bus_name,
@@ -176,8 +201,15 @@ realm_client_new_on_connection (GDBusConnection *connection,
 		client = REALM_CLIENT (ret);
 		client->provider = g_object_ref (provider);
 		g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (provider), G_MAXINT);
+
+		/* On Ctrl-C send a cancel to the server */
+		g_unix_signal_add_full (G_PRIORITY_HIGH, SIGINT,
+		                        on_ctrl_c_cancel_operation,
+		                        g_object_ref (service),
+		                        g_object_unref);
 	}
 
+	g_object_unref (service);
 	g_object_unref (provider);
 
 	if (error != NULL) {

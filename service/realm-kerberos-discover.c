@@ -20,6 +20,7 @@
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-ipa-discover.h"
+#include "realm-invocation.h"
 #include "realm-kerberos-discover.h"
 #include "realm-network.h"
 
@@ -174,12 +175,17 @@ on_discover_ipa (GObject *source,
 
 		/*
 		 * No errors from the IPA discovery are treated as discovery
-		 * failures, but merely the abscence of IPA.
+		 * failures, but merely the abscence of IPA. Unless explicitly
+		 * cancelled.
 		 */
-		if (error) {
+		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+			g_clear_error (&self->error);
+			self->error = error;
+
+		} else {
 			realm_diagnostics_error (self->key.invocation, error,
 			                         "Couldn't discover IPA KDC");
-			g_clear_error (&self->error);
+			g_clear_error (&error);
 		}
 
 		maybe_complete_discover (self);
@@ -389,8 +395,7 @@ discover_key_hash (gconstpointer p)
 	const Key *key = p;
 
 	return str_hash0 (key->string) ^
-	       str_hash0 (realm_diagnostics_get_operation_id (key->invocation)) ^
-	       str_hash0 (g_dbus_method_invocation_get_sender (key->invocation));
+	       str_hash0 (realm_invocation_get_key (key->invocation));
 }
 
 static gboolean
@@ -401,10 +406,8 @@ discover_key_equal (gconstpointer v1,
 	const Key *k2 = v2;
 
 	return g_strcmp0 (k1->string, k2->string) == 0 &&
-	       g_strcmp0 (realm_diagnostics_get_operation_id (k1->invocation),
-	                  realm_diagnostics_get_operation_id (k2->invocation)) == 0 &&
-	       g_strcmp0 (g_dbus_method_invocation_get_sender (k1->invocation),
-	                  g_dbus_method_invocation_get_sender (k2->invocation)) == 0;
+	       g_strcmp0 (realm_invocation_get_key (k1->invocation),
+	                  realm_invocation_get_key (k2->invocation)) == 0;
 }
 
 static gboolean

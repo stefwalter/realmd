@@ -21,19 +21,9 @@
 
 G_BEGIN_DECLS
 
-gboolean             realm_daemon_lock_for_action            (GDBusMethodInvocation *invocation);
-
-void                 realm_daemon_unlock_for_action          (GDBusMethodInvocation *invocation);
-
-void                 realm_daemon_set_locale_until_loop      (GDBusMethodInvocation *invocation);
-
 void                 realm_daemon_hold                       (const gchar *identifier);
 
 void                 realm_daemon_release                    (const gchar *identifier);
-
-void                 realm_daemon_set_locale                 (const gchar *sender,
-                                                              const gchar *locale,
-                                                              const gchar *operation_id);
 
 gboolean             realm_daemon_is_dbus_peer               (void);
 
@@ -42,9 +32,6 @@ gboolean             realm_daemon_is_install_mode            (void);
 gboolean             realm_daemon_has_debug_flag             (void);
 
 void                 realm_daemon_poke                       (void);
-
-gboolean             realm_daemon_check_dbus_action          (const gchar *sender,
-                                                              const gchar *action_id);
 
 void                 realm_daemon_export_object              (GDBusObjectSkeleton *object);
 

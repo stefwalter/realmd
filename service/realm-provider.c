@@ -20,6 +20,7 @@
 #include "realm-diagnostics.h"
 #include "realm-discovery.h"
 #include "realm-errors.h"
+#include "realm-invocation.h"
 #include "realm-kerberos.h"
 #include "realm-provider.h"
 #include "realm-settings.h"
@@ -123,9 +124,6 @@ realm_provider_handle_discover (RealmDbusProvider *provider,
 {
 	RealmProvider *self = REALM_PROVIDER (user_data);
 
-	/* Make note of the current operation id, for diagnostics */
-	realm_diagnostics_setup_options (invocation, options);
-
 	realm_provider_discover (self, string, options, invocation, on_discover_complete,
 	                         method_closure_new (self, invocation));
 
@@ -137,36 +135,7 @@ realm_provider_authorize_method (GDBusObjectSkeleton *skeleton,
                                  GDBusInterfaceSkeleton *iface,
                                  GDBusMethodInvocation  *invocation)
 {
-	const gchar *interface = g_dbus_method_invocation_get_interface_name (invocation);
-	const gchar *method = g_dbus_method_invocation_get_method_name (invocation);
-	const gchar *action_id = NULL;
-	gboolean ret = FALSE;
-
-	/* Each method has its own polkit authorization */
-	if (g_str_equal (interface, REALM_DBUS_PROVIDER_INTERFACE)) {
-		if (g_str_equal (method, "Discover")) {
-			action_id = "org.freedesktop.realmd.discover-realm";
-		} else {
-			g_warning ("encountered unknown method during auth checks: %s.%s",
-			           interface, method);
-			action_id = NULL;
-		}
-
-		if (action_id != NULL)
-			ret = realm_daemon_check_dbus_action (g_dbus_method_invocation_get_sender (invocation),
-			                                       action_id);
-		else
-			ret = FALSE;
-	}
-
-	if (ret == FALSE) {
-		g_debug ("rejecting access to: %s.%s method on %s",
-		             interface, method, g_dbus_method_invocation_get_object_path (invocation));
-		g_dbus_method_invocation_return_dbus_error (invocation, REALM_DBUS_ERROR_NOT_AUTHORIZED,
-		                                            _("Not authorized to perform this action"));
-	}
-
-	return ret;
+	return realm_invocation_authorize (invocation);
 }
 
 static void

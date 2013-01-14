@@ -21,6 +21,7 @@
 #include "realm-diagnostics.h"
 #include "realm-discovery.h"
 #include "realm-errors.h"
+#include "realm-invocation.h"
 #include "realm-kerberos.h"
 #include "realm-kerberos-membership.h"
 #include "realm-login-name.h"
@@ -110,13 +111,18 @@ enroll_method_reply (GDBusMethodInvocation *invocation,
 		realm_diagnostics_error (invocation, error, NULL);
 		g_dbus_method_invocation_return_gerror (invocation, error);
 
+	} else if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+		realm_diagnostics_error (invocation, error, "Cancelled");
+		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_CANCELLED,
+		                                       _("Operation was cancelled."));
+
 	} else {
 		realm_diagnostics_error (invocation, error, "Failed to enroll machine in realm");
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_FAILED,
 		                                       _("Failed to enroll machine in realm. See diagnostics."));
 	}
 
-	realm_daemon_unlock_for_action (invocation);
+	realm_invocation_unlock_daemon (invocation);
 }
 
 static void
@@ -180,13 +186,18 @@ unenroll_method_reply (GDBusMethodInvocation *invocation,
 		realm_diagnostics_error (invocation, error, NULL);
 		g_dbus_method_invocation_return_gerror (invocation, error);
 
+	} else if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+		realm_diagnostics_error (invocation, error, "Cancelled");
+		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_CANCELLED,
+		                                       _("Operation was cancelled."));
+
 	} else {
 		realm_diagnostics_error (invocation, error, "Failed to unenroll machine from realm");
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_FAILED,
 		                                       _("Failed to unenroll machine from domain. See diagnostics."));
 	}
 
-	realm_daemon_unlock_for_action (invocation);
+	realm_invocation_unlock_daemon (invocation);
 }
 
 static void
@@ -230,7 +241,7 @@ enroll_or_unenroll_with_ccache (RealmKerberos *self,
 		return;
 	}
 
-	if (!realm_daemon_lock_for_action (invocation)) {
+	if (!realm_invocation_lock_daemon (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
 		                                       _("Already running another action"));
 		return;
@@ -276,7 +287,7 @@ enroll_or_unenroll_with_secret (RealmKerberos *self,
 		return;
 	}
 
-	if (!realm_daemon_lock_for_action (invocation)) {
+	if (!realm_invocation_lock_daemon (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
 		                                       _("Already running another action"));
 		return;
@@ -322,7 +333,7 @@ enroll_or_unenroll_with_password (RealmKerberos *self,
 		return;
 	}
 
-	if (!realm_daemon_lock_for_action (invocation)) {
+	if (!realm_invocation_lock_daemon (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
 		                                       _("Already running another action"));
 		return;
@@ -365,7 +376,7 @@ enroll_or_unenroll_with_automatic (RealmKerberos *self,
 		return;
 	}
 
-	if (!realm_daemon_lock_for_action (invocation)) {
+	if (!realm_invocation_lock_daemon (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
 		                                       _("Already running another action"));
 		return;
@@ -475,9 +486,6 @@ handle_join (RealmDbusKerberosMembership *membership,
 	gboolean assume = FALSE;
 	gint ret;
 
-	/* Make note of the current operation id, for diagnostics */
-	realm_diagnostics_setup_options (invocation, options);
-
 	if (!validate_and_parse_credentials (invocation, credentials, &flags, &cred_type, &creds))
 		return TRUE;
 
@@ -527,9 +535,6 @@ handle_leave (RealmDbusKerberosMembership *membership,
 	const gchar *computer_ou;
 	RealmKerberosCredential cred_type;
 
-	/* Make note of the current operation id, for diagnostics */
-	realm_diagnostics_setup_options (invocation, options);
-
 	if (g_variant_lookup (options, REALM_DBUS_OPTION_COMPUTER_OU, "&s", &computer_ou)) {
 		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
 		                                       "The computer-ou argument is not supported when leaving a domain.");
@@ -568,9 +573,6 @@ handle_deconfigure (RealmDbusRealm *realm,
 {
 	RealmKerberos *self = REALM_KERBEROS (user_data);
 
-	/* Make note of the current operation id, for diagnostics */
-	realm_diagnostics_setup_options (invocation, options);
-
 	enroll_or_unenroll_with_automatic (self, REALM_KERBEROS_OWNER_COMPUTER,
 	                                   options, invocation, FALSE);
 	return TRUE;
@@ -606,7 +608,7 @@ on_logins_complete (GObject *source,
 		g_error_free (error);
 	}
 
-	realm_daemon_unlock_for_action (closure->invocation);
+	realm_invocation_unlock_daemon (closure->invocation);
 	method_closure_free (closure);
 }
 
@@ -625,9 +627,6 @@ handle_change_login_policy (RealmDbusRealm *realm,
 	gchar **policies;
 	gint policies_set = 0;
 	gint i;
-
-	/* Make note of the current operation id, for diagnostics */
-	realm_diagnostics_setup_options (invocation, options);
 
 	policies = g_strsplit_set (login_policy, ", \t", -1);
 	for (i = 0; policies[i] != NULL; i++) {
@@ -658,7 +657,7 @@ handle_change_login_policy (RealmDbusRealm *realm,
 		return TRUE;
 	}
 
-	if (!realm_daemon_lock_for_action (invocation)) {
+	if (!realm_invocation_lock_daemon (invocation)) {
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
 		                                       _("Already running another action"));
 		return TRUE;
@@ -679,42 +678,7 @@ realm_kerberos_authorize_method (GDBusObjectSkeleton    *object,
                                  GDBusInterfaceSkeleton *iface,
                                  GDBusMethodInvocation  *invocation)
 {
-	const gchar *interface = g_dbus_method_invocation_get_interface_name (invocation);
-	const gchar *method = g_dbus_method_invocation_get_method_name (invocation);
-	const gchar *action_id = NULL;
-	gboolean ret = FALSE;
-
-	/* Each method has its own polkit authorization */
-	if (g_str_equal (interface, REALM_DBUS_KERBEROS_MEMBERSHIP_INTERFACE)) {
-		if (g_str_equal (method, "Join"))
-			action_id = "org.freedesktop.realmd.configure-realm";
-		else if (g_str_equal (method, "Leave"))
-			action_id = "org.freedesktop.realmd.deconfigure-realm";
-
-	} else if (g_str_equal (interface, REALM_DBUS_REALM_INTERFACE)) {
-		if (g_str_equal (method, "Deconfigure"))
-			action_id = "org.freedesktop.realmd.deconfigure-realm";
-		else if (g_str_equal (method, "ChangeLoginPolicy"))
-			action_id = "org.freedesktop.realmd.login-policy";
-	}
-
-	if (action_id == NULL) {
-		g_warning ("encountered unknown method during auth checks: %s.%s",
-		           interface, method);
-		ret = FALSE;
-	} else {
-		ret = realm_daemon_check_dbus_action (g_dbus_method_invocation_get_sender (invocation),
-		                                      action_id);
-	}
-
-	if (ret == FALSE) {
-		g_debug ("rejecting access to: %s.%s method on %s",
-		         interface, method, g_dbus_method_invocation_get_object_path (invocation));
-		g_dbus_method_invocation_return_dbus_error (invocation, REALM_DBUS_ERROR_NOT_AUTHORIZED,
-		                                            _("Not authorized to perform this action"));
-	}
-
-	return ret;
+	return realm_invocation_authorize (invocation);
 }
 
 static void

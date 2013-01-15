@@ -597,7 +597,7 @@ on_sssd_clear_cache (GObject *source,
 	domains = realm_sssd_config_get_domains (deconf->config);
 	if (domains == NULL || g_strv_length (domains) == 0) {
 		realm_command_run_known_async ("sssd-disable-logins", NULL, deconf->invocation,
-		                               NULL, on_disable_nss_service, deconf);
+		                               on_disable_nss_service, deconf);
 
 	/* If any domains left, then restart sssd */
 	} else {
@@ -639,5 +639,5 @@ realm_sssd_deconfigure_domain_tail (RealmSssd *self,
 	 */
 
 	realm_command_run_known_async ("sssd-caches-flush", NULL, deconf->invocation,
-	                               NULL, on_sssd_clear_cache, deconf);
+	                               on_sssd_clear_cache, deconf);
 }

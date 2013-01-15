@@ -16,6 +16,7 @@
 
 #include "realm-diagnostics.h"
 #include "realm-daemon.h"
+#include "realm-invocation.h"
 #include "realm-packages.h"
 #include "realm-settings.h"
 
@@ -160,6 +161,7 @@ on_install_resolved (GObject *source,
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	InstallClosure *install = g_simple_async_result_get_op_res_gpointer (res);
 	gchar **package_ids;
+	GCancellable *cancellable;
 	GError *error = NULL;
 	PkResults *results;
 	gchar *desc;
@@ -172,7 +174,8 @@ on_install_resolved (GObject *source,
 
 		} else {
 			realm_diagnostics_info (install->invocation, "Installing: %s", desc);
-			pk_task_install_packages_async (install->task, package_ids, NULL,
+			cancellable = realm_invocation_get_cancellable (install->invocation);
+			pk_task_install_packages_async (install->task, package_ids, cancellable,
 			                                on_install_progress, install,
 			                                on_install_installed, g_object_ref (res));
 		}

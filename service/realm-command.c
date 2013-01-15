@@ -17,6 +17,7 @@
 #include "realm-daemon.h"
 #include "realm-command.h"
 #include "realm-diagnostics.h"
+#include "realm-invocation.h"
 #include "realm-settings.h"
 
 #include <glib/gi18n-lib.h>
@@ -407,7 +408,6 @@ realm_command_runv_async (gchar **argv,
                           gchar **environ,
                           GBytes *input,
                           GDBusMethodInvocation *invocation,
-                          GCancellable *cancellable,
                           GAsyncReadyCallback callback,
                           gpointer user_data)
 {
@@ -419,6 +419,7 @@ realm_command_runv_async (gchar **argv,
 	int error_fd = -1;
 	int input_fd = -1;
 	ProcessSource *process_source;
+	GCancellable *cancellable;
 	GSource *source;
 	gchar *cmd_string;
 	gchar *env_string;
@@ -428,8 +429,9 @@ realm_command_runv_async (gchar **argv,
 	guint i;
 
 	g_return_if_fail (argv != NULL);
-	g_return_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable));
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
+
+	cancellable = realm_invocation_get_cancellable (invocation);
 
 	for (i = 0; i < NUM_FDS; i++)
 		child_fds[i] = -1;
@@ -550,7 +552,6 @@ void
 realm_command_run_known_async (const gchar *known_command,
                                gchar **environ,
                                GDBusMethodInvocation *invocation,
-                               GCancellable *cancellable,
                                GAsyncReadyCallback callback,
                                gpointer user_data)
 {
@@ -564,7 +565,6 @@ realm_command_run_known_async (const gchar *known_command,
 	gint unused;
 
 	g_return_if_fail (known_command != NULL);
-	g_return_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable));
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
 	command_line = realm_settings_value ("commands", known_command);
@@ -586,7 +586,7 @@ realm_command_run_known_async (const gchar *known_command,
 	}
 
 	if (message == NULL) {
-		realm_command_runv_async (argv, environ, NULL, invocation, cancellable, callback, user_data);
+		realm_command_runv_async (argv, environ, NULL, invocation, callback, user_data);
 		g_free (argv);
 
 	} else {

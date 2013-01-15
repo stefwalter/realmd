@@ -152,12 +152,15 @@ on_enroll_complete (GObject *source,
 {
 	MethodClosure *closure = user_data;
 	RealmKerberosMembershipIface *iface;
+	GCancellable *cancellable;
 	GError *error = NULL;
 
 	iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (closure->self);
 	g_return_if_fail (iface->unenroll_finish != NULL);
 
-	(iface->enroll_finish) (REALM_KERBEROS_MEMBERSHIP (closure->self), result, &error);
+	cancellable = realm_invocation_get_cancellable (closure->invocation);
+	if (!g_cancellable_set_error_if_cancelled (cancellable, &error))
+		(iface->enroll_finish) (REALM_KERBEROS_MEMBERSHIP (closure->self), result, &error);
 
 	if (error != NULL) {
 		enroll_method_reply (closure->invocation, error);
@@ -167,7 +170,7 @@ on_enroll_complete (GObject *source,
 	/* Only flush the name caches if not in install mode */
 	} else if (!realm_daemon_is_install_mode ()) {
 		realm_command_run_known_async ("name-caches-flush", NULL, closure->invocation,
-		                               NULL, on_name_caches_flush, closure);
+		                               on_name_caches_flush, closure);
 
 	} else {
 		enroll_method_reply (closure->invocation, NULL);
@@ -207,12 +210,16 @@ on_unenroll_complete (GObject *source,
 {
 	MethodClosure *closure = user_data;
 	RealmKerberosMembershipIface *iface;
+	GCancellable *cancellable;
 	GError *error = NULL;
 
 	iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (closure->self);
 	g_return_if_fail (iface->unenroll_finish != NULL);
 
-	(iface->unenroll_finish) (REALM_KERBEROS_MEMBERSHIP (closure->self), result, &error);
+	cancellable = realm_invocation_get_cancellable (closure->invocation);
+	if (!g_cancellable_set_error_if_cancelled (cancellable, &error))
+		(iface->unenroll_finish) (REALM_KERBEROS_MEMBERSHIP (closure->self), result, &error);
+
 	unenroll_method_reply (closure->invocation, error);
 
 	g_clear_error (&error);

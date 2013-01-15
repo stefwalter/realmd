@@ -327,17 +327,20 @@ static void
 kerberos_discover_domain_begin (RealmKerberosDiscover *self)
 {
 	GDBusMethodInvocation *invocation = self->key.invocation;
+	GCancellable *cancellable;
 	GResolver *resolver;
 	gchar *msdcs;
 
 	g_assert (self->domain != NULL);
+
+	cancellable = realm_invocation_get_cancellable (invocation);
 
 	realm_diagnostics_info (invocation,
 	                        "Searching for kerberos SRV records for domain: _kerberos._udp.%s",
 	                        self->domain);
 
 	resolver = g_resolver_get_default ();
-	g_resolver_lookup_service_async (resolver, "kerberos", "udp", self->domain, NULL,
+	g_resolver_lookup_service_async (resolver, "kerberos", "udp", self->domain, cancellable,
 	                                 on_resolve_kerberos, g_object_ref (self));
 	self->outstanding_kerberos = 1;
 
@@ -348,7 +351,7 @@ kerberos_discover_domain_begin (RealmKerberosDiscover *self)
 	                        "Searching for MSDCS SRV records on domain: _kerberos._tcp.%s",
 	                        msdcs);
 
-	g_resolver_lookup_service_async (resolver, "kerberos", "tcp", msdcs, NULL,
+	g_resolver_lookup_service_async (resolver, "kerberos", "tcp", msdcs, cancellable,
 	                                 on_resolve_msdcs, g_object_ref (self));
 	self->outstanding_msdcs = 1;
 

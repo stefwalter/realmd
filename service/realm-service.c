@@ -39,7 +39,7 @@ begin_service_command (const gchar *command,
 		return;
 	}
 
-	realm_command_run_known_async (command, NULL, invocation, NULL, callback, user_data);
+	realm_command_run_known_async (command, NULL, invocation, callback, user_data);
 }
 
 static gboolean

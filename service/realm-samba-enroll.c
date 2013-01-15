@@ -33,7 +33,6 @@
 #include <string.h>
 
 typedef struct {
-	GCancellable *cancellable;
 	GDBusMethodInvocation *invocation;
 	gchar *create_computer_arg;
 	GHashTable *settings;
@@ -54,8 +53,6 @@ static void
 join_closure_free (gpointer data)
 {
 	JoinClosure *join = data;
-
-	g_clear_object (&join->cancellable);
 
 	g_bytes_unref (join->password_input);
 	g_free (join->user_name);
@@ -146,7 +143,7 @@ begin_net_process (JoinClosure *join,
 	va_end (va);
 
 	realm_command_runv_async ((gchar **)args->pdata, environ, input,
-	                          join->invocation, join->cancellable, callback, user_data);
+	                          join->invocation, callback, user_data);
 
 	g_ptr_array_free (args, TRUE);
 }

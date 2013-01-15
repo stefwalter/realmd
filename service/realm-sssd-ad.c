@@ -182,7 +182,7 @@ on_sssd_enable_nss (GObject *source,
 
 	if (error == NULL) {
 		realm_command_run_known_async ("sssd-enable-logins", NULL, join->invocation,
-		                               NULL, on_enable_nss_done, g_object_ref (async));
+		                               on_enable_nss_done, g_object_ref (async));
 
 	} else {
 		g_simple_async_result_take_error (async, error);

@@ -109,7 +109,7 @@ begin_join_process (GBytes *input,
 	g_ptr_array_add (args, NULL);
 
 	realm_command_runv_async ((gchar **)args->pdata, environ, input,
-	                          invocation, NULL, on_join_process,
+	                          invocation, on_join_process,
 	                          g_object_ref (async));
 
 	g_ptr_array_free (args, TRUE);

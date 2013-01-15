@@ -20,6 +20,7 @@
 #include "realm-diagnostics.h"
 #include "realm-discovery.h"
 #include "realm-errors.h"
+#include "realm-invocation.h"
 #include "realm-network.h"
 
 #include <glib/gi18n.h>
@@ -119,6 +120,7 @@ realm_ipa_discover_async_result_init (GAsyncResultIface *iface)
 /* TODO: This stuff will shortly be part of glib */
 
 typedef struct {
+  GCancellable *cancellable;
   guchar *buf;
   gsize count;
   gsize nread;
@@ -128,6 +130,8 @@ static void
 read_all_closure_free (gpointer data)
 {
   ReadAllClosure *closure = data;
+  if (closure->cancellable)
+    g_object_unref (closure->cancellable);
   g_free (closure->buf);
   g_slice_free (ReadAllClosure, closure);
 }
@@ -139,6 +143,7 @@ read_all_callback (GObject      *stream,
 {
   GSimpleAsyncResult *simple = user_data;
   ReadAllClosure *closure = g_simple_async_result_get_op_res_gpointer (simple);
+
   GError *error = NULL;
   gssize nread;
 
@@ -161,7 +166,7 @@ read_all_callback (GObject      *stream,
           g_input_stream_read_async (G_INPUT_STREAM (stream),
                                      closure->buf + closure->nread,
                                      closure->count - closure->nread,
-                                     G_PRIORITY_DEFAULT, NULL,
+                                     G_PRIORITY_DEFAULT, closure->cancellable,
                                      read_all_callback, g_object_ref (simple));
         }
       else
@@ -176,6 +181,7 @@ read_all_callback (GObject      *stream,
 static void
 read_all_bytes_async (GInputStream *stream,
                       gsize count,
+                      GCancellable *cancellable,
                       GAsyncReadyCallback callback,
                       gpointer user_data)
 {
@@ -188,10 +194,11 @@ read_all_bytes_async (GInputStream *stream,
   closure = g_slice_new0 (ReadAllClosure);
   closure->buf = g_malloc (count);
   closure->count = count;
+  closure->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
   g_simple_async_result_set_op_res_gpointer (simple, closure, read_all_closure_free);
 
   g_input_stream_read_async (stream, closure->buf, count,
-                             G_PRIORITY_DEFAULT, NULL,
+                             G_PRIORITY_DEFAULT, cancellable,
                              read_all_callback, simple);
 }
 
@@ -218,6 +225,7 @@ read_all_bytes_finish (GInputStream *stream,
 }
 
 typedef struct {
+  GCancellable *cancellable;
   GBytes *bytes;
   gsize written;
 } WriteAllClosure;
@@ -226,6 +234,8 @@ static void
 write_all_closure_free (gpointer data)
 {
   WriteAllClosure *closure = data;
+  if (closure->cancellable)
+    g_object_unref (closure->cancellable);
   g_bytes_unref (closure->bytes);
   g_slice_free (WriteAllClosure, closure);
 }
@@ -258,7 +268,7 @@ write_all_callback (GObject      *stream,
                                        data + closure->written,
                                        size - closure->written,
                                        G_PRIORITY_DEFAULT,
-                                       NULL,
+                                       closure->cancellable,
                                        write_all_callback,
                                        g_object_ref (simple));
         }
@@ -273,9 +283,10 @@ write_all_callback (GObject      *stream,
 
 static void
 write_all_bytes_async (GOutputStream *stream,
-                                       GBytes *bytes,
-                                       GAsyncReadyCallback callback,
-                                       gpointer user_data)
+                       GBytes *bytes,
+                       GCancellable *cancellable,
+                       GAsyncReadyCallback callback,
+                       gpointer user_data)
 {
   GSimpleAsyncResult *simple;
   WriteAllClosure *closure;
@@ -288,12 +299,13 @@ write_all_bytes_async (GOutputStream *stream,
                                       write_all_bytes_async);
   closure = g_slice_new0 (WriteAllClosure);
   closure->bytes = g_bytes_ref (bytes);
+  closure->cancellable = cancellable ? g_object_ref (cancellable) : cancellable;
   g_simple_async_result_set_op_res_gpointer (simple, closure, write_all_closure_free);
 
   g_output_stream_write_async (stream,
                                data, size,
                                G_PRIORITY_DEFAULT,
-                               NULL,
+                               cancellable,
                                write_all_callback,
                                simple);
 }
@@ -439,6 +451,7 @@ on_write_http_request (GObject *source,
                        gpointer user_data)
 {
 	RealmIpaDiscover *self = REALM_IPA_DISCOVER (user_data);
+	GCancellable *cancellable;
 	GError *error = NULL;
 	GInputStream *input;
 
@@ -447,7 +460,8 @@ on_write_http_request (GObject *source,
 	write_all_bytes_finish (G_OUTPUT_STREAM (source), result, &error);
 	if (error == NULL) {
 		input = g_io_stream_get_input_stream (G_IO_STREAM (self->current_connection));
-		read_all_bytes_async (input, 100 * 1024,
+		cancellable = realm_invocation_get_cancellable (self->invocation);
+		read_all_bytes_async (input, 100 * 1024, cancellable,
 		                      on_read_http_response, g_object_ref (self));
 	} else {
 		ipa_discover_take_error (self, "Couldn't send HTTP request for certificate", error);
@@ -464,6 +478,7 @@ on_connect_to_host (GObject *source,
 {
 	RealmIpaDiscover *self = REALM_IPA_DISCOVER (user_data);
 	gchar *request;
+	GCancellable *cancellable;
 	GSocketConnection *connection;
 	GOutputStream *output;
 	GError *error = NULL;
@@ -480,7 +495,8 @@ on_connect_to_host (GObject *source,
 	if (error == NULL) {
 		self->current_connection = G_IO_STREAM (connection);
 		output = g_io_stream_get_output_stream (self->current_connection);
-		write_all_bytes_async (output, self->http_request,
+		cancellable = realm_invocation_get_cancellable (self->invocation);
+		write_all_bytes_async (output, self->http_request, cancellable,
 		                       on_write_http_request, g_object_ref (self));
 
 	/* Errors that mean no domain discovered */
@@ -531,11 +547,13 @@ realm_ipa_discover_async (GSrvTarget *kdc,
                           gpointer user_data)
 {
 	RealmIpaDiscover *self;
+	GCancellable *cancellable;
 	GSocketClient *client;
 	const gchar *hostname;
 
 	g_return_if_fail (G_IS_DBUS_METHOD_INVOCATION (invocation));
 
+	cancellable = realm_invocation_get_cancellable (invocation);
 	self = g_object_new (REALM_TYPE_IPA_DISCOVER, NULL);
 	self->invocation = g_object_ref (invocation);
 	self->callback = callback;
@@ -563,8 +581,8 @@ realm_ipa_discover_async (GSrvTarget *kdc,
 
 	realm_diagnostics_info (self->invocation, "Trying to retrieve IPA certificate from %s", hostname);
 
-	g_socket_client_connect_to_host_async (client, hostname, 443,
-	                                       NULL, on_connect_to_host, g_object_ref (self));
+	g_socket_client_connect_to_host_async (client, hostname, 443, cancellable,
+	                                       on_connect_to_host, g_object_ref (self));
 
 	g_object_unref (client);
 

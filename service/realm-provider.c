@@ -73,6 +73,7 @@ on_discover_complete (GObject *source,
                       gpointer user_data)
 {
 	MethodClosure *closure = user_data;
+	GCancellable *cancellable;
 	GVariant *retval;
 	GError *error = NULL;
 	GPtrArray *results;
@@ -81,7 +82,10 @@ on_discover_complete (GObject *source,
 	gint relevance;
 	GList *l;
 
-	realms = realm_provider_discover_finish (closure->self, result, &relevance, &error);
+	cancellable = realm_invocation_get_cancellable (closure->invocation);
+	if (!g_cancellable_set_error_if_cancelled (cancellable, &error))
+		realms = realm_provider_discover_finish (closure->self, result, &relevance, &error);
+
 	if (error == NULL) {
 		realms = g_list_sort (realms, sort_configured_first);
 		results = g_ptr_array_new ();
@@ -103,6 +107,11 @@ on_discover_complete (GObject *source,
 			g_dbus_error_strip_remote_error (error);
 			realm_diagnostics_error (closure->invocation, error, NULL);
 			g_dbus_method_invocation_return_gerror (closure->invocation, error);
+
+		} else if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+			realm_diagnostics_error (closure->invocation, error, "Cancelled");
+			g_dbus_method_invocation_return_error (closure->invocation, REALM_ERROR, REALM_ERROR_CANCELLED,
+			                                       _("Operation was cancelled."));
 
 		} else {
 			realm_diagnostics_error (closure->invocation, error, "Failed to discover realm");

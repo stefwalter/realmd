@@ -20,10 +20,95 @@
 #include "realm-errors.h"
 #include "realm-example.h"
 #include "realm-ini-config.h"
+#include "realm-invocation.h"
 #include "realm-kerberos-membership.h"
 #include "realm-settings.h"
 
 #include <glib/gi18n.h>
+
+/* A cancellable delay
+ */
+
+typedef struct {
+	GSimpleAsyncResult *async;
+	guint timeout_id;
+	GCancellable *cancellable;
+	guint cancel_id;
+} SleepAsyncData;
+
+static void
+free_sleep_async_data (gpointer user_data)
+{
+	SleepAsyncData *data = user_data;
+	if (data->cancellable) {
+		/* g_cancellable_disconnect would dead-lock here
+		 */
+		g_signal_handler_disconnect (data->cancellable, data->cancel_id);
+		g_object_unref (data->cancellable);
+	}
+	g_object_unref (data->async);
+	g_free (data);
+}
+
+static gboolean
+on_sleep_async_done (gpointer user_data)
+{
+	SleepAsyncData *data = user_data;
+	g_simple_async_result_complete (data->async);
+	return FALSE;
+}
+
+static void
+on_sleep_async_cancelled (GCancellable *cancellable,
+                          gpointer user_data)
+{
+	SleepAsyncData *data = user_data;
+	g_simple_async_result_complete (data->async);
+	g_source_remove (data->timeout_id);
+}
+
+static void
+usleep_async (gulong microseconds,
+              GCancellable *cancellable,
+              GAsyncReadyCallback callback,
+              gpointer user_data)
+{
+	SleepAsyncData *data = g_new0(SleepAsyncData, 1);
+	data->async = g_simple_async_result_new (NULL,
+	                                         callback, user_data,
+	                                         usleep_async);
+
+	if (cancellable) {
+		data->cancellable = g_object_ref (cancellable);
+		data->cancel_id = g_cancellable_connect (cancellable,
+		                                         G_CALLBACK (on_sleep_async_cancelled),
+		                                         data, NULL);
+		g_simple_async_result_set_check_cancellable (data->async, cancellable);
+	}
+
+	data->timeout_id = g_timeout_add_full (G_PRIORITY_DEFAULT,
+	                                       microseconds / 1000,
+	                                       on_sleep_async_done,
+	                                       data, (GDestroyNotify)free_sleep_async_data);
+}
+
+static gboolean
+usleep_finish (GAsyncResult *result,
+               GError **error)
+{
+	GSimpleAsyncResult *simple;
+
+	g_return_val_if_fail (g_simple_async_result_is_valid (result,
+	                                                      NULL,
+	                                                      usleep_async),
+	                      FALSE);
+
+	simple = (GSimpleAsyncResult *) result;
+	if (g_simple_async_result_propagate_error (simple, error))
+		return FALSE;
+
+	return TRUE;
+}
 
 struct _RealmExample {
 	RealmKerberos parent;
@@ -129,12 +214,60 @@ match_admin_and_password (RealmIniConfig *config,
 	return (memcmp (data, pass, size) == 0);
 }
 
-static gboolean
-on_result_timeout (gpointer user_data)
+typedef struct {
+	RealmExample *self;
+	GSimpleAsyncResult *async;
+} OpData;
+
+static gdouble
+settings_join_delay (const gchar *realm_name)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	g_simple_async_result_complete (async);
-	return FALSE;
+	gchar *endptr = NULL;
+	const gchar *string;
+	gdouble value;
+
+	string = realm_settings_value (realm_name, "example-join-delay");
+	if (string == NULL)
+		return 0.0;
+
+	value = g_strtod (string, &endptr);
+	if (!endptr || endptr[0] != '\0')
+		return 0.0;
+
+	return value * G_USEC_PER_SEC;
+}
+
+static void
+free_op_data (OpData *data)
+{
+	g_object_unref (data->self);
+	g_object_unref (data->async);
+	g_free (data);
+}
+
+static void
+on_join_sleep_done (GObject *source,
+                    GAsyncResult *res,
+                    gpointer user_data)
+{
+	OpData *data = user_data;
+	GError *error = NULL;
+	const gchar *realm_name;
+
+	if (usleep_finish (res, &error)) {
+		realm_name = realm_kerberos_get_name (REALM_KERBEROS (data->self));
+		realm_ini_config_change (data->self->config, realm_name, &error,
+		                         "login-formats", "%U@%D",
+		                         "login-permitted", "",
+		                         "login-policy", REALM_DBUS_LOGIN_POLICY_PERMITTED,
+		                         NULL);
+	}
+
+	if (error)
+		g_simple_async_result_take_error (data->async, error);
+
+	g_simple_async_result_complete (data->async);
+	free_op_data (data);
 }
 
 static void
@@ -173,21 +306,40 @@ realm_example_join_async (RealmKerberosMembership *membership,
 		g_simple_async_result_complete_in_idle (async);
 
 	} else {
-		realm_ini_config_change (self->config, realm_name, &error,
-		                         "login-formats", "%U@%D",
-		                         "login-permitted", "",
-		                         "login-policy", REALM_DBUS_LOGIN_POLICY_PERMITTED,
-		                         NULL);
-		if (error == NULL) {
-			g_timeout_add_seconds_full (G_PRIORITY_DEFAULT, g_random_int_range (5, 10),
-			                            on_result_timeout, g_object_ref (async), g_object_unref);
-		} else {
-			g_simple_async_result_take_error (async, error);
-			g_simple_async_result_complete_in_idle (async);
-		}
+		OpData *data = g_new0 (OpData, 1);
+		data->self = g_object_ref (self);
+		data->async = g_object_ref (async);
+		usleep_async (settings_join_delay (realm_name),
+		              realm_invocation_get_cancellable (invocation),
+		              on_join_sleep_done, data);
 	}
 
 	g_object_unref (async);
+}
+
+static void
+on_leave_sleep_done (GObject *source,
+                     GAsyncResult *res,
+                     gpointer user_data)
+{
+	OpData *data = user_data;
+	GError *error = NULL;
+	const gchar *realm_name;
+
+	if (usleep_finish (res, &error)) {
+		realm_name = realm_kerberos_get_name (REALM_KERBEROS (data->self));
+
+		if (realm_ini_config_begin_change (data->self->config, &error)) {
+			realm_ini_config_remove_section (data->self->config, realm_name);
+			realm_ini_config_finish_change (data->self->config, &error);
+		}
+	}
+
+	if (error)
+		g_simple_async_result_take_error (data->async, error);
+
+	g_simple_async_result_complete (data->async);
+	free_op_data (data);
 }
 
 static GSimpleAsyncResult *
@@ -228,7 +380,6 @@ realm_example_leave_password_async (RealmKerberosMembership *membership,
 	RealmExample *self = REALM_EXAMPLE (membership);
 	GSimpleAsyncResult *async;
 	const gchar *realm_name;
-	GError *error = NULL;
 
 	async = setup_leave (self, options, invocation, callback, user_data);
 	if (async == NULL)
@@ -242,18 +393,12 @@ realm_example_leave_password_async (RealmKerberosMembership *membership,
 		g_simple_async_result_complete_in_idle (async);
 
 	} else {
-		if (realm_ini_config_begin_change (self->config, &error)) {
-			realm_ini_config_remove_section (self->config, realm_name);
-			realm_ini_config_finish_change (self->config, &error);
-		}
-
-		if (error == NULL) {
-			g_timeout_add_seconds_full (G_PRIORITY_DEFAULT, g_random_int_range (5, 10),
-			                            on_result_timeout, g_object_ref (async), g_object_unref);
-		} else {
-			g_simple_async_result_take_error (async, error);
-			g_simple_async_result_complete_in_idle (async);
-		}
+		OpData *data = g_new0 (OpData, 1);
+		data->self = g_object_ref (self);
+		data->async = g_object_ref (async);
+		usleep_async (settings_join_delay (realm_name),
+		              realm_invocation_get_cancellable (invocation),
+		              on_leave_sleep_done, data);
 	}
 
 	g_object_unref (async);
@@ -270,7 +415,6 @@ realm_example_leave_automatic_async (RealmKerberosMembership *membership,
 	RealmExample *self = REALM_EXAMPLE (membership);
 	GSimpleAsyncResult *async;
 	const gchar *realm_name;
-	GError *error = NULL;
 
 	async = setup_leave (self, options, invocation, callback, user_data);
 	if (async == NULL)
@@ -278,17 +422,18 @@ realm_example_leave_automatic_async (RealmKerberosMembership *membership,
 
 	realm_name = realm_kerberos_get_realm_name (REALM_KERBEROS (self));
 
-	if (realm_ini_config_begin_change (self->config, &error)) {
-		realm_ini_config_remove_section (self->config, realm_name);
-		realm_ini_config_finish_change (self->config, &error);
-	}
-
-	if (error == NULL) {
-		g_timeout_add_seconds_full (G_PRIORITY_DEFAULT, g_random_int_range (5, 10),
-		                            on_result_timeout, g_object_ref (async), g_object_unref);
-	} else {
-		g_simple_async_result_take_error (async, error);
+	if (realm_settings_boolean (realm_name, "example-no-auto-leave") == TRUE) {
+		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
+		                                 _("Need credentials for leaving this domain"));
 		g_simple_async_result_complete_in_idle (async);
+
+	} else {
+		OpData *data = g_new0 (OpData, 1);
+		data->self = g_object_ref (self);
+		data->async = g_object_ref (async);
+		usleep_async (settings_join_delay (realm_name),
+		              realm_invocation_get_cancellable (invocation),
+		              on_leave_sleep_done, data);
 	}
 
 	g_object_unref (async);

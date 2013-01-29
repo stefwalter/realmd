@@ -53,8 +53,8 @@
 
 		  Discover realms for the given string. The input @string is
 		  usually a domain or realm name, perhaps typed by a user. If
-		  an empty string is provided the realm provider should try to
-		  discover a default realm if possible (eg: from DHCP).
+		  an empty string is provided, the realm provider should try to
+		  discover a default realm, if possible (e.g. from DHCP).
 
 		  @options can contain, but is not limited to, the following values:
 		  <itemizedlist>
@@ -74,13 +74,13 @@
 		  different discover calls to different providers. Implementors
 		  should return a positive number if the provider highly
 		  recommends that the realms be handled by this provider,
-		  or a zero if it can possibly handle the realms. Negative
+		  or a zero if it can possibly handle the realms. Negative numbers
 		  should be returned if no realms are found.
 
 		  This method does not return an error when no realms are
-		  discovered. It simply returns an @realm list.
+		  discovered. It simply returns an empty @realm list.
 
-		  To see diagnostic information about the discovery process
+		  To see diagnostic information about the discovery process,
 		  connect to the org.freedesktop.realmd.Service::Diagnostics
 		  signal.
 
@@ -128,16 +128,16 @@
 		  Cancel:
 		  @operation: the operation to cancel
 
-		  Cancel a realmd operation. To be able to cancel an operation
+		  Cancel a realmd operation. To be able to cancel an operation,
 		  pass a uniquely chosen <literal>operation</literal> string
-		  identifier as an option in the methods <literal>options</literal>
+		  identifier as an option in the method's <literal>options</literal>
 		  argument.
 
 		  These operation string identifiers should be unique per client
 		  calling the realmd service.
 
 		  It is not guaranteed that the service can or will cancel the
-		  operation. For example the operation may have already completed
+		  operation. For example, the operation may have already completed
 		  by the time this method is handled. The caller of the operation
 		  method will receive a
 		  <literal>org.freedesktop.realmd.Error.Cancelled</literal>
@@ -172,7 +172,7 @@
 		  More than one line may be contained in @data, or a partial
 		  line. New line characters are embedded in @data.
 
-		  This signal is sent explicitly to the client which invoked
+		  This signal is sent explicitly to the client which invoked an
 		  operation method. In order to tell which operation this
 		  diagnostic data results from, pass a unique
 		  <literal>operation</literal> string identifier in the
@@ -188,9 +188,9 @@
 		<!--
 		  Release:
 
-		  Normally realmd waits until all clients have disconnected
-		  before exiting itself, sometime later. For long lived clients
-		  they can call this method to allow the realmd service to quit.
+		  Normally, realmd waits until all clients have disconnected
+		  before exiting itself sometime later. Long lived clients
+		  can call this method to allow the realmd service to quit.
 		  This is an optimization. The daemon will not exit immediately.
 		  It is safe to call this multiple times.
 		-->
@@ -218,25 +218,25 @@
 	  #org.freedesktop.realmd.Kerberos.  Do not assume that all realms
 	  implement that kerberos interface. Use the
 	  #org.freedesktop.realmd.Realm:SupportedInterfaces property to see
-	  which interfaces are set.
+	  which interfaces are supported.
 
 	  Different realms support various ways to configure them on the
 	  system. Use the #org.freedesktop.realmd.Realm:Configured property
-	  to determine if a realm is configured. If it is configured the
+	  to determine if a realm is configured. If it is configured, the
 	  property will be set to the interface of the mechanism that was
 	  used to configure it.
 
 	  To configure a realm, look in the
 	  #org.freedesktop.realmd.Realm:SupportedInterfaces property for a
-	  recognized purpose specific interface that can be used for
+	  recognized purpose-specific interface that can be used for
 	  configuration, such as the
 	  #org.freedesktop.realmd.KerberosMembership interface and its
 	  #org.freedesktop.realmd.KerberosMembership.Join() method.
 
 	  To deconfigure a realm from the current system, you can use the
-	  #org.freedesktop.realmd.Realm.Deconfigure() method. In additon some
+	  #org.freedesktop.realmd.Realm.Deconfigure() method. In addition, some
 	  of the configuration specific interfaces provide methods to
-	  deconfigure a realm in a specific way, such as
+	  deconfigure a realm in a specific way, such as the
 	  #org.freedesktop.realmd.KerberosMembership.Leave() method.
 
 	  The various properties are guaranteed to have been updated before
@@ -329,10 +329,10 @@
 		  should be present:
 		  <itemizedlist>
 		    <listitem><para><literal>server-software</literal>:
-		      identifier of the software running on the server (eg:
+		      identifier of the software running on the server (e.g.
 		      <literal>active-directory</literal>).</para></listitem>
 		    <listitem><para><literal>client-software</literal>:
-		      identifier of the software running on the client (eg:
+		      identifier of the software running on the client (e.g.
 		      <literal>sssd</literal>).</para></listitem>
 		  </itemizedlist>
 		-->
@@ -412,7 +412,7 @@
 
 		  Change the login policy and/or permitted logins for this realm.
 
-		  Not all realms support the all the various login policies. An
+		  Not all realms support all the various login policies. An
 		  error will be returned if the new login policy is not supported.
 		  You may specify an empty string for the @login_policy argument
 		  which will cause no change in the policy itself. If the policy
@@ -514,7 +514,7 @@
 		  Various kinds of credentials that are supported when calling the
 		  #org.freedesktop.realmd.Kerberos.Join() method.
 
-		  Each credential is represented by a type, and an owner. The type
+		  Each credential is represented by a type and an owner. The type
 		  denotes which kind of credential is passed to the method. The
 		  owner indicates to the client how to prompt the user or obtain
 		  the credential, and to the service how to use the credential.
@@ -545,7 +545,7 @@
 		  The various owners are:
 		  <itemizedlist>
 		    <listitem><para><literal>administrator</literal>:
-		      the credentials belong to a kerberos user principal.
+		      the credentials belong to a kerberos administrator principal.
 		      The caller may use this as a hint to prompt the user
 		      for administrative credentials.</para></listitem>
 		    <listitem><para><literal>user</literal>:
@@ -557,7 +557,7 @@
 		      the credentials belong to a computer account.</para></listitem>
 		    <listitem><para><literal>none</literal>:
 		      the credentials have an unspecified owner, such as a one
-		      time secret.</para></listitem>
+		      time password.</para></listitem>
 		  </itemizedlist>
 		-->
 		<property name="SupportedJoinCredentials" type="a(ss)" access="read"/>
@@ -578,7 +578,7 @@
 
 		  Join this machine to the realm and enroll the machine.
 
-		  If this method returns successfully then the machine will be
+		  If this method returns successfully, then the machine will be
 		  joined to the realm. It is not necessary to restart services or the
 		  machine afterward. Relevant properties on the realm will be updated
 		  before the method returns.
@@ -602,7 +602,7 @@
 		      containing an LDAP DN for an organizational unit where the
 		      computer account should be created</para></listitem>
 		    <listitem><para><literal>assume-packages</literal>: a boolean
-		      which overrides makes the join assume that all needed
+		      which makes the join assume that all needed
 		      software packages have already been installed</para></listitem>
 		  </itemizedlist>
 
@@ -616,14 +616,14 @@
 		    <listitem><para><literal>org.freedesktop.realmd.Error.Cancelled</literal>:
 		      returned if the operation was cancelled.</para></listitem>
 		    <listitem><para><literal>org.freedesktop.realmd.Error.NotAuthorized</literal>:
-		      returned if the calling client is not permitted to perform an join
+		      returned if the calling client is not permitted to perform a join
 		      operation.</para></listitem>
 		    <listitem><para><literal>org.freedesktop.realmd.Error.AuthenticationFailed</literal>:
 		      returned if the credentials passed did not authenticate against the realm
 		      correctly. It is appropriate to prompt the user again.</para></listitem>
 		    <listitem><para><literal>org.freedesktop.realmd.Error.AlreadyEnrolled</literal>:
-		      returned if already enrolled in this realm, or another realm and enrolling
-		      in multiple realms is not supported.</para></listitem>
+		      returned if already enrolled in this realm, or if already enrolled in another realm
+		      (if enrolling in multiple realms is not supported).</para></listitem>
 		    <listitem><para><literal>org.freedesktop.realmd.Error.Busy</literal>:
 		      returned if the service is currently performing another operation like
 		      join or leave.</para></listitem>
@@ -639,18 +639,18 @@
 
 		  Leave the realm and unenroll the machine.
 
-		  If this method returns successfully then the machine will have
+		  If this method returns successfully, then the machine will have
 		  left the domain and been unenrolled. It is not necessary to restart
 		  services or the machine afterward. Relevant properties on the realm
 		  will be updated before the method returns.
 
 		  The @credentials should be set according to one of the
 		  supported credentials returned by
-		  #org.freedesktop.realmd.Kerberos:SupportedUnenrollCredentials.
+		  #org.freedesktop.realmd.Kerberos:SupportedJoinCredentials.
 		  The first string in the tuple is the type, the second string
 		  is the owner, and the variant contains the credential contents
 		  See the discussion at
-		  #org.freedesktop.realmd.Kerberos:SupportedEnrollCredentials
+		  #org.freedesktop.realmd.Kerberos:SupportedJoinCredentials
 		  for more information.
 
 		  @options can contain, but is not limited to, the following values:
@@ -680,7 +680,7 @@
 		      returned if not enrolled in this realm.</para></listitem>
 		    <listitem><para><literal>org.freedesktop.realmd.Error.Busy</literal>:
 		      returned if the service is currently performing another operation like
-		      enroll or unenroll.</para></listitem>
+		      join or leave.</para></listitem>
 		  </itemizedlist>
 		-->
 		<method name="Leave">

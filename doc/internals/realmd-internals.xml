@@ -1,0 +1,336 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
+               "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
+[
+]>
+<article id="index">
+<articleinfo>
+	<title>realmd Internals</title>
+	<releaseinfo>January, 2013</releaseinfo>
+</articleinfo>
+
+<section id="overview">
+	<title>Overview</title>
+
+	<para>realmd is an on-demand system D-Bus service, whose primary purpose is
+	to enable Fedora to work seamlessly out of the box with a Kerberos realm
+	(with primary focus on AD and IPA). Specifically, the realmd service supports
+	discovering a domain, joining a domain, leaving a domain, and more.</para>
+
+	<para>Some of the D-Bus clients that interact with realmd are:</para>
+	<itemizedlist>
+		<listitem><para>command line realm client</para></listitem>
+		<listitem><para>gnome-control-center GUI client</para></listitem>
+	</itemizedlist>
+
+	<para>Realmd can be run in two different modes (with some slight changes in
+	behavior depending on the mode)</para>
+	<itemizedlist>
+		<listitem><para>At install time (e.g. using an anaconda kickstart file).
+		In this mode, since the system message bus may not be available, the
+		realm client directly spawns realmd and communicates with it using the
+		D-Bus peer protocol (i.e. without going through the message bus).</para></listitem>
+		<listitem><para>After installation. In this mode, the system message
+		bus is available and is used to forward messages from the realm client
+		to realmd.</para></listitem>
+	</itemizedlist>
+
+	<para>Realmd is typically used (whether at install time or afterwards) by a D-Bus
+	client to discover the KDC for a Kerberos domain and to join the machine to that
+	domain using membership software. This will involve changes on the server made by
+	server software, as well as artifacts (keytab, configuration file)  that are output
+	by realmd on the machine for consumption by client software that will subsequently
+	be responsible for Kerberos authentication.</para>
+
+	<para>For active-directory server software, realmd supports:</para>
+	<itemizedlist>
+		<listitem><para>sssd client software (with either adcli or samba membership software)</para></listitem>
+		<listitem><para>winbind client software (with samba membership software).</para></listitem>
+	</itemizedlist>
+
+	<para>For freeipa server software, realmd supports:</para>
+	<itemizedlist>
+		<listitem><para>sssd client software (joins/leaves are not supported).</para></listitem>
+	</itemizedlist>
+</section>
+
+<section id="objects-interfaces">
+	<title>Realmd Objects and Interfaces</title>
+
+	<para>A GDBusObject is associated with an object path and is essentially a container
+	of GDBusInterfaces. On the service side, this is implemented using GDBusObjectSkeletons
+	and GDBusInterfaceSkeletons (with corresponding GDBusObjectProxy and GDBusProxy
+	components on the client side). The base GDBusObjectSkeletons used by realmd are
+	RealmKerberos and RealmProvider (each with its own subclasses and interfaces). The
+	objects are linked, in that a RealmProvider object creates a RealmKerberos object
+	during the Discover process. The type of RealmKerberos object that is created depends
+	on the type of RealmProvider that is used. Only those RealmKerberos objects that
+	implement the RealmKerberosMembership GInterface can be used to join or leave a domain.</para>
+
+	<variablelist>
+		<title>RealmKerberos</title>
+		<varlistentry>
+			<term>RealmDbusRealm</term>
+			<listitem><para>supports Deconfigure and ChangeLoginPolicy methods</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term>RealmDbusKerberosMembership</term>
+			<listitem><para>supports Join and Leave methods</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term>RealmDbusKerberos</term>
+			<listitem><para>supports no methods (properties only)</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term>RealmSamba</term>
+			<listitem><para>implements RealmKerberosMembership</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term>RealmSssd</term>
+			<listitem><para>container for RealmSssdAd and RealmSssdIpa</para>
+			<variablelist>
+				<varlistentry>
+					<term>subclass: RealmSssdAd</term>
+					<listitem><para>implements RealmKerberosMembership</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>subclass: RealmSssdIpa</term>
+					<listitem><para>does NOT implement RealmKerberosMembership</para></listitem>
+				</varlistentry>
+			</variablelist>
+			</listitem>
+		</varlistentry>
+	</variablelist>
+
+	<variablelist>
+		<title>RealmProvider</title>
+		<varlistentry>
+			<term>RealmDbusProvider</term>
+			<listitem><para>supports Discover method</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term>RealmSambaProvider</term>
+			<listitem><para>creates RealmSamba objects</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term>RealmSssdProvider</term>
+			<listitem><para>creates RealmSssdAd and RealmSssdIpa objects</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term>RealmKerberosProvider</term>
+			<listitem><para>creates RealmKerberos objects</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term>RealmAllProvider</term>
+			<listitem><para>aggregates other RealmProviders</para></listitem>
+		</varlistentry>
+	</variablelist>
+</section>
+
+<section id="discover">
+	<title>Discover method</title>
+
+	<mediaobject>
+	<imageobject>
+		<imagedata fileref="discover-method.png" format="PNG"/>
+	</imageobject>
+	</mediaobject>
+
+	<para>The main purpose of the Discover method is to verify that a specified domain
+	is valid, emitting logs and diagnostic information in the process. RealmProviders
+	discover the authoritative KDCs for the specified domain by querying DNS for SRV
+	records and creating appropriate RealmKerberos objects to encapsulate the KDC
+	information. Certain types of RealmKerberos objects (i.e. RealmSamba and RealmSssdAd)
+	can subsequently be used as part of the Join process.</para>
+
+	<para>RealmAllProvider is special in that it serves  A client that wants to use all
+	of the RealmProviders (Samba, Sssd, Kerberos) can contact each RealmProvider (at its
+	unique object path). Alternatively, the client can simply contact the RealmAllProvider,
+	which is special in that it serves as an aggregation point and container for all of
+	the other RealmProviders. When Discover is called on RealmAllProvider, it calls
+	the Discover methods of each of the other RealmProviders, collects the results
+	(array of RealmKerberos objects), and returns an aggregated result (array of object
+	paths pointing to RealmKerberos objects) to the client. The AllProvider also connects
+	to a notify signal, so that if any of its sub-providers change state, AllProvider
+	can also update its state accordingly.</para>
+</section>
+
+<section id="provider">
+	<title>RealmProvider</title>
+	<para>A RealmProvider object supports the Discover method, and is characterized by</para>
+
+	<itemizedlist>
+		<listitem><para>its object path (static)</para></listitem>
+		<listitem><para>the combinations of {client, server, membership} software it supports for the Discover process</para></listitem>
+		<listitem><para>the types of RealmKerberos objects it creates during the Discover process</para></listitem>
+		<listitem><para>the file it reads for configuration information</para></listitem>
+	</itemizedlist>
+
+	<itemizedlist>
+		<title>RealmSambaProvider</title>
+		<listitem><para>object path: "/org/freedesktop/realmd/Samba"</para></listitem>
+		<listitem><para>creates: RealmSamba objects</para></listitem>
+		<listitem><para>config file read: smb.conf</para></listitem>
+		<listitem><para>software supported: {winbind, active-directory, samba}</para></listitem>
+	</itemizedlist>
+
+	<itemizedlist>
+		<title>RealmSssdProvider</title>
+		<listitem><para>object path: "/org/freedesktop/realmd/Sssd"</para></listitem>
+		<listitem><para>creates: RealmSssdAd objects or RealmSssdIpa objects (depending on server-software)</para></listitem>
+		<listitem><para>config file read: sssd.conf</para></listitem>
+		<listitem><para>software supported</para>
+		<itemizedlist>
+			<listitem><para>{sssd, active-directory, samba}</para></listitem>
+			<listitem><para>{sssd, active-directory, adcli}</para></listitem>
+			<listitem><para>{sssd, freeipa, freeipa}</para></listitem>
+		</itemizedlist>
+		</listitem>
+	</itemizedlist>
+
+	<itemizedlist>
+		<title>RealmKerberosProvider</title>
+		<listitem><para>object path: "/org/freedesktop/realmd/GenericKerberos"</para></listitem>
+		<listitem><para>creates: RealmKerberos objects</para></listitem>
+		<listitem><para>config file read: n/a</para></listitem>
+		<listitem><para>software supported: only used if client-software and server-software were not specified</para></listitem>
+	</itemizedlist>
+
+	<itemizedlist>
+		<title>RealmAllProvider</title>
+		<listitem><para>object path: “/org/freedesktop/realmd”</para></listitem>
+		<listitem><para>special RealmProvider that aggregates results (more details on previous slide)</para></listitem>
+	</itemizedlist>
+</section>
+
+<section id="join">
+	<title>Join method</title>
+
+	<mediaobject>
+	<imageobject>
+		<imagedata fileref="join-method.png" format="PNG"/>
+	</imageobject>
+	</mediaobject>
+
+	<para>The primary goal of joining a machine to a domain is to enroll the machine
+	with the domain's KDC, thereby enabling subsequent Kerberos user authentication.
+	This results in the creation of a secret shared between the machine and KDC (i.e.
+	a keytab), as well as changes to the appropriate configuration file on the machine.
+	Conversely, the primary goal of leaving a domain is to unenroll the machine from
+	the domain's KDC, removing the keytab and removing the changes that were previously
+	made to the appropriate configuration file during enrollment. Both the join and
+	leave operations require appropriate credentials, where each credential is represented
+	by the credential owner and the credential type. Different RealmKerberos objects
+	support different credentials, and different credentials may be supported for join
+	and leave. Before performing the join, any required packages or files are installed.</para>
+
+	<para>Possible credential owners: admin, user, computer, none</para>
+	<para>Possible credential types: password, secret (otp), automatic (default/system creds)</para>
+</section>
+
+<section id="kerberos">
+	<title>RealmKerberos</title>
+
+	<para>A RealmKerberos object supports the Join, Leave, Deconfigure, and
+	ChangeLoginPolicy methods. It is characterized by</para>
+
+	<itemizedlist>
+		<listitem><para>its object path (dynamic) of the form &lt;provider_object_path&gt;/&lt;realm_name&gt;_&lt;unique_number&gt;</para></listitem>
+		<listitem><para>the membership software it supports</para></listitem>
+		<listitem><para>the configuration file it modifies</para></listitem>
+		<listitem><para>the packages it requires to be installed</para></listitem>
+		<listitem><para>the credentials it supports: {owner, type}</para></listitem>
+	</itemizedlist>
+
+	<itemizedlist>
+		<title>RealmSamba</title>
+		<listitem><para>object path: dynamically generated upon realm creation	// example:  /realmd/Samba/example.com_4</para></listitem>
+		<listitem><para>membership software supported: samba</para></listitem>
+		<listitem><para>config file modified: smb.conf</para></listitem>
+		<listitem><para>required packages: samba, winbind</para></listitem>
+		<listitem><para>credentials supported: </para>
+		<itemizedlist>
+			<listitem><para>{admin, password}</para></listitem>
+			<listitem><para>{user, password}</para></listitem>
+			<listitem><para>{none, automatic}</para></listitem>
+		</itemizedlist>
+		</listitem>
+	</itemizedlist>
+
+	<itemizedlist>
+		<title>RealmSssdAd</title>
+		<listitem><para>object path: dynamically generated upon realm creation	// example:  /realmd/Sssd/example.com_4</para></listitem>
+		<listitem><para>membership software supported: samba, adcli (but only for certain credentials: see below)</para></listitem>
+		<listitem><para>config file modified: sssd.conf</para></listitem>
+		<listitem><para>required_packages: sssd, adcli, samba (depends on membership software)</para></listitem>
+		<listitem><para>credentials supported:</para>
+		<itemizedlist>
+			<listitem><para>{admin, password}	// supported by both samba (default) and adcli</para></listitem>
+			<listitem><para>{user, password}		// supported only by samba</para></listitem>
+			<listitem><para>{none, automatic}	// supported only by adcli</para></listitem>
+			<listitem><para>{none, secret}		// supported only by adcli; note that these are supported for join, but not leave</para></listitem>
+		</itemizedlist>
+		</listitem>
+	</itemizedlist>
+
+	<itemizedlist>
+		<title>RealmSssdIpa</title>
+		<listitem><para>has a dynamically generated object path upon realm creation, but does not support joins.</para></listitem>
+	</itemizedlist>
+
+</section>
+
+<section id="exporting">
+	<title>Exporting Realmd Objects and Interfaces</title>
+
+	<para>When realmd starts up (realm-daemon.c:main), it registers each of its
+	RealmProviders (except RealmAllProvider) with its GDBusObjectManagerServer,
+	which in turn exports (onto a specific object path) the GDBusInterfaces for
+	each RealmProvider onto the GDBusConnection. As RealmKerberos objects are
+	dynamically created, they are similarly registered with the Object Manager
+	and exported. </para>
+
+	<para>Note that only GDBusInterfaces that are exported onto the GDBusConnection
+	are capable of receiving method call messages from the client. When a message
+	is received by the worker thread of the service's GDBusConnection, the message's
+	{object_path, iface_name} are mapped to a GDBusInterfaceSkeleton, which emits
+	a signal. The enclosing GDBusObjectSkeleton catches the signal and executes the
+	callback registered for that signal (usually set in RealmProvider's constructed
+	method).</para>
+
+	<para>Since RealmAllProvider is just an aggregation point, it is not managed by
+	the GDBusObjectManagerServer,but it is directly exported onto the GDBusConnection
+	using g_dbus_connection_register_object(). The ObjectManager and Service objects
+	are also directly exported onto the GDBusConnection.</para>
+
+	<para>The following is a subset of objects and interfaces registered with the
+	GDBusObjectManagerServer and/or exported onto the GDBusConnection.</para>
+
+	<para>GDBusConnection: stores {object_path, iface_name} => GDBusInterfaceSkeleton</para>
+
+	<itemizedlist>
+		<listitem><para>{/org/freedesktop/realmd, org.freedesktop.realmd.Provider}	=> RealmDbusProviderSkeleton(“All”)</para></listitem>
+		<listitem><para>{/org/freedesktop/realmd, org.freedesktop.realmd.Service}	=> RealmDbusServiceSkeleton</para></listitem>
+		<listitem><para>{/org/freedesktop/realmd, org.freedesktop.DBus.ObjectManager} => GDBusObjectManagerServer</para></listitem>
+	</itemizedlist>
+
+	<para>GDBusObjectManagerServer: stores object_path => GDBusObjectSkeleton</para>
+	<itemizedlist>
+		<listitem><para>/org/freedesktop/realmd/Sssd				=>	RealmSssdProvider</para></listitem>
+		<listitem><para>/org/freedesktop/realmd/Samba				=>	RealmSambaProvider</para></listitem>
+		<listitem><para>/org/freedesktop/realmd/GenericKerberos		=>	RealKerberosProvider</para></listitem>
+		<listitem><para>/org/freedesktop/realmd/Sssd/example.com_4 	=>	RealmSssdAd</para></listitem>
+	</itemizedlist>
+</section>
+
+<section id="missing">
+	<title>Missing</title>
+
+	<itemizedlist>
+		<listitem><para>Description of ChangeLoginPolicy method</para></listitem>
+		<listitem><para>Description of all the methods for the Service object</para></listitem>
+		<listitem><para>Details of realmd.conf (man page, perhaps)</para></listitem>
+		<listitem><para>Details of configuration files (sssd.conf, smb.conf) and relevant entries</para></listitem>
+	</itemizedlist>
+</section>
+</article>

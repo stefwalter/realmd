@@ -312,6 +312,7 @@ AC_CONFIG_FILES([
 	build/Makefile
 	dbus/Makefile
 	doc/Makefile
+	doc/internals/Makefile
 	doc/manual/Makefile
 	doc/website/Makefile
 	doc/version.xml

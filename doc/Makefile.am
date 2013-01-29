@@ -1,6 +1,6 @@
 if ENABLE_DOC
 
-SUBDIRS = manual
+SUBDIRS = manual internals
 
 EXTRA_DIST = \
 	version.xml.in \

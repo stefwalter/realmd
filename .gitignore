@@ -45,6 +45,7 @@ temp.txt
 /dbus/realm-dbus-generated-*.xml
 
 /doc/version.xml
+/doc/internals/html/
 /doc/manual/*.stamp
 /doc/manual/xml/
 /doc/manual/html/

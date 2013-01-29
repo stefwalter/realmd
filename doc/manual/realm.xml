@@ -30,22 +30,22 @@
 
 <refsynopsisdiv>
 	<cmdsynopsis>
-		<command>realm discover <arg choice="plain">-v</arg> <arg choice="opt">realm-name</arg></command>
+		<command>realm discover</command> <arg choice="plain">-v</arg> <arg choice="opt">realm-name</arg>
 	</cmdsynopsis>
 	<cmdsynopsis>
-		<command>realm join <arg choice="plain">-v</arg> <arg choice="opt">-U user</arg> <arg choice="opt">realm-name</arg></command>
+		<command>realm join</command> <arg choice="plain">-v</arg> <arg choice="opt">-U user</arg> <arg choice="opt">realm-name</arg>
 	</cmdsynopsis>
 	<cmdsynopsis>
-		<command>realm leave <arg choice="plain">-v</arg> <arg choice="opt">-U user</arg> <arg choice="opt">realm-name</arg></command>
+		<command>realm leave</command> <arg choice="plain">-v</arg> <arg choice="opt">-U user</arg> <arg choice="opt">realm-name</arg>
 	</cmdsynopsis>
 	<cmdsynopsis>
 		<command>realm list</command>
 	</cmdsynopsis>
 	<cmdsynopsis>
-		<command>realm permit <arg choice="opt">-a</arg> <arg choice="opt">-R realm</arg> <arg choice="req">user</arg> ...</command>
+		<command>realm permit</command> <arg choice="opt">-a</arg> <arg choice="opt">-R realm</arg> <arg choice="req" rep="repeat">user</arg>
 	</cmdsynopsis>
 	<cmdsynopsis>
-		<command>realm deny <arg choice="opt">-a</arg> <arg choice="opt">-R realm</arg> <arg choice="req">user</arg> ...</command>
+		<command>realm deny</command> <arg choice="opt">-a</arg> <arg choice="opt">-R realm</arg> <arg choice="req" rep="repeat">user</arg>
 	</cmdsynopsis>
 </refsynopsisdiv>
 
@@ -143,7 +143,7 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
 	must have a supported mechanism for joining from a client machine, such
 	as Active Directory or FreeIPA.</para>
 
-	<para>Unless a <arg>--user</arg> is explicitly specified, then if
+	<para>Unless a <literal>--user</literal> is explicitly specified, then if
 	possible, an automatic join is attempted first.</para>
 
 	<para>The following options can be used:</para>

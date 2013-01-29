@@ -68,13 +68,6 @@ PKG_CHECK_MODULES(GLIB,
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
 
-GTK_DOC_CHECK(1.9)
-
-AC_PATH_PROG([XSLTPROC], [xsltproc])
-if test x$XSLTPROC = x; then
-	AC_MSG_ERROR([xsltproc is required to build documentation])
-fi
-
 # --------------------------------------------------------------------
 # PackageKit
 
@@ -159,6 +152,39 @@ AC_SUBST(POLKIT_ACTION_DIR)
 
 # --------------------------------------------------------------------
 # Compilation options
+
+AC_MSG_CHECKING([whether to build documentation])
+AC_ARG_ENABLE(doc,
+              AC_HELP_STRING([--enable-doc],
+                             [Disable building documentation])
+             )
+
+if test "$enable_doc" = "no"; then
+	AC_MSG_RESULT($enable_doc)
+
+else
+	if test "$enable_doc" = ""; then
+		disable_msg="(perhaps --disable-doc)"
+	fi
+
+	enable_doc="yes"
+	AC_MSG_RESULT($enable_doc)
+
+	AC_PATH_PROG([XSLTPROC], [xsltproc], [no])
+	if test "$XSLTPROC" = "no"; then
+		AC_MSG_ERROR([the xsltproc command was not found $disable_msg])
+	fi
+
+	AC_PATH_PROG([XMLTO], [xmlto], [no])
+	if test "$XMLTO" = "no"; then
+		AC_MSG_ERROR([the xmlto command was not found $disable_msg])
+	fi
+
+	AC_SUBST(XSLTPROC)
+	AC_SUBST(XMLTO)
+fi
+
+AM_CONDITIONAL([ENABLE_DOC], [test "$enable_doc" = "yes"])
 
 AC_MSG_CHECKING([for debug mode])
 AC_ARG_ENABLE(debug,
@@ -304,4 +330,5 @@ echo "OPTIONS:"
 echo "  Debug:                $debug_status"
 echo "  Coverage:             $enable_coverage"
 echo "  Strict:               $enable_strict"
+echo "  Documentation:        $enable_doc"
 echo

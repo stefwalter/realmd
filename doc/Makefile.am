@@ -1,3 +1,5 @@
+if ENABLE_DOC
+
 SUBDIRS = manual
 
 EXTRA_DIST = \
@@ -8,16 +10,15 @@ EXTRA_DIST = \
 DISTCLEANFILES = \
 	website/Makefile
 
-if ENABLE_GTK_DOC
 upload: website manual
 	make -C manual upload
 	make -C website upload
 
 else
 upload:
-	@echo "*** gtk-doc must be installed (and --enable-gtk-doc) in order to make distcheck"
+	@echo "*** doc must be enabled  (and --enable-doc) in order to make upload"
 	@false
 distcheck-hook:
-	@echo "*** gtk-doc must be installed (and --enable-gtk-doc) in order to make distcheck"
+	@echo "*** doc must be enabled (and --enable-doc) in order to make distcheck"
 	@false
 endif

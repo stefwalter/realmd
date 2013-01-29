@@ -5,7 +5,7 @@
   <!ENTITY % local.common.attrib "xmlns:xi  CDATA  #FIXED 'http://www.w3.org/2003/XInclude'">
 ]>
 
-<chapter id="guide-freeipa">
+<chapter id="guide-kerberos">
 	<title>Using with other Kerberos realms</title>
 
 	<para><command>realmd</command> can discover generic Kerberos realms.

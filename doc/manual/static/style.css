@@ -1,4 +1,4 @@
-@import url("style.css");
+@import url("gtk-doc.css");
 
 TABLE.navigation {
 	background-color: #238b49 !important;
@@ -57,7 +57,8 @@ DIV.part {
 }
 
 BODY > DIV.book,
-BODY > DIV.footer {
+BODY > DIV.footer,
+BODY > DIV.part {
 	margin-left: 1em;
 	margin-right: 1em;
 }

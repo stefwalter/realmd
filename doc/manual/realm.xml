@@ -113,6 +113,13 @@ $ realm discover domain.example.com
 			<replaceable>active-directory</replaceable> or
 			<replaceable>freeipa</replaceable>.</para></listitem>
 		</varlistentry>
+		<varlistentry>
+			<term><option>--membership-software=xxx</option></term>
+			<listitem><para>Only discover realms for which the given
+			membership software can be used to subsequently perform enrollment.
+			Possible values include <replaceable>samba</replaceable> or
+			<replaceable>adcli</replaceable>. </para></listitem>
+		</varlistentry>
 	</variablelist>
 
 </refsect1>
@@ -143,20 +150,20 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
 	must have a supported mechanism for joining from a client machine, such
 	as Active Directory or FreeIPA.</para>
 
-	<para>Unless a <literal>--user</literal> is explicitly specified, then if
-	possible, an automatic join is attempted first.</para>
+	<para>Unless a <literal>--user</literal> is explicitly specified, an automatic join is attempted first.</para>
+
+	<para>Note that the <literal>--user </literal>, <literal>--no-password</literal>,
+	and <literal>--one-time-password </literal> options are mutually exclusive.
+	At most one of them can be specified.</para>
 
 	<para>The following options can be used:</para>
 
 	<variablelist>
 		<varlistentry>
-			<term><option>--client-software=xxx</option></term>
-			<listitem><para>Only join realms for which we can
-			use the given client software. Possible values include
-			<replaceable>sssd</replaceable> or
-			<replaceable>winbind</replaceable>. Not all values are
-			supported for all realms. By default the client software
-			is automatically selected.</para></listitem>
+			<term><option>--user=xxx</option></term>
+			<listitem><para>The user name to be used to authenticate
+			with when joining the machine to the realm. You will
+			be prompted for a password.</para></listitem>
 		</varlistentry>
 		<varlistentry>
 			<term><option>--computer-ou=OU=xxx</option></term>
@@ -167,18 +174,24 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
 			DSE portion of distinguished name.</para></listitem>
 		</varlistentry>
 		<varlistentry>
-			<term><option>--membership-software=xxx</option></term>
-			<listitem><para>The software to use when joining to the
-			realm. Possible values include <replaceable>samba</replaceable> or
-			<replaceable>adcli</replaceable>. Not all values are
-			supported for all realms. By default the membership software
-			is automatically selected.</para></listitem>
+			<term><option>--no-password</option></term>
+			<listitem><para>Perform the join automatically without
+			a password.</para></listitem>
 		</varlistentry>
 		<varlistentry>
 			<term><option>--one-time-password=xxxx</option></term>
 			<listitem><para>Perform the join using a one time password
 			specified on the command line. This is not possible with
 			all types of realms.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--client-software=xxx</option></term>
+			<listitem><para>Only join realms for which we can
+			use the given client software. Possible values include
+			<replaceable>sssd</replaceable> or
+			<replaceable>winbind</replaceable>. Not all values are
+			supported for all realms. By default the client software
+			is automatically selected.</para></listitem>
 		</varlistentry>
 		<varlistentry>
 			<term><option>--server-software=xxx</option></term>
@@ -188,10 +201,12 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
 			<replaceable>freeipa</replaceable>.</para></listitem>
 		</varlistentry>
 		<varlistentry>
-			<term><option>--user</option></term>
-			<listitem><para>The user name to be used to authenticate
-			with when joining the machine to the realm. You will
-			be prompted for a password.</para></listitem>
+			<term><option>--membership-software=xxx</option></term>
+			<listitem><para>The software to use when joining to the
+			realm. Possible values include <replaceable>samba</replaceable> or
+			<replaceable>adcli</replaceable>. Not all values are
+			supported for all realms. By default the membership software
+			is automatically selected.</para></listitem>
 		</varlistentry>
 	</variablelist>
 
@@ -258,6 +273,25 @@ $ realm list
 </programlisting>
 	</informalexample>
 
+	<para>By default, realms that have been discovered, but not configured (using
+	the <option>join</option> command), are not displayed. Also, by default, the
+	list of realm details displayed is verbose. The options below can be used to
+	change this default behavior</para>
+
+	<para>The following options can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--all</option></term>
+			<listitem><para>Show all discovered realms (whether or not
+			they have been configured). </para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--name-only</option></term>
+			<listitem><para>Display only realm names (as opposed to
+			verbose output).</para></listitem>
+		</varlistentry>
+	</variablelist>
 </refsect1>
 
 <refsect1>

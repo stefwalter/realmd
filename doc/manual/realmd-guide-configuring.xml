@@ -127,7 +127,7 @@ enabled = no
 
 		<informalexample>
 <programlisting language="js">
-[active-directory]
+[users]
 default-home = /home/%D/%U
 # default-home = /nfs/home/%D-%U
 </programlisting>
@@ -159,7 +159,7 @@ DOMAIN\user:*:1344600500:1344600513:User Name:/home/DOMAIN/user:/bin/bash
 
 		<informalexample>
 <programlisting language="js">
-[active-directory]
+[users]
 default-shell = /bin/bash
 # default-shell = /bin/sh
 </programlisting>

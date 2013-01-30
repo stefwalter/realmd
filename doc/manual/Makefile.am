@@ -86,3 +86,6 @@ uninstall-local:
 dist-hook: html/index.html
 	@mkdir $(distdir)/html
 	@cp ./html/* $(distdir)/html
+
+upload: all
+	rsync -Hvax html/./ anarchy.freedesktop.org:/srv/www.freedesktop.org/www/software/realmd/docs/./

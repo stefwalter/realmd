@@ -13,14 +13,19 @@
 	<title>Overview</title>
 
 	<para>realmd is an on-demand system D-Bus service, whose primary purpose is
-	to enable Fedora to work seamlessly out of the box with a Kerberos realm
-	(with primary focus on AD and IPA). Specifically, the realmd service supports
-	discovering a domain, joining a domain, leaving a domain, and more.</para>
+	to enable Linux to work seamlessly out of the box with network authentication
+	realms (like Kerberos, with primary focus on AD and IPA). Specifically, the
+	realmd service supports discovering a domain, joining a domain, leaving a
+	domain, and more.</para>
+
+	<para>Currently there is only support for Kerberos realms.</para>
 
 	<para>Some of the D-Bus clients that interact with realmd are:</para>
 	<itemizedlist>
 		<listitem><para>command line realm client</para></listitem>
 		<listitem><para>gnome-control-center GUI client</para></listitem>
+		<listitem><para>gdm</para></listitem>
+		<listitem><para>anaconda</para></listitem>
 	</itemizedlist>
 
 	<para>Realmd can be run in two different modes (with some slight changes in
@@ -50,7 +55,7 @@
 
 	<para>For freeipa server software, realmd supports:</para>
 	<itemizedlist>
-		<listitem><para>sssd client software (joins/leaves are not supported).</para></listitem>
+		<listitem><para>sssd client software (joins/leaves supported soon).</para></listitem>
 	</itemizedlist>
 </section>
 
@@ -95,7 +100,7 @@
 				</varlistentry>
 				<varlistentry>
 					<term>subclass: RealmSssdIpa</term>
-					<listitem><para>does NOT implement RealmKerberosMembership</para></listitem>
+					<listitem><para>does not yet implement RealmKerberosMembership</para></listitem>
 				</varlistentry>
 			</variablelist>
 			</listitem>
@@ -143,9 +148,9 @@
 	information. Certain types of RealmKerberos objects (i.e. RealmSamba and RealmSssdAd)
 	can subsequently be used as part of the Join process.</para>
 
-	<para>RealmAllProvider is special in that it serves  A client that wants to use all
+	<para>RealmAllProvider is special in that it serves all realm types. A client that wants to use all
 	of the RealmProviders (Samba, Sssd, Kerberos) can contact each RealmProvider (at its
-	unique object path). Alternatively, the client can simply contact the RealmAllProvider,
+	unique object path). Alternatively and usually, the client simply contacts the RealmAllProvider,
 	which is special in that it serves as an aggregation point and container for all of
 	the other RealmProviders. When Discover is called on RealmAllProvider, it calls
 	the Discover methods of each of the other RealmProviders, collects the results
@@ -157,13 +162,13 @@
 
 <section id="provider">
 	<title>RealmProvider</title>
-	<para>A RealmProvider object supports the Discover method, and is characterized by</para>
+	<para>A RealmProvider object supports the Discover method, and is characterized by:</para>
 
 	<itemizedlist>
 		<listitem><para>its object path (static)</para></listitem>
 		<listitem><para>the combinations of {client, server, membership} software it supports for the Discover process</para></listitem>
 		<listitem><para>the types of RealmKerberos objects it creates during the Discover process</para></listitem>
-		<listitem><para>the file it reads for configuration information</para></listitem>
+		<listitem><para>the file it uses to read/write configuration information</para></listitem>
 	</itemizedlist>
 
 	<itemizedlist>
@@ -193,13 +198,13 @@
 		<listitem><para>object path: "/org/freedesktop/realmd/GenericKerberos"</para></listitem>
 		<listitem><para>creates: RealmKerberos objects</para></listitem>
 		<listitem><para>config file read: n/a</para></listitem>
-		<listitem><para>software supported: only used if client-software and server-software were not specified</para></listitem>
+		<listitem><para>software supported: none, so only used if client-software and server-software were not specified</para></listitem>
 	</itemizedlist>
 
 	<itemizedlist>
 		<title>RealmAllProvider</title>
 		<listitem><para>object path: “/org/freedesktop/realmd”</para></listitem>
-		<listitem><para>special RealmProvider that aggregates results (more details on previous slide)</para></listitem>
+		<listitem><para>special RealmProvider that aggregates results (see <link linkend="discover">Discover() method</link>)</para></listitem>
 	</itemizedlist>
 </section>
 
@@ -232,10 +237,10 @@
 	<title>RealmKerberos</title>
 
 	<para>A RealmKerberos object supports the Join, Leave, Deconfigure, and
-	ChangeLoginPolicy methods. It is characterized by</para>
+	ChangeLoginPolicy methods. It is characterized by:</para>
 
 	<itemizedlist>
-		<listitem><para>its object path (dynamic) of the form &lt;provider_object_path&gt;/&lt;realm_name&gt;_&lt;unique_number&gt;</para></listitem>
+		<listitem><para>its object path (dynamic, per realm)</para></listitem>
 		<listitem><para>the membership software it supports</para></listitem>
 		<listitem><para>the configuration file it modifies</para></listitem>
 		<listitem><para>the packages it requires to be installed</para></listitem>
@@ -244,7 +249,7 @@
 
 	<itemizedlist>
 		<title>RealmSamba</title>
-		<listitem><para>object path: dynamically generated upon realm creation	// example:  /realmd/Samba/example.com_4</para></listitem>
+		<listitem><para>object path example: /realmd/Samba/example.com_4</para></listitem>
 		<listitem><para>membership software supported: samba</para></listitem>
 		<listitem><para>config file modified: smb.conf</para></listitem>
 		<listitem><para>required packages: samba, winbind</para></listitem>
@@ -259,7 +264,7 @@
 
 	<itemizedlist>
 		<title>RealmSssdAd</title>
-		<listitem><para>object path: dynamically generated upon realm creation	// example:  /realmd/Sssd/example.com_4</para></listitem>
+		<listitem><para>object path example: /realmd/Sssd/example.com_4</para></listitem>
 		<listitem><para>membership software supported: samba, adcli (but only for certain credentials: see below)</para></listitem>
 		<listitem><para>config file modified: sssd.conf</para></listitem>
 		<listitem><para>required_packages: sssd, adcli, samba (depends on membership software)</para></listitem>
@@ -275,7 +280,7 @@
 
 	<itemizedlist>
 		<title>RealmSssdIpa</title>
-		<listitem><para>has a dynamically generated object path upon realm creation, but does not support joins.</para></listitem>
+		<listitem><para>has a dynamically generated object path upon realm creation, but does not support joins yet.</para></listitem>
 	</itemizedlist>
 
 </section>

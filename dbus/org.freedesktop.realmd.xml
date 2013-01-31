@@ -68,6 +68,9 @@
 		    <listitem><para><literal>server-software</literal>: a string
 		      containing the client software identifier that the returned
 		      realms should match.</para></listitem>
+		    <listitem><para><literal>membership-software</literal>: a string
+		      containing the membership software identifier that the returned
+		      realms should match.</para></listitem>
 		  </itemizedlist>
 
 		  The @relevance returned can be used to rank results from
@@ -604,6 +607,9 @@
 		    <listitem><para><literal>assume-packages</literal>: a boolean
 		      which makes the join assume that all needed
 		      software packages have already been installed</para></listitem>
+		    <listitem><para><literal>membership-software</literal>: a string
+		      containing the membership software identifier that the returned
+		      realms should match.</para></listitem>
 		  </itemizedlist>
 
 		  This method requires authorization for the PolicyKit action

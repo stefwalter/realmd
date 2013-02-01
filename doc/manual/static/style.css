@@ -104,3 +104,7 @@ PRE.screen {
 	padding: 0.5em;
 	background: #e6f3ff;
 }
+
+CODE.option {
+	white-space: nowrap;
+}

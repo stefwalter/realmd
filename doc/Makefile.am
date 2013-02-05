@@ -10,8 +10,9 @@ EXTRA_DIST = \
 DISTCLEANFILES = \
 	website/Makefile
 
-upload: website manual
+upload:
 	make -C manual upload
+	make -C internals upload
 	make -C website upload
 
 else

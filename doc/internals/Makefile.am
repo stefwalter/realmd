@@ -41,3 +41,6 @@ render-images:
 	for i in $(SVG_IMAGES:.svg=); do \
 		inkscape --export-png=static/$$i.png $$i.svg; \
 	done
+
+upload: all
+	rsync -Hvax html/./ anarchy.freedesktop.org:/srv/www.freedesktop.org/www/software/realmd/internals/./

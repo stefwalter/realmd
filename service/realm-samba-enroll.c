@@ -219,10 +219,17 @@ on_join_do_keytab (GObject *source,
 		    g_pattern_match_simple ("*failed*: Object class violation*", output->str) ||
 		    g_pattern_match_simple ("*failed*: Insufficient access*", output->str) ||
 		    g_pattern_match_simple ("*: Access denied*", output->str) ||
-		    g_pattern_match_simple ("*not have administrator privileges*", output->str)) {
+		    g_pattern_match_simple ("*not have administrator privileges*", output->str) ||
+		    g_pattern_match_simple ("*failure*: *not been granted the requested logon type*", output->str) ||
+		    g_pattern_match_simple ("*failure*: User not allowed to log on to this computer*", output->str) ||
+		    g_pattern_match_simple ("*failure*: *specified account is not allowed to authenticate to the machine*", output->str)) {
 			g_set_error (&error, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
 			             "Insufficient permissions to join the domain %s",
 			             join->realm);
+		} else if (g_pattern_match_simple ("*: Logon failure*", output->str)) {
+			g_set_error (&error, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
+			             "The %s account, password, or credentials are invalid",
+			             join->user_name);
 		} else {
 			g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 			             "Joining the domain %s failed", join->realm);

@@ -30,13 +30,13 @@
 
 <refsynopsisdiv>
 	<cmdsynopsis>
-		<command>realm discover</command> <arg choice="plain">-v</arg> <arg choice="opt">realm-name</arg>
+		<command>realm discover</command> <arg choice="opt">realm-name</arg>
 	</cmdsynopsis>
 	<cmdsynopsis>
-		<command>realm join</command> <arg choice="plain">-v</arg> <arg choice="opt">-U user</arg> <arg choice="opt">realm-name</arg>
+		<command>realm join</command> <arg choice="opt">-U user</arg> <arg choice="opt">realm-name</arg>
 	</cmdsynopsis>
 	<cmdsynopsis>
-		<command>realm leave</command> <arg choice="plain">-v</arg> <arg choice="opt">-U user</arg> <arg choice="opt">realm-name</arg>
+		<command>realm leave</command> <arg choice="opt">-U user</arg> <arg choice="opt">realm-name</arg>
 	</cmdsynopsis>
 	<cmdsynopsis>
 		<command>realm list</command>
@@ -108,7 +108,7 @@ $ realm discover domain.example.com
 		</varlistentry>
 		<varlistentry>
 			<term><option>--server-software=xxx</option></term>
-			<listitem><para>Only discover realms for run the
+			<listitem><para>Only discover realms which run the
 			given server software. Possible values include
 			<replaceable>active-directory</replaceable> or
 			<replaceable>freeipa</replaceable>.</para></listitem>
@@ -356,7 +356,7 @@ $ realm deny DOMAIN\User
 	<variablelist>
 		<varlistentry>
 			<term><option>--all, -a</option></term>
-			<listitem><para>Deny login by any validuser of the
+			<listitem><para>Deny login by any valid user of the
 			realm.</para></listitem>
 		</varlistentry>
 		<varlistentry>

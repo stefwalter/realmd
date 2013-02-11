@@ -97,18 +97,47 @@ realm_sssd_config_have_domain (RealmIniConfig *config,
 	return have;
 }
 
+static gboolean
+update_domain (RealmIniConfig *config,
+               const char *section,
+               va_list va,
+               GError **error)
+{
+	GHashTable *parameters;
+	const gchar *name;
+	const gchar *value;
+	gchar *shell;
+
+	/* Always make sure this is set */
+	shell = realm_ini_config_get (config, "nss", "default_shell");
+	if (shell == NULL) {
+		realm_ini_config_set (config, "nss", "default_shell",
+		                      realm_settings_string ("users", "default-shell"));
+	}
+	g_free (shell);
+
+	parameters = g_hash_table_new (g_str_hash, g_str_equal);
+	while ((name = va_arg (va, const gchar *)) != NULL) {
+		value = va_arg (va, const gchar *);
+		g_hash_table_insert (parameters, (gpointer)name, (gpointer)value);
+	}
+
+	realm_ini_config_set_all (config, section, parameters);
+	g_hash_table_unref (parameters);
+
+	return realm_ini_config_finish_change (config, error);
+
+}
+
 gboolean
 realm_sssd_config_add_domain (RealmIniConfig *config,
                               const gchar *domain,
                               GError **error,
                               ...)
 {
-	GHashTable *parameters;
-	const gchar *name;
-	const gchar *value;
 	const gchar *domains[2];
+	gboolean ret;
 	gchar *section;
-	gchar *shell;
 	va_list va;
 
 	g_return_val_if_fail (REALM_IS_INI_CONFIG (config), FALSE);
@@ -133,31 +162,52 @@ realm_sssd_config_add_domain (RealmIniConfig *config,
 		realm_ini_config_set (config, "sssd", "config_file_version", "2");
 	}
 
-	/* Always make sure this is set */
-	shell = realm_ini_config_get (config, "nss", "default_shell");
-	if (shell == NULL) {
-		realm_ini_config_set (config, "nss", "default_shell",
-		                      realm_settings_string ("users", "default-shell"));
-	}
-	g_free (shell);
-
 	domains[0] = domain;
 	domains[1] = NULL;
 	realm_ini_config_set_list_diff (config, "sssd", "domains", ", ", domains, NULL);
 
-	parameters = g_hash_table_new (g_str_hash, g_str_equal);
 	va_start (va, error);
-	while ((name = va_arg (va, const gchar *)) != NULL) {
-		value = va_arg (va, const gchar *);
-		g_hash_table_insert (parameters, (gpointer)name, (gpointer)value);
-	}
+	ret = update_domain (config, section, va, error);
 	va_end (va);
 
-	realm_ini_config_set_all (config, section, parameters);
-	g_hash_table_unref (parameters);
 	g_free (section);
 
-	return realm_ini_config_finish_change (config, error);
+	return ret;
+}
+
+gboolean
+realm_sssd_config_update_domain (RealmIniConfig *config,
+                                 const gchar *domain,
+                                 GError **error,
+                                 ...)
+{
+	gchar *section;
+	gboolean ret;
+	va_list va;
+
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (config), FALSE);
+	g_return_val_if_fail (domain != NULL, FALSE);
+	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+	if (!realm_ini_config_begin_change (config, error))
+		return FALSE;
+
+	section = realm_sssd_config_domain_to_section (domain);
+	if (!realm_ini_config_have_section (config, section)) {
+		realm_ini_config_abort_change (config);
+		g_set_error (error, G_FILE_ERROR, G_FILE_ERROR_NOENT,
+		             _("Don't have domain %s in sssd.conf config file"), domain);
+		g_free (section);
+		return FALSE;
+	}
+
+	va_start (va, error);
+	ret = update_domain (config, section, va, error);
+	va_end (va);
+
+	g_free (section);
+
+	return ret;
 }
 
 gboolean

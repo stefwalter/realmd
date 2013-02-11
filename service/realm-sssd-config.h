@@ -38,6 +38,11 @@ gboolean            realm_sssd_config_add_domain               (RealmIniConfig *
                                                                 GError **error,
                                                                 ...) G_GNUC_NULL_TERMINATED;
 
+gboolean            realm_sssd_config_update_domain            (RealmIniConfig *config,
+                                                                const gchar *domain,
+                                                                GError **error,
+                                                                ...);
+
 gboolean            realm_sssd_config_remove_domain            (RealmIniConfig *config,
                                                                 const gchar *domain,
                                                                 GError **error);

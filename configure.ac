@@ -307,6 +307,9 @@ AC_SUBST(GENHTML)
 privatedir='${libdir}/realmd'
 AC_SUBST(privatedir)
 
+cachedir='${localstatedir}/cache/realmd'
+AC_SUBST(cachedir)
+
 AC_CONFIG_FILES([
 	Makefile
 	build/Makefile

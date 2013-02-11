@@ -62,6 +62,7 @@ realmd_CFLAGS = \
 	-DPROVIDER_DIR="\"$(privatedir)/provider.d\"" \
 	-DLOCALEDIR=\""$(datadir)/locale"\" \
 	-DSTATE_DIR="\"$(localstatedir)/realmd\"" \
+	-DCACHEDIR="\"$(cachedir)\"" \
 	$(PACKAGEKIT_CFLAGS) \
 	$(POLKIT_CFLAGS) \
 	$(GLIB_CFLAGS) \
@@ -82,6 +83,7 @@ realmd_LDADD = \
 install-data-local:
 	$(INSTALL_PROGRAM) -d $(DESTDIR)$(privatedir)
 	$(INSTALL_PROGRAM) -d $(DESTDIR)$(localstatedir)/realmd
+	$(INSTALL_PROGRAM) -d $(DESTDIR)$(cachedir)
 	$(INSTALL_DATA) $(srcdir)/realmd-$(DISTRO).conf $(DESTDIR)$(privatedir)/realmd-distro.conf
 uninstall-local:
 	rm -f $(DESTDIR)$(privatedir)/realmd-distro.conf

@@ -98,12 +98,9 @@ realm_kerberos_provider_discover_finish (RealmProvider *provider,
 	if (name == NULL)
 		return NULL;
 
-	/* If any known software, don't create the realm */
-	if (!realm_discovery_get_string (discovery, REALM_DBUS_OPTION_SERVER_SOFTWARE)) {
-		realm = realm_provider_lookup_or_register_realm (provider,
-		                                                 REALM_TYPE_KERBEROS,
-		                                                 name, discovery);
-	}
+	realm = realm_provider_lookup_or_register_realm (provider,
+	                                                 REALM_TYPE_KERBEROS,
+	                                                 name, discovery);
 
 	g_free (name);
 	g_hash_table_unref (discovery);

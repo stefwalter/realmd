@@ -349,9 +349,9 @@
 
 	<informalexample>
 <programlisting language="js">
-[example]
-enabled = no
-# enabled = yes
+[providers]
+example = yes
+# example = no
 </programlisting>
 	</informalexample>
 

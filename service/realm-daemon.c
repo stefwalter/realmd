@@ -174,22 +174,30 @@ initialize_service (GDBusConnection *connection)
 
 	all_provider = realm_all_provider_new_and_export (connection);
 
-	provider = realm_sssd_provider_new ();
-	g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
-	realm_all_provider_register (all_provider, provider);
-	g_object_unref (provider);
+	if (realm_settings_boolean ("providers", REALM_DBUS_IDENTIFIER_SSSD)) {
+		provider = realm_sssd_provider_new ();
+		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
+		realm_all_provider_register (all_provider, provider);
+		g_object_unref (provider);
+	}
 
-	provider = realm_samba_provider_new ();
-	g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
-	realm_all_provider_register (all_provider, provider);
-	g_object_unref (provider);
+	if (realm_settings_boolean ("providers", REALM_DBUS_IDENTIFIER_SAMBA)) {
+		provider = realm_samba_provider_new ();
+		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
+		realm_all_provider_register (all_provider, provider);
+		g_object_unref (provider);
+	}
 
+	/*
+	 * Some callers rely on realmd to be able to resolve kerberos realm names.
+	 * This is a core part of realmd functionality, and this provider is not optional.
+	 */
 	provider = realm_kerberos_provider_new ();
 	g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
 	realm_all_provider_register (all_provider, provider);
 	g_object_unref (provider);
 
-	if (realm_settings_boolean (REALM_DBUS_IDENTIFIER_EXAMPLE, "enabled")) {
+	if (realm_settings_boolean ("providers", REALM_DBUS_IDENTIFIER_EXAMPLE)) {
 		provider = realm_example_provider_new ();
 		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
 		realm_all_provider_register (all_provider, provider);

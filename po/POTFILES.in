@@ -7,6 +7,7 @@ service/realm-provider.c
 service/realm-samba.c
 service/realm-sssd-ad.c
 service/realm-sssd-config.c
+service/realm-sssd-ipa.c
 tools/realm.c
 tools/realm-client.c
 tools/realm-discover.c

@@ -8,8 +8,10 @@
 <chapter id="guide-freeipa">
 	<title>Using with FreeIPA</title>
 
-	<para><command>realmd</command> can discover FreeIPA domains. It is not
-	yet possible to join the computer to the domain.</para>
+	<para><command>realmd</command> can discover FreeIPA domains and join
+	the current computer as an account on a domain. This allows using domain
+	users locally, and log into the local machine with FreeIPA domain
+	credentials.</para>
 
 	<section>
 		<title>Discovering FreeIPA domains</title>
@@ -54,6 +56,108 @@ $ <command>realm --verbose discover domain.example.com</command>
  * Found IPA style certificate for: domain.example.com
  * Successfully discovered: domain.example.com
 ...
+</screen>
+		</informalexample>
+
+	</section>
+
+	<section id="guide-freeipa-client">
+		<title>FreeIPA client software</title>
+		<para>As part of configuring an FreeIPA  domain for use
+		on the local computer, <command>realmd</command> will install and
+		configure client software to enable domain accounts to be used on
+		the local computer.</para>
+
+		<para>For a FreeIPA domain this is
+		<ulink url="https://fedorahosted.org/sssd/">SSSD</ulink>.</para>
+
+	</section>
+
+	<section id="guide-freeipa-join">
+		<title>Joining a FreeIPA domain</title>
+
+		<para>To join a FreeIPA domain with <command>realmd</command>
+		you can use the <link linkend="realm"><command>realm</command></link>
+		command line tool:</para>
+
+		<informalexample>
+<screen>
+$ <command>realm join --verbose ipa.example.com</command>
+</screen>
+		</informalexample>
+
+		<para>By specifying the <option>--verbose</option> it's easier
+		to see what went wrong if the join fails.</para>
+
+		<para>Other tools also use <command>realmd</command> which can
+		be used to perform the join operation, for example: GNOME
+		Control Center.</para>
+
+		<para>The join operation does the following:</para>
+		<itemizedlist>
+			<listitem><para>Discovers information about the domain.</para></listitem>
+			<listitem><para>Installs the necessary software to join the domain, such as SSSD.</para></listitem>
+			<listitem><para>Prompts for administrative credentials.</para></listitem>
+			<listitem><para>A computer account in the domain will be created, and or updated.</para></listitem>
+			<listitem><para>A host keytab file at <filename>/etc/krb5.keytab</filename> is created.</para></listitem>
+			<listitem><para>Configures the SSSD service, and restarts and enables it as appropriate.</para></listitem>
+			<listitem><para>Enables domain users in <filename>/etc/nsswitch.conf</filename></para></listitem>
+		</itemizedlist>
+
+		<para>After the join operation is complete, domain accounts should
+		be usable locally, although logins using domain accounts are
+		not necessarily enabled.</para>
+
+		<para>You verify that domain accounts are working with with a
+		command like this:</para>
+
+		<informalexample>
+<screen>
+$ <command>getent passwd admin@ipa.example.com</command>
+</screen>
+		</informalexample>
+
+		<para>The join operation will create or update a computer account
+		in the domain.</para>
+
+	</section>
+
+	<section id="guide-freeipa-permit">
+		<title>Logins using Domain Accounts</title>
+
+		<para>Once the
+		<link linkend="guide-freeipa-join">computer is joined</link>
+		to a FreeIPA domain, the machine will automatically follow the
+		domain settings for whether users are able to log into the
+		machine or not.</para>
+
+		<para>To override this behavior and permit any domain account
+		to log in, use the following command.</para>
+
+		<informalexample>
+<screen>
+$ <command>realm permit --realm domain.example.com --all</command>
+</screen>
+		</informalexample>
+
+		<para>To permit only specific accounts from the domain to log in
+		use the following command. The first time this command is run
+		it will change the mode to only allow logins by specific accounts,
+		and then add the specified accounts to the list of accounts
+		to permit.</para>
+
+		<informalexample>
+<screen>
+$ <command>realm permit --realm domain.example.com user1@ipa.example.com user2@ipa.example.com</command>
+</screen>
+		</informalexample>
+
+		<para>To deny logins from any domain account, use the following
+		command.</para>
+
+		<informalexample>
+<screen>
+$ <command>realm deny --realm domain.example.com --all</command>
 </screen>
 		</informalexample>
 

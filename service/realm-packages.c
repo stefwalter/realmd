@@ -165,6 +165,8 @@ on_install_resolved (GObject *source,
 	GError *error = NULL;
 	PkResults *results;
 	gchar *desc;
+	gchar *remote;
+	gchar *missing;
 
 	results = pk_task_generic_finish (install->task, result, &error);
 	if (error == NULL) {
@@ -185,6 +187,30 @@ on_install_resolved (GObject *source,
 		g_free (desc);
 
 	} else {
+		/*
+		 * This is after our first interaction with package-kit. If it's
+		 * not installed then we'll get a standard DBus error that it
+		 * couldn't activate the service.
+		 *
+		 * So translate that into something useful for the caller. If
+		 * PackageKit is not installed, then it is assumed that the
+		 * distro or administrator wants to take full control over the
+		 * installation of packages.
+		 */
+		if (error->domain == PK_CONTROL_ERROR) {
+			remote = g_dbus_error_get_remote_error (error);
+			if (remote && g_str_equal (remote, "org.freedesktop.DBus.Error.ServiceUnknown")) {
+				g_dbus_error_strip_remote_error (error);
+				realm_diagnostics_error (install->invocation, error, "PackageKit not available");
+				g_clear_error (&error);
+				missing = package_names_to_list (install->packages);
+				g_set_error (&error, REALM_ERROR, REALM_ERROR_FAILED,
+				             _("Necessary packages are not installed: %s"), missing);
+				g_free (missing);
+			}
+			g_free (remote);
+		}
+
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete (res);
 	}

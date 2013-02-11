@@ -328,6 +328,38 @@
 	</itemizedlist>
 </section>
 
+<section id="example">
+	<title>Example Provider</title>
+
+	<para>realmd includes a rough example provider, which can be used as a mock
+	provider for testing against. It is disabled by default. The example provider
+	discovers realms that match <literal>*example.com</literal>.</para>
+
+	<para>Set the <option>example</option> setting to <literal>yes</literal> in
+	the <option>[providers]</option> section of the settings to enable it.</para>
+
+	<informalexample>
+<programlisting language="js">
+[example]
+enabled = no
+# enabled = yes
+</programlisting>
+	</informalexample>
+
+	<para>You can tweak various options per example realm.</para>
+
+		<informalexample>
+<programlisting>
+[example.com]
+# Mock administrator account required to join
+example-administrator = Administrator
+# Password for above mock admin account
+example-password = bureaucracy
+</programlisting>
+	</informalexample>
+
+</section>
+
 <section id="missing">
 	<title>Missing</title>
 

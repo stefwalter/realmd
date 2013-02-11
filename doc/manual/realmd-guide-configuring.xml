@@ -83,35 +83,6 @@ domain.example.com
 
 	</section>
 
-	<section id="guide-configuring-example">
-		<title>example</title>
-		<para>These options should go in an <option>[example]</option>
-		section of the <filename>/etc/realmd.conf</filename> file. Only
-		specify the settings you wish to override.</para>
-
-	<section>
-		<title>enabled</title>
-
-		<para>Whether the example realm provider, which creates mock
-		realms for <literal>example.com</literal>,
-		<literal>example.org</literal>,
-		<literal>example.net</literal>.</para>
-
-		<informalexample>
-<programlisting language="js">
-[example]
-enabled = no
-# enabled = yes
-</programlisting>
-	</informalexample>
-
-		<para>The default setting for this is
-		<option>no</option></para>
-
-	</section>
-
-	</section>
-
 	<section id="guide-configuring-users">
 		<title>user</title>
 		<para>These options should go in an <option>[users]</option>
@@ -223,40 +194,6 @@ computer-ou = OU=Linux Computers,DC=domain,DC=example,DC=com
 		<para>It is also possible to use the <option>--computer-ou</option>
 		argument of the <link linkend="realm">realm</link> command to
 		create a computer account at a specific OU.</para>
-
-	</section>
-
-	<section>
-		<title>example-administrator</title>
-
-		<para>Administrator name for example mock realms. This is the
-		mock administrator account that will be required to join an
-		example mock realm.</para>
-
-		<informalexample>
-<programlisting>
-[example.com]
-example-administrator = Administrator
-# example-administrator = admin
-</programlisting>
-	</informalexample>
-
-	</section>
-
-	<section>
-		<title>example-password</title>
-
-		<para>Password for administrator of example mock realms. This
-		is the mock password that will be required to join an example
-		mock realm.</para>
-
-		<informalexample>
-<programlisting>
-[example.com]
-example-password = bureaucracy
-# example-administrator = password here
-</programlisting>
-	</informalexample>
 
 	</section>
 

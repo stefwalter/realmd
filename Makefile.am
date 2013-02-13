@@ -41,3 +41,6 @@ upload-website:
 upload-release: $(DIST_ARCHIVES)
 	gpg --detach-sign --local-user 'stef@thewalter.net' $(DIST_ARCHIVES)
 	scp $(DIST_ARCHIVES) $(DIST_ARCHIVES).sig anarchy.freedesktop.org:/srv/www.freedesktop.org/www/software/realmd/releases
+
+transifex:
+	sh build/tx-update

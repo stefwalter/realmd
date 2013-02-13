@@ -11,6 +11,8 @@
 .intltool-merge-cache
 .project
 .pydevproject
+.tx
+
 aclocal.m4
 autom4te.cache
 compile

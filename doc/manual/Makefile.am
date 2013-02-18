@@ -58,7 +58,7 @@ $(DBUS_GENERATED): $(DBUS_INTERFACE) gdbus-fix-bugs.xsl
 	$(AM_V_GEN) gdbus-codegen --interface-prefix org.freedesktop.realmd. \
 		--generate-docbook realmd $<
 	$(AM_V_GEN) for f in $(DBUS_GENERATED); do \
-		$(XSLTPROC) --output $$f.tmp $(srcdir)/gdbus-fix-bugs.xsl $$f && mv $$f.tmp $$f; \
+		$(XSLTPROC) --output $(builddir)/$$f.tmp $(srcdir)/gdbus-fix-bugs.xsl $(builddir)/$$f && mv $(builddir)/$$f.tmp $(builddir)/$$f; \
 	done
 
 $(DBUS_ESCAPED): $(DBUS_INTERFACE) $(srcdir)/escape-xml-to-text.xsl

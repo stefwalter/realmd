@@ -1,3 +1,18 @@
+0.13
+ * Pull in translations from transifex
+ * Detect incorrect passwords when using 'net ads join' login via RPC
+ * Use ipa-client-install to provide join functionality for IPA domains
+ * Don't assume that we can use kerberos to validate admin password
+ * Allow specifying --membership-software when discovering a realm
+ * Only use the XDG user data directory if it exists
+ * Quit the daemon when SIGTERM or SIGINT received
+ * Implement cancellation of operations
+ * Documentation fixes
+ * Add documentation about realmd internals
+ * Update commands and packages for Debian
+ * Use /var/cache/realmd instead of /tmp
+ * Build fixes and lots of other bugs fixed
+
 0.12
  * Add a --no-password option to realm join
  * Check if domain is configured before trying to join

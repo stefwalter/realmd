@@ -78,7 +78,7 @@ on_discover_complete (GObject *source,
 	GError *error = NULL;
 	GPtrArray *results;
 	const gchar *path;
-	GList *realms;
+	GList *realms = NULL;
 	gint relevance;
 	GList *l;
 

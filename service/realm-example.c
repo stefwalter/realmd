@@ -220,21 +220,9 @@ typedef struct {
 } OpData;
 
 static gdouble
-settings_join_delay (const gchar *realm_name)
+settings_delay (const gchar *realm_name, const gchar *key)
 {
-	gchar *endptr = NULL;
-	const gchar *string;
-	gdouble value;
-
-	string = realm_settings_value (realm_name, "example-join-delay");
-	if (string == NULL)
-		return 0.0;
-
-	value = g_strtod (string, &endptr);
-	if (!endptr || endptr[0] != '\0')
-		return 0.0;
-
-	return value * G_USEC_PER_SEC;
+	return realm_settings_double (realm_name, key, 0.0) * G_USEC_PER_SEC;
 }
 
 static void
@@ -309,7 +297,7 @@ realm_example_join_async (RealmKerberosMembership *membership,
 		OpData *data = g_new0 (OpData, 1);
 		data->self = g_object_ref (self);
 		data->async = g_object_ref (async);
-		usleep_async (settings_join_delay (realm_name),
+		usleep_async (settings_delay (realm_name, "example-join-delay"),
 		              realm_invocation_get_cancellable (invocation),
 		              on_join_sleep_done, data);
 	}
@@ -396,7 +384,7 @@ realm_example_leave_password_async (RealmKerberosMembership *membership,
 		OpData *data = g_new0 (OpData, 1);
 		data->self = g_object_ref (self);
 		data->async = g_object_ref (async);
-		usleep_async (settings_join_delay (realm_name),
+		usleep_async (settings_delay (realm_name, "example-leave-delay"),
 		              realm_invocation_get_cancellable (invocation),
 		              on_leave_sleep_done, data);
 	}
@@ -431,7 +419,7 @@ realm_example_leave_automatic_async (RealmKerberosMembership *membership,
 		OpData *data = g_new0 (OpData, 1);
 		data->self = g_object_ref (self);
 		data->async = g_object_ref (async);
-		usleep_async (settings_join_delay (realm_name),
+		usleep_async (settings_delay (realm_name, "example-leave-delay"),
 		              realm_invocation_get_cancellable (invocation),
 		              on_leave_sleep_done, data);
 	}

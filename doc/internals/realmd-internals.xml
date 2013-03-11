@@ -364,9 +364,14 @@ example = yes
 example-administrator = Administrator
 # Password for above mock admin account
 example-password = bureaucracy
+# How long to delay when joining this domain, in seconds.
+example-join-delay = 2.5
+# How long to delay when leaving
+example-leave-delay = 1
+# Whether to disallow leaving without a password
+example-no-auto-leave = yes
 </programlisting>
 	</informalexample>
-
 </section>
 
 <section id="missing">

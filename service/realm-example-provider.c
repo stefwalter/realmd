@@ -24,6 +24,8 @@
 #include "realm-ini-config.h"
 #include "realm-settings.h"
 #include "realm-kerberos.h"
+#include "realm-usleep-async.h"
+#include "realm-invocation.h"
 
 #include <string.h>
 
@@ -86,12 +88,19 @@ realm_example_provider_constructed (GObject *obj)
 	g_strfreev (sections);
 }
 
-static gboolean
-on_discover_timeout (gpointer user_data)
+static void
+on_discover_sleep_done (GObject *source,
+                        GAsyncResult *res,
+                        gpointer user_data)
 {
 	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	GError *error = NULL;
+
+	if (!realm_usleep_finish (res, &error))
+		g_simple_async_result_take_error (async, error);
+
 	g_simple_async_result_complete (async);
-	return FALSE;
+	g_object_unref (async);
 }
 
 static gchar *
@@ -178,11 +187,10 @@ realm_example_provider_discover_async (RealmProvider *provider,
 		                                           domain,
 		                                           g_free);
 
-		g_timeout_add_full (G_PRIORITY_DEFAULT,
-		                    delay * 1000,
-		                    on_discover_timeout,
-		                    g_object_ref (async),
-		                    g_object_unref);
+		realm_usleep_async (delay * G_USEC_PER_SEC,
+		                    realm_invocation_get_cancellable (invocation),
+		                    on_discover_sleep_done,
+		                    g_object_ref (async));
 	}
 
 	g_object_unref (async);

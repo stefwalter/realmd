@@ -355,11 +355,24 @@ example = yes
 </programlisting>
 	</informalexample>
 
+	<para>Some settings of the example provider.</para>
+	<informalexample>
+<programlisting language="js">
+[example]
+# What domain to return for a default discovery
+default = default.example.com
+# How long to delay a successful discovery, in seconds
+example-discovery-delay = 1.3
+# How long to delay a unsuccessful disocvery
+example-non-discovery-delay = 0.9
+</programlisting>
+	</informalexample>
+
 	<para>You can tweak various options per example realm.</para>
 
 		<informalexample>
 <programlisting>
-[example.com]
+[default.example.com]
 # Mock administrator account required to join
 example-administrator = Administrator
 # Password for above mock admin account

@@ -27,8 +27,6 @@
 
 #include <string.h>
 
-#define EXAMPLE_DOMAIN "EXAMPLE.COM"
-
 struct _RealmExampleProvider {
 	RealmProvider parent;
 	RealmIniConfig *config;
@@ -160,15 +158,31 @@ realm_example_provider_discover_async (RealmProvider *provider,
 
 	/* A valid example domain name */
 	} else {
+		gchar *domain;
+		gdouble delay;
+
+		if (string == NULL || strlen (string) == 0)
+			domain = g_strdup (realm_settings_value ("example", "default"));
+		else
+			domain = parse_example_name (string);
+
+		if (domain && realm_settings_section(domain))
+			delay = realm_settings_double (domain, "example-discovery-delay", 0.0);
+		else {
+			delay = realm_settings_double ("example", "non-discovery-delay", 0.0);
+			g_free (domain);
+			domain = NULL;
+		}
+
 		g_simple_async_result_set_op_res_gpointer (async,
-		                                           parse_example_name (string),
+		                                           domain,
 		                                           g_free);
 
-		g_timeout_add_seconds_full (G_PRIORITY_DEFAULT,
-		                            g_random_int_range (2, 5),
-		                            on_discover_timeout,
-		                            g_object_ref (async),
-		                            g_object_unref);
+		g_timeout_add_full (G_PRIORITY_DEFAULT,
+		                    delay * 1000,
+		                    on_discover_timeout,
+		                    g_object_ref (async),
+		                    g_object_unref);
 	}
 
 	g_object_unref (async);

@@ -325,7 +325,7 @@ realm_example_leave_automatic_async (RealmKerberosMembership *membership,
 	if (async == NULL)
 		return;
 
-	realm_name = realm_kerberos_get_realm_name (REALM_KERBEROS (self));
+	realm_name = realm_kerberos_get_name (REALM_KERBEROS (self));
 
 	if (realm_settings_boolean (realm_name, "example-no-auto-leave") == TRUE) {
 		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_AUTH_FAILED,

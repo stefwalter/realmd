@@ -82,6 +82,23 @@ PKG_CHECK_MODULES(POLKIT, polkit-gobject-1)
 AC_SUBST(POLKIT_CFLAGS)
 AC_SUBST(POLKIT_LIBS)
 
+# --------------------------------------------------------------------
+# systemd journal
+
+AC_ARG_WITH(journal,
+            AC_HELP_STRING([--with-systemd-journal],
+                           [Use systemd's journal for logging]),
+            [],
+            [with_systemd_journal=no])
+
+if test "$with_journal" != "no"; then
+	AC_DEFINE_UNQUOTED(WITH_JOURNAL, 1, [Use systemd's journal])
+	PKG_CHECK_MODULES(SYSTEMD_JOURNAL, libsystemd-journal)
+	with_journal="yes"
+fi
+AC_SUBST(SYSTEMD_JOURNAL_CFLAGS)
+AC_SUBST(SYSTEMD_JOURNAL_LIBS)
+
 # -------------------------------------------------------------------
 # Kerberos
 
@@ -335,4 +352,7 @@ echo "  Debug:                $debug_status"
 echo "  Coverage:             $enable_coverage"
 echo "  Strict:               $enable_strict"
 echo "  Documentation:        $enable_doc"
+echo
+echo "OPTIONAL DEPENDENCIES:"
+echo "  Journal:              $with_journal"
 echo

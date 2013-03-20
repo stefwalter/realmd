@@ -66,6 +66,7 @@ realmd_CFLAGS = \
 	-DCACHEDIR="\"$(cachedir)\"" \
 	$(PACKAGEKIT_CFLAGS) \
 	$(POLKIT_CFLAGS) \
+	$(SYSTEMD_JOURNAL_CFLAGS) \
 	$(GLIB_CFLAGS) \
 	$(KRB5_CFLAGS) \
 	$(LDAP_CFLAGS) \
@@ -75,6 +76,7 @@ realmd_LDADD = \
 	$(top_builddir)/dbus/librealm-dbus.a \
 	$(PACKAGEKIT_LIBS) \
 	$(POLKIT_LIBS) \
+	$(SYSTEMD_JOURNAL_LIBS) \
 	$(GLIB_LIBS) \
 	$(KRB5_LIBS) \
 	$(LDAP_LIBS) \

@@ -537,7 +537,9 @@
 		    <listitem><para><literal>secret</literal>:
 		      the credentials should contain a string secret as an
 		      <literal>ay</literal> array of bytes. This is usually used
-		      for one time passwords.</para></listitem>
+		      for one time passwords. To pass a string here, encode it
+		      in UTF-8, and place the resulting bytes in the
+		      value.</para></listitem>
 		    <listitem><para><literal>automatic</literal>:
 		      the credentials should contain an empty string as a
 		      <literal>s</literal>. Using <literal>automatic</literal>

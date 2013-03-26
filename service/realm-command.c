@@ -210,7 +210,8 @@ on_process_source_input (CommandClosure *command,
 		                length - command->input_offset);
 		if (result < 0) {
 			if (errno != EINTR && errno != EAGAIN) {
-				g_warning ("couldn't write output data to process");
+				if (!command->cancelled || errno != EPIPE)
+					g_warning ("couldn't write output data to process");
 				g_bytes_unref (command->input);
 				command->input = NULL;
 				return FALSE;

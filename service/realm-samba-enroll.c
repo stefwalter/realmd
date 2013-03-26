@@ -226,7 +226,8 @@ on_join_do_keytab (GObject *source,
 			g_set_error (&error, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
 			             "Insufficient permissions to join the domain %s",
 			             join->realm);
-		} else if (g_pattern_match_simple ("*: Logon failure*", output->str)) {
+		} else if (g_pattern_match_simple ("*: Logon failure*", output->str) ||
+		           g_pattern_match_simple ("*: Password expired*", output->str)) {
 			g_set_error (&error, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
 			             "The %s account, password, or credentials are invalid",
 			             join->user_name);

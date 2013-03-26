@@ -38,7 +38,8 @@ $ sudo yum install automake autoconf intltool xmlto xsltproc glib-devel \
 <p>In addition there are some optional dependencies:</p>
 
 <ul>
-	<li>systemd-journal: When enabled logs output to the systemd journal
+	<li>systemd: When available, install a systemd service file.</li>
+	<li>systemd-journal: When available logs output to the systemd journal
 	directly in order to pass additional logging context.</li>
 </ul>
 
@@ -63,7 +64,8 @@ following realmd specific options are available:</p>
 
 <ul>
 	<li><tt>--with-distro=xxxx</tt>: Build for a specific distro</li>
-	<li><tt>--without-journal</tt>: Don't depend on the systemd journal</li>
+	<li><tt>--without-systemd-journal</tt>: Don't depend on the systemd journal</li>
+	<li><tt>--without-systemd-unit-dir</tt>: Don't install a systemd service file</li>
 	<li><tt>--enable-debug</tt>: Enable debug options during the build</li>
 	<li><tt>--enable-coverage</tt>: Build code coverage support</li>
 	<li><tt>--enable-doc</tt>: Build documentation</li>

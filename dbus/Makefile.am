@@ -40,6 +40,13 @@ $(DBUS_GENERATED): org.freedesktop.realmd.xml
 		--generate-c-code realm-dbus-generated \
 		--c-namespace RealmDbus $<
 
+systemdunit_in_files = realmd.service.in
+
+if WITH_SYSTEMD
+systemdunitdir       = $(SYSTEMD_UNIT_DIR)
+systemdunit_DATA     = $(systemdunit_in_files:.service.in=.service)
+endif
+
 # ------------------------------------------------------------------
 
 EXTRA_DIST = \
@@ -47,12 +54,14 @@ EXTRA_DIST = \
 	$(dbusservice_DATA) \
 	$(provider_DATA) \
 	$(service_in_files) \
+	$(systemdunit_in_files) \
 	$(NULL)
 
 CLEANFILES = \
 	$(BUILT_SOURCES) \
 	$(DBUS_GENERATED) \
 	$(service_DATA) \
+	$(systemdunit_DATA) \
 	*.gcno \
 	*.gcda \
 	$(NULL)

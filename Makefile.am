@@ -10,6 +10,7 @@ DISTCHECK_CONFIGURE_FLAGS = \
 	--disable-coverage \
 	--enable-strict \
 	--disable-silent-rules \
+	--with-systemd-unit-dir=$(abs_srcdir)/$(top_distdir)/_inst/ \
 	--enable-doc
 
 dist-hook:

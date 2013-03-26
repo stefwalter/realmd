@@ -85,19 +85,39 @@ AC_SUBST(POLKIT_CFLAGS)
 AC_SUBST(POLKIT_LIBS)
 
 # --------------------------------------------------------------------
-# systemd journal
+# systemd
 
-AC_ARG_WITH(journal,
+AC_MSG_CHECKING([systemd unit directory])
+AC_ARG_WITH(systemd-unit-dir,
+            AC_HELP_STRING([--with-systemd-unit-dir],
+                           [Directory to install systemd service file]))
+
+if test "$with_systemd_unit_dir" = "" -o "$with_systemd_unit_dir" = "yes"; then
+	with_systemd_unit_dir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)
+	if test "$with_systemd_unit_dir" = ""; then
+		AC_MSG_ERROR(["Couldn't find systemd system unit directory"])
+	fi
+
+elif test "$with_systemd_unit_dir" = "no"; then
+	with_systemd_unit_dir=""
+
+fi
+
+SYSTEMD_UNIT_DIR="$with_systemd_unit_dir"
+AC_SUBST(SYSTEMD_UNIT_DIR)
+AM_CONDITIONAL(WITH_SYSTEMD, [test -n "$with_systemd_unit_dir"])
+AC_MSG_RESULT($with_systemd_unit_dir)
+
+AC_ARG_WITH(systemd-journal,
             AC_HELP_STRING([--with-systemd-journal],
-                           [Use systemd's journal for logging]),
-            [],
-            [with_systemd_journal=no])
+                           [Use systemd's journal for logging]))
 
-if test "$with_journal" != "no"; then
+if test "$with_systemd_journal" != "no"; then
 	AC_DEFINE_UNQUOTED(WITH_JOURNAL, 1, [Use systemd's journal])
 	PKG_CHECK_MODULES(SYSTEMD_JOURNAL, libsystemd-journal)
-	with_journal="yes"
+	with_systemd_journal="yes"
 fi
+
 AC_SUBST(SYSTEMD_JOURNAL_CFLAGS)
 AC_SUBST(SYSTEMD_JOURNAL_LIBS)
 
@@ -356,5 +376,6 @@ echo "  Strict:               $enable_strict"
 echo "  Documentation:        $enable_doc"
 echo
 echo "OPTIONAL DEPENDENCIES:"
-echo "  Journal:              $with_journal"
+echo "  systemd unit dir:     $with_systemd_unit_dir"
+echo "  systemd journal:      $with_systemd_journal"
 echo

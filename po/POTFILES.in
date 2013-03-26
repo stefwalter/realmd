@@ -3,6 +3,7 @@ service/realm-command.c
 service/realm-example.c
 service/realm-invocation.c
 service/realm-kerberos.c
+service/realm-packages.c
 service/realm-provider.c
 service/realm-samba.c
 service/realm-sssd-ad.c

@@ -112,7 +112,7 @@ realm_sssd_ad_constructed (GObject *obj)
 	realm_kerberos_set_supported_leave_creds (kerberos, supported);
 
 	realm_kerberos_set_suggested_admin (kerberos, "Administrator");
-	realm_kerberos_set_login_policy (kerberos, REALM_KERBEROS_ALLOW_ANY_LOGIN);
+	realm_kerberos_set_login_policy (kerberos, REALM_KERBEROS_ALLOW_REALM_LOGINS);
 	realm_kerberos_set_required_package_sets (kerberos, ALL_PACKAGES);
 }
 
@@ -229,8 +229,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 
 	                                    "id_provider", "ad",
 	                                    "auth_provider", "ad",
-	                                    "access_provider", "simple",
-	                                    "simple_allow_users", ",",
+	                                    "access_provider", "ad",
 	                                    "chpass_provider", "ad",
 
 	                                    "ad_domain", domain,
@@ -711,7 +710,12 @@ void
 realm_sssd_ad_class_init (RealmSssdAdClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	RealmSssdClass *sssd_class = REALM_SSSD_CLASS (klass);
+
 	object_class->constructed = realm_sssd_ad_constructed;
+
+	/* The provider in sssd.conf relevant to this realm type */
+	sssd_class->sssd_conf_provider_name = "ad";
 }
 
 static void

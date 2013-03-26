@@ -553,6 +553,9 @@ realm_samba_logins_async (RealmKerberos *realm,
 	async = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
 	                                   realm_samba_logins_async);
 
+	if (login_policy == REALM_KERBEROS_ALLOW_REALM_LOGINS)
+		login_policy = REALM_KERBEROS_ALLOW_ANY_LOGIN;
+
 	/* Sadly we don't support this option */
 	if (login_policy != REALM_KERBEROS_ALLOW_ANY_LOGIN &&
 	    login_policy != REALM_KERBEROS_POLICY_NOT_SET) {

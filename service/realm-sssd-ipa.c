@@ -106,7 +106,12 @@ void
 realm_sssd_ipa_class_init (RealmSssdIpaClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	RealmSssdClass *sssd_class = REALM_SSSD_CLASS (klass);
+
 	object_class->constructed = realm_sssd_ipa_constructed;
+
+	/* The provider in sssd.conf relevant to this realm type */
+	sssd_class->sssd_conf_provider_name = "ipa";
 }
 
 typedef struct {
@@ -211,7 +216,6 @@ on_ipa_client_do_restart (GObject *source,
 		                                 "full_name_format", "%1$s@%2$s",
 		                                 "cache_credentials", "True",
 		                                 "use_fully_qualified_names", "True",
-		                                 "simple_allow_users", ",",
 		                                 "krb5_store_password_if_offline", "True",
 		                                 "fallback_homedir", home,
 		                                 NULL);

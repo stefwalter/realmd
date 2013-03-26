@@ -24,9 +24,12 @@
 
 G_BEGIN_DECLS
 
-#define REALM_TYPE_SSSD          (realm_sssd_get_type ())
-#define REALM_SSSD(inst)         (G_TYPE_CHECK_INSTANCE_CAST ((inst), REALM_TYPE_SSSD, RealmSssd))
-#define REALM_IS_SSSD(inst)      (G_TYPE_CHECK_INSTANCE_TYPE ((inst), REALM_TYPE_SSSD))
+#define REALM_TYPE_SSSD            (realm_sssd_get_type ())
+#define REALM_SSSD(inst)           (G_TYPE_CHECK_INSTANCE_CAST ((inst), REALM_TYPE_SSSD, RealmSssd))
+#define REALM_IS_SSSD(inst)        (G_TYPE_CHECK_INSTANCE_TYPE ((inst), REALM_TYPE_SSSD))
+#define REALM_SSSD_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), REALM_TYPE_SSSD, RealmSssdClass))
+#define REALM_IS_SSSD_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), REALM_TYPE_SSSD))
+#define REALM_SSSD_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), REALM_TYPE_SSSD, RealmSssdClass))
 
 typedef struct _RealmSssd RealmSssd;
 typedef struct _RealmSssdClass RealmSssdClass;
@@ -39,6 +42,12 @@ struct _RealmSssd {
 
 struct _RealmSssdClass {
 	RealmKerberosClass parent_class;
+
+	/*
+	 * This is set by derived classes and is a value for the sssd.conf
+	 * provider relevant to this realm, surch as "ipa" or "ad"
+	 */
+	const char *sssd_conf_provider_name;
 };
 
 typedef struct _RealmSssd RealmSssd;

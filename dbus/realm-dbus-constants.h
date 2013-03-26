@@ -53,6 +53,7 @@ G_BEGIN_DECLS
 #define   REALM_DBUS_NAME_CHARS                    "abcdefghijklnmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
 
 #define   REALM_DBUS_LOGIN_POLICY_ANY              "allow-any-login"
+#define   REALM_DBUS_LOGIN_POLICY_REALM            "allow-realm-logins"
 #define   REALM_DBUS_LOGIN_POLICY_PERMITTED        "allow-permitted-logins"
 #define   REALM_DBUS_LOGIN_POLICY_DENY             "deny-any-login"
 

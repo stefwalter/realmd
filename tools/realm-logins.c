@@ -154,7 +154,7 @@ perform_permit_or_deny_all (RealmClient *client,
 	options = realm_build_options (NULL, NULL);
 	g_variant_ref_sink (options);
 
-	policy = permit ? REALM_DBUS_LOGIN_POLICY_ANY : REALM_DBUS_LOGIN_POLICY_DENY;
+	policy = permit ? REALM_DBUS_LOGIN_POLICY_REALM : REALM_DBUS_LOGIN_POLICY_DENY;
 	realm_dbus_realm_call_change_login_policy (realm, policy,
 	                                           (const gchar * const *)logins,
 	                                           (const gchar * const *)logins,

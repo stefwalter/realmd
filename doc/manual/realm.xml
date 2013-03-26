@@ -319,8 +319,9 @@ $ realm permit DOMAIN\User
 	<variablelist>
 		<varlistentry>
 			<term><option>--all, -a</option></term>
-			<listitem><para>Permit login by any valid user of the
-			realm.</para></listitem>
+			<listitem><para>Permit login according to the realm or
+			domain policy for logins on this machine. This usually
+			defaults to allowing any realm user to log in.</para></listitem>
 		</varlistentry>
 		<varlistentry>
 			<term><option>--realm, -R</option></term>

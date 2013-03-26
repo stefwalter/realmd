@@ -384,6 +384,10 @@
 		    <listitem><para><literal>allow-any-login</literal>: allow
 		      login by any authenticated user present in this
 		      realm.</para></listitem>
+		    <listitem><para><literal>allow-realm-logins</literal>: allow
+		      logins according to the realm or domain policy for logins
+		      on this machine. This usually defaults to allowing any realm
+		      user to log in.</para></listitem>
 		    <listitem><para><literal>allow-permitted-logins</literal>:
 		      only allow the logins permitted in the
 		      #org.freedesktop.realmd.Realm:PermittedLogins

@@ -122,6 +122,7 @@ realm_sssd_logins_async (RealmKerberos *realm,
                          GAsyncReadyCallback callback,
                          gpointer user_data)
 {
+	RealmSssdClass *sssd_class = REALM_SSSD_GET_CLASS (realm);
 	RealmSssd *self = REALM_SSSD (realm);
 	GSimpleAsyncResult *async;
 	gchar **remove_names = NULL;
@@ -148,6 +149,9 @@ realm_sssd_logins_async (RealmKerberos *realm,
 		break;
 	case REALM_KERBEROS_ALLOW_ANY_LOGIN:
 		access_provider = "permit";
+		break;
+	case REALM_KERBEROS_ALLOW_REALM_LOGINS:
+		access_provider = sssd_class->sssd_conf_provider_name;
 		break;
 	case REALM_KERBEROS_ALLOW_PERMITTED_LOGINS:
 		access_provider = "simple";
@@ -301,6 +305,7 @@ update_login_formats (RealmSssd *self)
 static void
 update_login_policy (RealmSssd *self)
 {
+	RealmSssdClass *sssd_class = REALM_SSSD_GET_CLASS (self);
 	RealmKerberosLoginPolicy policy = REALM_KERBEROS_POLICY_NOT_SET;
 	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	GPtrArray *permitted;
@@ -321,6 +326,8 @@ update_login_policy (RealmSssd *self)
 		g_strfreev (values);
 		g_free (access);
 		policy = REALM_KERBEROS_ALLOW_PERMITTED_LOGINS;
+	} else if (g_strcmp0 (access, sssd_class->sssd_conf_provider_name) == 0) {
+		policy = REALM_KERBEROS_ALLOW_REALM_LOGINS;
 	} else if (g_strcmp0 (access, "permit") == 0) {
 		policy = REALM_KERBEROS_ALLOW_ANY_LOGIN;
 	} else if (g_strcmp0 (access, "deny") == 0) {

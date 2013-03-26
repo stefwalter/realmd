@@ -640,6 +640,9 @@ handle_change_login_policy (RealmDbusRealm *realm,
 		if (g_str_equal (policies[i], REALM_DBUS_LOGIN_POLICY_ANY)) {
 			policy = REALM_KERBEROS_ALLOW_ANY_LOGIN;
 			policies_set++;
+		} else if (g_str_equal (policies[i], REALM_DBUS_LOGIN_POLICY_REALM)) {
+			policy = REALM_KERBEROS_ALLOW_REALM_LOGINS;
+			policies_set++;
 		} else if (g_str_equal (policies[i], REALM_DBUS_LOGIN_POLICY_PERMITTED)) {
 			policy = REALM_KERBEROS_ALLOW_PERMITTED_LOGINS;
 			policies_set++;
@@ -1221,6 +1224,8 @@ realm_kerberos_login_policy_to_string (RealmKerberosLoginPolicy value)
 	switch (value) {
 	case REALM_KERBEROS_ALLOW_ANY_LOGIN:
 		return REALM_DBUS_LOGIN_POLICY_ANY;
+	case REALM_KERBEROS_ALLOW_REALM_LOGINS:
+		return REALM_DBUS_LOGIN_POLICY_REALM;
 	case REALM_KERBEROS_ALLOW_PERMITTED_LOGINS:
 		return REALM_DBUS_LOGIN_POLICY_PERMITTED;
 	case REALM_KERBEROS_DENY_ANY_LOGIN:

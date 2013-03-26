@@ -71,6 +71,10 @@ gboolean            realm_ini_config_write_file               (RealmIniConfig *s
                                                                const gchar *filename,
                                                                GError **error);
 
+gboolean            realm_ini_config_write_fd                 (RealmIniConfig *self,
+                                                               gint fd,
+                                                               GError **error);
+
 void                realm_ini_config_set                      (RealmIniConfig *self,
                                                                const gchar *section,
                                                                const gchar *name,

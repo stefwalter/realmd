@@ -27,6 +27,7 @@ void               realm_samba_enroll_join_async     (const gchar *realm,
                                                       const gchar *user_name,
                                                       GBytes *password,
                                                       const gchar *computer_ou,
+                                                      GHashTable *discovery,
                                                       GDBusMethodInvocation *invocation,
                                                       GAsyncReadyCallback callback,
                                                       gpointer user_data);

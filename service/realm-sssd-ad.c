@@ -307,6 +307,7 @@ on_install_do_join (GObject *source,
 {
 	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
 	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (async);
+	RealmKerberos *kerberos = REALM_KERBEROS (g_async_result_get_source_object (user_data));
 	GError *error = NULL;
 
 	realm_packages_install_finish (result, &error);
@@ -339,8 +340,8 @@ on_install_do_join (GObject *source,
 			g_assert (join->user_name != NULL);
 			g_assert (join->user_password != NULL);
 			realm_samba_enroll_join_async (join->realm_name, join->user_name, join->user_password,
-			                               join->computer_ou, join->invocation,
-			                               on_join_do_sssd, g_object_ref (async));
+			                               join->computer_ou, realm_kerberos_get_discovery (kerberos),
+			                               join->invocation, on_join_do_sssd, g_object_ref (async));
 		}
 
 	} else {
@@ -348,6 +349,7 @@ on_install_do_join (GObject *source,
 		g_simple_async_result_complete (async);
 	}
 
+	g_object_unref (kerberos);
 	g_object_unref (async);
 }
 

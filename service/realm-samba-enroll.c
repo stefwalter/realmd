@@ -16,8 +16,11 @@
 
 #include "realm-command.h"
 #include "realm-daemon.h"
+#include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
+#include "realm-discovery.h"
 #include "realm-errors.h"
+#include "realm-kerberos-discover.h"
 #include "realm-samba-config.h"
 #include "realm-samba-enroll.h"
 #include "realm-samba-provider.h"
@@ -35,10 +38,11 @@
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	gchar *create_computer_arg;
-	GHashTable *settings;
 	gchar *realm;
 	gchar *user_name;
 	GBytes *password_input;
+	RealmIniConfig *config;
+	gchar *custom_smb_conf;
 } JoinClosure;
 
 static void
@@ -50,9 +54,13 @@ join_closure_free (gpointer data)
 	g_free (join->user_name);
 	g_free (join->create_computer_arg);
 	g_free (join->realm);
-	if (join->settings)
-		g_hash_table_unref (join->settings);
 	g_clear_object (&join->invocation);
+	g_clear_object (&join->config);
+
+	if (join->custom_smb_conf) {
+		g_unlink (join->custom_smb_conf);
+		g_free (join->custom_smb_conf);
+	}
 
 	g_slice_free (JoinClosure, join);
 }
@@ -64,6 +72,8 @@ join_closure_init (const gchar *realm,
                    GDBusMethodInvocation *invocation)
 {
 	JoinClosure *join;
+	GError *error = NULL;
+	int temp_fd;
 
 	join = g_slice_new0 (JoinClosure);
 	join->realm = g_strdup (realm);
@@ -73,6 +83,26 @@ join_closure_init (const gchar *realm,
 		join->password_input = realm_command_build_password_line (password);
 
 	join->user_name = g_strdup (user_name);
+
+	join->config = realm_ini_config_new (REALM_INI_NO_WATCH | REALM_INI_PRIVATE);
+	realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL, "security", "ads");
+	realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL, "kerberos method", "system keytab");
+	realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL, "realm", join->realm);
+
+	/* Write out the config file for use by various net commands */
+	join->custom_smb_conf = g_build_filename (g_get_tmp_dir (), "realmd-smb-conf.XXXXXX", NULL);
+	temp_fd = g_mkstemp_full (join->custom_smb_conf, O_WRONLY, S_IRUSR | S_IWUSR);
+	if (temp_fd != -1) {
+		if (realm_ini_config_write_fd (join->config, temp_fd, &error)) {
+			realm_ini_config_set_filename (join->config, join->custom_smb_conf);
+
+		} else {
+			g_warning ("couldn't write to a temp file: %s: %s", join->custom_smb_conf, error->message);
+			g_error_free (error);
+		}
+
+		close (temp_fd);
+	}
 
 	return join;
 }
@@ -100,8 +130,10 @@ begin_net_process (JoinClosure *join,
 
 	/* Use our custom smb.conf */
 	g_ptr_array_add (args, (gpointer)realm_settings_path ("net"));
-	g_ptr_array_add (args, "-s");
-	g_ptr_array_add (args, PRIVATE_DIR "/net-ads-smb.conf");
+	if (join->custom_smb_conf) {
+		g_ptr_array_add (args, "-s");
+		g_ptr_array_add (args, join->custom_smb_conf);
+	}
 
 	va_start (va, user_data);
 	do {
@@ -117,50 +149,11 @@ begin_net_process (JoinClosure *join,
 }
 
 static void
-on_list_complete (GObject *source,
-                  GAsyncResult *result,
-                  gpointer user_data)
+on_keytab_do_finish (GObject *source,
+                     GAsyncResult *result,
+                     gpointer user_data)
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
-	GString *output = NULL;
-	RealmIniConfig *config;
-	GError *error = NULL;
-	gint status;
-
-	status = realm_command_run_finish (result, &output, &error);
-	if (error == NULL && status != 0)
-		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Listing samba registry failed");
-
-	if (error == NULL) {
-		/* Read the command output as a samba config */
-		config = realm_ini_config_new (REALM_INI_LINE_CONTINUATIONS);
-		realm_ini_config_read_string (config, output->str);
-		join->settings = realm_ini_config_get_all (config, REALM_SAMBA_CONFIG_GLOBAL);
-		g_hash_table_insert (join->settings,
-		                     g_strdup ("kerberos method"),
-		                     g_strdup ("secrets and keytab"));
-
-		g_object_unref (config);
-	}
-
-	if (error != NULL)
-		g_simple_async_result_take_error (res, error);
-
-	if (output)
-		g_string_free (output, TRUE);
-	g_simple_async_result_complete (res);
-	g_object_unref (res);
-}
-
-static void
-on_keytab_do_list (GObject *source,
-                   GAsyncResult *result,
-                   gpointer user_data)
-{
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
 	GError *error = NULL;
 	gint status;
 
@@ -169,21 +162,9 @@ on_keytab_do_list (GObject *source,
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Extracting host keytab failed");
 
-	/*
-	 * So at this point we're done joining, and want to get some settings
-	 * that the net process wrote to the registry, and put them in the
-	 * main smb.conf
-	 */
-	if (error == NULL) {
-		begin_net_process (join, NULL,
-		                   on_list_complete, g_object_ref (res),
-		                   "conf", "list", NULL);
-
-	} else {
+	if (error != NULL)
 		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
-	}
-
+	g_simple_async_result_complete (res);
 	g_object_unref (res);
 }
 
@@ -242,7 +223,7 @@ on_join_do_keytab (GObject *source,
 
 	if (error == NULL) {
 		begin_net_process (join, join->password_input,
-		                   on_keytab_do_list, g_object_ref (res),
+		                   on_keytab_do_finish, g_object_ref (res),
 		                   "-U", join->user_name, "ads", "keytab", "create", NULL);
 	} else {
 		g_simple_async_result_take_error (res, error);
@@ -252,63 +233,158 @@ on_join_do_keytab (GObject *source,
 	g_object_unref (res);
 }
 
-static void
-on_conf_kerberos_method_do_join (GObject *source,
-                 GAsyncResult *result,
-                 gpointer user_data)
+static gchar *
+fallback_workgroup (const gchar *realm)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
-	GError *error = NULL;
-	gint status;
+	const gchar *pos;
 
-	status = realm_command_run_finish (result, NULL, &error);
-	if (error == NULL && status != 0) {
-		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Configuring samba failed");
+	pos = strchr (realm, '.');
+	if (pos == NULL)
+		return g_utf8_strup (realm, -1);
+	else
+		return g_utf8_strup (realm, pos - realm);
+}
+
+static void
+begin_config_and_join (JoinClosure *join,
+                       GSimpleAsyncResult *async)
+{
+	GError *error = NULL;
+	gchar *workgroup;
+
+	/*
+	 * Samba complains if we don't set a 'workgroup' setting for the realm we're
+	 * going to join. If we didn't yet manage to lookup the workgroup, then go ahead
+	 * and assume that the first domain component is the workgroup name.
+	 */
+	workgroup = realm_ini_config_get (join->config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup");
+	if (workgroup == NULL) {
+		workgroup = fallback_workgroup (join->realm);
+		realm_diagnostics_info (join->invocation, "Calculated workgroup name: %s", workgroup);
+		realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup", workgroup);
 	}
+	free (workgroup);
+
+	/* Write out the config file for various changes */
+	realm_ini_config_write_file (join->config, NULL, &error);
 
 	if (error == NULL) {
 		begin_net_process (join, join->password_input,
-		                   on_join_do_keytab, g_object_ref (res),
+		                   on_join_do_keytab, g_object_ref (async),
 		                   "-U", join->user_name, "ads", "join", join->realm,
 		                   join->create_computer_arg, NULL);
 
 	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete (async);
 	}
 
-	g_object_unref (res);
+}
+
+static gchar *
+find_workgroup_in_output (GString *output)
+{
+	const gchar *match = ":";
+	const gchar *pos;
+	const gchar *end;
+	gchar *workgroup;
+
+	/* Beginning */
+	pos = g_strstr_len (output->str, output->len, match);
+	if (pos == NULL)
+		return NULL;
+	pos += strlen (match);
+
+	/* Find the end */
+	end = strchr (pos, '\n');
+	if (end == NULL)
+		end = output->str + output->len;
+
+	workgroup = g_strndup (pos, end - pos);
+	g_strstrip (workgroup);
+	return workgroup;
 }
 
 static void
-on_conf_realm_do_kerberos_method (GObject *source,
-                                  GAsyncResult *result,
-                                  gpointer user_data)
+on_net_ads_workgroup (GObject *source,
+                      GAsyncResult *result,
+                      gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (async);
 	GError *error = NULL;
+	GString *output = NULL;
+	gchar *workgroup;
 	gint status;
 
-	status = realm_command_run_finish (result, NULL, &error);
+	status = realm_command_run_finish (result, &output, &error);
 	if (error == NULL && status != 0) {
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Configuring samba failed");
+		             "Couldn't lookup domain info");
 	}
 
 	if (error == NULL) {
-		begin_net_process (join, NULL,
-		                   on_conf_kerberos_method_do_join, g_object_ref (res),
-		                   "conf", "setparm", REALM_SAMBA_CONFIG_GLOBAL,
-		                   "kerberos method", "system keytab", NULL);
+		workgroup = find_workgroup_in_output (output);
+		if (workgroup) {
+			realm_diagnostics_info (join->invocation, "Looked up workgroup name: %s", workgroup);
+			realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup", workgroup);
+			g_free (workgroup);
+		}
+
+		g_string_free (output, TRUE);
+
 	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
+		realm_diagnostics_error (join->invocation, error, NULL);
+		g_error_free (error);
 	}
 
-	g_object_unref (res);
+	begin_config_and_join (join, async);
+
+	g_object_unref (async);
+}
+
+
+static void
+begin_net_lookup (JoinClosure *join,
+                  GSimpleAsyncResult *async,
+                  GHashTable *discovery)
+{
+	const gchar **kdcs;
+
+	kdcs = realm_discovery_get_strings (discovery, REALM_DBUS_DISCOVERY_KDCS);
+
+	/* If we discovered KDCs then try to ask first one what the workgroup name is */
+	if (kdcs && kdcs[0]) {
+		begin_net_process (join, NULL,
+		                   on_net_ads_workgroup, g_object_ref (async),
+		                   "ads", "workgroup", "-S", kdcs[0], NULL);
+
+	} else {
+		begin_config_and_join (join, async);
+	}
+}
+
+static void
+on_discover_do_lookup (GObject *source,
+                       GAsyncResult *result,
+                       gpointer user_data)
+{
+	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (async);
+	GError *error = NULL;
+	GHashTable *discovery;
+
+	realm_kerberos_discover_finish (result, &discovery, &error);
+	if (error == NULL) {
+		begin_net_lookup (join, async, discovery);
+		g_hash_table_unref (discovery);
+
+	} else {
+		g_simple_async_result_take_error (async, error);
+		g_simple_async_result_complete (async);
+	}
+
+	g_object_unref (async);
 }
 
 void
@@ -316,6 +392,7 @@ realm_samba_enroll_join_async (const gchar *realm,
                                const gchar *user_name,
                                GBytes *password,
                                const gchar *computer_ou,
+                               GHashTable *discovery,
                                GDBusMethodInvocation *invocation,
                                GAsyncReadyCallback callback,
                                gpointer user_data)
@@ -351,11 +428,13 @@ realm_samba_enroll_join_async (const gchar *realm,
 	if (error != NULL) {
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete_in_idle (res);
+
+	} else if (discovery) {
+		begin_net_lookup (join, res, discovery);
+
 	} else {
-		begin_net_process (join, NULL,
-		                   on_conf_realm_do_kerberos_method, g_object_ref (res),
-		                   "conf", "setparm", REALM_SAMBA_CONFIG_GLOBAL,
-		                   "realm", join->realm, NULL);
+		realm_kerberos_discover_async (join->realm, join->invocation,
+		                               on_discover_do_lookup, g_object_ref (res));
 	}
 
 	g_object_unref (res);
@@ -376,10 +455,7 @@ realm_samba_enroll_join_finish (GAsyncResult *result,
 
 	if (settings != NULL) {
 		join = g_simple_async_result_get_op_res_gpointer (G_SIMPLE_ASYNC_RESULT (result));
-		if (join->settings)
-			*settings = g_hash_table_ref (join->settings);
-		else
-			*settings = NULL;
+		*settings = realm_ini_config_get_all (join->config, REALM_SAMBA_CONFIG_GLOBAL);
 	}
 
 	return TRUE;

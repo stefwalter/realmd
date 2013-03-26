@@ -78,56 +78,31 @@ realm_discovery_add_variant (GHashTable *discovery,
 }
 
 void
-realm_discovery_add_srv_targets (GHashTable *discovery,
-                                 const gchar *type,
-                                 GList *targets)
+realm_discovery_add_strings (GHashTable *discovery,
+                             const gchar *type,
+                             const char **value)
 {
-	GPtrArray *servers;
-	gchar *server;
-	GList *l;
-
 	g_return_if_fail (type != NULL);
+	g_return_if_fail (value != NULL);
 
-	servers = g_ptr_array_new ();
-
-	for (l = targets; l != NULL; l = g_list_next (l)) {
-		server = g_strdup_printf ("%s:%d", g_srv_target_get_hostname (l->data),
-		                          (int)g_srv_target_get_port (l->data));
-		g_ptr_array_add (servers, g_variant_new_string (server));
-	}
-
-	realm_discovery_add_variant (discovery, type,
-	                             g_variant_new_array (G_VARIANT_TYPE_STRING,
-	                                                  (GVariant * const*)servers->pdata,
-	                                                  servers->len));
-
-	g_ptr_array_free (servers, TRUE);
+	if (discovery != NULL)
+		realm_discovery_add_variant (discovery, type, g_variant_new_strv (value, -1));
 }
 
-GVariant *
-realm_discovery_to_variant (GHashTable *discovery)
+const gchar **
+realm_discovery_get_strings (GHashTable *discovery,
+                             const gchar *type)
 {
-	GPtrArray *entries;
-	GHashTableIter iter;
-	GVariant *result;
-	gpointer key, value;
-	GVariant *entry;
+	GVariant *variant;
 
-	entries = g_ptr_array_new ();
+	g_return_val_if_fail (type != NULL, NULL);
 
-	if (discovery != NULL) {
-		g_hash_table_iter_init (&iter, discovery);
-		while (g_hash_table_iter_next (&iter, &key, &value)) {
-			entry = g_variant_new_dict_entry (g_variant_new_string (key),
-			                                  g_variant_new_variant (value));
-			g_ptr_array_add (entries, entry);
-		}
-	}
+	if (discovery == NULL)
+		return NULL;
 
-	result = g_variant_new_array (G_VARIANT_TYPE ("{sv}"),
-	                              (GVariant * const *)entries->pdata,
-	                              entries->len);
+	variant = g_hash_table_lookup (discovery, type);
+	if (variant == NULL)
+		return NULL;
 
-	g_ptr_array_free (entries, TRUE);
-	return result;
+	return g_variant_get_strv (variant, NULL);
 }

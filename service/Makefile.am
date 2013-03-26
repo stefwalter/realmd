@@ -11,7 +11,6 @@ REALMD_CONFIGS = \
 	$(NULL)
 
 private_DATA = \
-	net-ads-smb.conf \
 	realmd-defaults.conf
 
 polkit_policydir = $(POLKIT_ACTION_DIR)

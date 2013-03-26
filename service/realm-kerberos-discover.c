@@ -503,8 +503,10 @@ realm_kerberos_discover_finish (GAsyncResult *result,
                                 GError **error)
 {
 	RealmKerberosDiscover *self;
+	GPtrArray *servers;
 	gchar *realm;
 	gchar *name;
+	GList *l;
 
 	g_return_val_if_fail (REALM_IS_KERBEROS_DISCOVER (result), NULL);
 	g_return_val_if_fail (error == NULL || *error == NULL, NULL);
@@ -535,9 +537,16 @@ realm_kerberos_discover_finish (GAsyncResult *result,
 		/* The realm */
 		realm_discovery_add_string (*discovery, REALM_DBUS_DISCOVERY_REALM, realm);
 
-		/* The servers */
-		realm_discovery_add_srv_targets (*discovery, REALM_DBUS_DISCOVERY_KDCS,
-		                                 self->servers);
+		/* The KDCs */
+		self->servers = g_srv_target_list_sort (self->servers);
+
+		servers = g_ptr_array_new ();
+		for (l = self->servers; l != NULL; l = g_list_next (l))
+			g_ptr_array_add (servers, (void *)g_srv_target_get_hostname (l->data));
+		g_ptr_array_add (servers, NULL);
+		realm_discovery_add_strings (*discovery, REALM_DBUS_DISCOVERY_KDCS,
+		                             (const gchar **)servers->pdata);
+		g_ptr_array_free (servers, TRUE);
 
 		/* The type */
 		if (self->found_msdcs) {

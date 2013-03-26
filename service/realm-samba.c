@@ -21,6 +21,7 @@
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-kerberos.h"
+#include "realm-kerberos-discover.h"
 #include "realm-kerberos-membership.h"
 #include "realm-packages.h"
 #include "realm-provider.h"
@@ -242,19 +243,21 @@ on_install_do_join (GObject *source,
 {
 	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
 	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
+	RealmKerberos *kerberos = REALM_KERBEROS (g_async_result_get_source_object (user_data));
 	GError *error = NULL;
 
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
 		realm_samba_enroll_join_async (enroll->realm_name, enroll->user_name, enroll->password,
-		                               enroll->computer_ou, enroll->invocation,
-		                               on_join_do_winbind, g_object_ref (res));
+		                               enroll->computer_ou, realm_kerberos_get_discovery (kerberos),
+		                               enroll->invocation, on_join_do_winbind, g_object_ref (res));
 
 	} else {
 		g_simple_async_result_take_error (res, error);
 		g_simple_async_result_complete (res);
 	}
 
+	g_object_unref (kerberos);
 	g_object_unref (res);
 }
 

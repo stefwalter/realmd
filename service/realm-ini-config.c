@@ -17,10 +17,13 @@
 #include "realm-settings.h"
 #include "realm-ini-config.h"
 
+#include <glib/gi18n.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 
 #include <string.h>
+#include <errno.h>
 
 #define REALM_INI_CONFIG_CLASS(klass)       (G_TYPE_CHECK_CLASS_CAST ((klass), REALM_TYPE_INI_CONFIG, RealmIniConfigClass))
 #define REALM_IS_INI_CONFIG_CLASS(klass)    (G_TYPE_CHECK_CLASS_TYPE ((klass), REALM_TYPE_INI_CONFIG))
@@ -701,6 +704,52 @@ realm_ini_config_write_file (RealmIniConfig *self,
 
 	if (ret)
 		realm_ini_config_set_filename (self, filename);
+	return ret;
+}
+
+gboolean
+realm_ini_config_write_fd (RealmIniConfig *self,
+                           gint fd,
+                           GError **error)
+{
+	GBytes *bytes;
+	gboolean ret = TRUE;
+	const gchar *contents;
+	gint result;
+	gsize length;
+	gint errn;
+
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), FALSE);
+	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+	bytes = realm_ini_config_write_bytes (self);
+	g_return_val_if_fail (bytes != NULL, FALSE);
+
+	contents = g_bytes_get_data (bytes, &length);
+
+	while (length > 0) {
+		result = write (fd, contents, length);
+		if (result < 0) {
+			if (errno != EINTR && errno != EAGAIN) {
+				errn = errno;
+				g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errn),
+				             _("Couldn't write out config: %s"), g_strerror (errn));
+				ret = FALSE;
+				break;
+			}
+
+			result = 0;
+		}
+
+		g_return_val_if_fail (result <= length, FALSE);
+		contents += result;
+		length -= result;
+	}
+
+	g_bytes_unref (bytes);
+
+	if (ret)
+		realm_ini_config_set_filename (self, NULL);
 	return ret;
 }
 

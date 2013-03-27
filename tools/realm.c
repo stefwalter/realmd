@@ -17,6 +17,8 @@
 #include "realm.h"
 #include "realm-dbus-constants.h"
 
+#include "valgrind/valgrind.h"
+
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <glib/gstdio.h>
@@ -326,6 +328,12 @@ main (int argc,
 	GError *error = NULL;
 	gint ret;
 	gint i;
+
+	/* Behave well under valgrind */
+	if (RUNNING_ON_VALGRIND) {
+		if (!g_getenv ("G_SLICE"))
+			g_setenv ("G_SLICE", "always-malloc", TRUE);
+	}
 
 	setlocale (LC_ALL, "");
 

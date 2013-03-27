@@ -27,6 +27,8 @@
 #include "realm-settings.h"
 #include "realm-sssd-provider.h"
 
+#include "valgrind/valgrind.h"
+
 #include <glib.h>
 #include <glib-unix.h>
 #include <glib/gi18n.h>
@@ -356,6 +358,12 @@ main (int argc,
 		  "Use a peer to peer dbus connection on this fd", NULL },
 		{ NULL }
 	};
+
+	/* Behave well under valgrind */
+	if (RUNNING_ON_VALGRIND) {
+		if (!g_getenv ("G_SLICE"))
+			g_setenv ("G_SLICE", "always-malloc", TRUE);
+	}
 
 #ifdef ENABLE_NLS
 	bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);

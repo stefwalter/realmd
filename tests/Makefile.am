@@ -95,6 +95,9 @@ all-local: $(check_PROGRAMS)
 
 check-local: test
 
-check-memory: perform-memcheck
+memcheck:
+	@for test in $(TEST_PROGS); do \
+		valgrind --error-exitcode=80 --quiet --trace-children=yes ./$$test; \
+	done
 
-.PHONY: check-memory
+.PHONY: memcheck

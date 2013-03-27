@@ -27,11 +27,8 @@ dist-hook:
 		echo A git clone is required to generate a ChangeLog >&2; \
 	fi
 
-check-memory:
-	@for subdir in $(SUBDIRS); do \
-		test -d $(builddir)/$$subdir/tests && \
-			make -C $(builddir)/$$subdir/tests check-memory; \
-	done
+memcheck:
+	make -C tests memcheck;
 
 website:
 	make -C doc website

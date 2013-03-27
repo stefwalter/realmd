@@ -58,6 +58,7 @@ realmd_SOURCES = \
 
 realmd_CFLAGS = \
 	-I$(top_srcdir)/dbus \
+	-I$(top_srcdir)/build \
 	-I$(top_builddir)/dbus \
 	-DPRIVATE_DIR="\"$(privatedir)\"" \
 	-DSYSCONF_DIR="\"$(sysconfdir)\"" \

@@ -19,6 +19,7 @@ realm_SOURCES = \
 
 AM_CFLAGS = \
 	-I$(top_srcdir)/dbus \
+	-I$(top_srcdir)/build \
 	-I$(top_builddir)/dbus \
 	-DLOCALEDIR=\""$(datadir)/locale"\" \
 	-DREALMD_EXECUTABLE=\""$(privatedir)/realmd"\" \

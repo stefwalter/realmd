@@ -1035,8 +1035,6 @@ realm_ini_config_remove_section (RealmIniConfig *self,
 			head = head->prev;
 	}
 
-	g_hash_table_remove (self->sections, section);
-
 	/* Remove this section from the config file */
 	if (head->prev)
 		head->prev->next = tail->next;
@@ -1049,10 +1047,15 @@ realm_ini_config_remove_section (RealmIniConfig *self,
 	head->prev = NULL;
 	tail->next = NULL;
 
+	g_hash_table_remove (self->sections, section);
+
 	for (line = head; line != NULL; line = next) {
 		next = line->next;
 		config_line_free (line);
 	}
+
+	if (!self->changing)
+		g_signal_emit (self, signals[CHANGED], 0);
 }
 
 gboolean

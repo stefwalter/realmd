@@ -94,7 +94,6 @@ realm_samba_constructed (GObject *obj)
 	supported = realm_kerberos_membership_build_supported (
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_ADMIN,
 			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_USER,
-			REALM_KERBEROS_CREDENTIAL_AUTOMATIC, REALM_KERBEROS_OWNER_NONE,
 			0);
 	g_variant_ref_sink (supported);
 	realm_kerberos_set_supported_join_creds (kerberos, supported);

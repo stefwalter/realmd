@@ -15,6 +15,7 @@
 #include "config.h"
 
 #include "realm-command.h"
+#include "realm-credential.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-dbus-generated.h"
@@ -79,7 +80,7 @@ G_DEFINE_TYPE (RealmKerberos, realm_kerberos, G_TYPE_DBUS_OBJECT_SKELETON);
 typedef struct {
 	RealmKerberos *self;
 	GDBusMethodInvocation *invocation;
-	gchar *ccache_file;
+	RealmCredential *cred;
 } MethodClosure;
 
 static MethodClosure *
@@ -97,8 +98,8 @@ method_closure_free (MethodClosure *closure)
 {
 	g_object_unref (closure->self);
 	g_object_unref (closure->invocation);
-	if (closure->ccache_file)
-		realm_keberos_ccache_delete_and_free (closure->ccache_file);
+	if (closure->cred)
+		realm_credential_unref (closure->cred);
 	g_slice_free (MethodClosure, closure);
 }
 
@@ -159,11 +160,11 @@ on_enroll_complete (GObject *source,
 	GError *error = NULL;
 
 	iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (closure->self);
-	g_return_if_fail (iface->unenroll_finish != NULL);
+	g_return_if_fail (iface->join_finish != NULL);
 
 	cancellable = realm_invocation_get_cancellable (closure->invocation);
 	if (!g_cancellable_set_error_if_cancelled (cancellable, &error))
-		(iface->enroll_finish) (REALM_KERBEROS_MEMBERSHIP (closure->self), result, &error);
+		(iface->join_finish) (REALM_KERBEROS_MEMBERSHIP (closure->self), result, &error);
 
 	if (error != NULL) {
 		enroll_method_reply (closure->invocation, error);
@@ -217,11 +218,11 @@ on_unenroll_complete (GObject *source,
 	GError *error = NULL;
 
 	iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (closure->self);
-	g_return_if_fail (iface->unenroll_finish != NULL);
+	g_return_if_fail (iface->leave_finish != NULL);
 
 	cancellable = realm_invocation_get_cancellable (closure->invocation);
 	if (!g_cancellable_set_error_if_cancelled (cancellable, &error))
-		(iface->unenroll_finish) (REALM_KERBEROS_MEMBERSHIP (closure->self), result, &error);
+		(iface->leave_finish) (REALM_KERBEROS_MEMBERSHIP (closure->self), result, &error);
 
 	unenroll_method_reply (closure->invocation, error);
 
@@ -229,310 +230,106 @@ on_unenroll_complete (GObject *source,
 	method_closure_free (closure);
 }
 
-static gchar *
-write_ccache_file (GVariant *ccache,
-                   GError **error)
+static gboolean
+is_credential_supported (RealmKerberosMembershipIface *iface,
+                         RealmCredential *cred,
+                         gboolean join,
+                         GError **error)
 {
-	const gchar *directory;
-	gchar *filename;
-	const guchar *data;
-	gsize length;
-	gint fd;
-	int res;
+	const RealmCredential *supported;
+	const char *message;
+	gboolean found = FALSE;
+	gint i;
 
-	data = g_variant_get_fixed_array (ccache, &length, 1);
-	g_return_val_if_fail (length > 0, NULL);
-
-	directory = g_get_tmp_dir ();
-	filename = g_build_filename (directory, "realm-ad-kerberos-XXXXXX", NULL);
-
-	fd = g_mkstemp_full (filename, O_WRONLY, 0600);
-	if (fd < 0) {
-		g_warning ("couldn't open temporary file in %s directory for kerberos cache: %s",
-		           directory, g_strerror (errno));
-		g_set_error (error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Problem writing out the kerberos cache data");
-		g_free (filename);
-		return NULL;
-	}
-
-	while (length > 0) {
-		res = write (fd, data, length);
-		if (res <= 0) {
-			if (errno == EAGAIN && errno == EINTR)
-				continue;
-			g_warning ("couldn't write kerberos cache to file %s: %s",
-			           directory, g_strerror (errno));
-			g_set_error (error, REALM_ERROR, REALM_ERROR_INTERNAL,
-			             "Problem writing out the kerberos cache data");
-			break;
-		} else  {
-			length -= res;
-			data += res;
+	supported = join ? iface->join_creds_supported : iface->leave_creds_supported;
+	if (supported) {
+		for (i = 0; supported[i].type != 0; i++) {
+			if (cred->type == supported[i].type) {
+				found = TRUE;
+				break;
+			}
 		}
 	}
 
-	if (length != 0) {
-		g_free (filename);
-		return NULL;
+	if (found)
+		return TRUE;
+
+	switch (cred->type) {
+	case REALM_CREDENTIAL_AUTOMATIC:
+		message = join ? _("Joining this realm without credentials is not supported") :
+		                 _("Leaving this realm without credentials is not supported");
+		break;
+	case REALM_CREDENTIAL_CCACHE:
+		message = join ? _("Joining this realm using a credential cache is not supported") :
+		                 _("Leaving this realm using a credential cache is not supported");
+		break;
+	case REALM_CREDENTIAL_SECRET:
+		message = join ? _("Joining this realm using a secret is not supported") :
+		                 _("Unenrolling this realm using a secret is not supported");
+		break;
+	case REALM_CREDENTIAL_PASSWORD:
+		message = join ? _("Enrolling this realm using a password is not supported") :
+		                 _("Unenrolling this realm using a password is not supported");
+		break;
 	}
 
-	return filename;
+	g_set_error_literal (error, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED, message);
+	return FALSE;
 }
 
 static void
-enroll_or_unenroll_with_ccache (RealmKerberos *self,
-                                RealmKerberosFlags flags,
-                                GVariant *options,
-                                GDBusMethodInvocation *invocation,
-                                GVariant *ccache,
-                                gboolean enroll)
+join_or_leave (RealmKerberos *self,
+               GVariant *credential,
+               RealmKerberosFlags flags,
+               GVariant *options,
+               GDBusMethodInvocation *invocation,
+               gboolean join)
 {
 	RealmKerberosMembershipIface *iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (self);
+	RealmCredential *cred;
 	MethodClosure *method;
-	gchar *ccache_file;
-	GError *error;
+	GError *error = NULL;
 
-	if ((enroll && iface && iface->enroll_ccache_async == NULL) ||
-	    (!enroll && iface && iface->unenroll_ccache_async == NULL)) {
+	if ((join && iface && iface->join_async == NULL) ||
+	    (!join && iface && iface->leave_async == NULL)) {
 		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
-		                                       enroll ?
-		                                            _("Enrolling this realm using a credential cache is not supported") :
-		                                            _("Unenrolling this realm using a credential cache is not supported"));
+		                                       join ? _("Joining this realm is not supported") :
+		                                              _("Leaving this realm is not supported"));
 		return;
 	}
 
-	if (!realm_invocation_lock_daemon (invocation)) {
-		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
-		                                       _("Already running another action"));
-		return;
-	}
-
-	ccache_file = write_ccache_file (ccache, &error);
-	if (ccache_file == NULL) {
-		enroll_method_reply (invocation, error);
+	cred = realm_credential_parse (credential, &error);
+	if (error != NULL) {
+		g_dbus_method_invocation_return_gerror (invocation, error);
 		g_error_free (error);
 		return;
 	}
 
+	if (!is_credential_supported (iface, cred, join, &error)) {
+		g_dbus_method_invocation_return_gerror (invocation, error);
+		realm_credential_unref (cred);
+		g_error_free (error);
+		return;
+	}
+
+	if (!realm_invocation_lock_daemon (invocation)) {
+		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
+		                                       _("Already running another action"));
+		return;
+	}
+
 	method = method_closure_new (self, invocation);
-	method->ccache_file = ccache_file;
+	method->cred = cred;
 
-	if (enroll) {
-		g_return_if_fail (iface->enroll_finish != NULL);
-		(iface->enroll_ccache_async) (REALM_KERBEROS_MEMBERSHIP (self), ccache_file, flags,
-		                              options, invocation, on_enroll_complete, method);
+	if (join) {
+		g_return_if_fail (iface->join_finish != NULL);
+		(iface->join_async) (REALM_KERBEROS_MEMBERSHIP (self), cred, flags,
+		                     options, invocation, on_enroll_complete, method);
 	} else {
-		g_return_if_fail (iface->unenroll_finish != NULL);
-		(iface->unenroll_ccache_async) (REALM_KERBEROS_MEMBERSHIP (self), ccache_file, flags,
-		                                options, invocation, on_unenroll_complete, method);
+		g_return_if_fail (iface->leave_finish != NULL);
+		(iface->leave_async) (REALM_KERBEROS_MEMBERSHIP (self), cred, flags,
+		                      options, invocation, on_unenroll_complete, method);
 	}
-}
-
-static void
-enroll_or_unenroll_with_secret (RealmKerberos *self,
-                                RealmKerberosFlags flags,
-                                GVariant *options,
-                                GDBusMethodInvocation *invocation,
-                                GVariant *secret,
-                                gboolean enroll)
-{
-	RealmKerberosMembershipIface *iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (self);
-	const guchar *data;
-	GBytes *bytes;
-	gsize length;
-
-	if ((enroll && iface && iface->enroll_secret_async == NULL) ||
-	    (!enroll && iface && iface->unenroll_secret_async == NULL)) {
-		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
-		                                       enroll ?
-		                                            _("Enrolling this realm using a secret is not supported") :
-		                                            _("Unenrolling this realm using a secret is not supported"));
-		return;
-	}
-
-	if (!realm_invocation_lock_daemon (invocation)) {
-		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
-		                                       _("Already running another action"));
-		return;
-	}
-
-	data = g_variant_get_fixed_array (secret, &length, 1);
-	bytes = g_bytes_new_with_free_func (data, length,
-	                                    (GDestroyNotify)g_variant_unref,
-	                                    g_variant_ref (secret));
-
-	if (enroll) {
-		g_return_if_fail (iface->enroll_finish != NULL);
-		(iface->enroll_secret_async) (REALM_KERBEROS_MEMBERSHIP (self), bytes, flags, options, invocation,
-		                              on_enroll_complete, method_closure_new (self, invocation));
-	} else {
-		g_return_if_fail (iface->unenroll_finish != NULL);
-		(iface->unenroll_secret_async) (REALM_KERBEROS_MEMBERSHIP (self), bytes, flags, options, invocation,
-		                                on_unenroll_complete, method_closure_new (self, invocation));
-	}
-
-	g_bytes_unref (bytes);
-}
-
-static void
-enroll_or_unenroll_with_password (RealmKerberos *self,
-                                  RealmKerberosFlags flags,
-                                  GVariant *options,
-                                  GDBusMethodInvocation *invocation,
-                                  GVariant *creds,
-                                  gboolean enroll)
-{
-	RealmKerberosMembershipIface *iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (self);
-	const gchar *name;
-	const gchar *password;
-	GBytes *bytes;
-
-	if ((enroll && iface && iface->enroll_password_async == NULL) ||
-	    (!enroll && iface && iface->unenroll_password_async == NULL)) {
-		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
-		                                       enroll ?
-		                                           _("Enrolling this realm using a password is not supported") :
-		                                           _("Unenrolling this realm using a password is not supported"));
-		return;
-	}
-
-	if (!realm_invocation_lock_daemon (invocation)) {
-		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
-		                                       _("Already running another action"));
-		return;
-	}
-
-	g_variant_get (creds, "(&s&s)", &name, &password);
-	bytes = g_bytes_new_with_free_func (password, strlen (password),
-	                                    (GDestroyNotify)g_variant_unref,
-	                                    g_variant_ref (creds));
-
-	if (enroll) {
-		g_return_if_fail (iface->enroll_finish != NULL);
-		(iface->enroll_password_async) (REALM_KERBEROS_MEMBERSHIP (self), name, bytes, flags, options, invocation,
-		                                on_enroll_complete, method_closure_new (self, invocation));
-
-	} else {
-		g_return_if_fail (iface->unenroll_finish != NULL);
-		(iface->unenroll_password_async) (REALM_KERBEROS_MEMBERSHIP (self), name, bytes, flags, options, invocation,
-		                                  on_unenroll_complete, method_closure_new (self, invocation));
-	}
-
-	g_bytes_unref (bytes);
-}
-
-static void
-enroll_or_unenroll_with_automatic (RealmKerberos *self,
-                                   RealmKerberosFlags flags,
-                                   GVariant *options,
-                                   GDBusMethodInvocation *invocation,
-                                   gboolean enroll)
-{
-	RealmKerberosMembershipIface *iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (self);
-
-	if ((enroll && iface && iface->enroll_automatic_async == NULL) ||
-	    (!enroll && iface && iface->unenroll_automatic_async == NULL)) {
-		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
-		                                       enroll ?
-		                                            _("Enrolling this realm without credentials is not supported") :
-		                                            _("Unenrolling this realm without credentials is not supported"));
-		return;
-	}
-
-	if (!realm_invocation_lock_daemon (invocation)) {
-		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BUSY,
-		                                       _("Already running another action"));
-		return;
-	}
-
-	if (enroll) {
-		g_return_if_fail (iface->enroll_finish != NULL);
-		(iface->enroll_automatic_async) (REALM_KERBEROS_MEMBERSHIP (self), flags, options, invocation,
-		                                 on_enroll_complete, method_closure_new (self, invocation));
-	} else {
-		g_return_if_fail (iface->enroll_finish != NULL);
-		(iface->unenroll_automatic_async) (REALM_KERBEROS_MEMBERSHIP (self), flags, options, invocation,
-		                                   on_unenroll_complete, method_closure_new (self, invocation));
-	}
-}
-
-static gboolean
-validate_and_parse_credentials (GDBusMethodInvocation *invocation,
-                                GVariant *input,
-                                RealmKerberosFlags *flags,
-                                RealmKerberosCredential *cred_type,
-                                GVariant **creds)
-{
-	GVariant *outer;
-	const char *owner, *type;
-	gsize length;
-
-	g_variant_get (input, "(&s&s@v)", &type, &owner, &outer);
-
-	if (g_str_equal (owner, "administrator")) {
-		*flags |= REALM_KERBEROS_OWNER_ADMIN;
-	} else if (g_str_equal (owner, "user")) {
-		*flags |= REALM_KERBEROS_OWNER_USER;
-	} else if (g_str_equal (owner, "computer")) {
-		*flags |= REALM_KERBEROS_OWNER_COMPUTER;
-	} else if (g_str_equal (owner, "none")) {
-		*flags |= REALM_KERBEROS_OWNER_NONE;
-	} else {
-		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-		                                       "Credential cache argument has invalid or unsupported owner");
-		return FALSE;
-	}
-
-	*creds = g_variant_get_variant (outer);
-	g_variant_unref (outer);
-
-	if (g_str_equal (type, "ccache")) {
-		if (g_variant_is_of_type (*creds, G_VARIANT_TYPE ("ay"))) {
-			g_variant_get_fixed_array (*creds, &length, 1);
-			if (length == 0) {
-				g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-				                                       _("Invalid zero length credential cache argument"));
-			} else {
-				*cred_type = REALM_KERBEROS_CREDENTIAL_CCACHE;
-				return TRUE;
-			}
-		} else {
-			g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-			                                       "Credential cache argument is of wrong DBus type");
-		}
-
-	} else if (g_str_equal (type, "password")) {
-		if (g_variant_is_of_type (*creds, G_VARIANT_TYPE ("(ss)"))) {
-			*cred_type = REALM_KERBEROS_CREDENTIAL_PASSWORD;
-			return TRUE;
-		} else {
-			g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-			                                       "Password credentials are of wrong DBus type");
-		}
-
-	} else if (g_str_equal (type, "secret")) {
-		if (g_variant_is_of_type (*creds, G_VARIANT_TYPE ("ay"))) {
-			*cred_type = REALM_KERBEROS_CREDENTIAL_SECRET;
-			return TRUE;
-		} else {
-			g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-			                                       "Secret credentials are of wrong DBus type");
-		}
-
-	} else if (g_str_equal (type, "automatic")) {
-		*cred_type = REALM_KERBEROS_CREDENTIAL_AUTOMATIC;
-		return TRUE;
-
-	} else {
-		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-		                                       "Invalid or unsupported credential type");
-	}
-
-	/* Parsing failed */
-	g_variant_unref (*creds);
-	*creds = NULL;
-	return FALSE;
 }
 
 static gboolean
@@ -545,13 +342,8 @@ handle_join (RealmDbusKerberosMembership *membership,
 	RealmKerberos *self = REALM_KERBEROS (user_data);
 	gchar hostname[HOST_NAME_MAX + 1];
 	RealmKerberosFlags flags = 0;
-	GVariant *creds;
-	RealmKerberosCredential cred_type;
 	gboolean assume = FALSE;
 	gint ret;
-
-	if (!validate_and_parse_credentials (invocation, credentials, &flags, &cred_type, &creds))
-		return TRUE;
 
 	/* Check the host name */
 	ret = gethostname (hostname, sizeof (hostname));
@@ -565,24 +357,7 @@ handle_join (RealmDbusKerberosMembership *membership,
 	if (g_variant_lookup (options, REALM_DBUS_OPTION_ASSUME_PACKAGES, "b", &assume) && assume)
 		flags |= REALM_KERBEROS_ASSUME_PACKAGES;
 
-	switch (cred_type) {
-	case REALM_KERBEROS_CREDENTIAL_CCACHE:
-		enroll_or_unenroll_with_ccache (self, flags, options, invocation, creds, TRUE);
-		break;
-	case REALM_KERBEROS_CREDENTIAL_PASSWORD:
-		enroll_or_unenroll_with_password (self, flags, options, invocation, creds, TRUE);
-		break;
-	case REALM_KERBEROS_CREDENTIAL_SECRET:
-		enroll_or_unenroll_with_secret (self, flags, options, invocation, creds, TRUE);
-		break;
-	case REALM_KERBEROS_CREDENTIAL_AUTOMATIC:
-		enroll_or_unenroll_with_automatic (self, flags, options, invocation, TRUE);
-		break;
-	default:
-		g_assert_not_reached ();
-	}
-
-	g_variant_unref (creds);
+	join_or_leave (self, credentials, flags, options, invocation, TRUE);
 	return TRUE;
 }
 
@@ -595,9 +370,7 @@ handle_leave (RealmDbusKerberosMembership *membership,
 {
 	RealmKerberos *self = REALM_KERBEROS (user_data);
 	RealmKerberosFlags flags = 0;
-	GVariant *creds;
 	const gchar *computer_ou;
-	RealmKerberosCredential cred_type;
 
 	if (g_variant_lookup (options, REALM_DBUS_OPTION_COMPUTER_OU, "&s", &computer_ou)) {
 		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
@@ -605,27 +378,7 @@ handle_leave (RealmDbusKerberosMembership *membership,
 		return TRUE;
 	}
 
-	if (!validate_and_parse_credentials (invocation, credentials, &flags, &cred_type, &creds))
-		return TRUE;
-
-	switch (cred_type) {
-	case REALM_KERBEROS_CREDENTIAL_CCACHE:
-		enroll_or_unenroll_with_ccache (self, flags, options, invocation, creds, FALSE);
-		break;
-	case REALM_KERBEROS_CREDENTIAL_PASSWORD:
-		enroll_or_unenroll_with_password (self, flags, options, invocation, creds, FALSE);
-		break;
-	case REALM_KERBEROS_CREDENTIAL_SECRET:
-		enroll_or_unenroll_with_secret (self, flags, options, invocation, creds, FALSE);
-		break;
-	case REALM_KERBEROS_CREDENTIAL_AUTOMATIC:
-		enroll_or_unenroll_with_automatic (self, flags, options, invocation, FALSE);
-		break;
-	default:
-		g_assert_not_reached ();
-	}
-
-	g_variant_unref (creds);
+	join_or_leave (self, credentials, flags, options, invocation, FALSE);
 	return TRUE;
 }
 
@@ -635,10 +388,13 @@ handle_deconfigure (RealmDbusRealm *realm,
                     GVariant *options,
                     gpointer user_data)
 {
-	RealmKerberos *self = REALM_KERBEROS (user_data);
+	GVariant *credential;
 
-	enroll_or_unenroll_with_automatic (self, REALM_KERBEROS_OWNER_COMPUTER,
-	                                   options, invocation, FALSE);
+	credential = g_variant_new ("(ss@v)", "automatic", "none",
+	                            g_variant_new_variant (g_variant_new_string ("")));
+	join_or_leave (REALM_KERBEROS (user_data), credential, 0, options, invocation, FALSE);
+	g_variant_unref (credential);
+
 	return TRUE;
 }
 
@@ -770,8 +526,10 @@ realm_kerberos_init (RealmKerberos *self)
 static void
 realm_kerberos_constructed (GObject *obj)
 {
+	RealmKerberosMembershipIface *iface;
 	RealmKerberos *self = REALM_KERBEROS (obj);
 	const gchar *supported_interfaces[3];
+	GVariant *supported;
 	const gchar *name;
 
 	G_OBJECT_CLASS (realm_kerberos_parent_class)->constructed (obj);
@@ -784,6 +542,14 @@ realm_kerberos_constructed (GObject *obj)
 		                  G_CALLBACK (handle_leave), self);
 		g_dbus_object_skeleton_add_interface (G_DBUS_OBJECT_SKELETON (self),
 		                                      G_DBUS_INTERFACE_SKELETON (self->pv->membership_iface));
+
+		iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (self);
+		supported = realm_credential_build_supported (iface->join_creds_supported);
+		realm_dbus_kerberos_membership_set_supported_join_credentials (self->pv->membership_iface, supported);
+
+		iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (self);
+		supported = realm_credential_build_supported (iface->leave_creds_supported);
+		realm_dbus_kerberos_membership_set_supported_leave_credentials (self->pv->membership_iface, supported);
 	}
 
 	supported_interfaces[0] = REALM_DBUS_KERBEROS_INTERFACE;
@@ -981,7 +747,7 @@ kinit_closure_free (gpointer data)
 	g_free (kinit->principal);
 	g_bytes_unref (kinit->password);
 	g_free (kinit->enctypes);
-	realm_keberos_ccache_delete_and_free (kinit->ccache_file);
+	realm_credential_ccache_delete_and_free (kinit->ccache_file);
 	g_slice_free (KinitClosure, kinit);
 }
 
@@ -1206,16 +972,6 @@ realm_kerberos_kinit_ccache_finish (RealmKerberos *self,
 	return filename;
 }
 
-void
-realm_keberos_ccache_delete_and_free (gchar *ccache_file)
-{
-	if (!realm_daemon_has_debug_flag () && g_unlink (ccache_file) < 0) {
-		g_warning ("couldn't remove kerberos cache file: %s: %s",
-		           ccache_file, g_strerror (errno));
-	}
-	g_free (ccache_file);
-}
-
 const gchar *
 realm_kerberos_get_name (RealmKerberos *self)
 {
@@ -1253,24 +1009,6 @@ realm_kerberos_set_suggested_admin (RealmKerberos *self,
 	g_return_if_fail (REALM_IS_KERBEROS (self));
 	g_return_if_fail (self->pv->membership_iface != NULL);
 	realm_dbus_kerberos_membership_set_suggested_administrator (self->pv->membership_iface, value);
-}
-
-void
-realm_kerberos_set_supported_join_creds (RealmKerberos *self,
-                                         GVariant *value)
-{
-	g_return_if_fail (REALM_IS_KERBEROS (self));
-	g_return_if_fail (self->pv->membership_iface != NULL);
-	realm_dbus_kerberos_membership_set_supported_join_credentials (self->pv->membership_iface, value);
-}
-
-void
-realm_kerberos_set_supported_leave_creds (RealmKerberos *self,
-                                          GVariant *value)
-{
-	g_return_if_fail (REALM_IS_KERBEROS (self));
-	g_return_if_fail (self->pv->membership_iface != NULL);
-	realm_dbus_kerberos_membership_set_supported_leave_credentials (self->pv->membership_iface, value);
 }
 
 void

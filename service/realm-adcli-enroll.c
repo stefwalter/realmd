@@ -68,25 +68,23 @@ on_join_process (GObject *source,
 	g_object_unref (async);
 }
 
-static void
-begin_join_process (GBytes *input,
-                    GDBusMethodInvocation *invocation,
-                    GAsyncReadyCallback callback,
-                    gpointer user_data,
-                    ...) G_GNUC_NULL_TERMINATED;
-
-static void
-begin_join_process (GBytes *input,
-                    GDBusMethodInvocation *invocation,
-                    GAsyncReadyCallback callback,
-                    gpointer user_data,
-                    ...)
+void
+realm_adcli_enroll_join_async (const gchar *realm,
+                               RealmCredential *cred,
+                               const gchar *computer_ou,
+                               GDBusMethodInvocation *invocation,
+                               GAsyncReadyCallback callback,
+                               gpointer user_data)
 {
 	gchar *environ[] = { "LANG=C", NULL };
 	GSimpleAsyncResult *async;
+	GBytes *input = NULL;
 	GPtrArray *args;
 	gchar *arg;
-	va_list va;
+
+	g_return_if_fail (cred != NULL);
+	g_return_if_fail (realm != NULL);
+	g_return_if_fail (invocation != NULL);
 
 	async = g_simple_async_result_new (NULL, callback, user_data,
 	                                   realm_adcli_enroll_join_finish);
@@ -98,13 +96,40 @@ begin_join_process (GBytes *input,
 	g_ptr_array_add (args, "join");
 	g_ptr_array_add (args, "--verbose");
 	g_ptr_array_add (args, "--show-details");
+	g_ptr_array_add (args, "--domain");
+	g_ptr_array_add (args, (gpointer)realm);
 
-	va_start (va, user_data);
-	do {
-		arg = va_arg (va, gchar *);
+	if (computer_ou) {
+		g_ptr_array_add (args, "--computer-ou");
+		g_ptr_array_add (args, (gpointer)computer_ou);
+	}
+
+	switch (cred->type) {
+	case REALM_CREDENTIAL_AUTOMATIC:
+		g_ptr_array_add (args, "--login-type");
+		g_ptr_array_add (args, "computer");
+		g_ptr_array_add (args, "--no-password");
+		break;
+	case REALM_CREDENTIAL_CCACHE:
+		g_ptr_array_add (args, "--login-type");
+		g_ptr_array_add (args, "user");
+		arg = g_strdup_printf ("--login-ccache=%s", cred->x.ccache.file);
 		g_ptr_array_add (args, arg);
-	} while (arg != NULL);
-	va_end (va);
+		break;
+	case REALM_CREDENTIAL_PASSWORD:
+		input = realm_command_build_password_line (cred->x.password.value);
+		g_ptr_array_add (args, "--login-type");
+		g_ptr_array_add (args, "user");
+		g_ptr_array_add (args, "--login-user");
+		g_ptr_array_add (args, cred->x.password.name);
+		break;
+	case REALM_CREDENTIAL_SECRET:
+		input = realm_command_build_password_line (cred->x.secret.value);
+		g_ptr_array_add (args, "--login-type");
+		g_ptr_array_add (args, "computer");
+		g_ptr_array_add (args, "--stdin-password");
+		break;
+	}
 
 	g_ptr_array_add (args, NULL);
 
@@ -114,60 +139,10 @@ begin_join_process (GBytes *input,
 
 	g_ptr_array_free (args, TRUE);
 	g_object_unref (async);
-}
 
-void
-realm_adcli_enroll_join_ccache_async (const gchar *realm,
-                                      const gchar *ccache_file,
-                                      const gchar *computer_ou,
-                                      GDBusMethodInvocation *invocation,
-                                      GAsyncReadyCallback callback,
-                                      gpointer user_data)
-{
-	char *ccache_arg;
-
-	/* Since this is an optional adcli argument it requires the equals */
-	ccache_arg = g_strdup_printf ("--login-ccache=%s", ccache_file);
-
-	begin_join_process (NULL, invocation, callback, user_data,
-	                    "--domain", realm,
-	                    "--login-type", "user",
-	                    ccache_arg, "--no-password",
-	                    computer_ou ? "--computer-ou": NULL, computer_ou,
-	                    NULL);
-
-	free (ccache_arg);
-}
-
-void
-realm_adcli_enroll_join_automatic_async (const gchar *realm,
-                                         const gchar *computer_ou,
-                                         GDBusMethodInvocation *invocation,
-                                         GAsyncReadyCallback callback,
-                                         gpointer user_data)
-{
-	begin_join_process (NULL, invocation, callback, user_data,
-	                    "--domain", realm,
-	                    "--login-type", "computer",
-	                    "--no-password",
-	                    computer_ou ? "--computer-ou": NULL, computer_ou,
-	                    NULL);
-}
-
-void
-realm_adcli_enroll_join_otp_async (const gchar *realm,
-                                   GBytes *secret,
-                                   const gchar *computer_ou,
-                                   GDBusMethodInvocation *invocation,
-                                   GAsyncReadyCallback callback,
-                                   gpointer user_data)
-{
-	begin_join_process (secret, invocation, callback, user_data,
-	                    "--domain", realm,
-	                    "--login-type", "computer",
-	                    "--stdin-password",
-	                    computer_ou ? "--computer-ou": NULL, computer_ou,
-	                    NULL);
+	if (input)
+		g_bytes_unref (input);
+	free (arg);
 }
 
 gboolean

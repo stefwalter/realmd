@@ -58,7 +58,6 @@ static void
 realm_example_constructed (GObject *obj)
 {
 	RealmKerberos *kerberos = REALM_KERBEROS (obj);
-	GVariant *supported;
 
 	G_OBJECT_CLASS (realm_example_parent_class)->constructed (obj);
 
@@ -66,23 +65,6 @@ realm_example_constructed (GObject *obj)
 	                            REALM_DBUS_OPTION_SERVER_SOFTWARE, REALM_DBUS_IDENTIFIER_EXAMPLE,
 	                            REALM_DBUS_OPTION_CLIENT_SOFTWARE, REALM_DBUS_IDENTIFIER_EXAMPLE,
 	                            NULL);
-
-	supported = realm_kerberos_membership_build_supported (
-			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_ADMIN,
-			0);
-
-	g_variant_ref_sink (supported);
-	realm_kerberos_set_supported_join_creds (kerberos, supported);
-	g_variant_unref (supported);
-
-	supported = realm_kerberos_membership_build_supported (
-			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_ADMIN,
-			REALM_KERBEROS_CREDENTIAL_AUTOMATIC, REALM_KERBEROS_OWNER_NONE,
-			0);
-
-	g_variant_ref_sink (supported);
-	realm_kerberos_set_supported_leave_creds (kerberos, supported);
-	g_variant_unref (supported);
 
 	realm_kerberos_set_login_policy (kerberos, REALM_KERBEROS_ALLOW_ANY_LOGIN);
 }
@@ -165,8 +147,7 @@ on_join_sleep_done (GObject *source,
 
 static void
 realm_example_join_async (RealmKerberosMembership *membership,
-                          const gchar *name,
-                          GBytes *password,
+                          RealmCredential *cred,
                           RealmKerberosFlags flags,
                           GVariant *options,
                           GDBusMethodInvocation *invocation,
@@ -178,6 +159,8 @@ realm_example_join_async (RealmKerberosMembership *membership,
 	GSimpleAsyncResult *async;
 	GError *error = NULL;
 	const gchar *realm_name;
+
+	g_return_if_fail (cred->type == REALM_CREDENTIAL_PASSWORD);
 
 	realm_name = realm_kerberos_get_name (kerberos);
 	async = g_simple_async_result_new (G_OBJECT (self), callback, user_data,
@@ -193,7 +176,8 @@ realm_example_join_async (RealmKerberosMembership *membership,
 		g_simple_async_result_take_error (async, error);
 		g_simple_async_result_complete_in_idle (async);
 
-	} else if (!match_admin_and_password (self->config, realm_name, name, password)) {
+	} else if (!match_admin_and_password (self->config, realm_name,
+	                                      cred->x.password.name, cred->x.password.value)) {
 		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
 		                                 _("Admin name or password is not valid"));
 		g_simple_async_result_complete_in_idle (async);
@@ -323,6 +307,28 @@ realm_example_leave_automatic_async (RealmKerberosMembership *membership,
 	}
 
 	g_object_unref (async);
+}
+
+static void
+realm_example_leave_async (RealmKerberosMembership *membership,
+                           RealmCredential *cred,
+                           RealmKerberosFlags flags,
+                           GVariant *options,
+                           GDBusMethodInvocation *invocation,
+                           GAsyncReadyCallback callback,
+                           gpointer user_data)
+{
+	switch (cred->type) {
+	case REALM_CREDENTIAL_AUTOMATIC:
+		realm_example_leave_automatic_async (membership, flags, options, invocation, callback, user_data);
+		break;
+	case REALM_CREDENTIAL_PASSWORD:
+		realm_example_leave_password_async (membership, cred->x.password.name, cred->x.password.value,
+		                                    flags, options, invocation, callback, user_data);
+		break;
+	default:
+		g_return_if_reached ();
+	}
 }
 
 static void
@@ -502,11 +508,24 @@ realm_example_class_init (RealmExampleClass *klass)
 static void
 realm_example_kerberos_membership_iface (RealmKerberosMembershipIface *iface)
 {
-	iface->enroll_password_async = realm_example_join_async;
-	iface->enroll_finish = realm_example_membership_generic_finish;
-	iface->unenroll_password_async = realm_example_leave_password_async;
-	iface->unenroll_automatic_async = realm_example_leave_automatic_async;
-	iface->unenroll_finish = realm_example_membership_generic_finish;
+	static const RealmCredential join_creds[] = {
+		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN },
+		{ 0, }
+	};
+
+	static const RealmCredential leave_creds[] = {
+		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN },
+		{ REALM_CREDENTIAL_AUTOMATIC, REALM_CREDENTIAL_OWNER_NONE },
+		{ 0, }
+	};
+
+	iface->join_async = realm_example_join_async;
+	iface->join_finish = realm_example_membership_generic_finish;
+	iface->join_creds_supported = join_creds;
+
+	iface->leave_async = realm_example_leave_async;
+	iface->leave_finish = realm_example_membership_generic_finish;
+	iface->leave_creds_supported = leave_creds;
 }
 
 RealmKerberos *

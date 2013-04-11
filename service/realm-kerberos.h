@@ -93,8 +93,6 @@ gchar *             realm_kerberos_kinit_ccache_finish   (RealmKerberos *self,
                                                           GAsyncResult *result,
                                                           GError **error);
 
-void                realm_keberos_ccache_delete_and_free (gchar *ccache_file);
-
 gboolean            realm_kerberos_flush_keytab                (const gchar *realm_name,
                                                                 GError **error);
 
@@ -110,12 +108,6 @@ void                realm_kerberos_set_domain_name             (RealmKerberos *s
 
 void                realm_kerberos_set_suggested_admin         (RealmKerberos *self,
                                                                 const gchar *value);
-
-void                realm_kerberos_set_supported_join_creds    (RealmKerberos *self,
-                                                                GVariant *value);
-
-void                realm_kerberos_set_supported_leave_creds   (RealmKerberos *self,
-                                                                GVariant *value);
 
 void                realm_kerberos_set_permitted_logins        (RealmKerberos *self,
                                                                 const gchar **value);

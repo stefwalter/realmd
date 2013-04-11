@@ -17,36 +17,24 @@
 #ifndef __REALM_ADCLI_ENROLL_H__
 #define __REALM_ADCLI_ENROLL_H__
 
+#include "realm-credential.h"
+
 #include <gio/gio.h>
 
 #include <krb5.h>
 
 G_BEGIN_DECLS
 
-void         realm_adcli_enroll_join_automatic_async    (const gchar *realm,
-                                                         const gchar *computer_ou,
-                                                         GDBusMethodInvocation *invocation,
-                                                         GAsyncReadyCallback callback,
-                                                         gpointer user_data);
+void         realm_adcli_enroll_join_async    (const gchar *realm,
+                                               RealmCredential *cred,
+                                               const gchar *computer_ou,
+                                               GDBusMethodInvocation *invocation,
+                                               GAsyncReadyCallback callback,
+                                               gpointer user_data);
 
-
-void         realm_adcli_enroll_join_otp_async          (const gchar *realm,
-                                                         GBytes *secret,
-                                                         const gchar *computer_ou,
-                                                         GDBusMethodInvocation *invocation,
-                                                         GAsyncReadyCallback callback,
-                                                         gpointer user_data);
-
-void         realm_adcli_enroll_join_ccache_async       (const gchar *realm,
-                                                         const gchar *ccache_file,
-                                                         const gchar *computer_ou,
-                                                         GDBusMethodInvocation *invocation,
-                                                         GAsyncReadyCallback callback,
-                                                         gpointer user_data);
-
-gboolean     realm_adcli_enroll_join_finish             (GAsyncResult *result,
-                                                         gchar **workgroup,
-                                                         GError **error);
+gboolean     realm_adcli_enroll_join_finish   (GAsyncResult *result,
+                                               gchar **workgroup,
+                                               GError **error);
 
 G_END_DECLS
 

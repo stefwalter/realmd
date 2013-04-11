@@ -22,6 +22,7 @@ realmd_SOURCES = \
 	realm-adcli-enroll.c realm-adcli-enroll.h \
 	realm-all-provider.c realm-all-provider.h \
 	realm-command.c realm-command.h \
+	realm-credential.c realm-credential.h \
 	realm-daemon.c realm-daemon.h \
 	realm-diagnostics.c realm-diagnostics.h \
 	realm-discovery.c realm-discovery.h \

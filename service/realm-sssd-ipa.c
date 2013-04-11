@@ -71,7 +71,6 @@ static void
 realm_sssd_ipa_constructed (GObject *obj)
 {
 	RealmKerberos *kerberos = REALM_KERBEROS (obj);
-	GVariant *supported;
 
 	G_OBJECT_CLASS (realm_sssd_ipa_parent_class)->constructed (obj);
 
@@ -79,24 +78,6 @@ realm_sssd_ipa_constructed (GObject *obj)
 	                            REALM_DBUS_OPTION_SERVER_SOFTWARE, REALM_DBUS_IDENTIFIER_FREEIPA,
 	                            REALM_DBUS_OPTION_CLIENT_SOFTWARE, REALM_DBUS_IDENTIFIER_SSSD,
 	                            NULL);
-
-	/*
-	 * NOTE: The ipa-client-install service requires that we pass a password directly
-	 * to the process, and not a ccache. It also accepts a one time password.
-	 */
-	supported = realm_kerberos_membership_build_supported (
-			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_ADMIN,
-			REALM_KERBEROS_CREDENTIAL_SECRET, REALM_KERBEROS_OWNER_NONE,
-			0);
-
-	realm_kerberos_set_supported_join_creds (kerberos, supported);
-
-	supported = realm_kerberos_membership_build_supported (
-			REALM_KERBEROS_CREDENTIAL_PASSWORD, REALM_KERBEROS_OWNER_ADMIN,
-			REALM_KERBEROS_CREDENTIAL_AUTOMATIC, REALM_KERBEROS_OWNER_NONE,
-			0);
-
-	realm_kerberos_set_supported_leave_creds (kerberos, supported);
 
 	realm_kerberos_set_suggested_admin (kerberos, "admin");
 	realm_kerberos_set_required_package_sets (kerberos, IPA_PACKAGES);
@@ -116,7 +97,7 @@ realm_sssd_ipa_class_init (RealmSssdIpaClass *klass)
 
 typedef struct {
 	GDBusMethodInvocation *invocation;
-	gchar **argv;
+	GPtrArray *argv;
 	GBytes *input;
 } EnrollClosure;
 
@@ -125,7 +106,8 @@ enroll_closure_free (gpointer data)
 {
 	EnrollClosure *enroll = data;
 	g_object_unref (enroll->invocation);
-	g_strfreev (enroll->argv);
+	if (enroll->argv)
+		g_ptr_array_unref (enroll->argv);
 	g_bytes_unref (enroll->input);
 	g_slice_free (EnrollClosure, enroll);
 }
@@ -252,7 +234,7 @@ on_install_do_join (GObject *source,
 
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
-		realm_command_runv_async (enroll->argv, (gchar **)env,
+		realm_command_runv_async ((gchar **)enroll->argv->pdata, (gchar **)env,
 		                          enroll->input, enroll->invocation,
 		                          on_ipa_client_do_restart, g_object_ref (async));
 	} else {
@@ -263,15 +245,38 @@ on_install_do_join (GObject *source,
 	g_object_unref (async);
 }
 
+static char *
+secret_to_password (GBytes *secret)
+{
+	gconstpointer data;
+	gsize length;
+
+	/*
+	 * In theory the password could be binary with embedded nulls.
+	 * We don't support that. And we assume that we don't need to
+	 * check for that here, because such a password will be wrong,
+	 * and ipa-client-install will simply fail to join the domain.
+	 */
+
+	data = g_bytes_get_data (secret, &length);
+	return g_strndup (data, length);
+}
+
 static void
-join_ipa_async (RealmKerberosMembership *membership,
-                const gchar **argv,
-                GBytes *input,
-                RealmKerberosFlags flags,
-                GVariant *options,
-                GDBusMethodInvocation *invocation,
-                GAsyncReadyCallback callback,
-                gpointer user_data)
+push_arg (GPtrArray *argv,
+          const gchar *value)
+{
+	g_ptr_array_add (argv, strdup (value));
+}
+
+static void
+realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
+                           RealmCredential *cred,
+                           RealmKerberosFlags flags,
+                           GVariant *options,
+                           GDBusMethodInvocation *invocation,
+                           GAsyncReadyCallback callback,
+                           gpointer user_data)
 {
 	RealmKerberos *realm = REALM_KERBEROS (membership);
 	RealmSssd *sssd = REALM_SSSD (realm);
@@ -281,13 +286,12 @@ join_ipa_async (RealmKerberosMembership *membership,
 	const gchar *computer_ou;
 	const gchar *software;
 	const gchar **packages;
+	GPtrArray *argv;
 
 	domain_name = realm_kerberos_get_name (realm);
 
 	async = g_simple_async_result_new (G_OBJECT (realm), callback, user_data, NULL);
 	enroll = g_slice_new0 (EnrollClosure);
-	enroll->input = input ? g_bytes_ref (input) : NULL;
-	enroll->argv = g_strdupv ((gchar **)argv);
 	enroll->invocation = g_object_ref (invocation);
 	g_simple_async_result_set_op_res_gpointer (async, enroll, enroll_closure_free);
 
@@ -316,104 +320,51 @@ join_ipa_async (RealmKerberosMembership *membership,
 		packages = IPA_PACKAGES;
 		if (flags & REALM_KERBEROS_ASSUME_PACKAGES)
 			packages = NO_PACKAGES;
+
+		argv = g_ptr_array_new ();
+		push_arg (argv, realm_settings_string ("paths", "ipa-client-install"));
+		push_arg (argv, "--domain");
+		push_arg (argv, realm_kerberos_get_name (realm));
+		push_arg (argv, "--realm");
+		push_arg (argv, realm_kerberos_get_realm_name (realm));
+		push_arg (argv, "--mkhomedir");
+		push_arg (argv, "--no-ntp");
+		push_arg (argv, "--enable-dns-updates");
+		push_arg (argv, "--unattended");
+
+		switch (cred->type) {
+		case REALM_CREDENTIAL_SECRET:
+			/*
+			 * TODO: Allow passing the password other than command line.
+			 *
+			 * ipa-client-install won't let us pass a password into a prompt
+			 * when used with --unattended. We need --unattended since we can't
+			 * handle arbitrary prompts. So pass the one time password on
+			 * the command line. It's just a one time password, so in the short
+			 * term this should be okay.
+			 */
+
+			push_arg (argv, "--password");
+			g_ptr_array_add (argv, secret_to_password (cred->x.secret.value));
+			break;
+		case REALM_CREDENTIAL_PASSWORD:
+			enroll->input = realm_command_build_password_line (cred->x.password.value);
+			push_arg (argv, "--principal");
+			push_arg (argv, cred->x.password.name);
+			push_arg (argv, "-W");
+			break;
+		default:
+			g_return_if_reached ();
+		}
+
+		g_ptr_array_add (argv, NULL);
+		enroll->argv = argv;
+
 		realm_packages_install_async (packages, invocation,
 		                              on_install_do_join, g_object_ref (async));
 	}
 
 	g_object_unref (async);
-}
-
-static void
-realm_sssd_ipa_enroll_password_async (RealmKerberosMembership *membership,
-                                      const gchar *name,
-                                      GBytes *password,
-                                      RealmKerberosFlags flags,
-                                      GVariant *options,
-                                      GDBusMethodInvocation *invocation,
-                                      GAsyncReadyCallback callback,
-                                      gpointer user_data)
-{
-	RealmKerberos *realm = REALM_KERBEROS (membership);
-	GBytes *input;
-
-	const gchar *argv[] = {
-		realm_settings_string ("paths", "ipa-client-install"),
-		"--domain", realm_kerberos_get_name (realm),
-		"--realm", realm_kerberos_get_realm_name (realm),
-		"--principal", name,
-		"-W",
-		"--mkhomedir",
-		"--no-ntp",
-		"--enable-dns-updates",
-		"--unattended",
-		NULL,
-	};
-
-	input = realm_command_build_password_line (password);
-
-	join_ipa_async (membership, argv, input, flags, options,
-	                invocation, callback, user_data);
-
-	g_bytes_unref (input);
-}
-
-static const char *
-secret_to_password (GBytes *secret,
-                    gchar **password)
-{
-	gconstpointer data;
-	gsize length;
-
-	/*
-	 * In theory the password could be binary with embedded nulls.
-	 * We don't support that. And we assume that we don't need to
-	 * check for that here, because such a password will be wrong,
-	 * and ipa-client-install will simply fail to join the domain.
-	 */
-
-	data = g_bytes_get_data (secret, &length);
-	*password = g_strndup (data, length);
-	return *password;
-}
-
-static void
-realm_sssd_ipa_enroll_secret_async (RealmKerberosMembership *membership,
-                                    GBytes *secret,
-                                    RealmKerberosFlags flags,
-                                    GVariant *options,
-                                    GDBusMethodInvocation *invocation,
-                                    GAsyncReadyCallback callback,
-                                    gpointer user_data)
-{
-	RealmKerberos *realm = REALM_KERBEROS (membership);
-	char *password;
-
-	const gchar *argv[] = {
-		realm_settings_string ("paths", "ipa-client-install"),
-		"--domain", realm_kerberos_get_name (realm),
-		"--realm", realm_kerberos_get_realm_name (realm),
-		"--password", secret_to_password (secret, &password),
-		"--mkhomedir",
-		"--no-ntp",
-		"--enable-dns-updates",
-		"--unattended",
-		NULL,
-	};
-
-	/*
-	 * TODO: Allow passing the password other than command line.
-	 *
-	 * ipa-client-install won't let us pass a password into a prompt
-	 * when used with --unattended. We need --unattended since we can't
-	 * handle arbitrary prompts. So pass the one time password on
-	 * the command line. It's just a one time password, so in the short
-	 * term this should be okay.
-	 */
-
-	join_ipa_async (membership, argv, NULL, flags, options,
-	                invocation, callback, user_data);
-
-	g_free (password);
 }
 
 static void
@@ -447,24 +398,41 @@ on_ipa_client_do_disable (GObject *source,
 }
 
 static void
-leave_ipa_async (RealmKerberosMembership *membership,
-                 const gchar **argv,
-                 GBytes *input,
-                 RealmKerberosFlags flags,
-                 GVariant *options,
-                 GDBusMethodInvocation *invocation,
-                 GAsyncReadyCallback callback,
-                 gpointer user_data)
+realm_sssd_ipa_leave_async (RealmKerberosMembership *membership,
+                            RealmCredential *cred,
+                            RealmKerberosFlags flags,
+                            GVariant *options,
+                            GDBusMethodInvocation *invocation,
+                            GAsyncReadyCallback callback,
+                            gpointer user_data)
 {
 	RealmKerberos *realm = REALM_KERBEROS (membership);
 	RealmSssd *sssd = REALM_SSSD (realm);
 	GSimpleAsyncResult *async;
 	EnrollClosure *enroll;
 	const gchar *computer_ou;
+	GBytes *input;
+	const gchar **argv;
 
 	const gchar *env[] = {
 		"LANG=C",
 		NULL,
+	};
+
+	const gchar *automatic_args[] = {
+		realm_settings_string ("paths", "ipa-client-install"),
+		"--uninstall",
+		"--unattended",
+		NULL
+	};
+
+	const gchar *password_args[] = {
+		realm_settings_string ("paths", "ipa-client-install"),
+		"--uninstall",
+		"--principal", cred->x.password.name,
+		"-W",
+		"--unattended",
+		NULL
 	};
 
 	async = g_simple_async_result_new (G_OBJECT (realm), callback, user_data, NULL);
@@ -483,57 +451,26 @@ leave_ipa_async (RealmKerberosMembership *membership,
 		g_simple_async_result_complete_in_idle (async);
 
 	} else {
-		realm_command_runv_async ((gchar **)argv, (gchar **)env, NULL, invocation,
+		switch (cred->type) {
+		case REALM_CREDENTIAL_AUTOMATIC:
+			argv = automatic_args;
+			break;
+		case REALM_CREDENTIAL_PASSWORD:
+			input = realm_command_build_password_line (cred->x.password.value);
+			argv = password_args;
+			break;
+		default:
+			g_return_if_reached ();
+		}
+
+		realm_command_runv_async ((gchar **)argv, (gchar **)env, input, invocation,
 		                          on_ipa_client_do_disable, g_object_ref (async));
+
+		if (input)
+			g_bytes_unref (input);
 	}
 
 	g_object_unref (async);
-}
-
-static void
-realm_sssd_ipa_leave_password_async (RealmKerberosMembership *membership,
-                                     const char *name,
-                                     GBytes *password,
-                                     RealmKerberosFlags flags,
-                                     GVariant *options,
-                                     GDBusMethodInvocation *invocation,
-                                     GAsyncReadyCallback callback,
-                                     gpointer user_data)
-{
-	GBytes *input;
-
-	const gchar *argv[] = {
-		realm_settings_string ("paths", "ipa-client-install"),
-		"--uninstall",
-		"--principal", name,
-		"-W",
-		"--unattended",
-		NULL
-	};
-
-	input = realm_command_build_password_line (password);
-	leave_ipa_async (membership, argv, input, flags, options,
-	                 invocation, callback, user_data);
-	g_bytes_unref (input);
-}
-
-static void
-realm_sssd_ipa_leave_automatic_async (RealmKerberosMembership *membership,
-                                      RealmKerberosFlags flags,
-                                      GVariant *options,
-                                      GDBusMethodInvocation *invocation,
-                                      GAsyncReadyCallback callback,
-                                      gpointer user_data)
-{
-	const gchar *argv[] = {
-		realm_settings_string ("paths", "ipa-client-install"),
-		"--uninstall",
-		"--unattended",
-		NULL
-	};
-
-	leave_ipa_async (membership, argv, NULL, flags, options,
-	                 invocation, callback, user_data);
 }
 
 static gboolean
@@ -550,10 +487,28 @@ realm_sssd_ipa_generic_finish (RealmKerberosMembership *realm,
 static void
 realm_sssd_ipa_kerberos_membership_iface (RealmKerberosMembershipIface *iface)
 {
-	iface->enroll_password_async = realm_sssd_ipa_enroll_password_async;
-	iface->enroll_secret_async = realm_sssd_ipa_enroll_secret_async;
-	iface->enroll_finish = realm_sssd_ipa_generic_finish;
-	iface->unenroll_password_async = realm_sssd_ipa_leave_password_async;
-	iface->unenroll_automatic_async = realm_sssd_ipa_leave_automatic_async;
-	iface->unenroll_finish = realm_sssd_ipa_generic_finish;
+
+	/*
+	 * NOTE: The ipa-client-install service requires that we pass a password directly
+	 * to the process, and not a ccache. It also accepts a one time password.
+	 */
+	static const RealmCredential join_supported[] = {
+		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN },
+		{ REALM_CREDENTIAL_SECRET, REALM_CREDENTIAL_OWNER_NONE, },
+		{ 0, }
+	};
+
+	static const RealmCredential leave_supported[] = {
+		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN, },
+		{ REALM_CREDENTIAL_AUTOMATIC, REALM_CREDENTIAL_OWNER_NONE, },
+		{ 0, }
+	};
+
+	iface->join_async = realm_sssd_ipa_join_async;
+	iface->join_finish = realm_sssd_ipa_generic_finish;
+	iface->join_creds_supported = join_supported;
+
+	iface->leave_async = realm_sssd_ipa_leave_async;
+	iface->leave_finish = realm_sssd_ipa_generic_finish;
+	iface->leave_creds_supported = leave_supported;
 }

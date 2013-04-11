@@ -23,6 +23,7 @@
 #include "realm-kerberos.h"
 #include "realm-kerberos-discover.h"
 #include "realm-kerberos-membership.h"
+#include "realm-options.h"
 #include "realm-packages.h"
 #include "realm-provider.h"
 #include "realm-samba.h"
@@ -139,7 +140,7 @@ lookup_login_prefix (RealmSamba *self)
 
 typedef struct {
 	GDBusMethodInvocation *invocation;
-	gchar *computer_ou;
+	GVariant *options;
 	gchar *realm_name;
 	RealmCredential *cred;
 } EnrollClosure;
@@ -149,7 +150,7 @@ enroll_closure_free (gpointer data)
 {
 	EnrollClosure *enroll = data;
 	g_free (enroll->realm_name);
-	g_free (enroll->computer_ou);
+	g_variant_unref (enroll->options);
 	realm_credential_unref (enroll->cred);
 	g_object_unref (enroll->invocation);
 	g_slice_free (EnrollClosure, enroll);
@@ -229,7 +230,7 @@ on_install_do_join (GObject *source,
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
 		realm_samba_enroll_join_async (enroll->realm_name, enroll->cred,
-		                               enroll->computer_ou, realm_kerberos_get_discovery (kerberos),
+		                               enroll->options, realm_kerberos_get_discovery (kerberos),
 		                               enroll->invocation, on_join_do_winbind, g_object_ref (res));
 
 	} else {
@@ -262,7 +263,6 @@ validate_membership_options (GVariant *options,
 static void
 realm_samba_join_async (RealmKerberosMembership *membership,
                         RealmCredential *cred,
-                        RealmKerberosFlags flags,
                         GVariant *options,
                         GDBusMethodInvocation *invocation,
                         GAsyncReadyCallback callback,
@@ -281,7 +281,7 @@ realm_samba_join_async (RealmKerberosMembership *membership,
 	enroll = g_slice_new0 (EnrollClosure);
 	enroll->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
 	enroll->invocation = g_object_ref (invocation);
-	enroll->computer_ou = realm_kerberos_calculate_join_computer_ou (realm, options);
+	enroll->options = g_variant_ref (options);
 	enroll->cred = realm_credential_ref (cred);
 	g_simple_async_result_set_op_res_gpointer (res, enroll, enroll_closure_free);
 
@@ -297,7 +297,7 @@ realm_samba_join_async (RealmKerberosMembership *membership,
 		g_simple_async_result_complete_in_idle (res);
 
 	} else {
-		if (flags & REALM_KERBEROS_ASSUME_PACKAGES)
+		if (realm_options_assume_packages (options))
 			packages = NO_PACKAGES;
 		else
 			packages = SAMBA_PACKAGES;
@@ -399,7 +399,6 @@ on_leave_do_deconfigure (GObject *source,
 static void
 realm_samba_leave_async (RealmKerberosMembership *membership,
                          RealmCredential *cred,
-                         RealmKerberosFlags flags,
                          GVariant *options,
                          GDBusMethodInvocation *invocation,
                          GAsyncReadyCallback callback,
@@ -432,7 +431,7 @@ realm_samba_leave_async (RealmKerberosMembership *membership,
 	switch (cred->type) {
 	case REALM_CREDENTIAL_PASSWORD:
 		leave = g_simple_async_result_get_op_res_gpointer (async);
-		realm_samba_enroll_leave_async (leave->realm_name, cred,
+		realm_samba_enroll_leave_async (leave->realm_name, cred, options,
 		                                leave->invocation, on_leave_do_deconfigure,
 		                                g_object_ref (async));
 		break;

@@ -26,6 +26,7 @@
 #include "realm-kerberos.h"
 #include "realm-kerberos-membership.h"
 #include "realm-login-name.h"
+#include "realm-options.h"
 #include "realm-packages.h"
 #include "realm-provider.h"
 #include "realm-settings.h"
@@ -280,7 +281,6 @@ is_credential_supported (RealmKerberosMembershipIface *iface,
 static void
 join_or_leave (RealmKerberos *self,
                GVariant *credential,
-               RealmKerberosFlags flags,
                GVariant *options,
                GDBusMethodInvocation *invocation,
                gboolean join)
@@ -323,11 +323,11 @@ join_or_leave (RealmKerberos *self,
 
 	if (join) {
 		g_return_if_fail (iface->join_finish != NULL);
-		(iface->join_async) (REALM_KERBEROS_MEMBERSHIP (self), cred, flags,
+		(iface->join_async) (REALM_KERBEROS_MEMBERSHIP (self), cred,
 		                     options, invocation, on_enroll_complete, method);
 	} else {
 		g_return_if_fail (iface->leave_finish != NULL);
-		(iface->leave_async) (REALM_KERBEROS_MEMBERSHIP (self), cred, flags,
+		(iface->leave_async) (REALM_KERBEROS_MEMBERSHIP (self), cred,
 		                      options, invocation, on_unenroll_complete, method);
 	}
 }
@@ -341,8 +341,6 @@ handle_join (RealmDbusKerberosMembership *membership,
 {
 	RealmKerberos *self = REALM_KERBEROS (user_data);
 	gchar hostname[HOST_NAME_MAX + 1];
-	RealmKerberosFlags flags = 0;
-	gboolean assume = FALSE;
 	gint ret;
 
 	/* Check the host name */
@@ -354,10 +352,7 @@ handle_join (RealmDbusKerberosMembership *membership,
 		return TRUE;
 	}
 
-	if (g_variant_lookup (options, REALM_DBUS_OPTION_ASSUME_PACKAGES, "b", &assume) && assume)
-		flags |= REALM_KERBEROS_ASSUME_PACKAGES;
-
-	join_or_leave (self, credentials, flags, options, invocation, TRUE);
+	join_or_leave (self, credentials, options, invocation, TRUE);
 	return TRUE;
 }
 
@@ -369,16 +364,14 @@ handle_leave (RealmDbusKerberosMembership *membership,
               gpointer user_data)
 {
 	RealmKerberos *self = REALM_KERBEROS (user_data);
-	RealmKerberosFlags flags = 0;
-	const gchar *computer_ou;
 
-	if (g_variant_lookup (options, REALM_DBUS_OPTION_COMPUTER_OU, "&s", &computer_ou)) {
+	if (realm_options_computer_ou (options, NULL)) {
 		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
 		                                       "The computer-ou argument is not supported when leaving a domain.");
 		return TRUE;
 	}
 
-	join_or_leave (self, credentials, flags, options, invocation, FALSE);
+	join_or_leave (self, credentials, options, invocation, FALSE);
 	return TRUE;
 }
 
@@ -392,7 +385,7 @@ handle_deconfigure (RealmDbusRealm *realm,
 
 	credential = g_variant_new ("(ss@v)", "automatic", "none",
 	                            g_variant_new_variant (g_variant_new_string ("")));
-	join_or_leave (REALM_KERBEROS (user_data), credential, 0, options, invocation, FALSE);
+	join_or_leave (REALM_KERBEROS (user_data), credential, options, invocation, FALSE);
 	g_variant_unref (credential);
 
 	return TRUE;
@@ -1123,25 +1116,6 @@ realm_kerberos_set_required_package_sets (RealmKerberos *self,
 	packages = realm_packages_expand_sets (package_sets);
 	realm_dbus_realm_set_required_packages (self->pv->realm_iface, (const gchar **)packages);
 	g_strfreev (packages);
-}
-
-gchar *
-realm_kerberos_calculate_join_computer_ou (RealmKerberos *self,
-                                           GVariant *options)
-{
-	const gchar *computer_ou = NULL;
-
-	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
-
-	if (options) {
-		if (!g_variant_lookup (options, REALM_DBUS_OPTION_COMPUTER_OU, "&s", &computer_ou))
-			computer_ou = NULL;
-	}
-
-	if (!computer_ou)
-		computer_ou = realm_settings_value (realm_kerberos_get_name (self), REALM_DBUS_OPTION_COMPUTER_OU);
-
-	return g_strdup (computer_ou);
 }
 
 static gboolean

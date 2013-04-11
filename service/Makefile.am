@@ -38,6 +38,7 @@ realmd_SOURCES = \
 	realm-kerberos-provider.c realm-kerberos-provider.h \
 	realm-login-name.c realm-login-name.h \
 	realm-network.c realm-network.h \
+	realm-options.c realm-options.h \
 	realm-packages.c realm-packages.h \
 	realm-provider.c realm-provider.h \
 	realm-samba.c realm-samba.h \

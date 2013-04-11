@@ -27,7 +27,7 @@ G_BEGIN_DECLS
 
 void         realm_adcli_enroll_join_async    (const gchar *realm,
                                                RealmCredential *cred,
-                                               const gchar *computer_ou,
+                                               GVariant *options,
                                                GDBusMethodInvocation *invocation,
                                                GAsyncReadyCallback callback,
                                                gpointer user_data);

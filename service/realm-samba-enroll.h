@@ -27,7 +27,7 @@ G_BEGIN_DECLS
 
 void               realm_samba_enroll_join_async           (const gchar *realm,
                                                             RealmCredential *cred,
-                                                            const gchar *computer_ou,
+                                                            GVariant *options,
                                                             GHashTable *discovery,
                                                             GDBusMethodInvocation *invocation,
                                                             GAsyncReadyCallback callback,
@@ -39,6 +39,7 @@ gboolean           realm_samba_enroll_join_finish          (GAsyncResult *result
 
 void               realm_samba_enroll_leave_async          (const gchar *realm,
                                                             RealmCredential *cred,
+                                                            GVariant *options,
                                                             GDBusMethodInvocation *invocation,
                                                             GAsyncReadyCallback callback,
                                                             gpointer user_data);

@@ -131,9 +131,6 @@ void                realm_kerberos_set_configured              (RealmKerberos *s
 void                realm_kerberos_set_required_package_sets   (RealmKerberos *self,
                                                                 const gchar **package_sets);
 
-gchar *             realm_kerberos_calculate_join_computer_ou  (RealmKerberos *self,
-                                                                GVariant *options);
-
 G_END_DECLS
 
 #endif /* __REALM_KERBEROS_H__ */

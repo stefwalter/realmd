@@ -20,6 +20,7 @@
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
 #include "realm-ini-config.h"
+#include "realm-options.h"
 #include "realm-settings.h"
 
 static void
@@ -71,12 +72,13 @@ on_join_process (GObject *source,
 void
 realm_adcli_enroll_join_async (const gchar *realm,
                                RealmCredential *cred,
-                               const gchar *computer_ou,
+                               GVariant *options,
                                GDBusMethodInvocation *invocation,
                                GAsyncReadyCallback callback,
                                gpointer user_data)
 {
 	gchar *environ[] = { "LANG=C", NULL };
+	const gchar *computer_ou;
 	GSimpleAsyncResult *async;
 	GBytes *input = NULL;
 	GPtrArray *args;
@@ -99,6 +101,7 @@ realm_adcli_enroll_join_async (const gchar *realm,
 	g_ptr_array_add (args, "--domain");
 	g_ptr_array_add (args, (gpointer)realm);
 
+	computer_ou = realm_options_computer_ou (options, realm);
 	if (computer_ou) {
 		g_ptr_array_add (args, "--computer-ou");
 		g_ptr_array_add (args, (gpointer)computer_ou);

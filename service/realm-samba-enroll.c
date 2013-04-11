@@ -21,6 +21,7 @@
 #include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-kerberos-discover.h"
+#include "realm-options.h"
 #include "realm-samba-config.h"
 #include "realm-samba-enroll.h"
 #include "realm-samba-provider.h"
@@ -404,12 +405,14 @@ static void
 begin_join (GSimpleAsyncResult *async,
             JoinClosure *join,
             const gchar *realm,
-            const gchar *computer_ou,
+            GVariant *options,
             GHashTable *discovery)
 {
+	const gchar *computer_ou;
 	gchar *strange_ou;
 	GError *error = NULL;
 
+	computer_ou = realm_options_computer_ou (options, realm);
 	if (computer_ou != NULL) {
 		strange_ou = realm_samba_util_build_strange_ou (computer_ou, realm);
 		if (strange_ou) {
@@ -438,7 +441,7 @@ begin_join (GSimpleAsyncResult *async,
 void
 realm_samba_enroll_join_async (const gchar *realm,
                                RealmCredential *cred,
-                               const gchar *computer_ou,
+                               GVariant *options,
                                GHashTable *discovery,
                                GDBusMethodInvocation *invocation,
                                GAsyncReadyCallback callback,
@@ -467,7 +470,7 @@ realm_samba_enroll_join_async (const gchar *realm,
 		g_return_if_reached ();
 	}
 
-	begin_join (async, join, realm, computer_ou, discovery);
+	begin_join (async, join, realm, options, discovery);
 
 	g_object_unref (async);
 }
@@ -518,6 +521,7 @@ on_leave_complete (GObject *source,
 void
 realm_samba_enroll_leave_async (const gchar *realm,
                                 RealmCredential *cred,
+                                GVariant *options,
                                 GDBusMethodInvocation *invocation,
                                 GAsyncReadyCallback callback,
                                 gpointer user_data)

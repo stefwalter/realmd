@@ -23,6 +23,7 @@
 #include "realm-ipa-discover.h"
 #include "realm-kerberos.h"
 #include "realm-kerberos-membership.h"
+#include "realm-options.h"
 #include "realm-packages.h"
 #include "realm-provider.h"
 #include "realm-service.h"
@@ -272,7 +273,6 @@ push_arg (GPtrArray *argv,
 static void
 realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
                            RealmCredential *cred,
-                           RealmKerberosFlags flags,
                            GVariant *options,
                            GDBusMethodInvocation *invocation,
                            GAsyncReadyCallback callback,
@@ -318,7 +318,7 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 
 	} else {
 		packages = IPA_PACKAGES;
-		if (flags & REALM_KERBEROS_ASSUME_PACKAGES)
+		if (realm_options_assume_packages (options))
 			packages = NO_PACKAGES;
 
 		argv = g_ptr_array_new ();
@@ -400,7 +400,6 @@ on_ipa_client_do_disable (GObject *source,
 static void
 realm_sssd_ipa_leave_async (RealmKerberosMembership *membership,
                             RealmCredential *cred,
-                            RealmKerberosFlags flags,
                             GVariant *options,
                             GDBusMethodInvocation *invocation,
                             GAsyncReadyCallback callback,

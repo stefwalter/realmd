@@ -20,6 +20,7 @@
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
 #include "realm-kerberos-membership.h"
+#include "realm-options.h"
 #include "realm-packages.h"
 #include "realm-samba-enroll.h"
 #include "realm-service.h"
@@ -97,7 +98,7 @@ realm_sssd_ad_constructed (GObject *obj)
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	RealmCredential *cred;
-	gchar *computer_ou;
+	GVariant *options;
 	gchar *realm_name;
 	gboolean use_adcli;
 	const gchar **packages;
@@ -110,7 +111,7 @@ join_closure_free (gpointer data)
 	g_free (join->realm_name);
 	g_object_unref (join->invocation);
 	realm_credential_unref (join->cred);
-	g_free (join->computer_ou);
+	g_variant_ref (join->options);
 	g_slice_free (JoinClosure, join);
 }
 
@@ -280,14 +281,14 @@ on_install_do_join (GObject *source,
 		if (join->use_adcli) {
 			realm_adcli_enroll_join_async (join->realm_name,
 			                               join->cred,
-			                               join->computer_ou,
+			                               join->options,
 			                               join->invocation,
 			                               on_join_do_sssd,
 			                               g_object_ref (async));
 		} else {
 			realm_samba_enroll_join_async (join->realm_name,
 			                               join->cred,
-			                               join->computer_ou,
+			                               join->options,
 			                               realm_kerberos_get_discovery (kerberos),
 			                               join->invocation, on_join_do_sssd,
 			                               g_object_ref (async));
@@ -392,7 +393,6 @@ parse_join_options (JoinClosure *join,
 static void
 realm_sssd_ad_join_async (RealmKerberosMembership *membership,
                           RealmCredential *cred,
-                          RealmKerberosFlags flags,
                           GVariant *options,
                           GDBusMethodInvocation *invocation,
                           GAsyncReadyCallback callback,
@@ -408,7 +408,7 @@ realm_sssd_ad_join_async (RealmKerberosMembership *membership,
 	join = g_slice_new0 (JoinClosure);
 	join->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
 	join->invocation = g_object_ref (invocation);
-	join->computer_ou = realm_kerberos_calculate_join_computer_ou (realm, options);
+	join->options = g_variant_ref (options);
 	join->cred = realm_credential_ref (cred);
 	g_simple_async_result_set_op_res_gpointer (async, join, join_closure_free);
 
@@ -429,7 +429,7 @@ realm_sssd_ad_join_async (RealmKerberosMembership *membership,
 
 	/* Prepared successfully without an error */
 	} else {
-		if (flags & REALM_KERBEROS_ASSUME_PACKAGES)
+		if (realm_options_assume_packages (options))
 			join->packages = NO_PACKAGES;
 		realm_packages_install_async (join->packages, join->invocation,
 		                              on_install_do_join, g_object_ref (async));
@@ -478,7 +478,6 @@ on_leave_do_deconfigure (GObject *source,
 static void
 realm_sssd_ad_leave_async (RealmKerberosMembership *membership,
                            RealmCredential *cred,
-                           RealmKerberosFlags flags,
                            GVariant *options,
                            GDBusMethodInvocation *invocation,
                            GAsyncReadyCallback callback,
@@ -510,7 +509,7 @@ realm_sssd_ad_leave_async (RealmKerberosMembership *membership,
 		leave->realm_name = g_strdup (realm_kerberos_get_realm_name (REALM_KERBEROS (self)));
 		leave->invocation = g_object_ref (invocation);
 		g_simple_async_result_set_op_res_gpointer (async, leave, leave_closure_free);
-		realm_samba_enroll_leave_async (leave->realm_name, cred, invocation,
+		realm_samba_enroll_leave_async (leave->realm_name, cred, options, invocation,
 		                                on_leave_do_deconfigure, g_object_ref (async));
 		break;
 	default:

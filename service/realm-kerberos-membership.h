@@ -26,10 +26,6 @@
 
 G_BEGIN_DECLS
 
-typedef enum {
-	REALM_KERBEROS_ASSUME_PACKAGES = 1 << 5,
-} RealmKerberosFlags;
-
 #define REALM_TYPE_KERBEROS_MEMBERSHIP             (realm_kerberos_membership_get_type ())
 #define REALM_KERBEROS_MEMBERSHIP(inst)            (G_TYPE_CHECK_INSTANCE_CAST ((inst), REALM_TYPE_KERBEROS_MEMBERSHIP, RealmKerberosMembership))
 #define REALM_IS_KERBEROS_MEMBERSHIP(inst)         (G_TYPE_CHECK_INSTANCE_TYPE ((inst), REALM_TYPE_KERBEROS_MEMBERSHIP))
@@ -43,7 +39,6 @@ struct _RealmKerberosMembershipIface {
 
 	void       (* join_async)               (RealmKerberosMembership *realm,
 	                                         RealmCredential *cred,
-	                                         RealmKerberosFlags flags,
 	                                         GVariant *options,
 	                                         GDBusMethodInvocation *invocation,
 	                                         GAsyncReadyCallback callback,
@@ -57,7 +52,6 @@ struct _RealmKerberosMembershipIface {
 
 	void       (* leave_async)              (RealmKerberosMembership *realm,
 	                                         RealmCredential *cred,
-	                                         RealmKerberosFlags flags,
 	                                         GVariant *options,
 	                                         GDBusMethodInvocation *invocation,
 	                                         GAsyncReadyCallback callback,

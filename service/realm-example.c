@@ -148,7 +148,6 @@ on_join_sleep_done (GObject *source,
 static void
 realm_example_join_async (RealmKerberosMembership *membership,
                           RealmCredential *cred,
-                          RealmKerberosFlags flags,
                           GVariant *options,
                           GDBusMethodInvocation *invocation,
                           GAsyncReadyCallback callback,
@@ -247,7 +246,6 @@ static void
 realm_example_leave_password_async (RealmKerberosMembership *membership,
                                     const gchar *name,
                                     GBytes *password,
-                                    RealmKerberosFlags flags,
                                     GVariant *options,
                                     GDBusMethodInvocation *invocation,
                                     GAsyncReadyCallback callback,
@@ -279,7 +277,6 @@ realm_example_leave_password_async (RealmKerberosMembership *membership,
 
 static void
 realm_example_leave_automatic_async (RealmKerberosMembership *membership,
-                                     RealmKerberosFlags flags,
                                      GVariant *options,
                                      GDBusMethodInvocation *invocation,
                                      GAsyncReadyCallback callback,
@@ -312,7 +309,6 @@ realm_example_leave_automatic_async (RealmKerberosMembership *membership,
 static void
 realm_example_leave_async (RealmKerberosMembership *membership,
                            RealmCredential *cred,
-                           RealmKerberosFlags flags,
                            GVariant *options,
                            GDBusMethodInvocation *invocation,
                            GAsyncReadyCallback callback,
@@ -320,11 +316,11 @@ realm_example_leave_async (RealmKerberosMembership *membership,
 {
 	switch (cred->type) {
 	case REALM_CREDENTIAL_AUTOMATIC:
-		realm_example_leave_automatic_async (membership, flags, options, invocation, callback, user_data);
+		realm_example_leave_automatic_async (membership, options, invocation, callback, user_data);
 		break;
 	case REALM_CREDENTIAL_PASSWORD:
 		realm_example_leave_password_async (membership, cred->x.password.name, cred->x.password.value,
-		                                    flags, options, invocation, callback, user_data);
+		                                    options, invocation, callback, user_data);
 		break;
 	default:
 		g_return_if_reached ();

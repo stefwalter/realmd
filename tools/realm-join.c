@@ -164,16 +164,20 @@ perform_user_join (RealmClient *client,
 	return ret;
 }
 
+typedef struct {
+	gchar *user;
+	gchar *computer_ou;
+	gchar *client_software;
+	gchar *server_software;
+	gchar *membership_software;
+	gboolean no_password;
+	gchar *one_time_password;
+} RealmJoinArgs;
+
 static int
 perform_join (RealmClient *client,
               const gchar *string,
-              const gchar *user_name,
-              const gchar *computer_ou,
-              const gchar *client_software,
-              const gchar *server_software,
-              const gchar *membership_software,
-              gboolean no_password,
-              const gchar *one_time_password)
+              RealmJoinArgs *args)
 {
 	RealmDbusKerberosMembership *membership;
 	gboolean try_other = FALSE;
@@ -183,8 +187,8 @@ perform_join (RealmClient *client,
 	GList *realms;
 	gint ret;
 
-	realms = realm_client_discover (client, string, client_software,
-	                                server_software, membership_software,
+	realms = realm_client_discover (client, string, args->client_software,
+	                                args->server_software, args->membership_software,
 	                                REALM_DBUS_KERBEROS_MEMBERSHIP_INTERFACE, &error);
 
 	if (error != NULL) {
@@ -202,24 +206,24 @@ perform_join (RealmClient *client,
 		return 1;
 	}
 
-	options = realm_build_options (REALM_DBUS_OPTION_COMPUTER_OU, computer_ou,
-	                               REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, membership_software,
+	options = realm_build_options (REALM_DBUS_OPTION_COMPUTER_OU, args->computer_ou,
+	                               REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, args->membership_software,
 	                               NULL);
 	g_variant_ref_sink (options);
 
-	if (no_password) {
+	if (args->no_password) {
 		ret = perform_automatic_join (client, membership, options, &try_other);
 
-	} else if (one_time_password) {
-		ret = perform_otp_join (client, membership, one_time_password, options);
+	} else if (args->one_time_password) {
+		ret = perform_otp_join (client, membership, args->one_time_password, options);
 
-	} else if (user_name) {
-		ret = perform_user_join (client, membership, user_name, options);
+	} else if (args->user) {
+		ret = perform_user_join (client, membership, args->user, options);
 
 	} else {
 		ret = perform_automatic_join (client, membership, options, &try_other);
 		if (try_other)
-			ret = perform_user_join (client, membership, user_name, options);
+			ret = perform_user_join (client, membership, args->user, options);
 	}
 
 	g_variant_unref (options);
@@ -233,34 +237,30 @@ realm_join (RealmClient *client,
             char *argv[])
 {
 	GOptionContext *context;
-	gchar *arg_user = NULL;
 	GError *error = NULL;
 	const gchar *realm_name;
-	gchar *arg_computer_ou = NULL;
-	gchar *arg_client_software = NULL;
-	gchar *arg_server_software = NULL;
-	gchar *arg_membership_software = NULL;
-	gboolean arg_no_password = FALSE;
-	gchar *arg_one_time_password = NULL;
+	RealmJoinArgs args;
 	gint ret = 0;
 
 	GOptionEntry option_entries[] = {
-		{ "user", 'U', 0, G_OPTION_ARG_STRING, &arg_user,
+		{ "user", 'U', 0, G_OPTION_ARG_STRING, &args.user,
 		  N_("User name to use for enrollment"), NULL },
-		{ "computer-ou", 0, 0, G_OPTION_ARG_STRING, &arg_computer_ou,
+		{ "computer-ou", 0, 0, G_OPTION_ARG_STRING, &args.computer_ou,
 		  N_("Computer OU DN to join"), NULL },
-		{ "client-software", 0, 0, G_OPTION_ARG_STRING, &arg_client_software,
+		{ "client-software", 0, 0, G_OPTION_ARG_STRING, &args.client_software,
 		  N_("Use specific client software"), NULL },
-		{ "server-software", 0, 0, G_OPTION_ARG_STRING, &arg_server_software,
+		{ "server-software", 0, 0, G_OPTION_ARG_STRING, &args.server_software,
 		  N_("Use specific server software"), NULL },
-		{ "membership-software", 0, 0, G_OPTION_ARG_STRING, &arg_membership_software,
+		{ "membership-software", 0, 0, G_OPTION_ARG_STRING, &args.membership_software,
 		  N_("Use specific membership software"), NULL },
-		{ "no-password", 0, 0, G_OPTION_ARG_NONE, &arg_no_password,
+		{ "no-password", 0, 0, G_OPTION_ARG_NONE, &args.no_password,
 		  N_("Join automatically without a password"), NULL },
-		{ "one-time-password", 0, 0, G_OPTION_ARG_STRING, &arg_one_time_password,
+		{ "one-time-password", 0, 0, G_OPTION_ARG_STRING, &args.one_time_password,
 		  N_("Join using a preset one time password"), NULL },
 		{ NULL, }
 	};
+
+	memset (&args, 0, sizeof (args));
 
 	context = g_option_context_new ("realm");
 	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
@@ -276,13 +276,13 @@ realm_join (RealmClient *client,
 		g_printerr ("%s: %s\n", _("Specify one realm to join"), g_get_prgname ());
 		ret = 2;
 
-	} else if (arg_no_password && (arg_one_time_password || arg_user)) {
+	} else if (args.no_password && (args.one_time_password || args.user)) {
 		g_printerr ("%s: %s\n",
 		            _("The --no-password argument cannot be used with --one-time-password or --user"),
 		            g_get_prgname ());
 		ret = 2;
 
-	} else if (arg_one_time_password && arg_user) {
+	} else if (args.one_time_password && args.user) {
 		g_printerr ("%s: %s\n",
 		            _("The --one-time-password argument cannot be used with --user"),
 		            g_get_prgname ());
@@ -290,16 +290,13 @@ realm_join (RealmClient *client,
 
 	} else {
 		realm_name = argc < 2 ? "" : argv[1];
-		ret = perform_join (client, realm_name, arg_user,
-		                    arg_computer_ou, arg_client_software,
-		                    arg_server_software, arg_membership_software,
-		                    arg_no_password, arg_one_time_password);
+		ret = perform_join (client, realm_name, &args);
 	}
 
-	g_free (arg_user);
-	g_free (arg_computer_ou);
-	g_free (arg_client_software);
-	g_free (arg_server_software);
+	g_free (args.user);
+	g_free (args.computer_ou);
+	g_free (args.client_software);
+	g_free (args.server_software);
 	g_option_context_free (context);
 	return ret;
 }

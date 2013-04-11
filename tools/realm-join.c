@@ -172,6 +172,7 @@ typedef struct {
 	gchar *membership_software;
 	gboolean no_password;
 	gchar *one_time_password;
+	gchar *user_principal;
 } RealmJoinArgs;
 
 static int
@@ -208,6 +209,7 @@ perform_join (RealmClient *client,
 
 	options = realm_build_options (REALM_DBUS_OPTION_COMPUTER_OU, args->computer_ou,
 	                               REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, args->membership_software,
+	                               REALM_DBUS_OPTION_USER_PRINCIPAL, args->user_principal,
 	                               NULL);
 	g_variant_ref_sink (options);
 
@@ -257,6 +259,8 @@ realm_join (RealmClient *client,
 		  N_("Join automatically without a password"), NULL },
 		{ "one-time-password", 0, 0, G_OPTION_ARG_STRING, &args.one_time_password,
 		  N_("Join using a preset one time password"), NULL },
+		{ "user-principal", 0, 0, G_OPTION_ARG_STRING, &args.user_principal,
+		  N_("Set the user principal for the computer account"), NULL },
 		{ NULL, }
 	};
 
@@ -297,6 +301,7 @@ realm_join (RealmClient *client,
 	g_free (args.computer_ou);
 	g_free (args.client_software);
 	g_free (args.server_software);
+	g_free (args.user_principal);
 	g_option_context_free (context);
 	return ret;
 }

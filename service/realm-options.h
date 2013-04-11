@@ -26,6 +26,9 @@ gboolean       realm_options_assume_packages          (GVariant *options);
 const gchar *  realm_options_computer_ou              (GVariant *options,
                                                        const gchar *realm_name);
 
+const gchar *  realm_options_user_principal           (GVariant *options,
+                                                       const gchar *realm_name);
+
 G_END_DECLS
 
 #endif /* __REALM_OPTIONS_H__ */

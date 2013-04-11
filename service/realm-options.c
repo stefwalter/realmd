@@ -30,6 +30,27 @@ realm_options_assume_packages (GVariant *options)
 }
 
 const gchar *
+realm_options_user_principal (GVariant *options,
+                              const gchar *realm_name)
+{
+	const gchar *principal;
+	gchar *section;
+
+	if (!g_variant_lookup (options, REALM_DBUS_OPTION_USER_PRINCIPAL, "&s", &principal))
+		principal = NULL;
+
+	if (!principal) {
+		section = g_utf8_casefold (realm_name, -1);
+		if (realm_settings_value (section, REALM_DBUS_OPTION_USER_PRINCIPAL) &&
+		    realm_settings_boolean (section, REALM_DBUS_OPTION_USER_PRINCIPAL))
+			principal = ""; /* auto-generate */
+		g_free (section);
+	}
+
+	return principal;
+}
+
+const gchar *
 realm_options_computer_ou (GVariant *options,
                            const gchar *realm_name)
 {

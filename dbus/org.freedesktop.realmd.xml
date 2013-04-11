@@ -610,6 +610,9 @@
 		    <listitem><para><literal>computer-ou</literal>: a string
 		      containing an LDAP DN for an organizational unit where the
 		      computer account should be created</para></listitem>
+		    <listitem><para><literal>user-principal</literal>: a string
+		      containing an kerberos user principal name to be set on the
+		      computer account</para></listitem>
 		    <listitem><para><literal>assume-packages</literal>: a boolean
 		      which makes the join assume that all needed
 		      software packages have already been installed</para></listitem>

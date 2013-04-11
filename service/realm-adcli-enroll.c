@@ -81,9 +81,11 @@ realm_adcli_enroll_join_async (const gchar *realm,
 	const gchar *computer_ou;
 	GSimpleAsyncResult *async;
 	GBytes *input = NULL;
+	const gchar *upn;
 	GPtrArray *args;
 	const gchar *os;
-	gchar *arg;
+	gchar *ccache_arg = NULL;
+	gchar *upn_arg = NULL;
 
 	g_return_if_fail (cred != NULL);
 	g_return_if_fail (realm != NULL);
@@ -129,8 +131,8 @@ realm_adcli_enroll_join_async (const gchar *realm,
 	case REALM_CREDENTIAL_CCACHE:
 		g_ptr_array_add (args, "--login-type");
 		g_ptr_array_add (args, "user");
-		arg = g_strdup_printf ("--login-ccache=%s", cred->x.ccache.file);
-		g_ptr_array_add (args, arg);
+		ccache_arg = g_strdup_printf ("--login-ccache=%s", cred->x.ccache.file);
+		g_ptr_array_add (args, ccache_arg);
 		break;
 	case REALM_CREDENTIAL_PASSWORD:
 		input = realm_command_build_password_line (cred->x.password.value);
@@ -147,6 +149,16 @@ realm_adcli_enroll_join_async (const gchar *realm,
 		break;
 	}
 
+	upn = realm_options_user_principal (options, realm);
+	if (upn) {
+		if (g_str_equal (upn, "")) {
+			g_ptr_array_add (args, "--user-principal");
+		} else {
+			upn_arg = g_strdup_printf ("--user-principal=%s", upn);
+			g_ptr_array_add (args, upn_arg);
+		}
+	}
+
 	g_ptr_array_add (args, NULL);
 
 	realm_command_runv_async ((gchar **)args->pdata, environ, input,
@@ -158,7 +170,9 @@ realm_adcli_enroll_join_async (const gchar *realm,
 
 	if (input)
 		g_bytes_unref (input);
-	free (arg);
+
+	free (ccache_arg);
+	free (upn_arg);
 }
 
 gboolean

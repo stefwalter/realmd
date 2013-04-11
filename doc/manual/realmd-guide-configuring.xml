@@ -221,5 +221,22 @@ computer-ou = OU=Linux Computers,DC=domain,DC=example,DC=com
 
 	</section>
 
+	<section>
+		<title>user-prinicpal</title>
+
+		<para>Set the <option>user-prinicpal</option> to <code>yes</code>
+		to create <option>userPrincipalName</option> attributes for the
+		computer account in the realm, in the form
+		<code>host/computer@REALM</code></para>
+
+		<informalexample>
+<programlisting language="js">
+[domain.example.com]
+user-principal = yes
+</programlisting>
+	</informalexample>
+
+	</section>
+
 </section>
 </chapter>

@@ -418,6 +418,7 @@ begin_join (GSimpleAsyncResult *async,
 	const gchar *computer_ou;
 	gchar *strange_ou;
 	GError *error = NULL;
+	const gchar *upn;
 	const gchar *os;
 	int at = 0;
 
@@ -441,6 +442,15 @@ begin_join (GSimpleAsyncResult *async,
 	os = realm_settings_value ("active-directory", "os-version");
 	if (os != NULL && !g_str_equal (os, ""))
 		join->join_args[at++] = g_strdup_printf ("osVer=%s", os);
+
+	upn = realm_options_user_principal (options, realm);
+	if (upn) {
+		if (g_str_equal (upn, ""))
+			upn = NULL;
+		join->join_args[at++] = g_strdup_printf ("createupn%s%s",
+		                                         upn ? "=" : "",
+		                                         upn ? upn : "");
+	}
 
 	g_assert (at < G_N_ELEMENTS (join->join_args));
 

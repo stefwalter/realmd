@@ -218,6 +218,13 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
 			supported for all realms. By default the membership software
 			is automatically selected.</para></listitem>
 		</varlistentry>
+		<varlistentry>
+			<term><option>--user-principal=<parameter>host/name@REALM</parameter></option></term>
+			<listitem><para>Set the userPrincipalName field of the
+			computer account to this kerberos principal. If you omit
+			the value for this option, then a principal will be set
+			in the form of <literal>host/shortname@REALM</literal></para></listitem>
+		</varlistentry>
 	</variablelist>
 
 </refsect1>

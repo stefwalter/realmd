@@ -81,6 +81,30 @@ domain.example.com
 
 	</section>
 
+	<section>
+		<title>os-name</title>
+
+		<para><emphasis>see below</emphasis></para>
+	</section>
+
+	<section>
+		<title>os-version</title>
+
+		<para>Specify the <option>os-name</option> and/or
+		<option>os-version</option> settings to control the values that
+		are placed in the computer account <option>operatingSystem</option>
+		<option>operatingSystemVersion</option> attributes.</para>
+
+		<informalexample>
+<programlisting language="js">
+[active-directory]
+os-name = Gentoo Linux
+os-version = 9.9.9.9.9
+</programlisting>
+	</informalexample>
+
+	</section>
+
 	</section>
 
 	<section id="guide-configuring-users">

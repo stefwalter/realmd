@@ -38,7 +38,7 @@
 
 typedef struct {
 	GDBusMethodInvocation *invocation;
-	gchar *create_computer_arg;
+	gchar *join_args[5];
 	gchar *realm;
 	gchar *user_name;
 	GBytes *password_input;
@@ -51,9 +51,12 @@ static void
 join_closure_free (gpointer data)
 {
 	JoinClosure *join = data;
+	int i;
 
 	g_bytes_unref (join->password_input);
 	g_free (join->user_name);
+	for (i = 0; i < G_N_ELEMENTS (join->join_args); i++)
+		g_free (join->join_args[i]);
 	g_free (join->realm);
 	g_free (join->envvar);
 	g_clear_object (&join->invocation);
@@ -283,14 +286,18 @@ begin_config_and_join (JoinClosure *join,
 		begin_net_process (join, join->password_input,
 		                   on_join_do_keytab, g_object_ref (async),
 		                   "-U", join->user_name, "ads", "join", join->realm,
-		                   join->create_computer_arg, NULL);
+		                   join->join_args[0], join->join_args[1],
+		                   join->join_args[2], join->join_args[3],
+		                   join->join_args[4], NULL);
 
 	/* Do join with a ccache */
 	} else {
 		begin_net_process (join, NULL,
 		                   on_join_do_keytab, g_object_ref (async),
 		                   "-k", "ads", "join", join->realm,
-		                   join->create_computer_arg, NULL);
+		                   join->join_args[0], join->join_args[1],
+		                   join->join_args[2], join->join_args[3],
+		                   join->join_args[4], NULL);
 	}
 
 }
@@ -411,19 +418,31 @@ begin_join (GSimpleAsyncResult *async,
 	const gchar *computer_ou;
 	gchar *strange_ou;
 	GError *error = NULL;
+	const gchar *os;
+	int at = 0;
 
 	computer_ou = realm_options_computer_ou (options, realm);
 	if (computer_ou != NULL) {
 		strange_ou = realm_samba_util_build_strange_ou (computer_ou, realm);
 		if (strange_ou) {
 			if (!g_str_equal (strange_ou, ""))
-				join->create_computer_arg = g_strdup_printf ("createcomputer=%s", strange_ou);
+				join->join_args[at++] = g_strdup_printf ("createcomputer=%s", strange_ou);
 			g_free (strange_ou);
 		} else {
 			g_set_error (&error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
 			             "The computer-ou argument must be a valid LDAP DN and contain only OU=xxx RDN values.");
 		}
 	}
+
+	os = realm_settings_value ("active-directory", "os-name");
+	if (os != NULL && !g_str_equal (os, ""))
+		join->join_args[at++] = g_strdup_printf ("osName=%s", os);
+
+	os = realm_settings_value ("active-directory", "os-version");
+	if (os != NULL && !g_str_equal (os, ""))
+		join->join_args[at++] = g_strdup_printf ("osVer=%s", os);
+
+	g_assert (at < G_N_ELEMENTS (join->join_args));
 
 	if (error != NULL) {
 		g_simple_async_result_take_error (async, error);

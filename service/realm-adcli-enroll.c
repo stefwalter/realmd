@@ -82,6 +82,7 @@ realm_adcli_enroll_join_async (const gchar *realm,
 	GSimpleAsyncResult *async;
 	GBytes *input = NULL;
 	GPtrArray *args;
+	const gchar *os;
 	gchar *arg;
 
 	g_return_if_fail (cred != NULL);
@@ -105,6 +106,18 @@ realm_adcli_enroll_join_async (const gchar *realm,
 	if (computer_ou) {
 		g_ptr_array_add (args, "--computer-ou");
 		g_ptr_array_add (args, (gpointer)computer_ou);
+	}
+
+	os = realm_settings_value ("active-directory", "os-name");
+	if (os != NULL && !g_str_equal (os, "")) {
+		g_ptr_array_add (args, "--os-name");
+		g_ptr_array_add (args, (gpointer)os);
+	}
+
+	os = realm_settings_value ("active-directory", "os-version");
+	if (os != NULL && !g_str_equal (os, "")) {
+		g_ptr_array_add (args, "--os-version");
+		g_ptr_array_add (args, (gpointer)os);
 	}
 
 	switch (cred->type) {

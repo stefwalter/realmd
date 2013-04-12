@@ -43,8 +43,8 @@ struct {
 	{ "join", realm_join, "realm join -v [-U user] realm-name", N_("Enroll this machine in a realm") },
 	{ "leave", realm_leave, "realm leave -v [-U user] [realm-name]", N_("Unenroll this machine from a realm") },
 	{ "list", realm_list, "realm list", N_("List known realms") },
-	{ "permit", realm_permit, "realm permit [-a] [-R realm] user ...", N_("Permit user logins") },
-	{ "deny", realm_deny, "realm deny [-a] [-R realm] user ...", N_("Deny user logins") },
+	{ "permit", realm_permit, "realm permit [-ax] [-R realm] user ...", N_("Permit user logins") },
+	{ "deny", realm_deny, "realm deny --all [-R realm]", N_("Deny user logins") },
 };
 
 void

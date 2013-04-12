@@ -80,11 +80,11 @@ locate_configured_matching_realm (RealmClient *client,
 }
 
 static int
-perform_permit_or_deny_logins (RealmClient *client,
-                               const gchar *realm_name,
-                               const gchar **logins,
-                               gint n_logins,
-                               gboolean permit)
+perform_permit_specific (RealmClient *client,
+                         const gchar *realm_name,
+                         const gchar **logins,
+                         gint n_logins,
+                         gboolean withdraw)
 {
 	RealmDbusRealm *realm;
 	SyncClosure sync;
@@ -108,8 +108,8 @@ perform_permit_or_deny_logins (RealmClient *client,
 	g_variant_ref_sink (options);
 
 	realm_dbus_realm_call_change_login_policy (realm, REALM_DBUS_LOGIN_POLICY_PERMITTED,
-	                                           permit ? (const gchar * const*)add_or_remove : empty,
-	                                           permit ? empty : (const gchar * const*)add_or_remove,
+	                                           withdraw ? empty : (const gchar * const*)add_or_remove,
+	                                           withdraw ? (const gchar * const*)add_or_remove : empty,
 	                                           options, NULL, on_complete_get_result, &sync);
 
 	g_variant_unref (options);
@@ -124,8 +124,7 @@ perform_permit_or_deny_logins (RealmClient *client,
 	g_object_unref (realm);
 
 	if (error != NULL) {
-		realm_handle_error (error,
-		                    permit ? _("Couldn't permit logins") : _("Couldn't deny logins"));
+		realm_handle_error (error, _("Couldn't change permitted logins"));
 		return 1;
 	}
 
@@ -133,9 +132,9 @@ perform_permit_or_deny_logins (RealmClient *client,
 }
 
 static int
-perform_permit_or_deny_all (RealmClient *client,
-                            const gchar *realm_name,
-                            gboolean permit)
+perform_logins_all (RealmClient *client,
+                    const gchar *realm_name,
+                    gboolean permit)
 {
 	RealmDbusRealm *realm;
 	SyncClosure sync;
@@ -171,8 +170,7 @@ perform_permit_or_deny_all (RealmClient *client,
 	g_object_unref (realm);
 
 	if (error != NULL) {
-		realm_handle_error (error, "couldn't %s all logins",
-		                    permit ? "permit" : "deny");
+		realm_handle_error (error, _("Couldn't change permitted logins"));
 		return 1;
 	}
 
@@ -187,13 +185,18 @@ realm_permit_or_deny (RealmClient *client,
 {
 	GOptionContext *context;
 	gboolean arg_all = FALSE;
+	gboolean arg_withdraw = FALSE;
 	gchar *realm_name = NULL;
 	GError *error = NULL;
-	gint ret = 0;
+	gint ret = 2;
+
+	/* This implements the deprecated commands */
 
 	GOptionEntry option_entries[] = {
 		{ "all", 'a', 0, G_OPTION_ARG_NONE, &arg_all,
-		  permit ? N_("Permit any domain user login") : N_("Deny any domain user login"), NULL },
+		  permit ? N_("Permit any realm account login") : N_("Deny any realm account login"), NULL },
+		{ "withdraw", 'x', 0, G_OPTION_ARG_NONE, &arg_withdraw,
+		  N_("Withdraw permit for a realm account to login"), NULL },
 		{ "realm", 'R', 0, G_OPTION_ARG_STRING, &realm_name, N_("Realm to permit/deny logins for"), NULL },
 		{ NULL, }
 	};
@@ -204,29 +207,36 @@ realm_permit_or_deny (RealmClient *client,
 	g_option_context_add_main_entries (context, realm_global_options, NULL);
 
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
-		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
+		realm_print_error ("%s", error->message);
 		g_error_free (error);
-		g_free (realm_name);
-		g_option_context_free (context);
-		return 2;
-	}
 
-	if (arg_all) {
-		if (argc != 1) {
-			g_printerr ("%s: %s\n", _("No users should be specified with -a or --all"), g_get_prgname ());
-			ret = 2;
-		} else {
-			ret = perform_permit_or_deny_all (client, realm_name, permit);
-		}
+	} else if (arg_all && argc != 1) {
+		realm_print_error (_("No logins should be specified with -a or --all"));
+
+	} else if (!permit && arg_withdraw) {
+		realm_print_error (_("The --withdraw or -x arguments cannot be used when denying logins"));
+
+	} else if (arg_all && arg_withdraw) {
+		realm_print_error (_("Specific logins must be specified with --withdraw"));
+
+	} else if (arg_all) {
+		ret = perform_logins_all (client, realm_name, permit);
+
 	} else if (argc < 2) {
-		g_printerr ("%s: %s\n", g_get_prgname (),
-		            permit ? _("Specify users to permit") : _("Specify users to deny"));
-		ret = 2;
+		if (!permit)
+			realm_print_error (_("Use --all to deny all logins"));
+		else
+			realm_print_error (_("Specify specific users to add or remove from the permitted list"));
 
 	} else {
-		ret = perform_permit_or_deny_logins (client, realm_name,
-		                                     (const gchar **)(argv + 1),
-		                                     argc - 1, permit);
+		if (!permit) {
+			realm_print_error (_("Specifying deny without --all is deprecated. Use realm permit --withdraw"));
+			arg_withdraw = TRUE;
+		}
+
+		ret = perform_permit_specific (client, realm_name,
+		                               (const gchar **)(argv + 1),
+		                               argc - 1, arg_withdraw);
 	}
 
 	g_free (realm_name);

@@ -42,10 +42,10 @@
 		<command>realm list</command>
 	</cmdsynopsis>
 	<cmdsynopsis>
-		<command>realm permit</command> <arg choice="opt">-a</arg> <arg choice="opt">-R realm</arg> <arg choice="req" rep="repeat">user</arg>
+		<command>realm permit</command> <arg choice="opt">-ax</arg> <arg choice="opt">-R realm</arg> <arg choice="req" rep="repeat">user</arg>
 	</cmdsynopsis>
 	<cmdsynopsis>
-		<command>realm deny</command> <arg choice="opt">-a</arg> <arg choice="opt">-R realm</arg> <arg choice="req" rep="repeat">user</arg>
+		<command>realm deny</command> <arg choice="plain">-a</arg> <arg choice="opt">-R realm</arg>
 	</cmdsynopsis>
 </refsynopsisdiv>
 
@@ -301,15 +301,17 @@ $ realm list
 
 	<informalexample>
 <programlisting>
-$ realm permit -a
-</programlisting>
-<programlisting>
+$ realm permit --all
 $ realm permit DOMAIN\User
+$ realm permit DOMAIN\User2
+$ realm permit --withdraw DOMAIN\User
 </programlisting>
 	</informalexample>
 
-	<para>If more than one realm is configured, then use the <option>--realm</option>
-	option to specify which realm to permit the users on.</para>
+	<para>The current login policy and format of the user names can be seen
+	 by using the <command>realm list</command> command.</para>
+
+	<para>The following options can be used:</para>
 
 	<para>The format of the user name can be seen by using the
 	<option>list</option> command.</para>
@@ -319,14 +321,20 @@ $ realm permit DOMAIN\User
 	<variablelist>
 		<varlistentry>
 			<term><option>--all, -a</option></term>
-			<listitem><para>Permit login according to the realm or
-			domain policy for logins on this machine. This usually
-			defaults to allowing any realm user to log in.</para></listitem>
+			<listitem><para>Permit logins using realm accounts on
+			the local machine according to the realm policy.This
+			usually defaults to allowing any realm user to log
+			in.</para></listitem>
 		</varlistentry>
 		<varlistentry>
 			<term><option>--realm, -R</option></term>
-			<listitem><para>Specify the name of the realm to permit
-			users to log into.</para></listitem>
+			<listitem><para>Specify the of the realm to change login
+			policy for.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--withdraw, -x</option></term>
+			<listitem><para>Remove a login from the list of realm
+			accounts permitted to log into the machine.</para></listitem>
 		</varlistentry>
 	</variablelist>
 
@@ -335,30 +343,24 @@ $ realm permit DOMAIN\User
 <refsect1>
 	<title>Deny</title>
 
-	<para>Deny local login by users of the realm.</para>
+	<para>Deny local login by realm accounts.</para>
 
 	<informalexample>
 <programlisting>
-$ realm deny -a
-</programlisting>
-<programlisting>
-$ realm deny DOMAIN\User
+$ realm deny --all
 </programlisting>
 	</informalexample>
 
-	<para>If more than one realm is configured, then use the <option>--realm</option>
-	option to specify which realm to deny the users' login via.</para>
-
-	<para>The format of the user name can be seen by using the
-	<option>list</option> command.</para>
+	<para>This command prevents realm accounts from logging into the local
+	machine. Use <command>realm permit</command> to restrict logins to
+	specific accounts.</para>
 
 	<para>The following options can be used:</para>
 
 	<variablelist>
 		<varlistentry>
 			<term><option>--all, -a</option></term>
-			<listitem><para>Deny login by any valid user of the
-			realm.</para></listitem>
+			<listitem><para>This option should be specified</para></listitem>
 		</varlistentry>
 		<varlistentry>
 			<term><option>--realm, -R</option></term>

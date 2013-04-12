@@ -27,6 +27,7 @@
 #include "realm-sssd-config.h"
 
 #include <glib/gstdio.h>
+#include <glib/gi18n.h>
 
 #include <string.h>
 
@@ -113,6 +114,26 @@ sssd_config_change_login_policy (RealmIniConfig *config,
 	return realm_ini_config_finish_change (config, error);
 }
 
+static gboolean
+sssd_config_check_login_list (gchar **logins,
+                              GError **error)
+{
+	#define INVALID_CHARS ",$"
+	gint i;
+
+	for (i = 0; logins[i] != NULL; i++) {
+		if (strcspn (logins[i], INVALID_CHARS) != strlen (logins[i])) {
+			g_set_error (error, G_DBUS_ERROR,
+			             G_DBUS_ERROR_INVALID_ARGS,
+			             _("Invalid login argument '%s' contains unsupported characters."),
+			             logins[i]);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
 static void
 realm_sssd_logins_async (RealmKerberos *realm,
                          GDBusMethodInvocation *invocation,
@@ -127,7 +148,6 @@ realm_sssd_logins_async (RealmKerberos *realm,
 	GSimpleAsyncResult *async;
 	gchar **remove_names = NULL;
 	gchar **add_names = NULL;
-	gboolean ret = FALSE;
 	GError *error = NULL;
 	const gchar *access_provider;
 
@@ -167,21 +187,21 @@ realm_sssd_logins_async (RealmKerberos *realm,
 	if (add_names != NULL)
 		remove_names = realm_kerberos_parse_logins (realm, TRUE, remove, &error);
 
-	if (add_names == NULL || remove_names == NULL) {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete_in_idle (async);
-		g_object_unref (async);
-		return;
+	if (error == NULL)
+	    sssd_config_check_login_list (add_names, &error);
+	if (error == NULL)
+	    sssd_config_check_login_list (remove_names, &error);
+
+	if (error == NULL) {
+		sssd_config_change_login_policy (self->pv->config,
+		                                 self->pv->section,
+		                                 access_provider,
+		                                 (const gchar **)add_names,
+		                                 (const gchar **)remove_names,
+		                                 &error);
 	}
 
-	ret = sssd_config_change_login_policy (self->pv->config,
-	                                       self->pv->section,
-	                                       access_provider,
-	                                       (const gchar **)add_names,
-	                                       (const gchar **)remove_names,
-	                                       &error);
-
-	if (ret) {
+	if (error == NULL) {
 		realm_service_restart ("sssd", invocation,
 		                       on_logins_restarted,
 		                       g_object_ref (async));

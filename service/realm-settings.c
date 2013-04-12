@@ -206,15 +206,14 @@ realm_settings_double (const gchar *section,
 
 gboolean
 realm_settings_boolean (const gchar *section,
-                        const gchar *key)
+                        const gchar *key,
+                        gboolean def)
 {
 	const gchar *string;
 
 	string = realm_settings_value (section, key);
-	if (string == NULL) {
-		g_warning ("no value found for '%s/%s' in realmd config", section, key);
-		return FALSE;
-	}
+	if (string == NULL)
+		return def;
 
 	return g_ascii_strcasecmp (string, "true") == 0 ||
 	       g_ascii_strcasecmp (string, "1") == 0 ||

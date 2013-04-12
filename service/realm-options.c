@@ -41,8 +41,7 @@ realm_options_user_principal (GVariant *options,
 
 	if (!principal) {
 		section = g_utf8_casefold (realm_name, -1);
-		if (realm_settings_value (section, REALM_DBUS_OPTION_USER_PRINCIPAL) &&
-		    realm_settings_boolean (section, REALM_DBUS_OPTION_USER_PRINCIPAL))
+		if (realm_settings_boolean (section, REALM_DBUS_OPTION_USER_PRINCIPAL, FALSE))
 			principal = ""; /* auto-generate */
 		g_free (section);
 	}

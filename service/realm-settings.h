@@ -47,7 +47,8 @@ gdouble              realm_settings_double                (const gchar *section,
                                                            gdouble def);
 
 gboolean             realm_settings_boolean               (const gchar *section,
-                                                           const gchar *key);
+                                                           const gchar *key,
+                                                           gboolean def);
 
 G_END_DECLS
 

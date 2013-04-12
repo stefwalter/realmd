@@ -173,14 +173,14 @@ initialize_service (GDBusConnection *connection)
 
 	all_provider = realm_all_provider_new_and_export (connection);
 
-	if (realm_settings_boolean ("providers", REALM_DBUS_IDENTIFIER_SSSD)) {
+	if (realm_settings_boolean ("providers", REALM_DBUS_IDENTIFIER_SSSD, TRUE)) {
 		provider = realm_sssd_provider_new ();
 		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
 		realm_all_provider_register (all_provider, provider);
 		g_object_unref (provider);
 	}
 
-	if (realm_settings_boolean ("providers", REALM_DBUS_IDENTIFIER_SAMBA)) {
+	if (realm_settings_boolean ("providers", REALM_DBUS_IDENTIFIER_SAMBA, TRUE)) {
 		provider = realm_samba_provider_new ();
 		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
 		realm_all_provider_register (all_provider, provider);
@@ -196,7 +196,7 @@ initialize_service (GDBusConnection *connection)
 	realm_all_provider_register (all_provider, provider);
 	g_object_unref (provider);
 
-	if (realm_settings_boolean ("providers", REALM_DBUS_IDENTIFIER_EXAMPLE)) {
+	if (realm_settings_boolean ("providers", REALM_DBUS_IDENTIFIER_EXAMPLE, FALSE)) {
 		provider = realm_example_provider_new ();
 		g_dbus_object_manager_server_export (object_server, G_DBUS_OBJECT_SKELETON (provider));
 		realm_all_provider_register (all_provider, provider);

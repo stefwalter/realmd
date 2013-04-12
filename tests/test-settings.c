@@ -99,11 +99,11 @@ test_boolean (Test *test,
 	              "false-4 = nope\n");
 
 #define ASSERT_TRUE(n)					\
-	value = realm_settings_boolean ("one", n);	\
+	value = realm_settings_boolean ("one", n, FALSE);	\
 	g_assert_cmpint (value, ==, TRUE);
 
 #define ASSERT_FALSE(n)					\
-	value = realm_settings_boolean ("one", n);	\
+	value = realm_settings_boolean ("one", n, TRUE);	\
 	g_assert_cmpint (value, ==, FALSE);
 
 	realm_settings_init ();
@@ -116,6 +116,12 @@ test_boolean (Test *test,
 	ASSERT_FALSE("false-2");
 	ASSERT_FALSE("false-3");
 	ASSERT_FALSE("false-4");
+
+	value = realm_settings_boolean ("one", "invalid", TRUE);
+	g_assert_cmpint (value, ==, TRUE);
+	value = realm_settings_boolean ("one", "invalid", FALSE);
+	g_assert_cmpint (value, ==, FALSE);
+
 	realm_settings_uninit ();
 }
 

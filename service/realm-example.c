@@ -292,7 +292,7 @@ realm_example_leave_automatic_async (RealmKerberosMembership *membership,
 
 	realm_name = realm_kerberos_get_name (REALM_KERBEROS (self));
 
-	if (realm_settings_boolean (realm_name, "example-no-auto-leave") == TRUE) {
+	if (realm_settings_boolean (realm_name, "example-no-auto-leave", FALSE) == TRUE) {
 		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
 		                                 _("Need credentials for leaving this domain"));
 		g_simple_async_result_complete_in_idle (async);

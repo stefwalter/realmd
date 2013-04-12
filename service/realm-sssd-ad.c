@@ -186,17 +186,13 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	home = realm_sssd_build_default_home (realm_settings_string ("users", "default-home"));
 
 	ret = realm_sssd_config_add_domain (config, workgroup, error,
-	                                    "enumerate", "False",
 	                                    "re_expression", "(?P<domain>[^\\\\]+)\\\\(?P<name>[^\\\\]+)",
 	                                    "full_name_format", "%2$s\\%1$s",
-	                                    "case_sensitive", "False",
 	                                    "cache_credentials", "True",
 	                                    "use_fully_qualified_names", "True",
 
 	                                    "id_provider", "ad",
-	                                    "auth_provider", "ad",
 	                                    "access_provider", "ad",
-	                                    "chpass_provider", "ad",
 
 	                                    "ad_domain", domain,
 	                                    "krb5_realm", realm,

@@ -36,6 +36,12 @@
 #include <stdio.h>
 #include <errno.h>
 
+#ifdef WITH_JOURNAL
+#include <systemd/sd-journal.h>
+#else
+#include <syslog.h>
+#endif
+
 #define TIMEOUT        60 /* seconds */
 #define HOLD_INTERNAL  (GUINT_TO_POINTER (~0))
 
@@ -333,6 +339,107 @@ on_realm_log_debug (const gchar *log_domain,
 	g_string_free (string, TRUE);
 }
 
+static void
+on_realm_log_message (const gchar *log_domain,
+                      GLogLevelFlags log_level,
+                      const gchar *message,
+                      gpointer user_data)
+{
+	int level;
+
+	/* Note that crit and err are the other way around in syslog */
+
+	switch (G_LOG_LEVEL_MASK & log_level) {
+	case G_LOG_LEVEL_ERROR:
+		level = LOG_CRIT;
+		break;
+	case G_LOG_LEVEL_CRITICAL:
+		level = LOG_ERR;
+		break;
+	case G_LOG_LEVEL_WARNING:
+		level = LOG_WARNING;
+		break;
+	case G_LOG_LEVEL_MESSAGE:
+		level = LOG_NOTICE;
+		break;
+	case G_LOG_LEVEL_INFO:
+		level = LOG_INFO;
+		break;
+	case G_LOG_LEVEL_DEBUG:
+		level = LOG_DEBUG;
+		break;
+	default:
+		level = LOG_ERR;
+		break;
+	}
+
+	/* Log to syslog first */
+	if (log_domain)
+		realm_daemon_syslog (NULL, level, "%s: %s", log_domain, message);
+	else
+		realm_daemon_syslog (NULL, level, "%s", message);
+
+	/* And then to default handler for aborting and stuff like that */
+	g_log_default_handler (log_domain, log_level, message, user_data);
+}
+
+static void
+prepare_syslog (void)
+{
+	GLogLevelFlags flags = G_LOG_FLAG_FATAL | G_LOG_LEVEL_ERROR |
+	                       G_LOG_LEVEL_CRITICAL | G_LOG_LEVEL_WARNING |
+	                       G_LOG_LEVEL_MESSAGE | G_LOG_LEVEL_INFO;
+
+#ifndef WITH_JOURNAL
+	openlog ("realmd", 0, LOG_AUTH);
+#endif
+
+	g_log_set_handler (NULL, flags, on_realm_log_message, NULL);
+	g_log_set_handler ("Glib", flags, on_realm_log_message, NULL);
+	g_log_set_default_handler (on_realm_log_message, NULL);
+}
+
+#ifdef WITH_JOURNAL
+
+void
+realm_daemon_syslog (const gchar *operation,
+                     int prio,
+                     const gchar *format,
+                     ...)
+{
+	va_list ap;
+	gchar *message;
+
+	va_start (ap, format);
+	message = g_strdup_vprintf (format, ap);
+	va_end (ap);
+
+	sd_journal_send ("MESSAGE=%s", message,
+	                 "REALMD_OPERATION=%s", operation,
+	                 "PRIORITY=%i", prio,
+	                 "SYSLOG_FACILITY=%i", LOG_FAC (LOG_AUTH),
+	                 "SYSLOG_IDENTIFIER=realmd",
+	                 NULL);
+
+	g_free (message);
+}
+
+#else /* !WITH_JOURNAL */
+
+void
+realm_daemon_syslog (const gchar *operation,
+                     int prio,
+                     const gchar *format,
+                     ...)
+{
+	va_list ap;
+	va_start (ap, format);
+	vsyslog (prio, format, ap);
+	va_end (ap);
+}
+
+#endif /* !WITH_JOURNAL */
+
 static gboolean
 on_signal_quit (gpointer data)
 {
@@ -371,6 +478,7 @@ main (int argc,
 	textdomain (GETTEXT_PACKAGE);
 #endif
 
+	prepare_syslog ();
 	g_type_init ();
 
 	/*

@@ -35,6 +35,11 @@ void                 realm_daemon_poke                       (void);
 
 void                 realm_daemon_export_object              (GDBusObjectSkeleton *object);
 
+void                 realm_daemon_syslog                     (const gchar *operation,
+                                                              int prio,
+                                                              const gchar *format,
+                                                              ...) G_GNUC_PRINTF(3, 4);
+
 G_END_DECLS
 
 #endif /* __REALM_DAEMON_H__ */

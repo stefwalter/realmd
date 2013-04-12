@@ -14,79 +14,13 @@
 
 #include "config.h"
 
+#include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
 #include "realm-invocation.h"
 
 #include <string.h>
-
-static void system_openlog (void);
-static void system_log_for_invocation (GDBusMethodInvocation *invocation,
-                                       gint prio,
-                                       const gchar *fmt,
-                                       ...) G_GNUC_PRINTF (3, 4);
-
-#ifdef WITH_JOURNAL
-
-#include <systemd/sd-journal.h>
-
-static void
-system_openlog (void)
-{
-
-}
-
-static void
-system_log_for_invocation (GDBusMethodInvocation *invocation,
-                           gint prio,
-                           const gchar *fmt,
-                           ...)
-{
-	va_list ap;
-	gchar *message;
-	const gchar *operation;
-
-	va_start (ap, fmt);
-	message = g_strdup_vprintf (fmt, ap);
-	va_end (ap);
-
-	operation = realm_invocation_get_operation (invocation);
-	if (operation == NULL)
-		operation = "";
-
-	sd_journal_send ("MESSAGE=%s", message,
-	                 "REALMD_OPERATION=%s", operation,
-	                 "PRIORITY=%i", prio,
-	                 "SYSLOG_FACILITY=%i", LOG_FAC (LOG_AUTH),
-	                 "SYSLOG_IDENTIFIER=realmd",
-	                 NULL);
-
-	g_free (message);
-}
-
-#else /* !WITH_JOURNAL */
-
 #include <syslog.h>
-
-static void
-system_openlog (void)
-{
-	openlog ("realmd", 0, LOG_AUTH);
-}
-
-static void
-system_log_for_invocation (GDBusMethodInvocation *invocation,
-                           gint prio,
-                           const gchar *fmt,
-                           ...)
-{
-	va_list ap;
-	va_start (ap, fmt);
-	vsyslog (prio, fmt, ap);
-	va_end (ap);
-}
-
-#endif /* WITH_JOURNAL */
 
 static GDBusConnection *the_connection = NULL;
 static GString *line_buffer = NULL;
@@ -110,18 +44,22 @@ log_syslog_and_debug (GDBusMethodInvocation *invocation,
                       gchar *string,
                       gsize length)
 {
+	const gchar *operation = NULL;
 	gchar *at = string;
 	gchar *ptr;
+
+	if (invocation)
+		operation = realm_invocation_get_operation (invocation);
 
 	/* Print all stderr lines as messages */
 	while ((ptr = memchr (at, '\n', length)) != NULL) {
 		*ptr = '\0';
 		if (line_buffer && line_buffer->len > 0) {
-			system_log_for_invocation (invocation, log_level, "%s%s", line_buffer->str, at);
+			realm_daemon_syslog (operation, log_level, "%s%s", line_buffer->str, at);
 			g_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s%s", line_buffer->str, at);
 			g_string_set_size (line_buffer, 0);
 		} else {
-			system_log_for_invocation (invocation, log_level, "%s", at);
+			realm_daemon_syslog (operation, log_level, "%s", at);
 			g_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s", at);
 		}
 
@@ -144,13 +82,6 @@ log_take_diagnostic (GDBusMethodInvocation *invocation,
                      int log_level,
                      gchar *string)
 {
-	static gboolean syslog_initialized = FALSE;
-
-	if (!syslog_initialized) {
-		system_openlog ();
-		syslog_initialized = TRUE;
-	}
-
 	log_syslog_and_debug (invocation, log_level, string, strlen (string));
 
 	realm_diagnostics_signal (invocation, string);

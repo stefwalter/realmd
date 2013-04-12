@@ -300,9 +300,9 @@ test_set (Test *test,
 
 	g_signal_connect (test->config, "changed", G_CALLBACK (on_config_changed), &changed);
 
-	realm_ini_config_set (test->config, "section", "1", "the number one");
-	realm_ini_config_set (test->config, "section", "3", NULL);
-	realm_ini_config_set (test->config, "section", "4", "four");
+	realm_ini_config_set (test->config, "section", "1", "the number one", NULL);
+	realm_ini_config_set (test->config, "section", "3", NULL,
+	                      "4", "four", NULL);
 
 	g_assert (changed == TRUE);
 
@@ -321,7 +321,7 @@ test_set_middle (Test *test,
 
 	realm_ini_config_read_string (test->config, data);
 
-	realm_ini_config_set (test->config, "section", "3", "three");
+	realm_ini_config_set (test->config, "section", "3", "three", NULL);
 
 	output = realm_ini_config_write_string (test->config);
 	g_assert_cmpstr (check, ==, output);
@@ -337,7 +337,7 @@ test_set_and_get (Test *test,
 
 	realm_ini_config_read_string (test->config, data);
 
-	realm_ini_config_set (test->config, "section", "3", "three");
+	realm_ini_config_set (test->config, "section", "3", "three", NULL);
 
 	output = realm_ini_config_get (test->config, "section", "3");
 	g_assert_cmpstr (output, ==, "three");
@@ -354,8 +354,8 @@ test_set_section (Test *test,
 
 	realm_ini_config_read_string (test->config, data);
 
-	realm_ini_config_set (test->config, "happy", "4", "four");
-	realm_ini_config_set (test->config, "nope", "6", NULL);
+	realm_ini_config_set (test->config, "happy", "4", "four", NULL);
+	realm_ini_config_set (test->config, "nope", "6", NULL, NULL);
 
 	output = realm_ini_config_write_string (test->config);
 	g_assert_cmpstr (check, ==, output);

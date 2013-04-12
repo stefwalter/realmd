@@ -78,7 +78,8 @@ gboolean            realm_ini_config_write_fd                 (RealmIniConfig *s
 void                realm_ini_config_set                      (RealmIniConfig *self,
                                                                const gchar *section,
                                                                const gchar *name,
-                                                               const gchar *value);
+                                                               const gchar *value,
+                                                               ...) G_GNUC_NULL_TERMINATED;
 
 gchar *             realm_ini_config_get                      (RealmIniConfig *self,
                                                                const gchar *section,

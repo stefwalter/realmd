@@ -836,12 +836,23 @@ void
 realm_ini_config_set (RealmIniConfig *self,
                       const gchar *section,
                       const gchar *name,
-                      const gchar *value)
+                      const gchar *value,
+                      ...)
 {
+	va_list va;
+
 	g_return_if_fail (REALM_IS_INI_CONFIG (self));
 	g_return_if_fail (section != NULL);
 
-	config_set_value (self, section, name, value);
+	va_start (va, value);
+	while (name != NULL) {
+		config_set_value (self, section, name, value);
+		name = va_arg (va, const gchar *);
+		if (name != NULL)
+			value = va_arg (va, const gchar *);
+	}
+	va_end (va);
+
 	if (!self->changing)
 		g_signal_emit (self, signals[CHANGED], 0);
 }
@@ -958,7 +969,7 @@ realm_ini_config_set_list (RealmIniConfig *self,
 	g_return_if_fail (delimiter != NULL);
 
 	value = g_strjoinv (delimiter, (gchar **)values);
-	realm_ini_config_set (self, section, name, value);
+	realm_ini_config_set (self, section, name, value, NULL);
 	g_free (value);
 }
 

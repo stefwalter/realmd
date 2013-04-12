@@ -348,7 +348,7 @@ realm_example_logins_async (RealmKerberos *realm,
 
 	if (realm_ini_config_begin_change (self->config, &error)) {
 		realm_ini_config_set (self->config, name, "login-policy",
-		                      realm_kerberos_login_policy_to_string (login_policy));
+		                      realm_kerberos_login_policy_to_string (login_policy), NULL);
 		realm_ini_config_set_list_diff (self->config, name, "login-permitted",
 		                                ", ", add, remove);
 		realm_ini_config_finish_change (self->config, &error);

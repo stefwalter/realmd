@@ -85,7 +85,7 @@ sssd_config_change_login_policy (RealmIniConfig *config,
 		return FALSE;
 
 	if (access_provider)
-		realm_ini_config_set (config, section, "access_provider", access_provider);
+		realm_ini_config_set (config, section, "access_provider", access_provider, NULL);
 	realm_ini_config_set_list_diff (config, section, "simple_allow_users", ",",
 	                                add_names, remove_names);
 
@@ -104,9 +104,9 @@ sssd_config_change_login_policy (RealmIniConfig *config,
 
 	if (allow == NULL) {
 		if (g_str_equal (access_provider, "simple"))
-			realm_ini_config_set (config, section, "simple_allow_users", "$");
+			realm_ini_config_set (config, section, "simple_allow_users", "$", NULL);
 		else
-			realm_ini_config_set (config, section, "simple_allow_users", NULL);
+			realm_ini_config_set (config, section, "simple_allow_users", NULL, NULL);
 	}
 
 	g_free (allow);

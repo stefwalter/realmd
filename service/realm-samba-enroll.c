@@ -86,9 +86,11 @@ join_closure_init (GSimpleAsyncResult *async,
 	g_simple_async_result_set_op_res_gpointer (async, join, join_closure_free);
 
 	join->config = realm_ini_config_new (REALM_INI_NO_WATCH | REALM_INI_PRIVATE);
-	realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL, "security", "ads");
-	realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL, "kerberos method", "system keytab");
-	realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL, "realm", join->realm);
+	realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL,
+	                      "security", "ads",
+	                      "kerberos method", "system keytab",
+	                      "realm", join->realm,
+	                      NULL);
 
 	/* Write out the config file for use by various net commands */
 	join->custom_smb_conf = g_build_filename (g_get_tmp_dir (), "realmd-smb-conf.XXXXXX", NULL);
@@ -270,7 +272,8 @@ begin_config_and_join (JoinClosure *join,
 	if (workgroup == NULL) {
 		workgroup = fallback_workgroup (join->realm);
 		realm_diagnostics_info (join->invocation, "Calculated workgroup name: %s", workgroup);
-		realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup", workgroup);
+		realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL,
+		                      "workgroup", workgroup, NULL);
 	}
 	free (workgroup);
 
@@ -348,7 +351,8 @@ on_net_ads_workgroup (GObject *source,
 		workgroup = find_workgroup_in_output (output);
 		if (workgroup) {
 			realm_diagnostics_info (join->invocation, "Looked up workgroup name: %s", workgroup);
-			realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup", workgroup);
+			realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL,
+			                      "workgroup", workgroup, NULL);
 			g_free (workgroup);
 		}
 

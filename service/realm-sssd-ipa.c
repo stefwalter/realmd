@@ -99,6 +99,7 @@ realm_sssd_ipa_class_init (RealmSssdIpaClass *klass)
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	GPtrArray *argv;
+	GVariant *options;
 	GBytes *input;
 } EnrollClosure;
 
@@ -109,6 +110,7 @@ enroll_closure_free (gpointer data)
 	g_object_unref (enroll->invocation);
 	if (enroll->argv)
 		g_ptr_array_unref (enroll->argv);
+	g_variant_unref (enroll->options);
 	g_bytes_unref (enroll->input);
 	g_slice_free (EnrollClosure, enroll);
 }
@@ -166,8 +168,12 @@ on_ipa_client_do_restart (GObject *source,
 	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (async);
 	RealmSssd *sssd = REALM_SSSD (g_async_result_get_source_object (user_data));
 	RealmKerberos *realm = REALM_KERBEROS (sssd);
+	const gchar *access_provider;
 	GError *error = NULL;
 	GString *output = NULL;
+	RealmIniConfig *config;
+	const gchar *domain;
+	gchar *section;
 	gchar *home;
 	gint status;
 
@@ -190,11 +196,13 @@ on_ipa_client_do_restart (GObject *source,
 		}
 	}
 
+	domain = realm_kerberos_get_name (realm);
+	config = realm_sssd_get_config (sssd);
+
 	if (error == NULL) {
 		home = realm_sssd_build_default_home (realm_settings_string ("users", "default-home"));
 
-		realm_sssd_config_update_domain (realm_sssd_get_config (sssd),
-		                                 realm_kerberos_get_name (realm), &error,
+		realm_sssd_config_update_domain (config, domain, &error,
 		                                 "re_expression", "(?P<name>[^@]+)@(?P<domain>.+$)",
 		                                 "full_name_format", "%1$s@%2$s",
 		                                 "cache_credentials", "True",
@@ -204,6 +212,16 @@ on_ipa_client_do_restart (GObject *source,
 		                                 NULL);
 
 		g_free (home);
+	}
+
+	if (error == NULL) {
+		if (realm_options_manage_system (enroll->options, domain))
+			access_provider = "ipa";
+		else
+			access_provider = "simple";
+		section = realm_sssd_config_domain_to_section (domain);
+		realm_sssd_set_login_policy (config, section, access_provider, NULL, NULL, &error);
+		free (section);
 	}
 
 	if (error == NULL) {
@@ -293,6 +311,7 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 	async = g_simple_async_result_new (G_OBJECT (realm), callback, user_data, NULL);
 	enroll = g_slice_new0 (EnrollClosure);
 	enroll->invocation = g_object_ref (invocation);
+	enroll->options = g_variant_ref (options);
 	g_simple_async_result_set_op_res_gpointer (async, enroll, enroll_closure_free);
 
 	if (g_variant_lookup (options, REALM_DBUS_OPTION_COMPUTER_OU, "&s", &computer_ou)) {
@@ -442,6 +461,7 @@ realm_sssd_ipa_leave_async (RealmKerberosMembership *membership,
 	async = g_simple_async_result_new (G_OBJECT (realm), callback, user_data, NULL);
 	enroll = g_slice_new0 (EnrollClosure);
 	enroll->invocation = g_object_ref (invocation);
+	enroll->options = g_variant_ref (options);
 	g_simple_async_result_set_op_res_gpointer (async, enroll, enroll_closure_free);
 
 	if (realm_sssd_get_config_section (sssd) == NULL) {

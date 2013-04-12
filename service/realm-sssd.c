@@ -71,13 +71,13 @@ on_logins_restarted (GObject *source,
 	g_object_unref (self);
 }
 
-static gboolean
-sssd_config_change_login_policy (RealmIniConfig *config,
-                                 const gchar *section,
-                                 const gchar *access_provider,
-                                 const gchar **add_names,
-                                 const gchar **remove_names,
-                                 GError **error)
+gboolean
+realm_sssd_set_login_policy (RealmIniConfig *config,
+                             const gchar *section,
+                             const gchar *access_provider,
+                             const gchar **add_names,
+                             const gchar **remove_names,
+                             GError **error)
 {
 	gchar *allow;
 
@@ -193,12 +193,12 @@ realm_sssd_logins_async (RealmKerberos *realm,
 	    sssd_config_check_login_list (remove_names, &error);
 
 	if (error == NULL) {
-		sssd_config_change_login_policy (self->pv->config,
-		                                 self->pv->section,
-		                                 access_provider,
-		                                 (const gchar **)add_names,
-		                                 (const gchar **)remove_names,
-		                                 &error);
+		realm_sssd_set_login_policy (self->pv->config,
+		                             self->pv->section,
+		                             access_provider,
+		                             (const gchar **)add_names,
+		                             (const gchar **)remove_names,
+		                             &error);
 	}
 
 	if (error == NULL) {

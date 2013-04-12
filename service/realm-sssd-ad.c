@@ -162,10 +162,13 @@ static gboolean
 configure_sssd_for_domain (RealmIniConfig *config,
                            const gchar *realm,
                            const gchar *workgroup,
+                           GVariant *options,
                            GError **error)
 {
+	const gchar *access_provider;
 	gboolean ret;
 	gchar *domain;
+	gchar *section;
 	gchar **parts;
 	gchar *rdn;
 	gchar *dn;
@@ -192,7 +195,6 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	                                    "use_fully_qualified_names", "True",
 
 	                                    "id_provider", "ad",
-	                                    "access_provider", "ad",
 
 	                                    "ad_domain", domain,
 	                                    "krb5_realm", realm,
@@ -201,6 +203,16 @@ configure_sssd_for_domain (RealmIniConfig *config,
 
 	                                    "fallback_homedir", home,
 	                                    NULL);
+
+	if (ret) {
+		if (realm_options_manage_system (options, domain))
+			access_provider = "ad";
+		else
+			access_provider = "simple";
+		section = realm_sssd_config_domain_to_section (workgroup);
+		ret = realm_sssd_set_login_policy (config, section, access_provider, NULL, NULL, error);
+		free (section);
+	}
 
 	g_free (home);
 	g_free (domain);
@@ -246,7 +258,8 @@ on_join_do_sssd (GObject *source,
 
 	if (error == NULL) {
 		configure_sssd_for_domain (realm_sssd_get_config (sssd),
-		                           join->realm_name, workgroup, &error);
+		                           join->realm_name, workgroup,
+		                           join->options, &error);
 	}
 
 	if (error == NULL) {

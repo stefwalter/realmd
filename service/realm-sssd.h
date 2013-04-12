@@ -66,6 +66,13 @@ void                realm_sssd_deconfigure_domain_tail  (RealmSssd *self,
                                                          GSimpleAsyncResult *async,
                                                          GDBusMethodInvocation *invocation);
 
+gboolean            realm_sssd_set_login_policy         (RealmIniConfig *config,
+                                                         const gchar *section,
+                                                         const gchar *access_provider,
+                                                         const gchar **add_names,
+                                                         const gchar **remove_names,
+                                                         GError **error);
+
 void                realm_sssd_update_properties        (RealmSssd *self);
 
 G_END_DECLS

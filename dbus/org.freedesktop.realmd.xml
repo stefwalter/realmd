@@ -619,6 +619,9 @@
 		    <listitem><para><literal>membership-software</literal>: a string
 		      containing the membership software identifier that the returned
 		      realms should match.</para></listitem>
+		    <listitem><para><literal>manage-system</literal>: a boolean
+		      which controls whether this machine should be managed by
+		      the realm or domain or not. Defaults to true.</para></listitem>
 		  </itemizedlist>
 
 		  This method requires authorization for the PolicyKit action

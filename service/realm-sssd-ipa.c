@@ -328,7 +328,6 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 		push_arg (argv, "--realm");
 		push_arg (argv, realm_kerberos_get_realm_name (realm));
 		push_arg (argv, "--mkhomedir");
-		push_arg (argv, "--no-ntp");
 		push_arg (argv, "--enable-dns-updates");
 		push_arg (argv, "--unattended");
 
@@ -355,6 +354,12 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 			break;
 		default:
 			g_return_if_reached ();
+		}
+
+		if (!realm_options_manage_system (options, domain_name)) {
+			push_arg (argv, "--no-ssh");
+			push_arg (argv, "--no-sshd");
+			push_arg (argv, "--no-ntp");
 		}
 
 		g_ptr_array_add (argv, NULL);

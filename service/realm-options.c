@@ -29,6 +29,23 @@ realm_options_assume_packages (GVariant *options)
 	return assume;
 }
 
+gboolean
+realm_options_manage_system (GVariant *options,
+                             const gchar *realm_name)
+{
+	gboolean manage;
+	gchar *section;
+
+	section = g_utf8_casefold (realm_name, -1);
+	if (realm_settings_value (section, REALM_DBUS_OPTION_MANAGE_SYSTEM))
+		manage = realm_settings_boolean (section, REALM_DBUS_OPTION_MANAGE_SYSTEM, TRUE);
+	else if (!g_variant_lookup (options, REALM_DBUS_OPTION_MANAGE_SYSTEM, "b", &manage))
+		manage = TRUE;
+	g_free (section);
+
+	return manage;
+}
+
 const gchar *
 realm_options_user_principal (GVariant *options,
                               const gchar *realm_name)

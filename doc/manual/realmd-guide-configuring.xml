@@ -257,5 +257,24 @@ automatic-id-mapping = no
 
 	</section>
 
+	<section>
+
+		<title>manage-system</title>
+
+		<para>This option is on by default. Normally joining a realm
+		affects many aspects of the configuration and management of the
+		system. Turning this off limits the interaction with the realm
+		or domain to authentication and identity.</para>
+
+		<informalexample>
+<programlisting>
+[domain.example.com]
+manage-system = no
+# manage-system = yes
+</programlisting>
+	</informalexample>
+
+	</section>
+
 </section>
 </chapter>

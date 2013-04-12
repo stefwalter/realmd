@@ -238,5 +238,24 @@ user-principal = yes
 
 	</section>
 
+	<section>
+
+		<title>automatic-id-mapping</title>
+
+		<para>This option is on by default for Active Directory realms.
+		Turn it off to use UID and GID information stored in the
+		directory (as-per RFC2307) rather than automatically generating
+		UID and GID numbers.</para>
+
+		<informalexample>
+<programlisting>
+[domain.example.com]
+automatic-id-mapping = no
+# automatic-id-mapping = yes
+</programlisting>
+	</informalexample>
+
+	</section>
+
 </section>
 </chapter>

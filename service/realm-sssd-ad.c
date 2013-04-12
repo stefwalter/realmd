@@ -197,6 +197,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	                                    "ad_domain", domain,
 	                                    "krb5_realm", realm,
 	                                    "krb5_store_password_if_offline", "True",
+	                                    "ldap_id_mapping", realm_options_automatic_mapping (domain) ? "True" : "False",
 
 	                                    "fallback_homedir", home,
 	                                    NULL);

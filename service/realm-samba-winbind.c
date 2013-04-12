@@ -71,6 +71,7 @@ on_enable_do_nss (GObject *source,
 
 void
 realm_samba_winbind_configure_async (RealmIniConfig *config,
+                                     gboolean automatic_mapping,
                                      GDBusMethodInvocation *invocation,
                                      GAsyncReadyCallback callback,
                                      gpointer user_data)
@@ -89,15 +90,33 @@ realm_samba_winbind_configure_async (RealmIniConfig *config,
 
 	/* TODO: need to use autorid mapping */
 
-	realm_ini_config_change (config, REALM_SAMBA_CONFIG_GLOBAL, &error,
-	                         "idmap uid", "10000-20000",
-	                         "idmap gid", "10000-20000",
-	                         "winbind enum users", "no",
-	                         "winbind enum groups", "no",
-	                         "template shell", realm_settings_string ("users", "default-shell"),
-	                         "winbind offline logon", "yes",
-	                         "winbind refresh tickets", "yes",
-	                         NULL);
+	if (realm_ini_config_begin_change(config, &error)) {
+		realm_ini_config_set (config, REALM_SAMBA_CONFIG_GLOBAL,
+		                      "winbind enum users", "no",
+		                      "winbind enum groups", "no",
+		                      "winbind offline logon", "yes",
+		                      "winbind refresh tickets", "yes",
+		                      "template shell", realm_settings_string ("users", "default-shell"),
+		                      NULL);
+
+		if (automatic_mapping) {
+			realm_ini_config_set (config, REALM_SAMBA_CONFIG_GLOBAL,
+			                      "idmap uid", "10000-2000000",
+			                      "idmap gid", "10000-2000000",
+			                      "idmap backend", "tdb",
+			                      "idmap schema", NULL,
+			                      NULL);
+		} else {
+			realm_ini_config_set (config, REALM_SAMBA_CONFIG_GLOBAL,
+			                      "idmap uid", "500-4294967296",
+			                      "idmap gid", "500-4294967296",
+			                      "idmap backend", "ad",
+			                      "idmap schema", "rfc2307",
+			                      NULL);
+		}
+
+		realm_ini_config_finish_change (config, &error);
+	}
 
 	if (error == NULL) {
 		realm_service_enable_and_restart ("winbind", invocation,

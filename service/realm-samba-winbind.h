@@ -22,6 +22,7 @@
 G_BEGIN_DECLS
 
 void       realm_samba_winbind_configure_async      (RealmIniConfig *config,
+                                                     gboolean automatic_mapping,
                                                      GDBusMethodInvocation *invocation,
                                                      GAsyncReadyCallback callback,
                                                      gpointer user_data);

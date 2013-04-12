@@ -69,3 +69,16 @@ realm_options_computer_ou (GVariant *options,
 
 	return g_strdup (computer_ou);
 }
+
+gboolean
+realm_options_automatic_mapping (const gchar *realm_name)
+{
+	gchar *section;
+	gboolean mapping;
+
+	section = g_utf8_casefold (realm_name, -1);
+	mapping = realm_settings_boolean (realm_name, "automatic-id-mapping", TRUE);
+	g_free (section);
+
+	return mapping;
+}

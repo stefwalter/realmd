@@ -183,6 +183,7 @@ on_join_do_winbind (GObject *source,
 	GHashTable *settings = NULL;
 	GError *error = NULL;
 	const gchar *workgroup = NULL;
+	const gchar *name;
 
 	realm_samba_enroll_join_finish (result, &settings, &error);
 	if (error == NULL) {
@@ -204,7 +205,10 @@ on_join_do_winbind (GObject *source,
 	}
 
 	if (error == NULL) {
-		realm_samba_winbind_configure_async (self->config, enroll->invocation,
+		name = realm_kerberos_get_name (REALM_KERBEROS (self));
+		realm_samba_winbind_configure_async (self->config,
+		                                     realm_options_automatic_mapping (name),
+		                                     enroll->invocation,
 		                                     on_winbind_done, g_object_ref (res));
 	} else {
 		g_simple_async_result_take_error (res, error);

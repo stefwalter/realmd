@@ -90,12 +90,12 @@ sssd_config_change_login_policy (RealmIniConfig *config,
 
 	/*
 	 * HACK: Work around for sssd problem where it allows users if
-	 * simple_allow_users is empty. Set it to a comma in this case.
+	 * simple_allow_users is empty. Set it to a dollar in this case.
 	 */
 	allow = realm_ini_config_get (config, section, "simple_allow_users");
 	if (allow != NULL) {
 		g_strstrip (allow);
-		if (g_str_equal (allow, "") || g_str_equal (allow, ",")) {
+		if (g_str_equal (allow, "") || g_str_equal (allow, "$") || g_str_equal (allow, ",")) {
 			g_free (allow);
 			allow = NULL;
 		}
@@ -103,7 +103,7 @@ sssd_config_change_login_policy (RealmIniConfig *config,
 
 	if (allow == NULL) {
 		if (g_str_equal (access_provider, "simple"))
-			realm_ini_config_set (config, section, "simple_allow_users", ",");
+			realm_ini_config_set (config, section, "simple_allow_users", "$");
 		else
 			realm_ini_config_set (config, section, "simple_allow_users", NULL);
 	}
@@ -320,7 +320,7 @@ update_login_policy (RealmSssd *self)
 		values = realm_ini_config_get_list (self->pv->config, self->pv->section,
 		                                    "simple_allow_users", ",");
 		for (i = 0; values != NULL && values[i] != NULL; i++) {
-			if (!g_str_equal (values[i], ""))
+			if (!g_str_equal (values[i], "") && !g_str_equal (values[i], "$"))
 				g_ptr_array_add (permitted, realm_kerberos_format_login (kerberos, values[i]));
 		}
 		g_strfreev (values);

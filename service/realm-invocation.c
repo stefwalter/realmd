@@ -97,6 +97,7 @@ on_client_vanished (GDBusConnection *connection,
 
 	G_LOCK (invocations);
 
+	realm_daemon_release (name);
 	g_hash_table_remove (invocation_clients, name);
 
 	G_UNLOCK (invocations);
@@ -119,6 +120,7 @@ lookup_or_register_client (const gchar *sender)
 			g_debug ("client using service: %s", sender);
 		}
 		g_hash_table_insert (invocation_clients, g_strdup (sender), client);
+		realm_daemon_hold (sender);
 	}
 
 	return client;
@@ -289,6 +291,7 @@ on_service_release (RealmDbusService *object,
 	G_LOCK (invocations);
 
 	g_hash_table_remove (invocation_clients, sender);
+	realm_daemon_release (sender);
 
 	G_UNLOCK (invocations);
 

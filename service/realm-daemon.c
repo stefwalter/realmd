@@ -81,17 +81,10 @@ realm_daemon_has_debug_flag (void)
 void
 realm_daemon_hold (const gchar *hold)
 {
-	/*
-	 * We register these holds in the same table as the clients
-	 * so need to make sure they don't colide with them.
-	 */
-
 	g_assert (hold != NULL);
-	g_assert (!g_dbus_is_unique_name (hold));
-
 	if (g_hash_table_lookup (service_holds, hold))
 		g_critical ("realm_daemon_hold: already have hold: %s", hold);
-	g_debug ("holding service: %s", hold);
+	g_debug ("holding daemon: %s", hold);
 	g_hash_table_add (service_holds, g_strdup (hold));
 }
 
@@ -99,9 +92,7 @@ void
 realm_daemon_release (const gchar *hold)
 {
 	g_assert (hold != NULL);
-	g_assert (!g_dbus_is_unique_name (hold));
-
-	g_debug ("releasing service: %s", hold);
+	g_debug ("releasing daemon: %s", hold);
 	if (!g_hash_table_remove (service_holds, hold))
 		g_critical ("realm_daemon_release: don't have hold: %s", hold);
 }

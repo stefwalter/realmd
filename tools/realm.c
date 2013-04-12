@@ -238,7 +238,7 @@ main (int argc,
 		}
 	}
 
-	if (ret == 2)
+	if (ret == 2 && i == G_N_ELEMENTS (realm_commands))
 		usage(2);
 
 	g_free (arg_install);

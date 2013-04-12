@@ -1122,17 +1122,23 @@ static gboolean
 flush_keytab_entries (krb5_context ctx,
                       krb5_keytab keytab,
                       krb5_principal realm_princ,
+                      int *remaining,
                       GError **error)
 {
 	krb5_error_code code;
 	krb5_kt_cursor cursor;
 	krb5_keytab_entry entry;
+	int count = 0;
 
 	code = krb5_kt_start_seq_get (ctx, keytab, &cursor);
-	if (code == KRB5_KT_END || code == ENOENT )
+	if (code == KRB5_KT_END || code == ENOENT ) {
+		*remaining = 0;
 		return TRUE;
+	}
 
 	while (!krb5_kt_next_entry (ctx, keytab, &entry, &cursor)) {
+		count++;
+
 		if (krb5_realm_compare (ctx, realm_princ, entry.principal)) {
 			code = krb5_kt_end_seq_get (ctx, keytab, &cursor);
 			return_val_if_krb5_failed (ctx, code, FALSE);
@@ -1142,6 +1148,7 @@ flush_keytab_entries (krb5_context ctx,
 
 			code = krb5_kt_start_seq_get (ctx, keytab, &cursor);
 			return_val_if_krb5_failed (ctx, code, FALSE);
+			count = 0;
 		}
 
 		code = krb5_kt_free_entry (ctx, &entry);
@@ -1151,6 +1158,7 @@ flush_keytab_entries (krb5_context ctx,
 	code = krb5_kt_end_seq_get (ctx, keytab, &cursor);
 	return_val_if_krb5_failed (ctx, code, FALSE);
 
+	*remaining = count;
 	return TRUE;
 }
 
@@ -1158,10 +1166,12 @@ gboolean
 realm_kerberos_flush_keytab (const gchar *realm_name,
                              GError **error)
 {
+	char kt_name[MAX_KEYTAB_NAME_LEN];
 	krb5_error_code code;
 	krb5_keytab keytab;
 	krb5_context ctx;
 	krb5_principal princ;
+	int remaining;
 	gchar *name;
 	gboolean ret;
 
@@ -1183,13 +1193,29 @@ realm_kerberos_flush_keytab (const gchar *realm_name,
 	return_val_if_krb5_failed (ctx, code, FALSE);
 	g_free (name);
 
-	ret = flush_keytab_entries (ctx, keytab, princ, error);
+	ret = flush_keytab_entries (ctx, keytab, princ, &remaining, error);
 	krb5_free_principal (ctx, princ);
+
+	if (ret && remaining == 0) {
+		code = krb5_kt_get_name (ctx, keytab, kt_name, sizeof (kt_name));
+		return_val_if_krb5_failed (ctx, code, FALSE);
+	}
 
 	code = krb5_kt_close (ctx, keytab);
 	warn_if_krb5_failed (ctx, code);
 
 	krb5_free_context (ctx);
+
+	if (ret && remaining == 0) {
+		if (strncmp (kt_name, "FILE:", 5) == 0) {
+			if (g_unlink (kt_name + 5) < 0 && errno != ENOENT) {
+				g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errno),
+				             "Couldn't remove empty host keytab");
+				ret = FALSE;
+			}
+		}
+	}
+
 	return ret;
 
 }

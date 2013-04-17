@@ -8,7 +8,6 @@ SUBDIRS = build dbus service tools tests doc po
 DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-debug=yes \
 	--disable-coverage \
-	--enable-strict \
 	--disable-silent-rules \
 	--with-systemd-unit-dir=$(abs_srcdir)/$(top_distdir)/_inst/ \
 	--enable-doc

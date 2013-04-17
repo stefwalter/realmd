@@ -7,6 +7,7 @@ service/realm-kerberos.c
 service/realm-packages.c
 service/realm-provider.c
 service/realm-samba.c
+service/realm-sssd.c
 service/realm-sssd-ad.c
 service/realm-sssd-config.c
 service/realm-sssd-ipa.c

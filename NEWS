@@ -1,3 +1,20 @@
+0.13.3
+ * Fix permit/deny commands and implementation [#62517 #62518]
+ * Don't exit realmd when clients are still active [#61220]
+ * Send internal warnings/criticals/messages to syslog [#58084]
+ * Example domain fixes [#62215 #62372 #62214 #62162]
+ * Cleanup our 'net ads join' usage [#56023]
+ * Support realm login policy [#60628]
+ * Other tweaks and bug fixes [#62763 #62210 #60656 ...]
+ * Include a systemd unit file [#56012]
+ * Adding build support for SuSE [#55097]
+ * Check that package-kit finds all the packages we ask it to resolve [#60657]
+ * If PackageKit is not available, assume manual package installation [#60654]
+ * License clarification, we are LGPL v2.1 [#57943]
+ * Optionally use systemd's journal for logging [#62225]
+ * Documentation fixes and clarifications
+ * Build and testing fixes
+
 0.13
  * Pull in translations from transifex
  * Detect incorrect passwords when using 'net ads join' login via RPC

@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "egg-task.h"
 #include "realm-adcli-enroll.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
@@ -28,7 +29,7 @@ on_join_process (GObject *source,
                  GAsyncResult *result,
                  gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	EggTask *task = EGG_TASK (user_data);
 	GError *error = NULL;
 	RealmIniConfig *config;
 	GString *output = NULL;
@@ -56,17 +57,15 @@ on_join_process (GObject *source,
 	if (error == NULL) {
 		config = realm_ini_config_new (REALM_INI_NONE);
 		realm_ini_config_read_string (config, output->str);
-		g_simple_async_result_set_op_res_gpointer (async, config, g_object_unref);
+		egg_task_return_pointer (task, config, g_object_unref);
 
 	} else {
-		g_simple_async_result_take_error (async, error);
-
+		egg_task_return_error (task, error);
 	}
 
 	if (output)
 		g_string_free (output, TRUE);
-	g_simple_async_result_complete (async);
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 void
@@ -79,7 +78,7 @@ realm_adcli_enroll_join_async (const gchar *realm,
 {
 	gchar *environ[] = { "LANG=C", NULL };
 	const gchar *computer_ou;
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	GBytes *input = NULL;
 	const gchar *upn;
 	GPtrArray *args;
@@ -91,9 +90,7 @@ realm_adcli_enroll_join_async (const gchar *realm,
 	g_return_if_fail (realm != NULL);
 	g_return_if_fail (invocation != NULL);
 
-	async = g_simple_async_result_new (NULL, callback, user_data,
-	                                   realm_adcli_enroll_join_finish);
-
+	task = egg_task_new (NULL, NULL, callback, user_data);
 	args = g_ptr_array_new ();
 
 	/* Use our custom smb.conf */
@@ -163,10 +160,10 @@ realm_adcli_enroll_join_async (const gchar *realm,
 
 	realm_command_runv_async ((gchar **)args->pdata, environ, input,
 	                          invocation, on_join_process,
-	                          g_object_ref (async));
+	                          g_object_ref (task));
 
 	g_ptr_array_free (args, TRUE);
-	g_object_unref (async);
+	g_object_unref (task);
 
 	if (input)
 		g_bytes_unref (input);
@@ -180,20 +177,16 @@ realm_adcli_enroll_join_finish (GAsyncResult *result,
                                 gchar **workgroup,
                                 GError **error)
 {
-	GSimpleAsyncResult *async;
 	RealmIniConfig *config;
 
-	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      realm_adcli_enroll_join_finish), FALSE);
+	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
 
-	async = G_SIMPLE_ASYNC_RESULT (result);
-	if (g_simple_async_result_propagate_error (async, error))
-		return FALSE;
-
-	if (workgroup) {
-		config = g_simple_async_result_get_op_res_gpointer (async);
+	config = egg_task_propagate_pointer (EGG_TASK (result), error);
+	if (config) {
 		*workgroup = realm_ini_config_get (config, "domain", "domain-short");
+		g_object_unref (config);
+		return TRUE;
 	}
 
-	return TRUE;
+	return FALSE;
 }

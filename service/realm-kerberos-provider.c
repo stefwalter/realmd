@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "egg-task.h"
 #include "realm-dbus-constants.h"
 #include "realm-discovery.h"
 #include "realm-kerberos-discover.h"
@@ -44,10 +45,9 @@ on_kerberos_discover (GObject *source,
                       GAsyncResult *result,
                       gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	g_simple_async_result_set_op_res_gpointer (async, g_object_ref (result), g_object_unref);
-	g_simple_async_result_complete (async);
-	g_object_unref (async);
+	EggTask *task = EGG_TASK (user_data);
+	egg_task_return_pointer (task, g_object_ref (result), g_object_unref);
+	g_object_unref (task);
 }
 
 static void
@@ -58,23 +58,22 @@ realm_kerberos_provider_discover_async (RealmProvider *provider,
                                         GAsyncReadyCallback callback,
                                         gpointer user_data)
 {
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	const gchar *software;
 
-	async = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
-	                                   realm_kerberos_provider_discover_async);
+	task = egg_task_new (provider, NULL, callback, user_data);
 
 	/* If filtering for specific software, don't return anything */
 	if (g_variant_lookup (options, REALM_DBUS_OPTION_SERVER_SOFTWARE, "&s", &software) ||
 	    g_variant_lookup (options, REALM_DBUS_OPTION_CLIENT_SOFTWARE, "&s", &software)) {
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_pointer (task, NULL, NULL);
 
 	} else {
 		realm_kerberos_discover_async (string, invocation, on_kerberos_discover,
-		                               g_object_ref (async));
+		                               g_object_ref (task));
 	}
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static GList *
@@ -84,13 +83,11 @@ realm_kerberos_provider_discover_finish (RealmProvider *provider,
                                          GError **error)
 {
 	RealmKerberos *realm = NULL;
-	GSimpleAsyncResult *async;
 	GHashTable *discovery;
 	GAsyncResult *kerberos_result;
 	gchar *name;
 
-	async = G_SIMPLE_ASYNC_RESULT (result);
-	kerberos_result = g_simple_async_result_get_op_res_gpointer (async);
+	kerberos_result = egg_task_propagate_pointer (EGG_TASK (result), error);
 	if (kerberos_result == NULL)
 		return NULL;
 

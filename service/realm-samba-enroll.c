@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "egg-task.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
@@ -71,7 +72,7 @@ join_closure_free (gpointer data)
 }
 
 static JoinClosure *
-join_closure_init (GSimpleAsyncResult *async,
+join_closure_init (EggTask *task,
                    const gchar *realm,
                    GDBusMethodInvocation *invocation)
 {
@@ -82,8 +83,7 @@ join_closure_init (GSimpleAsyncResult *async,
 	join = g_slice_new0 (JoinClosure);
 	join->realm = g_strdup (realm);
 	join->invocation = invocation ? g_object_ref (invocation) : NULL;
-
-	g_simple_async_result_set_op_res_gpointer (async, join, join_closure_free);
+	egg_task_set_task_data (task, join, join_closure_free);
 
 	join->config = realm_ini_config_new (REALM_INI_NO_WATCH | REALM_INI_PRIVATE);
 	realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL,
@@ -156,7 +156,7 @@ on_keytab_do_finish (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	EggTask *task = EGG_TASK (user_data);
 	GError *error = NULL;
 	gint status;
 
@@ -166,9 +166,10 @@ on_keytab_do_finish (GObject *source,
 		             "Extracting host keytab failed");
 
 	if (error != NULL)
-		g_simple_async_result_take_error (res, error);
-	g_simple_async_result_complete (res);
-	g_object_unref (res);
+		egg_task_return_error (task, error);
+	else
+		egg_task_return_boolean (task, TRUE);
+	g_object_unref (task);
 }
 
 static void
@@ -176,8 +177,8 @@ on_join_do_keytab (GObject *source,
                    GAsyncResult *result,
                    gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
+	EggTask *task = EGG_TASK (user_data);
+	JoinClosure *join = egg_task_get_task_data (task);
 	GError *error = NULL;
 	GString *output = NULL;
 	gint status;
@@ -225,23 +226,22 @@ on_join_do_keytab (GObject *source,
 		g_string_free (output, TRUE);
 
 	if (error != NULL) {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
+		egg_task_return_error (task, error);
 
 	/* Do keytab with a user name */
 	} else if (join->user_name != NULL) {
 		begin_net_process (join, join->password_input,
-		                   on_keytab_do_finish, g_object_ref (res),
+		                   on_keytab_do_finish, g_object_ref (task),
 		                   "-U", join->user_name, "ads", "keytab", "create", NULL);
 
 	/* Do keytab with a ccache file */
 	} else {
 		begin_net_process (join, NULL,
-		                   on_keytab_do_finish, g_object_ref (res),
+		                   on_keytab_do_finish, g_object_ref (task),
 		                   "-k", "ads", "keytab", "create", NULL);
 	}
 
-	g_object_unref (res);
+	g_object_unref (task);
 }
 
 static gchar *
@@ -258,7 +258,7 @@ fallback_workgroup (const gchar *realm)
 
 static void
 begin_config_and_join (JoinClosure *join,
-                       GSimpleAsyncResult *async)
+                       EggTask *task)
 {
 	GError *error = NULL;
 	gchar *workgroup;
@@ -281,13 +281,12 @@ begin_config_and_join (JoinClosure *join,
 	realm_ini_config_write_file (join->config, NULL, &error);
 
 	if (error != NULL) {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete (async);
+		egg_task_return_error (task, error);
 
 	/* Do join with a user name */
 	} else if (join->user_name) {
 		begin_net_process (join, join->password_input,
-		                   on_join_do_keytab, g_object_ref (async),
+		                   on_join_do_keytab, g_object_ref (task),
 		                   "-U", join->user_name, "ads", "join", join->realm,
 		                   join->join_args[0], join->join_args[1],
 		                   join->join_args[2], join->join_args[3],
@@ -296,7 +295,7 @@ begin_config_and_join (JoinClosure *join,
 	/* Do join with a ccache */
 	} else {
 		begin_net_process (join, NULL,
-		                   on_join_do_keytab, g_object_ref (async),
+		                   on_join_do_keytab, g_object_ref (task),
 		                   "-k", "ads", "join", join->realm,
 		                   join->join_args[0], join->join_args[1],
 		                   join->join_args[2], join->join_args[3],
@@ -334,8 +333,8 @@ on_net_ads_workgroup (GObject *source,
                       GAsyncResult *result,
                       gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (async);
+	EggTask *task = EGG_TASK (user_data);
+	JoinClosure *join = egg_task_get_task_data (task);
 	GError *error = NULL;
 	GString *output = NULL;
 	gchar *workgroup;
@@ -363,15 +362,15 @@ on_net_ads_workgroup (GObject *source,
 		g_error_free (error);
 	}
 
-	begin_config_and_join (join, async);
+	begin_config_and_join (join, task);
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 
 static void
 begin_net_lookup (JoinClosure *join,
-                  GSimpleAsyncResult *async,
+                  EggTask *task,
                   GHashTable *discovery)
 {
 	const gchar **kdcs;
@@ -381,11 +380,11 @@ begin_net_lookup (JoinClosure *join,
 	/* If we discovered KDCs then try to ask first one what the workgroup name is */
 	if (kdcs && kdcs[0]) {
 		begin_net_process (join, NULL,
-		                   on_net_ads_workgroup, g_object_ref (async),
+		                   on_net_ads_workgroup, g_object_ref (task),
 		                   "ads", "workgroup", "-S", kdcs[0], NULL);
 
 	} else {
-		begin_config_and_join (join, async);
+		begin_config_and_join (join, task);
 	}
 }
 
@@ -394,26 +393,25 @@ on_discover_do_lookup (GObject *source,
                        GAsyncResult *result,
                        gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (async);
+	EggTask *task = EGG_TASK (user_data);
+	JoinClosure *join = egg_task_get_task_data (task);
 	GError *error = NULL;
 	GHashTable *discovery;
 
 	realm_kerberos_discover_finish (result, &discovery, &error);
 	if (error == NULL) {
-		begin_net_lookup (join, async, discovery);
+		begin_net_lookup (join, task, discovery);
 		g_hash_table_unref (discovery);
 
 	} else {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete (async);
+		egg_task_return_error (task, error);
 	}
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static void
-begin_join (GSimpleAsyncResult *async,
+begin_join (EggTask *task,
             JoinClosure *join,
             const gchar *realm,
             GVariant *options,
@@ -459,15 +457,14 @@ begin_join (GSimpleAsyncResult *async,
 	g_assert (at < G_N_ELEMENTS (join->join_args));
 
 	if (error != NULL) {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_error (task, error);
 
 	} else if (discovery) {
-		begin_net_lookup (join, async, discovery);
+		begin_net_lookup (join, task, discovery);
 
 	} else {
 		realm_kerberos_discover_async (join->realm, join->invocation,
-		                               on_discover_do_lookup, g_object_ref (async));
+		                               on_discover_do_lookup, g_object_ref (task));
 	}
 }
 
@@ -480,16 +477,14 @@ realm_samba_enroll_join_async (const gchar *realm,
                                GAsyncReadyCallback callback,
                                gpointer user_data)
 {
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	JoinClosure *join;
 
 	g_return_if_fail (realm != NULL);
 	g_return_if_fail (cred != NULL);
 
-	async = g_simple_async_result_new (NULL, callback, user_data,
-	                                   realm_samba_enroll_join_finish);
-
-	join = join_closure_init (async, realm, invocation);
+	task = egg_task_new (NULL, NULL, callback, user_data);
+	join = join_closure_init (task, realm, invocation);
 
 	switch (cred->type) {
 	case REALM_CREDENTIAL_PASSWORD:
@@ -503,9 +498,9 @@ realm_samba_enroll_join_async (const gchar *realm,
 		g_return_if_reached ();
 	}
 
-	begin_join (async, join, realm, options, discovery);
+	begin_join (task, join, realm, options, discovery);
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 gboolean
@@ -515,14 +510,13 @@ realm_samba_enroll_join_finish (GAsyncResult *result,
 {
 	JoinClosure *join;
 
-	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      realm_samba_enroll_join_finish), FALSE);
+	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
 
-	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
+	if (!egg_task_propagate_boolean (EGG_TASK (result), error))
 		return FALSE;
 
 	if (settings != NULL) {
-		join = g_simple_async_result_get_op_res_gpointer (G_SIMPLE_ASYNC_RESULT (result));
+		join = egg_task_get_task_data (EGG_TASK (result));
 		*settings = realm_ini_config_get_all (join->config, REALM_SAMBA_CONFIG_GLOBAL);
 	}
 
@@ -534,8 +528,8 @@ on_leave_complete (GObject *source,
                    GAsyncResult *result,
                    gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (res);
+	EggTask *task = EGG_TASK (user_data);
+	JoinClosure *join = egg_task_get_task_data (task);
 	GError *error = NULL;
 	gint status;
 
@@ -545,10 +539,10 @@ on_leave_complete (GObject *source,
 		             "Leaving the domain %s failed", join->realm);
 
 	if (error != NULL)
-		g_simple_async_result_take_error (res, error);
-
-	g_simple_async_result_complete (res);
-	g_object_unref (res);
+		egg_task_return_error (task, error);
+	else
+		egg_task_return_boolean (task, TRUE);
+	g_object_unref (task);
 }
 
 void
@@ -559,26 +553,24 @@ realm_samba_enroll_leave_async (const gchar *realm,
                                 GAsyncReadyCallback callback,
                                 gpointer user_data)
 {
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	JoinClosure *join;
 
-	async = g_simple_async_result_new (NULL, callback, user_data,
-	                                   realm_samba_enroll_leave_finish);
-
-	join = join_closure_init (async, realm, invocation);
+	task = egg_task_new (NULL, NULL, callback, user_data);
+	join = join_closure_init (task, realm, invocation);
 
 	switch (cred->type) {
 	case REALM_CREDENTIAL_PASSWORD:
 		join->password_input = realm_command_build_password_line (cred->x.password.value);
 		join->user_name = g_strdup (cred->x.password.name);
 		begin_net_process (join, join->password_input,
-		                   on_leave_complete, g_object_ref (async),
+		                   on_leave_complete, g_object_ref (task),
 		                   "-U", join->user_name, "ads", "leave", NULL);
 		break;
 	case REALM_CREDENTIAL_CCACHE:
 		join->envvar = g_strdup_printf ("KRB5CCNAME=%s", cred->x.ccache.file);
 		begin_net_process (join, join->password_input,
-		                   on_leave_complete, g_object_ref (async),
+		                   on_leave_complete, g_object_ref (task),
 		                   "-k", "ads", "leave", NULL);
 		break;
 	default:
@@ -586,17 +578,13 @@ realm_samba_enroll_leave_async (const gchar *realm,
 	}
 
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 gboolean
 realm_samba_enroll_leave_finish (GAsyncResult *result,
                                  GError **error)
 {
-	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      realm_samba_enroll_leave_finish), FALSE);
-
-	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
-		return FALSE;
-	return TRUE;
+	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
+	return egg_task_propagate_boolean (EGG_TASK (result), error);
 }

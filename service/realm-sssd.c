@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "egg-task.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
@@ -56,19 +57,18 @@ on_logins_restarted (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	RealmSssd *self = REALM_SSSD (g_async_result_get_source_object (user_data));
+	EggTask *task = EGG_TASK (user_data);
+	RealmSssd *self = egg_task_get_source_object (task);
 	GError *error = NULL;
 
 	realm_service_restart_finish (result, &error);
-	if (error != NULL)
-		g_simple_async_result_take_error (async, error);
-
-	realm_sssd_update_properties (self);
-	g_simple_async_result_complete (async);
-
-	g_object_unref (async);
-	g_object_unref (self);
+	if (error != NULL) {
+		egg_task_return_error (task, error);
+	} else {
+		realm_sssd_update_properties (self);
+		egg_task_return_boolean (task, TRUE);
+	}
+	g_object_unref (task);
 }
 
 gboolean
@@ -145,23 +145,20 @@ realm_sssd_logins_async (RealmKerberos *realm,
 {
 	RealmSssdClass *sssd_class = REALM_SSSD_GET_CLASS (realm);
 	RealmSssd *self = REALM_SSSD (realm);
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	gchar **remove_names = NULL;
 	gchar **add_names = NULL;
 	GError *error = NULL;
 	const gchar *access_provider;
 
+	task = egg_task_new (realm, NULL, callback, user_data);
+
 	if (!self->pv->section) {
-		async = g_simple_async_result_new_error (G_OBJECT (realm), callback, user_data,
-		                                         REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
-		                                         "Not joined to this domain");
-		g_simple_async_result_complete_in_idle (async);
-		g_object_unref (async);
+		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
+		                           "Not joined to this domain");
+		g_object_unref (task);
 		return;
 	}
-
-	async = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
-	                                   realm_sssd_logins_async);
 
 	switch (login_policy) {
 	case REALM_KERBEROS_POLICY_NOT_SET:
@@ -204,16 +201,15 @@ realm_sssd_logins_async (RealmKerberos *realm,
 	if (error == NULL) {
 		realm_service_restart ("sssd", invocation,
 		                       on_logins_restarted,
-		                       g_object_ref (async));
+		                       g_object_ref (task));
 	} else {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_error (task, error);
 	}
 
 	g_strfreev (remove_names);
 	g_strfreev (add_names);
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static gboolean
@@ -221,10 +217,7 @@ realm_sssd_generic_finish (RealmKerberos *realm,
                            GAsyncResult *result,
                            GError **error)
 {
-	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
-		return FALSE;
-
-	return TRUE;
+	return egg_task_propagate_boolean (EGG_TASK (result), error);
 }
 
 static void
@@ -528,7 +521,7 @@ realm_sssd_build_default_home (const gchar *value)
 }
 
 typedef struct {
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	GDBusMethodInvocation *invocation;
 	RealmIniConfig *config;
 	gchar *domain;
@@ -538,7 +531,7 @@ static void
 deconfigure_closure_free (gpointer data)
 {
 	DeconfClosure *deconf = data;
-	g_object_unref (deconf->async);
+	g_object_unref (deconf->task);
 	g_object_unref (deconf->invocation);
 	g_object_unref (deconf->config);
 	g_free (deconf->domain);
@@ -559,7 +552,7 @@ on_service_disable_done (GObject *source,
 		g_error_free (error);
 	}
 
-	g_simple_async_result_complete (deconf->async);
+	egg_task_return_boolean (deconf->task, TRUE);
 	deconfigure_closure_free (deconf);
 }
 
@@ -577,7 +570,7 @@ on_service_restart_done (GObject *source,
 		g_error_free (error);
 	}
 
-	g_simple_async_result_complete (deconf->async);
+	egg_task_return_boolean (deconf->task, TRUE);
 	deconfigure_closure_free (deconf);
 }
 
@@ -621,8 +614,7 @@ on_sssd_clear_cache (GObject *source,
 	/* Deconfigure sssd.conf */
 	realm_diagnostics_info (deconf->invocation, "Removing domain configuration from sssd.conf");
 	if (!realm_sssd_config_remove_domain (deconf->config, deconf->domain, &error)) {
-		g_simple_async_result_take_error (deconf->async, error);
-		g_simple_async_result_complete (deconf->async);
+		egg_task_return_error (deconf->task, error);
 		deconfigure_closure_free (deconf);
 		return;
 	}
@@ -644,7 +636,7 @@ on_sssd_clear_cache (GObject *source,
 
 void
 realm_sssd_deconfigure_domain_tail (RealmSssd *self,
-                                    GSimpleAsyncResult *async,
+                                    EggTask *task,
                                     GDBusMethodInvocation *invocation)
 {
 	DeconfClosure *deconf;
@@ -656,13 +648,12 @@ realm_sssd_deconfigure_domain_tail (RealmSssd *self,
 	/* Flush the keytab of all the entries for this realm */
 	realm_diagnostics_info (invocation, "Removing entries from keytab for realm");
 	if (!realm_kerberos_flush_keytab (realm_name, &error)) {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_error (task, error);
 		return;
 	}
 
 	deconf = g_new0 (DeconfClosure, 1);
-	deconf->async = g_object_ref (async);
+	deconf->task = g_object_ref (task);
 	deconf->invocation = g_object_ref (invocation);
 	deconf->config = g_object_ref (self->pv->config);
 	deconf->domain = g_strdup (self->pv->domain);

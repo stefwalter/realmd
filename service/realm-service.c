@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "egg-task.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-service.h"
@@ -27,29 +28,27 @@ begin_service_command (const gchar *command,
                        GAsyncReadyCallback callback,
                        gpointer user_data)
 {
-	GSimpleAsyncResult *async;
+	EggTask *task;
 
 	/* If install mode, never do any service stuff */
 	if (realm_daemon_is_install_mode ()) {
 		g_debug ("skipping %s command in install mode", command);
-		async = g_simple_async_result_new (NULL, callback, user_data,
-		                                   begin_service_command);
-		g_simple_async_result_complete_in_idle (async);
-		g_object_unref (async);
-		return;
+		task = egg_task_new (NULL, NULL, callback, user_data);
+		egg_task_set_source_tag (task, begin_service_command);
+		egg_task_return_boolean (task, TRUE);
+		g_object_unref (task);
+	} else {
+		realm_command_run_known_async (command, NULL, invocation, callback, user_data);
 	}
-
-	realm_command_run_known_async (command, NULL, invocation, callback, user_data);
 }
 
 static gboolean
 finish_service_command (GAsyncResult *result,
                         GError **error)
 {
-	if (g_simple_async_result_is_valid (result, NULL, begin_service_command)) {
-		if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
-			return FALSE;
-		return TRUE;
+	if (egg_task_is_valid (result, NULL) &&
+	    egg_task_get_source_tag (EGG_TASK (result)) == begin_service_command) {
+		return egg_task_propagate_boolean (EGG_TASK (result), error);
 	}
 
 	return realm_command_run_finish (result, NULL, error) != -1;
@@ -154,15 +153,15 @@ on_enable_restarted (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	EggTask *task = EGG_TASK (user_data);
 	GError *error = NULL;
 
 	realm_service_restart_finish (result, &error);
 	if (error != NULL)
-		g_simple_async_result_take_error (async, error);
-	g_simple_async_result_complete (async);
-
-	g_object_unref (async);
+		egg_task_return_error (task, error);
+	else
+		egg_task_return_boolean (task, TRUE);
+	g_object_unref (task);
 }
 
 
@@ -171,20 +170,19 @@ on_enable_enabled (GObject *source,
                    GAsyncResult *result,
                    gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	CallClosure *call = g_simple_async_result_get_op_res_gpointer (async);
+	EggTask *task = EGG_TASK (user_data);
+	CallClosure *call = egg_task_get_task_data (task);
 	GError *error = NULL;
 
 	realm_service_enable_finish (result, &error);
 	if (error == NULL) {
 		realm_service_restart (call->service_name, call->invocation,
-		                       on_enable_restarted, g_object_ref (async));
+		                       on_enable_restarted, g_object_ref (task));
 	} else {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete (async);
+		egg_task_return_error (task, error);
 	}
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 void
@@ -193,37 +191,28 @@ realm_service_enable_and_restart (const gchar *service_name,
                                   GAsyncReadyCallback callback,
                                   gpointer user_data)
 {
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	CallClosure *call;
 
-	async = g_simple_async_result_new (NULL, callback, user_data,
-	                                   realm_service_enable_and_restart);
+	task = egg_task_new (NULL, NULL, callback, user_data);
 	call = g_slice_new0 (CallClosure);
 	call->service_name = g_strdup (service_name);
 	call->invocation = invocation ? g_object_ref (invocation) : invocation;
-	g_simple_async_result_set_op_res_gpointer (async, call, call_closure_free);
+	egg_task_set_task_data (task, call, call_closure_free);
 
 	realm_service_enable (call->service_name, call->invocation,
-	                      on_enable_enabled, g_object_ref (async));
+	                      on_enable_enabled, g_object_ref (task));
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 gboolean
 realm_service_enable_and_restart_finish (GAsyncResult *result,
                                          GError **error)
 {
-	GSimpleAsyncResult *async;
-
-	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      realm_service_enable_and_restart), FALSE);
+	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
-
-	async = G_SIMPLE_ASYNC_RESULT (result);
-	if (g_simple_async_result_propagate_error (async, error))
-		return FALSE;
-
-	return TRUE;
+	return egg_task_propagate_boolean (EGG_TASK (result), error);
 }
 
 static void
@@ -231,15 +220,15 @@ on_disable_stopped (GObject *source,
                     GAsyncResult *result,
                     gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	EggTask *task = EGG_TASK (user_data);
 	GError *error = NULL;
 
 	realm_service_stop_finish (result, &error);
 	if (error != NULL)
-		g_simple_async_result_take_error (async, error);
-	g_simple_async_result_complete (async);
-
-	g_object_unref (async);
+		egg_task_return_error (task, error);
+	else
+		egg_task_return_boolean (task, TRUE);
+	g_object_unref (task);
 }
 
 
@@ -248,20 +237,19 @@ on_disable_disabled (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	CallClosure *call = g_simple_async_result_get_op_res_gpointer (async);
+	EggTask *task = EGG_TASK (user_data);
+	CallClosure *call = egg_task_get_task_data (task);
 	GError *error = NULL;
 
 	realm_service_disable_finish (result, &error);
 	if (error == NULL) {
 		realm_service_stop (call->service_name, call->invocation,
-		                    on_disable_stopped, g_object_ref (async));
+		                    on_disable_stopped, g_object_ref (task));
 	} else {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete (async);
+		egg_task_return_error (task, error);
 	}
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 void
@@ -270,35 +258,26 @@ realm_service_disable_and_stop (const gchar *service_name,
                                 GAsyncReadyCallback callback,
                                 gpointer user_data)
 {
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	CallClosure *call;
 
-	async = g_simple_async_result_new (NULL, callback, user_data,
-	                                   realm_service_disable_and_stop);
+	task = egg_task_new (NULL, NULL, callback, user_data);
 	call = g_slice_new0 (CallClosure);
 	call->service_name = g_strdup (service_name);
 	call->invocation = invocation ? g_object_ref (invocation) : invocation;
-	g_simple_async_result_set_op_res_gpointer (async, call, call_closure_free);
+	egg_task_set_task_data (task, call, call_closure_free);
 
 	realm_service_disable (call->service_name, call->invocation,
-	                       on_disable_disabled, g_object_ref (async));
+	                       on_disable_disabled, g_object_ref (task));
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 gboolean
 realm_service_disable_and_stop_finish (GAsyncResult *result,
                                        GError **error)
 {
-	GSimpleAsyncResult *async;
-
-	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      realm_service_disable_and_stop), FALSE);
+	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
 	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
-
-	async = G_SIMPLE_ASYNC_RESULT (result);
-	if (g_simple_async_result_propagate_error (async, error))
-		return FALSE;
-
-	return TRUE;
+	return egg_task_propagate_boolean (EGG_TASK (result), error);
 }

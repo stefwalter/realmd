@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "egg-task.h"
 #include "realm-dbus-constants.h"
 #include "realm-dbus-generated.h"
 
@@ -124,8 +125,8 @@ on_join_sleep_done (GObject *source,
                     GAsyncResult *res,
                     gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	RealmExample *self = REALM_EXAMPLE (g_async_result_get_source_object (G_ASYNC_RESULT (async)));
+	EggTask *task = EGG_TASK (user_data);
+	RealmExample *self = egg_task_get_source_object (task);
 	GError *error = NULL;
 	const gchar *realm_name;
 
@@ -139,10 +140,10 @@ on_join_sleep_done (GObject *source,
 	}
 
 	if (error)
-		g_simple_async_result_take_error (async, error);
-
-	g_simple_async_result_complete (async);
-	g_object_unref (self);
+		egg_task_return_error (task, error);
+	else
+		egg_task_return_boolean (task, TRUE);
+	g_object_unref (task);
 }
 
 static void
@@ -155,39 +156,35 @@ realm_example_join_async (RealmKerberosMembership *membership,
 {
 	RealmExample *self = REALM_EXAMPLE (membership);
 	RealmKerberos *kerberos = REALM_KERBEROS (self);
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	GError *error = NULL;
 	const gchar *realm_name;
 
 	g_return_if_fail (cred->type == REALM_CREDENTIAL_PASSWORD);
 
 	realm_name = realm_kerberos_get_name (kerberos);
-	async = g_simple_async_result_new (G_OBJECT (self), callback, user_data,
-	                                   realm_example_join_async);
+	task = egg_task_new (self, NULL, callback, user_data);
 
 	/* Make sure not already enrolled in a realm */
 	if (realm_ini_config_have_section (self->config, realm_name)) {
-		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
-		                                 _("Already joined to a domain"));
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
+		                           _("Already joined to a domain"));
 
 	} else if (!validate_membership_options (options, &error)) {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_error (task, error);
 
 	} else if (!match_admin_and_password (self->config, realm_name,
 	                                      cred->x.password.name, cred->x.password.value)) {
-		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
-		                                 _("Admin name or password is not valid"));
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
+		                           _("Admin name or password is not valid"));
 
 	} else {
 		realm_usleep_async (settings_delay (realm_name, "example-join-delay"),
 		                    realm_invocation_get_cancellable (invocation),
-		                    on_join_sleep_done, g_object_ref (async));
+		                    on_join_sleep_done, g_object_ref (task));
 	}
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static void
@@ -195,8 +192,8 @@ on_leave_sleep_done (GObject *source,
                      GAsyncResult *res,
                      gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	RealmExample *self = REALM_EXAMPLE (g_async_result_get_source_object (G_ASYNC_RESULT (async)));
+	EggTask *task = EGG_TASK (user_data);
+	RealmExample *self = egg_task_get_source_object (task);
 	GError *error = NULL;
 	const gchar *realm_name;
 
@@ -210,36 +207,34 @@ on_leave_sleep_done (GObject *source,
 	}
 
 	if (error)
-		g_simple_async_result_take_error (async, error);
-
-	g_simple_async_result_complete (async);
-
+		egg_task_return_error (task, error);
+	else
+		egg_task_return_boolean (task, TRUE);
 	g_object_unref (self);
 }
 
-static GSimpleAsyncResult *
+static EggTask *
 setup_leave (RealmExample *self,
              GVariant *options,
              GDBusMethodInvocation *invocation,
              GAsyncReadyCallback callback,
              gpointer user_data)
 {
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	const gchar *realm_name;
 
 	realm_name = realm_kerberos_get_name (REALM_KERBEROS (self));
-	async = g_simple_async_result_new (G_OBJECT (self), callback, user_data, setup_leave);
+	task = egg_task_new (self, NULL, callback, user_data);
 
 	/* Check that enrolled in this realm */
 	if (!realm_ini_config_have_section (self->config, realm_name)) {
-		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
-		                                 _("Not currently joined to this domain"));
-		g_simple_async_result_complete_in_idle (async);
-		g_object_unref (async);
+		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
+		                           _("Not currently joined to this domain"));
+		g_object_unref (task);
 		return NULL;
 	}
 
-	return async;
+	return task;
 }
 
 static void
@@ -252,27 +247,26 @@ realm_example_leave_password_async (RealmKerberosMembership *membership,
                                     gpointer user_data)
 {
 	RealmExample *self = REALM_EXAMPLE (membership);
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	const gchar *realm_name;
 
-	async = setup_leave (self, options, invocation, callback, user_data);
-	if (async == NULL)
+	task = setup_leave (self, options, invocation, callback, user_data);
+	if (task == NULL)
 		return;
 
 	realm_name = realm_kerberos_get_name (REALM_KERBEROS (self));
 
 	if (!match_admin_and_password (self->config, realm_name, name, password)) {
-		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
-		                                 _("Admin name or password is not valid"));
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
+		                           _("Admin name or password is not valid"));
 
 	} else {
 		realm_usleep_async (settings_delay (realm_name, "example-leave-delay"),
 		                    realm_invocation_get_cancellable (invocation),
-		                    on_leave_sleep_done, g_object_ref (async));
+		                    on_leave_sleep_done, g_object_ref (task));
 	}
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static void
@@ -283,27 +277,26 @@ realm_example_leave_automatic_async (RealmKerberosMembership *membership,
                                      gpointer user_data)
 {
 	RealmExample *self = REALM_EXAMPLE (membership);
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	const gchar *realm_name;
 
-	async = setup_leave (self, options, invocation, callback, user_data);
-	if (async == NULL)
+	task = setup_leave (self, options, invocation, callback, user_data);
+	if (task == NULL)
 		return;
 
 	realm_name = realm_kerberos_get_name (REALM_KERBEROS (self));
 
 	if (realm_settings_boolean (realm_name, "example-no-auto-leave", FALSE) == TRUE) {
-		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
-		                                 _("Need credentials for leaving this domain"));
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
+		                           _("Need credentials for leaving this domain"));
 
 	} else {
 		realm_usleep_async (settings_delay (realm_name, "example-leave-delay"),
 		                    realm_invocation_get_cancellable (invocation),
-		                    on_leave_sleep_done, g_object_ref (async));
+		                    on_leave_sleep_done, g_object_ref (task));
 	}
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static void
@@ -337,12 +330,11 @@ realm_example_logins_async (RealmKerberos *realm,
                             gpointer user_data)
 {
 	RealmExample *self = REALM_EXAMPLE (realm);
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	GError *error = NULL;
 	const gchar *name;
 
-	async = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
-	                                   realm_example_logins_async);
+	task = egg_task_new (realm, NULL, callback, user_data);
 
 	name = realm_kerberos_get_name (realm);
 
@@ -355,10 +347,10 @@ realm_example_logins_async (RealmKerberos *realm,
 	}
 
 	if (error != NULL)
-		g_simple_async_result_take_error (async, error);
-
-	g_simple_async_result_complete_in_idle (async);
-	g_object_unref (async);
+		egg_task_return_error (task, error);
+	else
+		egg_task_return_boolean (task, TRUE);
+	g_object_unref (task);
 }
 
 static void
@@ -420,7 +412,7 @@ realm_example_membership_generic_finish (RealmKerberosMembership *realm,
                                          GAsyncResult *result,
                                          GError **error)
 {
-	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
+	if (egg_task_propagate_boolean (EGG_TASK (result), error))
 		return FALSE;
 
 	update_properties (REALM_EXAMPLE (realm));
@@ -432,7 +424,7 @@ realm_example_generic_finish (RealmKerberos *realm,
                               GAsyncResult *result,
                               GError **error)
 {
-	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
+	if (egg_task_propagate_boolean (EGG_TASK (result), error))
 		return FALSE;
 
 	update_properties (REALM_EXAMPLE (realm));

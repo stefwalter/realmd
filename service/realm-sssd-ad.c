@@ -120,7 +120,7 @@ on_enable_nss_done (GObject *source,
                     GAsyncResult *result,
                     gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	EggTask *task = EGG_TASK (user_data);
 	GError *error = NULL;
 	gint status;
 
@@ -129,10 +129,10 @@ on_enable_nss_done (GObject *source,
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             _("Enabling SSSD in nsswitch.conf and PAM failed."));
 	if (error != NULL)
-		g_simple_async_result_take_error (async, error);
-
-	g_simple_async_result_complete (async);
-	g_object_unref (async);
+		egg_task_return_error (task, error);
+	else
+		egg_task_return_boolean (task, TRUE);
+	g_object_unref (task);
 }
 
 static void
@@ -140,22 +140,21 @@ on_sssd_enable_nss (GObject *source,
                     GAsyncResult *result,
                     gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (async);
+	EggTask *task = EGG_TASK (user_data);
+	JoinClosure *join = egg_task_get_task_data (task);
 	GError *error = NULL;
 
 	realm_service_enable_and_restart_finish (result, &error);
 
 	if (error == NULL) {
 		realm_command_run_known_async ("sssd-enable-logins", NULL, join->invocation,
-		                               on_enable_nss_done, g_object_ref (async));
+		                               on_enable_nss_done, g_object_ref (task));
 
 	} else {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete (async);
+		egg_task_return_error (task, error);
 	}
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static gboolean
@@ -226,9 +225,9 @@ on_join_do_sssd (GObject *source,
                  GAsyncResult *result,
                  gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (async);
-	RealmSssd *sssd = REALM_SSSD (g_async_result_get_source_object (user_data));
+	EggTask *task = EGG_TASK (user_data);
+	JoinClosure *join = egg_task_get_task_data (task);
+	RealmSssd *sssd = egg_task_get_source_object (task);
 	GHashTable *settings = NULL;
 	GError *error = NULL;
 	gchar *workgroup = NULL;
@@ -264,16 +263,14 @@ on_join_do_sssd (GObject *source,
 
 	if (error == NULL) {
 		realm_service_enable_and_restart ("sssd", join->invocation,
-		                                  on_sssd_enable_nss, g_object_ref (async));
+		                                  on_sssd_enable_nss, g_object_ref (task));
 
 	} else {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete (async);
+		egg_task_return_error (task, error);
 	}
 
 	g_free (workgroup);
-	g_object_unref (sssd);
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static void
@@ -281,9 +278,9 @@ on_install_do_join (GObject *source,
                     GAsyncResult *result,
                     gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	JoinClosure *join = g_simple_async_result_get_op_res_gpointer (async);
-	RealmKerberos *kerberos = REALM_KERBEROS (g_async_result_get_source_object (user_data));
+	EggTask *task = EGG_TASK (user_data);
+	JoinClosure *join = egg_task_get_task_data (task);
+	RealmKerberos *kerberos = egg_task_get_source_object (task);
 	GError *error = NULL;
 
 	realm_packages_install_finish (result, &error);
@@ -294,23 +291,21 @@ on_install_do_join (GObject *source,
 			                               join->options,
 			                               join->invocation,
 			                               on_join_do_sssd,
-			                               g_object_ref (async));
+			                               g_object_ref (task));
 		} else {
 			realm_samba_enroll_join_async (join->realm_name,
 			                               join->cred,
 			                               join->options,
 			                               realm_kerberos_get_discovery (kerberos),
 			                               join->invocation, on_join_do_sssd,
-			                               g_object_ref (async));
+			                               g_object_ref (task));
 		}
 
 	} else {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete (async);
+		egg_task_return_error (task, error);
 	}
 
-	g_object_unref (kerberos);
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static gboolean
@@ -410,42 +405,39 @@ realm_sssd_ad_join_async (RealmKerberosMembership *membership,
 {
 	RealmKerberos *realm = REALM_KERBEROS (membership);
 	RealmSssd *sssd = REALM_SSSD (realm);
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	JoinClosure *join;
 	GError *error = NULL;
 
-	async = g_simple_async_result_new (G_OBJECT (realm), callback, user_data, NULL);
+	task = egg_task_new (realm, NULL, callback, user_data);
 	join = g_slice_new0 (JoinClosure);
 	join->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
 	join->invocation = g_object_ref (invocation);
 	join->options = g_variant_ref (options);
 	join->cred = realm_credential_ref (cred);
-	g_simple_async_result_set_op_res_gpointer (async, join, join_closure_free);
+	egg_task_set_task_data (task, join, join_closure_free);
 
 	/* Make sure not already enrolled in a realm */
 	if (realm_sssd_get_config_section (sssd) != NULL) {
-		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
-		                                 _("Already joined to this domain"));
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
+		                           _("Already joined to this domain"));
 
 	} else if (realm_sssd_config_have_domain (realm_sssd_get_config (sssd), join->realm_name)) {
-		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
-		                                 _("A domain with this name is already configured"));
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
+		                           _("A domain with this name is already configured"));
 
 	} else if (!parse_join_options (join, cred, options, &error)) {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_error (task, error);
 
 	/* Prepared successfully without an error */
 	} else {
 		if (realm_options_assume_packages (options))
 			join->packages = NO_PACKAGES;
 		realm_packages_install_async (join->packages, join->invocation,
-		                              on_install_do_join, g_object_ref (async));
+		                              on_install_do_join, g_object_ref (task));
 	}
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 typedef struct {
@@ -467,9 +459,9 @@ on_leave_do_deconfigure (GObject *source,
                          GAsyncResult *result,
                          gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	LeaveClosure *leave = g_simple_async_result_get_op_res_gpointer (res);
-	RealmSssd *sssd = REALM_SSSD (g_async_result_get_source_object (user_data));
+	EggTask *task = EGG_TASK (user_data);
+	LeaveClosure *leave = egg_task_get_task_data (task);
+	RealmSssd *sssd = egg_task_get_source_object (task);
 	GError *error = NULL;
 
 	/* We don't care if we can leave or not, just continue with other steps */
@@ -479,10 +471,9 @@ on_leave_do_deconfigure (GObject *source,
 		g_error_free (error);
 	}
 
-	realm_sssd_deconfigure_domain_tail (sssd, res, leave->invocation);
+	realm_sssd_deconfigure_domain_tail (sssd, task, leave->invocation);
 
-	g_object_unref (sssd);
-	g_object_unref (res);
+	g_object_unref (task);
 }
 
 static void
@@ -494,39 +485,37 @@ realm_sssd_ad_leave_async (RealmKerberosMembership *membership,
                            gpointer user_data)
 {
 	RealmSssdAd *self = REALM_SSSD_AD (membership);
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	LeaveClosure *leave;
 
-	async = g_simple_async_result_new (G_OBJECT (self), callback, user_data,
-	                                   realm_sssd_ad_leave_async);
+	task = egg_task_new (self, NULL, callback, user_data);
 
 	/* Check that enrolled in this realm */
 	if (!realm_sssd_get_config_section (REALM_SSSD (self))) {
-		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
-		                                 _("Not currently joined to this domain"));
-		g_simple_async_result_complete_in_idle (async);
-		g_object_unref (async);
+		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
+		                           _("Not currently joined to this domain"));
+		g_object_unref (task);
 		return;
 	}
 
 	switch (cred->type) {
 	case REALM_CREDENTIAL_AUTOMATIC:
-		realm_sssd_deconfigure_domain_tail (REALM_SSSD (self), async, invocation);
+		realm_sssd_deconfigure_domain_tail (REALM_SSSD (self), task, invocation);
 		break;
 	case REALM_CREDENTIAL_CCACHE:
 	case REALM_CREDENTIAL_PASSWORD:
 		leave = g_slice_new0 (LeaveClosure);
 		leave->realm_name = g_strdup (realm_kerberos_get_realm_name (REALM_KERBEROS (self)));
 		leave->invocation = g_object_ref (invocation);
-		g_simple_async_result_set_op_res_gpointer (async, leave, leave_closure_free);
+		egg_task_set_task_data (task, leave, leave_closure_free);
 		realm_samba_enroll_leave_async (leave->realm_name, cred, options, invocation,
-		                                on_leave_do_deconfigure, g_object_ref (async));
+		                                on_leave_do_deconfigure, g_object_ref (task));
 		break;
 	default:
 		g_return_if_reached ();
 	}
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static gboolean
@@ -534,10 +523,7 @@ realm_sssd_ad_generic_finish (RealmKerberosMembership *realm,
                               GAsyncResult *result,
                               GError **error)
 {
-	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
-		return FALSE;
-
-	return TRUE;
+	return egg_task_propagate_boolean (EGG_TASK (result), error);
 }
 
 void

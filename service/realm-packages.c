@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "egg-task.h"
 #include "realm-diagnostics.h"
 #include "realm-daemon.h"
 #include "realm-errors.h"
@@ -191,19 +192,20 @@ on_install_installed (GObject *source,
                       GAsyncResult *result,
                       gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	InstallClosure *install = g_simple_async_result_get_op_res_gpointer (res);
+	EggTask *task = EGG_TASK (user_data);
+	InstallClosure *install = egg_task_get_task_data (task);
 	GError *error = NULL;
 	PkResults *results;
 
 	results = pk_task_generic_finish (install->task, result, &error);
-	if (error == NULL)
+	if (error == NULL) {
 		g_object_unref (results);
-	else
-		g_simple_async_result_take_error (res, error);
+		egg_task_return_boolean (task, TRUE);
+	} else {
+		egg_task_return_error (task, error);
+	}
 
-	g_simple_async_result_complete (res);
-	g_object_unref (res);
+	g_object_unref (task);
 }
 
 static void
@@ -211,8 +213,8 @@ on_install_resolved (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	InstallClosure *install = g_simple_async_result_get_op_res_gpointer (res);
+	EggTask *task = EGG_TASK (user_data);
+	InstallClosure *install = egg_task_get_task_data (task);
 	gchar **package_ids = NULL;
 	GCancellable *cancellable;
 	GError *error = NULL;
@@ -228,13 +230,13 @@ on_install_resolved (GObject *source,
 
 	if (error == NULL) {
 		if (package_ids == NULL || *package_ids == NULL) {
-			g_simple_async_result_complete (res);
+			egg_task_return_boolean (task, TRUE);
 
 		} else {
 			cancellable = realm_invocation_get_cancellable (install->invocation);
 			pk_task_install_packages_async (install->task, package_ids, cancellable,
 			                                on_install_progress, install,
-			                                on_install_installed, g_object_ref (res));
+			                                on_install_installed, g_object_ref (task));
 		}
 
 
@@ -263,12 +265,11 @@ on_install_resolved (GObject *source,
 			g_free (remote);
 		}
 
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
+		egg_task_return_error (task, error);
 	}
 
 	g_strfreev (package_ids);
-	g_object_unref (res);
+	g_object_unref (task);
 }
 
 static void
@@ -352,7 +353,7 @@ realm_packages_install_async (const gchar **package_sets,
                               GAsyncReadyCallback callback,
                               gpointer user_data)
 {
-	GSimpleAsyncResult *res;
+	EggTask *task;
 	InstallClosure *install;
 	gboolean unconditional;
 	gchar **required_files;
@@ -366,13 +367,13 @@ realm_packages_install_async (const gchar **package_sets,
 
 	lookup_required_files_and_packages (package_sets, &packages, &required_files, &unconditional);
 
-	res = g_simple_async_result_new (NULL, callback, user_data, realm_packages_install_async);
+	task = egg_task_new (NULL, NULL, callback, user_data);
 	install = g_slice_new0 (InstallClosure);
 	install->task = pk_task_new ();
 	pk_task_set_interactive (install->task, FALSE);
 	pk_client_set_background (PK_CLIENT (install->task), FALSE);
 	install->invocation = invocation ? g_object_ref (invocation) : NULL;
-	g_simple_async_result_set_op_res_gpointer (res, install, install_closure_free);
+	egg_task_set_task_data (task, install, install_closure_free);
 
 	if (unconditional) {
 		have = FALSE;
@@ -392,7 +393,7 @@ realm_packages_install_async (const gchar **package_sets,
 	g_strfreev (required_files);
 
 	if (have) {
-		g_simple_async_result_complete_in_idle (res);
+		egg_task_return_boolean (task, TRUE);
 
 	} else {
 		realm_diagnostics_info (invocation, "Resolving required packages");
@@ -412,22 +413,18 @@ realm_packages_install_async (const gchar **package_sets,
 		                       pk_filter_bitfield_from_string ("arch"),
 		                       packages, NULL,
 		                       on_install_progress, install,
-		                       on_install_resolved, g_object_ref (res));
+		                       on_install_resolved, g_object_ref (task));
 	}
 
 	g_strfreev (packages);
-	g_object_unref (res);
+	g_object_unref (task);
 }
 
 gboolean
 realm_packages_install_finish (GAsyncResult *result,
                                GError **error)
 {
-	g_return_val_if_fail (g_simple_async_result_is_valid (result, NULL,
-	                      realm_packages_install_async), FALSE);
-	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
-
-	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
+	if (egg_task_propagate_boolean (EGG_TASK (result), error))
 		return FALSE;
 
 	return TRUE;

@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "egg-task.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
@@ -93,14 +94,14 @@ on_discover_sleep_done (GObject *source,
                         GAsyncResult *res,
                         gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	EggTask *task = EGG_TASK (user_data);
 	GError *error = NULL;
 
 	if (!realm_usleep_finish (res, &error))
-		g_simple_async_result_take_error (async, error);
-
-	g_simple_async_result_complete (async);
-	g_object_unref (async);
+		egg_task_return_error (task, error);
+	else
+		egg_task_return_boolean (task, TRUE);
+	g_object_unref (task);
 }
 
 static gchar *
@@ -153,17 +154,15 @@ realm_example_provider_discover_async (RealmProvider *provider,
                                        GAsyncReadyCallback callback,
                                        gpointer user_data)
 {
-	GSimpleAsyncResult *async;
+	EggTask *task;
 
-	async = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
-	                                   realm_example_provider_discover_async);
-
+	task = egg_task_new (provider, NULL, callback, user_data);
 
 	if (!realm_provider_match_software (options,
 	                                    REALM_DBUS_IDENTIFIER_EXAMPLE,
 	                                    REALM_DBUS_IDENTIFIER_EXAMPLE,
 	                                    REALM_DBUS_IDENTIFIER_EXAMPLE)) {
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_boolean (task, TRUE);
 
 	/* A valid example domain name */
 	} else {
@@ -183,17 +182,15 @@ realm_example_provider_discover_async (RealmProvider *provider,
 			domain = NULL;
 		}
 
-		g_simple_async_result_set_op_res_gpointer (async,
-		                                           domain,
-		                                           g_free);
+		g_object_set_data_full (G_OBJECT ("task"), "the-domain", domain, g_free);
 
 		realm_usleep_async (delay * G_USEC_PER_SEC,
 		                    realm_invocation_get_cancellable (invocation),
 		                    on_discover_sleep_done,
-		                    g_object_ref (async));
+		                    g_object_ref (task));
 	}
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static GList *
@@ -203,11 +200,14 @@ realm_example_provider_discover_finish (RealmProvider *provider,
                                         GError **error)
 {
 	RealmKerberos *realm = NULL;
-	GSimpleAsyncResult *async;
 	gchar *domain;
 
-	async = G_SIMPLE_ASYNC_RESULT (result);
-	domain = g_simple_async_result_get_op_res_gpointer (async);
+	g_return_val_if_fail (egg_task_is_valid (result, provider), NULL);
+
+	if (!egg_task_propagate_boolean (EGG_TASK (result), error))
+		return NULL;
+
+	domain = g_object_get_data (G_OBJECT (result), "the-domain");
 	if (domain == NULL || realm_settings_section (domain) == NULL)
 		return NULL;
 

@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "egg-task.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
@@ -91,10 +92,9 @@ on_ad_discover (GObject *source,
                 GAsyncResult *result,
                 gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
-	g_simple_async_result_set_op_res_gpointer (async, g_object_ref (result), g_object_unref);
-	g_simple_async_result_complete (async);
-	g_object_unref (async);
+	EggTask *task = EGG_TASK (user_data);
+	egg_task_return_pointer (task, g_object_ref (result), g_object_unref);
+	g_object_unref (task);
 }
 
 static void
@@ -105,23 +105,22 @@ realm_samba_provider_discover_async (RealmProvider *provider,
                                      GAsyncReadyCallback callback,
                                      gpointer user_data)
 {
-	GSimpleAsyncResult *async;
+	EggTask *task;
 
-	async = g_simple_async_result_new (G_OBJECT (provider), callback, user_data,
-	                                   realm_samba_provider_discover_async);
+	task = egg_task_new (provider, NULL, callback, user_data);
 
 	if (!realm_provider_match_software (options,
 	                                    REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY,
 	                                    REALM_DBUS_IDENTIFIER_WINBIND,
 	                                    REALM_DBUS_IDENTIFIER_SAMBA)) {
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_pointer (task, NULL, NULL);
 
 	} else {
 		realm_kerberos_discover_async (string, invocation, on_ad_discover,
-		                               g_object_ref (async));
+		                               g_object_ref (task));
 	}
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static GList *
@@ -131,13 +130,11 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
                                       GError **error)
 {
 	RealmKerberos *realm = NULL;
-	GSimpleAsyncResult *async;
 	GHashTable *discovery;
 	GAsyncResult *ad_result;
 	gchar *name;
 
-	async = G_SIMPLE_ASYNC_RESULT (result);
-	ad_result = g_simple_async_result_get_op_res_gpointer (async);
+	ad_result = egg_task_propagate_pointer (EGG_TASK (result), error);
 	if (ad_result == NULL)
 		return NULL;
 

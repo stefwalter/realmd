@@ -14,6 +14,7 @@
 
 #include "config.h"
 
+#include "egg-task.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
@@ -161,15 +162,15 @@ on_winbind_done (GObject *source,
                  GAsyncResult *result,
                  gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
+	EggTask *task = EGG_TASK (user_data);
 	GError *error = NULL;
 
 	realm_samba_winbind_configure_finish (result, &error);
 	if (error != NULL)
-		g_simple_async_result_take_error (res, error);
-	g_simple_async_result_complete (res);
-
-	g_object_unref (res);
+		egg_task_return_error (task, error);
+	else
+		egg_task_return_boolean (task, TRUE);
+	g_object_unref (task);
 }
 
 static void
@@ -177,9 +178,9 @@ on_join_do_winbind (GObject *source,
                     GAsyncResult *result,
                     gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
-	RealmSamba *self = REALM_SAMBA (g_async_result_get_source_object (G_ASYNC_RESULT (res)));
+	EggTask *task = EGG_TASK (user_data);
+	EnrollClosure *enroll = egg_task_get_task_data (task);
+	RealmSamba *self = egg_task_get_source_object (task);
 	GHashTable *settings = NULL;
 	GError *error = NULL;
 	const gchar *workgroup = NULL;
@@ -209,16 +210,14 @@ on_join_do_winbind (GObject *source,
 		realm_samba_winbind_configure_async (self->config,
 		                                     realm_options_automatic_mapping (name),
 		                                     enroll->invocation,
-		                                     on_winbind_done, g_object_ref (res));
+		                                     on_winbind_done, g_object_ref (task));
 	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
+		egg_task_return_error (task, error);
 	}
 
 	if (settings)
 		g_hash_table_unref (settings);
-	g_object_unref (self);
-	g_object_unref (res);
+	g_object_unref (task);
 }
 
 static void
@@ -226,24 +225,22 @@ on_install_do_join (GObject *source,
                     GAsyncResult *result,
                     gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	EnrollClosure *enroll = g_simple_async_result_get_op_res_gpointer (res);
-	RealmKerberos *kerberos = REALM_KERBEROS (g_async_result_get_source_object (user_data));
+	EggTask *task = EGG_TASK (user_data);
+	EnrollClosure *enroll = egg_task_get_task_data (task);
+	RealmKerberos *kerberos = egg_task_get_source_object (task);
 	GError *error = NULL;
 
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
 		realm_samba_enroll_join_async (enroll->realm_name, enroll->cred,
 		                               enroll->options, realm_kerberos_get_discovery (kerberos),
-		                               enroll->invocation, on_join_do_winbind, g_object_ref (res));
+		                               enroll->invocation, on_join_do_winbind, g_object_ref (task));
 
 	} else {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete (res);
+		egg_task_return_error (task, error);
 	}
 
-	g_object_unref (kerberos);
-	g_object_unref (res);
+	g_object_unref (task);
 }
 
 static gboolean
@@ -274,31 +271,28 @@ realm_samba_join_async (RealmKerberosMembership *membership,
 {
 	RealmKerberos *realm = REALM_KERBEROS (membership);
 	RealmSamba *self = REALM_SAMBA (realm);
-	GSimpleAsyncResult *res;
+	EggTask *task;
 	EnrollClosure *enroll;
 	const gchar **packages;
 	GError *error = NULL;
 	gchar *enrolled;
 
-	res = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
-	                                 realm_samba_join_async);
+	task = egg_task_new (realm, NULL, callback, user_data);
 	enroll = g_slice_new0 (EnrollClosure);
 	enroll->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
 	enroll->invocation = g_object_ref (invocation);
 	enroll->options = g_variant_ref (options);
 	enroll->cred = realm_credential_ref (cred);
-	g_simple_async_result_set_op_res_gpointer (res, enroll, enroll_closure_free);
+	egg_task_set_task_data (task, enroll, enroll_closure_free);
 
 	/* Make sure not already enrolled in a realm */
 	enrolled = lookup_enrolled_realm (self);
 	if (enrolled != NULL) {
-		g_simple_async_result_set_error (res, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
-		                                 _("Already joined to a domain"));
-		g_simple_async_result_complete_in_idle (res);
+		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
+		                           _("Already joined to a domain"));
 
 	} else if (!validate_membership_options (options, &error)) {
-		g_simple_async_result_take_error (res, error);
-		g_simple_async_result_complete_in_idle (res);
+		egg_task_return_error (task, error);
 
 	} else {
 		if (realm_options_assume_packages (options))
@@ -306,11 +300,11 @@ realm_samba_join_async (RealmKerberosMembership *membership,
 		else
 			packages = SAMBA_PACKAGES;
 		realm_packages_install_async (packages, enroll->invocation,
-		                              on_install_do_join, g_object_ref (res));
+		                              on_install_do_join, g_object_ref (task));
 	}
 
 	g_free (enrolled);
-	g_object_unref (res);
+	g_object_unref (task);
 }
 
 typedef struct {
@@ -332,31 +326,31 @@ on_deconfigure_done (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
 {
-	GSimpleAsyncResult *async = G_SIMPLE_ASYNC_RESULT (user_data);
+	EggTask *task = EGG_TASK (user_data);
 	GError *error = NULL;
 
 	realm_samba_winbind_deconfigure_finish (result, &error);
 	if (error != NULL)
-		g_simple_async_result_take_error (async, error);
-	g_simple_async_result_complete (async);
-	g_object_unref (async);
+		egg_task_return_error (task, error);
+	else
+		egg_task_return_boolean (task, TRUE);
+	g_object_unref (task);
 }
 
 static void
 leave_deconfigure_begin (RealmSamba *self,
-                         GSimpleAsyncResult *async)
+                         EggTask *task)
 {
 	LeaveClosure *leave;
 	GError *error = NULL;
 
-	leave = g_simple_async_result_get_op_res_gpointer (async);
+	leave = egg_task_get_task_data (task);
 
 	/* Flush the keytab of all the entries for this realm */
 	realm_diagnostics_info (leave->invocation, "Removing entries from keytab for realm");
 
 	if (!realm_kerberos_flush_keytab (leave->realm_name, &error)) {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_error (task, error);
 		return;
 	}
 
@@ -367,14 +361,13 @@ leave_deconfigure_begin (RealmSamba *self,
 	                              "realm", NULL,
 	                              "security", "user",
 	                              NULL)) {
-		g_simple_async_result_take_error (async, error);
-		g_simple_async_result_complete_in_idle (async);
+		egg_task_return_error (task, error);
 		return;
 	}
 
 	/* And then deconfigure winbind */
 	realm_samba_winbind_deconfigure_async (self->config, leave->invocation,
-	                                       on_deconfigure_done, g_object_ref (async));
+	                                       on_deconfigure_done, g_object_ref (task));
 }
 
 static void
@@ -382,9 +375,9 @@ on_leave_do_deconfigure (GObject *source,
                          GAsyncResult *result,
                          gpointer user_data)
 {
-	GSimpleAsyncResult *res = G_SIMPLE_ASYNC_RESULT (user_data);
-	LeaveClosure *leave = g_simple_async_result_get_op_res_gpointer (res);
-	RealmSamba *self = REALM_SAMBA (g_async_result_get_source_object (user_data));
+	EggTask *task = EGG_TASK (user_data);
+	LeaveClosure *leave = egg_task_get_task_data (task);
+	RealmSamba *self = egg_task_get_source_object (task);
 	GError *error = NULL;
 
 	/* We don't care if we can leave or not, just continue with other steps */
@@ -394,10 +387,9 @@ on_leave_do_deconfigure (GObject *source,
 		g_error_free (error);
 	}
 
-	leave_deconfigure_begin (self, res);
+	leave_deconfigure_begin (self, task);
 
-	g_object_unref (self);
-	g_object_unref (res);
+	g_object_unref (task);
 }
 
 static void
@@ -409,44 +401,42 @@ realm_samba_leave_async (RealmKerberosMembership *membership,
                          gpointer user_data)
 {
 	RealmSamba *self = REALM_SAMBA (membership);
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	LeaveClosure *leave;
 	const gchar *realm_name;
 	gchar *enrolled;
 
 	realm_name = realm_kerberos_get_realm_name (REALM_KERBEROS (self));
 
-	async = g_simple_async_result_new (G_OBJECT (self), callback, user_data, realm_samba_leave_async);
+	task = egg_task_new (self, NULL, callback, user_data);
 	leave = g_slice_new0 (LeaveClosure);
 	leave->realm_name = g_strdup (realm_name);
 	leave->invocation = g_object_ref (invocation);
-	g_simple_async_result_set_op_res_gpointer (async, leave, leave_closure_free);
+	egg_task_set_task_data (task, leave, leave_closure_free);
 
 	/* Check that enrolled in this realm */
 	enrolled = lookup_enrolled_realm (self);
 	if (g_strcmp0 (enrolled, realm_name) != 0) {
-		g_simple_async_result_set_error (async, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
-		                                 _("Not currently joined to this domain"));
-		g_simple_async_result_complete_in_idle (async);
-		g_object_unref (async);
+		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
+		                           _("Not currently joined to this domain"));
+		g_object_unref (task);
 		return;
 	}
 
 	switch (cred->type) {
 	case REALM_CREDENTIAL_PASSWORD:
-		leave = g_simple_async_result_get_op_res_gpointer (async);
 		realm_samba_enroll_leave_async (leave->realm_name, cred, options,
 		                                leave->invocation, on_leave_do_deconfigure,
-		                                g_object_ref (async));
+		                                g_object_ref (task));
 		break;
 	case REALM_CREDENTIAL_AUTOMATIC:
-		leave_deconfigure_begin (self, async);
+		leave_deconfigure_begin (self, task);
 		break;
 	default:
 		g_return_if_reached ();
 	}
 
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static gboolean
@@ -500,11 +490,10 @@ realm_samba_logins_async (RealmKerberos *realm,
                           GAsyncReadyCallback callback,
                           gpointer user_data)
 {
-	GSimpleAsyncResult *async;
+	EggTask *task;
 	GError *error = NULL;
 
-	async = g_simple_async_result_new (G_OBJECT (realm), callback, user_data,
-	                                   realm_samba_logins_async);
+	task = egg_task_new (realm, NULL, callback, user_data);
 
 	if (login_policy == REALM_KERBEROS_ALLOW_REALM_LOGINS)
 		login_policy = REALM_KERBEROS_ALLOW_ANY_LOGIN;
@@ -512,16 +501,18 @@ realm_samba_logins_async (RealmKerberos *realm,
 	/* Sadly we don't support this option */
 	if (login_policy != REALM_KERBEROS_ALLOW_ANY_LOGIN &&
 	    login_policy != REALM_KERBEROS_POLICY_NOT_SET) {
-		g_simple_async_result_set_error (async, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
-		                                 _("The Samba provider cannot restrict permitted logins."));
+		egg_task_return_new_error (task, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
+		                           _("The Samba provider cannot restrict permitted logins."));
 
 	/* Make note of the permitted logins, so we can return them in the property */
 	} else if (!realm_samba_change_logins (realm, invocation, add, remove, &error)) {
-		g_simple_async_result_take_error (async, error);
+		egg_task_return_error (task, error);
+
+	} else {
+		egg_task_return_boolean (task, TRUE);
 	}
 
-	g_simple_async_result_complete_in_idle (async);
-	g_object_unref (async);
+	g_object_unref (task);
 }
 
 static void
@@ -582,7 +573,7 @@ realm_samba_membership_generic_finish (RealmKerberosMembership *realm,
                                        GAsyncResult *result,
                                        GError **error)
 {
-	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
+	if (!egg_task_propagate_boolean (EGG_TASK (result), error))
 		return FALSE;
 
 	update_properties (REALM_SAMBA (realm));
@@ -594,7 +585,7 @@ realm_samba_generic_finish (RealmKerberos *realm,
                             GAsyncResult *result,
                             GError **error)
 {
-	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error))
+	if (!egg_task_propagate_boolean (EGG_TASK (result), error))
 		return FALSE;
 
 	update_properties (REALM_SAMBA (realm));

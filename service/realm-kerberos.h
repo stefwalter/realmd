@@ -81,18 +81,6 @@ gchar **            realm_kerberos_parse_logins          (RealmKerberos *self,
 gchar *             realm_kerberos_format_login          (RealmKerberos *self,
                                                           const gchar *user);
 
-void                realm_kerberos_kinit_ccache_async    (RealmKerberos *self,
-                                                          const gchar *name,
-                                                          GBytes *password,
-                                                          const krb5_enctype *enctypes,
-                                                          GDBusMethodInvocation *invocation,
-                                                          GAsyncReadyCallback callback,
-                                                          gpointer user_data);
-
-gchar *             realm_kerberos_kinit_ccache_finish   (RealmKerberos *self,
-                                                          GAsyncResult *result,
-                                                          GError **error);
-
 gboolean            realm_kerberos_flush_keytab                (const gchar *realm_name,
                                                                 GError **error);
 

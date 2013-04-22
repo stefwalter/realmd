@@ -19,10 +19,9 @@
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
-#include "realm-discovery.h"
+#include "realm-disco.h"
 #include "realm-errors.h"
 #include "realm-kerberos.h"
-#include "realm-kerberos-discover.h"
 #include "realm-kerberos-membership.h"
 #include "realm-options.h"
 #include "realm-packages.h"
@@ -233,7 +232,7 @@ on_install_do_join (GObject *source,
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
 		realm_samba_enroll_join_async (enroll->realm_name, enroll->cred,
-		                               enroll->options, realm_kerberos_get_discovery (kerberos),
+		                               enroll->options, realm_kerberos_get_disco (kerberos),
 		                               enroll->invocation, on_join_do_winbind, g_object_ref (task));
 
 	} else {

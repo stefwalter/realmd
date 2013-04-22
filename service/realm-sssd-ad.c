@@ -296,7 +296,7 @@ on_install_do_join (GObject *source,
 			realm_samba_enroll_join_async (join->realm_name,
 			                               join->cred,
 			                               join->options,
-			                               realm_kerberos_get_discovery (kerberos),
+			                               realm_kerberos_get_disco (kerberos),
 			                               join->invocation, on_join_do_sssd,
 			                               g_object_ref (task));
 		}

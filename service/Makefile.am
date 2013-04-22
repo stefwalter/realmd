@@ -26,17 +26,20 @@ realmd_SOURCES = \
 	realm-credential.c realm-credential.h \
 	realm-daemon.c realm-daemon.h \
 	realm-diagnostics.c realm-diagnostics.h \
-	realm-discovery.c realm-discovery.h \
+	realm-disco.c realm-disco.h \
+	realm-disco-dns.c realm-disco-dns.h \
+	realm-disco-domain.c realm-disco-domain.h \
+	realm-disco-mscldap.c realm-disco-mscldap.h \
+	realm-disco-rootdse.c realm-disco-rootdse.h \
 	realm-errors.c realm-errors.h \
 	realm-example.c realm-example.h \
 	realm-example-provider.c realm-example-provider.h \
 	realm-ini-config.c realm-ini-config.h \
 	realm-invocation.c realm-invocation.h \
-	realm-ipa-discover.c realm-ipa-discover.h \
 	realm-kerberos.c realm-kerberos.h \
-	realm-kerberos-discover.c realm-kerberos-discover.h \
 	realm-kerberos-membership.c realm-kerberos-membership.h \
 	realm-kerberos-provider.c realm-kerberos-provider.h \
+	realm-ldap.c realm-ldap.h \
 	realm-login-name.c realm-login-name.h \
 	realm-network.c realm-network.h \
 	realm-options.c realm-options.h \

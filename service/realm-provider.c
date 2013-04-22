@@ -18,7 +18,6 @@
 #include "realm-dbus-constants.h"
 #include "realm-dbus-generated.h"
 #include "realm-diagnostics.h"
-#include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-invocation.h"
 #include "realm-kerberos.h"
@@ -221,7 +220,7 @@ RealmKerberos *
 realm_provider_lookup_or_register_realm (RealmProvider *self,
                                          GType realm_type,
                                          const gchar *realm_name,
-                                         GHashTable *discovery)
+                                         RealmDisco *disco)
 {
 	RealmKerberos *realm;
 	static gint unique_number = 0;
@@ -231,8 +230,8 @@ realm_provider_lookup_or_register_realm (RealmProvider *self,
 
 	realm = g_hash_table_lookup (self->pv->realms, realm_name);
 	if (realm != NULL) {
-		if (discovery != NULL)
-			realm_kerberos_set_discovery (realm, discovery);
+		if (disco != NULL)
+			realm_kerberos_set_disco (realm, disco);
 		return realm;
 	}
 
@@ -245,7 +244,7 @@ realm_provider_lookup_or_register_realm (RealmProvider *self,
 
 	realm = g_object_new (realm_type,
 	                      "name", realm_name,
-	                      "discovery", discovery,
+	                      "disco", disco,
 	                      "provider", self,
 	                      "g-object-path", path,
 	                      NULL);

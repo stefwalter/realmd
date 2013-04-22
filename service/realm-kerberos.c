@@ -20,7 +20,7 @@
 #include "realm-dbus-constants.h"
 #include "realm-dbus-generated.h"
 #include "realm-diagnostics.h"
-#include "realm-discovery.h"
+#include "realm-disco.h"
 #include "realm-errors.h"
 #include "realm-invocation.h"
 #include "realm-kerberos.h"
@@ -43,7 +43,7 @@
 #include <string.h>
 
 struct _RealmKerberosPrivate {
-	GHashTable *discovery;
+	RealmDisco *disco;
 	RealmDbusRealm *realm_iface;
 	RealmDbusKerberos *kerberos_iface;
 	RealmDbusKerberosMembership *membership_iface;
@@ -52,7 +52,7 @@ struct _RealmKerberosPrivate {
 enum {
 	PROP_0,
 	PROP_NAME,
-	PROP_DISCOVERY,
+	PROP_DISCO,
 	PROP_PROVIDER,
 };
 
@@ -523,7 +523,6 @@ realm_kerberos_constructed (GObject *obj)
 	RealmKerberos *self = REALM_KERBEROS (obj);
 	const gchar *supported_interfaces[3];
 	GVariant *supported;
-	const gchar *name;
 
 	G_OBJECT_CLASS (realm_kerberos_parent_class)->constructed (obj);
 
@@ -555,13 +554,11 @@ realm_kerberos_constructed (GObject *obj)
 	realm_dbus_realm_set_supported_interfaces (self->pv->realm_iface,
 	                                           supported_interfaces);
 
-	if (self->pv->discovery) {
-		name = realm_discovery_get_string (self->pv->discovery, REALM_DBUS_DISCOVERY_DOMAIN);
-		if (name)
-			realm_kerberos_set_domain_name (self, name);
-		name = realm_discovery_get_string (self->pv->discovery, REALM_DBUS_DISCOVERY_REALM);
-		if (name)
-			realm_kerberos_set_realm_name (self, name);
+	if (self->pv->disco) {
+		if (self->pv->disco->domain_name)
+			realm_kerberos_set_domain_name (self, self->pv->disco->domain_name);
+		if (self->pv->disco->kerberos_realm)
+			realm_kerberos_set_realm_name (self, self->pv->disco->kerberos_realm);
 	}
 }
 
@@ -577,8 +574,8 @@ realm_kerberos_get_property (GObject *obj,
 	case PROP_NAME:
 		g_value_set_string (value, realm_kerberos_get_name (self));
 		break;
-	case PROP_DISCOVERY:
-		g_value_set_boxed (value, realm_kerberos_get_discovery (self));
+	case PROP_DISCO:
+		g_value_set_boxed (value, realm_kerberos_get_disco (self));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -599,8 +596,8 @@ realm_kerberos_set_property (GObject *obj,
 		realm_dbus_realm_set_name (self->pv->realm_iface,
 		                           g_value_get_string (value));
 		break;
-	case PROP_DISCOVERY:
-		realm_kerberos_set_discovery (self, g_value_get_boxed (value));
+	case PROP_DISCO:
+		realm_kerberos_set_disco (self, g_value_get_boxed (value));
 		break;
 	case PROP_PROVIDER:
 		/* ignore */
@@ -621,8 +618,8 @@ realm_kerberos_finalize (GObject *obj)
 	if (self->pv->membership_iface)
 		g_object_unref (self->pv->membership_iface);
 
-	if (self->pv->discovery)
-		g_hash_table_unref (self->pv->discovery);
+	if (self->pv->disco)
+		realm_disco_unref (self->pv->disco);
 
 	G_OBJECT_CLASS (realm_kerberos_parent_class)->finalize (obj);
 }
@@ -646,9 +643,9 @@ realm_kerberos_class_init (RealmKerberosClass *klass)
 	             g_param_spec_string ("name", "Name", "Name",
 	                                  NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS));
 
-	g_object_class_install_property (object_class, PROP_DISCOVERY,
-	             g_param_spec_boxed ("discovery", "Discovery", "Discovery Data",
-	                                 G_TYPE_HASH_TABLE, G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS));
+	g_object_class_install_property (object_class, PROP_DISCO,
+	             g_param_spec_boxed ("disco", "Discovery", "Discovery Data",
+	                                 REALM_TYPE_DISCO, G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS));
 
 	g_object_class_install_property (object_class, PROP_PROVIDER,
 	            g_param_spec_object ("provider", "Provider", "Realm Provider",
@@ -656,24 +653,23 @@ realm_kerberos_class_init (RealmKerberosClass *klass)
 }
 
 void
-realm_kerberos_set_discovery (RealmKerberos *self,
-                              GHashTable *discovery)
+realm_kerberos_set_disco (RealmKerberos *self,
+                          RealmDisco *disco)
 {
 	g_return_if_fail (REALM_IS_KERBEROS (self));
 
-	if (discovery)
-		g_hash_table_ref (discovery);
-	if (self->pv->discovery)
-		g_hash_table_unref (self->pv->discovery);
-	self->pv->discovery = discovery;
-	g_object_notify (G_OBJECT (self), "discovery");
+	if (disco)
+		realm_disco_ref (disco);
+	realm_disco_unref (self->pv->disco);
+	self->pv->disco = disco;
+	g_object_notify (G_OBJECT (self), "disco");
 }
 
-GHashTable *
-realm_kerberos_get_discovery (RealmKerberos *self)
+RealmDisco *
+realm_kerberos_get_disco (RealmKerberos *self)
 {
 	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
-	return self->pv->discovery;
+	return self->pv->disco;
 }
 
 gchar **

@@ -1,9 +1,11 @@
 service/org.freedesktop.realmd.policy.in
 service/realm-command.c
+service/realm-disco-mscldap.c
 service/realm-example.c
 service/realm-ini-config.c
 service/realm-invocation.c
 service/realm-kerberos.c
+service/realm-ldap.c
 service/realm-packages.c
 service/realm-provider.c
 service/realm-samba.c

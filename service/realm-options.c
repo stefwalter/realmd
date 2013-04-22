@@ -78,7 +78,7 @@ realm_options_computer_ou (GVariant *options,
 			computer_ou = NULL;
 	}
 
-	if (!computer_ou) {
+	if (realm_name && !computer_ou) {
 		section = g_utf8_casefold (realm_name, -1);
 		computer_ou = realm_settings_value (section, REALM_DBUS_OPTION_COMPUTER_OU);
 		g_free (section);

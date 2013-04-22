@@ -16,8 +16,7 @@
 
 #include "egg-task.h"
 #include "realm-dbus-constants.h"
-#include "realm-discovery.h"
-#include "realm-kerberos-discover.h"
+#include "realm-invocation.h"
 #include "realm-kerberos-provider.h"
 
 #include <errno.h>
@@ -46,7 +45,24 @@ on_kerberos_discover (GObject *source,
                       gpointer user_data)
 {
 	EggTask *task = EGG_TASK (user_data);
-	egg_task_return_pointer (task, g_object_ref (result), g_object_unref);
+	const gchar *domain = egg_task_get_task_data (task);
+	GError *error = NULL;
+	RealmDisco *disco;
+	GList *targets;
+
+	targets = g_resolver_lookup_service_finish (G_RESOLVER (source), result, &error);
+	if (targets) {
+		g_list_free_full (targets, (GDestroyNotify)g_srv_target_free);
+		disco = realm_disco_new (domain);
+		disco->kerberos_realm = g_ascii_strup (domain, -1);
+		egg_task_return_pointer (task, disco, realm_disco_unref);
+
+	} else if (error) {
+		g_debug ("Resolving %s failed: %s", domain, error->message);
+		g_error_free (error);
+		egg_task_return_pointer (task, NULL, NULL);
+	}
+
 	g_object_unref (task);
 }
 
@@ -60,6 +76,8 @@ realm_kerberos_provider_discover_async (RealmProvider *provider,
 {
 	EggTask *task;
 	const gchar *software;
+	GResolver *resolver;
+	gchar *name;
 
 	task = egg_task_new (provider, NULL, callback, user_data);
 
@@ -69,8 +87,13 @@ realm_kerberos_provider_discover_async (RealmProvider *provider,
 		egg_task_return_pointer (task, NULL, NULL);
 
 	} else {
-		realm_kerberos_discover_async (string, invocation, on_kerberos_discover,
-		                               g_object_ref (task));
+		name = g_hostname_to_ascii (string);
+		resolver = g_resolver_get_default ();
+		g_resolver_lookup_service_async (resolver, "kerberos", "udp", name,
+		                                 realm_invocation_get_cancellable (invocation),
+		                                 on_kerberos_discover, g_object_ref (task));
+		egg_task_set_task_data (task, name, g_free);
+		g_object_unref (resolver);
 	}
 
 	g_object_unref (task);
@@ -83,24 +106,17 @@ realm_kerberos_provider_discover_finish (RealmProvider *provider,
                                          GError **error)
 {
 	RealmKerberos *realm = NULL;
-	GHashTable *discovery;
-	GAsyncResult *kerberos_result;
-	gchar *name;
+	RealmDisco *disco;
 
-	kerberos_result = egg_task_propagate_pointer (EGG_TASK (result), error);
-	if (kerberos_result == NULL)
-		return NULL;
-
-	name = realm_kerberos_discover_finish (kerberos_result, &discovery, error);
-	if (name == NULL)
+	disco = egg_task_propagate_pointer (EGG_TASK (result), error);
+	if (disco == NULL)
 		return NULL;
 
 	realm = realm_provider_lookup_or_register_realm (provider,
 	                                                 REALM_TYPE_KERBEROS,
-	                                                 name, discovery);
+	                                                 disco->domain_name, disco);
 
-	g_free (name);
-	g_hash_table_unref (discovery);
+	realm_disco_unref (disco);
 
 	if (realm == NULL)
 		return NULL;

@@ -19,10 +19,9 @@
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
-#include "realm-discovery.h"
+#include "realm-disco-domain.h"
 #include "realm-errors.h"
 #include "realm-kerberos.h"
-#include "realm-kerberos-discover.h"
 #include "realm-packages.h"
 #include "realm-samba.h"
 #include "realm-samba-config.h"
@@ -93,7 +92,14 @@ on_ad_discover (GObject *source,
                 gpointer user_data)
 {
 	EggTask *task = EGG_TASK (user_data);
-	egg_task_return_pointer (task, g_object_ref (result), g_object_unref);
+	RealmDisco *disco;
+	GError *error = NULL;
+
+	disco = realm_disco_domain_finish (result, &error);
+	if (error)
+		egg_task_return_error (task, error);
+	else
+		egg_task_return_pointer (task, disco, realm_disco_unref);
 	g_object_unref (task);
 }
 
@@ -116,8 +122,8 @@ realm_samba_provider_discover_async (RealmProvider *provider,
 		egg_task_return_pointer (task, NULL, NULL);
 
 	} else {
-		realm_kerberos_discover_async (string, invocation, on_ad_discover,
-		                               g_object_ref (task));
+		realm_disco_domain_async (string, invocation,
+		                          on_ad_discover, g_object_ref (task));
 	}
 
 	g_object_unref (task);
@@ -130,29 +136,19 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
                                       GError **error)
 {
 	RealmKerberos *realm = NULL;
-	GHashTable *discovery;
-	GAsyncResult *ad_result;
-	gchar *name;
+	RealmDisco *disco;
 
-	ad_result = egg_task_propagate_pointer (EGG_TASK (result), error);
-	if (ad_result == NULL)
+	disco = egg_task_propagate_pointer (EGG_TASK (result), error);
+	if (disco == NULL)
 		return NULL;
 
-	name = realm_kerberos_discover_finish (ad_result, &discovery, error);
-	if (name == NULL)
-		return NULL;
-
-	if (realm_discovery_has_string (discovery,
-	                                REALM_DBUS_OPTION_SERVER_SOFTWARE,
-	                                REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY)) {
-
+	if (g_strcmp0 (disco->server_software, REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY) == 0) {
 		realm = realm_provider_lookup_or_register_realm (provider,
 		                                                 REALM_TYPE_SAMBA,
-		                                                 name, discovery);
+		                                                 disco->domain_name, disco);
 	}
 
-	g_free (name);
-	g_hash_table_unref (discovery);
+	realm_disco_unref (disco);
 
 	if (realm == NULL)
 		return NULL;

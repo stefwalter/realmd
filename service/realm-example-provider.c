@@ -18,7 +18,7 @@
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
-#include "realm-discovery.h"
+#include "realm-disco.h"
 #include "realm-errors.h"
 #include "realm-example.h"
 #include "realm-example-provider.h"
@@ -182,7 +182,7 @@ realm_example_provider_discover_async (RealmProvider *provider,
 			domain = NULL;
 		}
 
-		g_object_set_data_full (G_OBJECT ("task"), "the-domain", domain, g_free);
+		g_object_set_data_full (G_OBJECT (task), "the-domain", domain, g_free);
 
 		realm_usleep_async (delay * G_USEC_PER_SEC,
 		                    realm_invocation_get_cancellable (invocation),

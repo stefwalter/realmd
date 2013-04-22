@@ -18,6 +18,7 @@
 #define __REALM_SAMBA_ENROLL_H__
 
 #include "realm-credential.h"
+#include "realm-disco.h"
 
 #include <gio/gio.h>
 
@@ -28,7 +29,7 @@ G_BEGIN_DECLS
 void               realm_samba_enroll_join_async           (const gchar *realm,
                                                             RealmCredential *cred,
                                                             GVariant *options,
-                                                            GHashTable *discovery,
+                                                            RealmDisco *disco,
                                                             GDBusMethodInvocation *invocation,
                                                             GAsyncReadyCallback callback,
                                                             gpointer user_data);

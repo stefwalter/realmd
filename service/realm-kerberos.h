@@ -22,6 +22,7 @@
 #include <krb5/krb5.h>
 
 #include "realm-dbus-generated.h"
+#include "realm-disco.h"
 
 G_BEGIN_DECLS
 
@@ -68,10 +69,10 @@ struct _RealmKerberosClass {
 
 GType               realm_kerberos_get_type              (void) G_GNUC_CONST;
 
-void                realm_kerberos_set_discovery         (RealmKerberos *self,
-                                                          GHashTable *discovery);
+void                realm_kerberos_set_disco             (RealmKerberos *self,
+                                                          RealmDisco *disco);
 
-GHashTable *        realm_kerberos_get_discovery         (RealmKerberos *self);
+RealmDisco *        realm_kerberos_get_disco             (RealmKerberos *self);
 
 gchar **            realm_kerberos_parse_logins          (RealmKerberos *self,
                                                           gboolean lower,

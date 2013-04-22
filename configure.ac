@@ -122,6 +122,25 @@ AC_SUBST(SYSTEMD_JOURNAL_CFLAGS)
 AC_SUBST(SYSTEMD_JOURNAL_LIBS)
 
 # -------------------------------------------------------------------
+# resolv
+
+AC_MSG_CHECKING(for which library has res_query)
+for lib in "" "-lresolv"; do
+	saved_LIBS="$LIBS"
+	LIBS="$LIBS $lib"
+	AC_LINK_IFELSE([
+		AC_LANG_PROGRAM([#include <resolv.h>],
+		                [res_query (0, 0, 0, 0, 0)])
+	],
+	[ AC_MSG_RESULT(${lib:-libc}); have_res_query="yes"; break; ],
+	[ LIBS="$saved_LIBS" ])
+done
+if test "$have_res_query" != "yes"; then
+	AC_MSG_RESULT(no)
+	AC_MSG_ERROR([Couldn't find the library for the res_query function])
+fi
+
+# -------------------------------------------------------------------
 # Kerberos
 
 if test "$KRB5_LIBS" != ""; then
@@ -168,6 +187,10 @@ AC_CHECK_HEADERS([ldap.h], , [ldap_invalid=yes])
 if test "$ldap_invalid" = "yes"; then
 	AC_MSG_ERROR(["Couldn't find OpenLDAP headers or libraries"])
 fi
+
+AC_CHECK_LIB(ldap, ldap_init_fd, [true], [
+	AC_MSG_ERROR([Couldn't find ldap_init_fd function in libldap])
+])
 
 LDAP_LIBS=""
 AC_CHECK_LIB(resolv, res_query, LDAP_LIBS="-lresolv")

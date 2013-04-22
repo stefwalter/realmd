@@ -19,7 +19,6 @@
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
-#include "realm-discovery.h"
 #include "realm-errors.h"
 #include "realm-packages.h"
 #include "realm-provider.h"
@@ -232,11 +231,13 @@ update_realm_name (RealmSssd *self)
 {
 	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	const char *name;
+	RealmDisco *disco;
 	gchar *realm = NULL;
 
 	if (self->pv->section == NULL) {
-		realm = g_strdup (realm_discovery_get_string (realm_kerberos_get_discovery (kerberos),
-		                                              REALM_DBUS_DISCOVERY_REALM));
+		disco = realm_kerberos_get_disco (kerberos);
+		if (disco != NULL)
+			realm = g_strdup (disco->kerberos_realm);
 	} else {
 		realm = realm_ini_config_get (self->pv->config, self->pv->section, "krb5_realm");
 	}
@@ -255,11 +256,13 @@ update_domain (RealmSssd *self)
 {
 	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	const char *name;
+	RealmDisco *disco;
 	gchar *domain = NULL;
 
 	if (self->pv->section == NULL) {
-		domain = g_strdup (realm_discovery_get_string (realm_kerberos_get_discovery (kerberos),
-		                                               REALM_DBUS_DISCOVERY_DOMAIN));
+		disco = realm_kerberos_get_disco (kerberos);
+		if (disco != NULL)
+			domain = g_strdup (disco->domain_name);
 	} else {
 		domain = realm_ini_config_get (self->pv->config, self->pv->section, "dns_discovery_domain");
 	}

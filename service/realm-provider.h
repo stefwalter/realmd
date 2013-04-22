@@ -20,6 +20,7 @@
 #include <gio/gio.h>
 
 #include "realm-dbus-generated.h"
+#include "realm-disco.h"
 #include "realm-kerberos.h"
 
 G_BEGIN_DECLS
@@ -66,7 +67,7 @@ void                     realm_provider_stop_all                 (void);
 RealmKerberos *          realm_provider_lookup_or_register_realm (RealmProvider *self,
                                                                   GType realm_type,
                                                                   const gchar *realm_name,
-                                                                  GHashTable *discovery);
+                                                                  RealmDisco *disco);
 
 gboolean                 realm_provider_is_default               (const gchar *type,
                                                                   const gchar *name);

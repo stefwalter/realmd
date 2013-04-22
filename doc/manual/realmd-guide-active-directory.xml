@@ -29,10 +29,12 @@
 		<informalexample>
 <screen>
 # In this example the Active Directory domain is 'domain.example.com'
-<emphasis>_kerberos._udp.</emphasis>domain.example.com.
-<emphasis>_kerberos._tcp.dc._msdcs.</emphasis>domain.example.com.
+<emphasis>_ldap._tcp.dc._msdcs.</emphasis>domain.example.com.
 </screen>
 		</informalexample>
+
+		<para>An Active Directory specific UDP LDAP ping is sent to
+		each server during discovery.</para>
 
 		<para>To see how <command>realmd</command> is discovering a
 		particular domain name, try a command like the following. Using
@@ -41,17 +43,14 @@
 
 		<informalexample>
 <screen>
-$ <command>realm --verbose domain.example.com</command>
- * Searching for kerberos SRV records for domain: _kerberos._udp.domain.example.com
- * Searching for MSDCS SRV records on domain: _kerberos._tcp.dc._msdcs.domain.example.com
- * dc.domain.example.com:88
- * Found kerberos DNS records for: domain.example.com
- * Found AD style DNS records for: domain.example.com
+$ <command>realm discover --verbose domain.example.com</command>
+ * Resolving: _ldap._tcp.dc._msdcs.domain.example.com
+ * Sending MS-CLDAP ping to: 192.168.20.10
+ * Sending MS-CLDAP ping to: 192.168.12.12
  * Successfully discovered: domain.example.com
 ...
 </screen>
 		</informalexample>
-
 	</section>
 
 	<section id="guide-active-directory-client">

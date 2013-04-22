@@ -19,9 +19,7 @@
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
-#include "realm-discovery.h"
 #include "realm-errors.h"
-#include "realm-kerberos-discover.h"
 #include "realm-options.h"
 #include "realm-samba-config.h"
 #include "realm-samba-enroll.h"
@@ -72,12 +70,26 @@ join_closure_free (gpointer data)
 	g_slice_free (JoinClosure, join);
 }
 
+static gchar *
+fallback_workgroup (const gchar *realm)
+{
+	const gchar *pos;
+
+	pos = strchr (realm, '.');
+	if (pos == NULL)
+		return g_utf8_strup (realm, -1);
+	else
+		return g_utf8_strup (realm, pos - realm);
+}
+
 static JoinClosure *
 join_closure_init (EggTask *task,
                    const gchar *realm,
+                   RealmDisco *disco,
                    GDBusMethodInvocation *invocation)
 {
 	JoinClosure *join;
+	gchar *workgroup;
 	GError *error = NULL;
 	int temp_fd;
 
@@ -90,8 +102,28 @@ join_closure_init (EggTask *task,
 	realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL,
 	                      "security", "ads",
 	                      "kerberos method", "system keytab",
-	                      "realm", join->realm,
+	                      "realm", disco && disco->kerberos_realm ? disco->kerberos_realm : join->realm,
 	                      NULL);
+
+	/*
+	 * Samba complains if we don't set a 'workgroup' setting for the realm we're
+	 * going to join. If we didn't yet manage to lookup the workgroup, then go ahead
+	 * and assume that the first domain component is the workgroup name.
+	 */
+
+	if (disco && disco->workgroup) {
+		realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL,
+		                      "workgroup", disco->workgroup, NULL);
+
+	} else {
+		workgroup = fallback_workgroup (realm);
+		realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL,
+		                      "workgroup", workgroup, NULL);
+		if (disco)
+			disco->workgroup = workgroup;
+		else
+			g_free (workgroup);
+	}
 
 	/* Write out the config file for use by various net commands */
 	join->custom_smb_conf = g_build_filename (g_get_tmp_dir (), "realmd-smb-conf.XXXXXX", NULL);
@@ -264,178 +296,11 @@ on_join_do_keytab (GObject *source,
 	g_object_unref (task);
 }
 
-static gchar *
-fallback_workgroup (const gchar *realm)
-{
-	const gchar *pos;
-
-	pos = strchr (realm, '.');
-	if (pos == NULL)
-		return g_utf8_strup (realm, -1);
-	else
-		return g_utf8_strup (realm, pos - realm);
-}
-
-static void
-begin_config_and_join (JoinClosure *join,
-                       EggTask *task)
-{
-	GError *error = NULL;
-	gchar *workgroup;
-
-	/*
-	 * Samba complains if we don't set a 'workgroup' setting for the realm we're
-	 * going to join. If we didn't yet manage to lookup the workgroup, then go ahead
-	 * and assume that the first domain component is the workgroup name.
-	 */
-	workgroup = realm_ini_config_get (join->config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup");
-	if (workgroup == NULL) {
-		workgroup = fallback_workgroup (join->realm);
-		realm_diagnostics_info (join->invocation, "Calculated workgroup name: %s", workgroup);
-		realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL,
-		                      "workgroup", workgroup, NULL);
-	}
-	free (workgroup);
-
-	/* Write out the config file for various changes */
-	realm_ini_config_write_file (join->config, NULL, &error);
-
-	if (error != NULL) {
-		egg_task_return_error (task, error);
-
-	/* Do join with a user name */
-	} else if (join->user_name) {
-		begin_net_process (join, join->password_input,
-		                   on_join_do_keytab, g_object_ref (task),
-		                   "-U", join->user_name, "ads", "join", join->realm,
-		                   join->join_args[0], join->join_args[1],
-		                   join->join_args[2], join->join_args[3],
-		                   join->join_args[4], NULL);
-
-	/* Do join with a ccache */
-	} else {
-		begin_net_process (join, NULL,
-		                   on_join_do_keytab, g_object_ref (task),
-		                   "-k", "ads", "join", join->realm,
-		                   join->join_args[0], join->join_args[1],
-		                   join->join_args[2], join->join_args[3],
-		                   join->join_args[4], NULL);
-	}
-
-}
-
-static gchar *
-find_workgroup_in_output (GString *output)
-{
-	const gchar *match = ":";
-	const gchar *pos;
-	const gchar *end;
-	gchar *workgroup;
-
-	/* Beginning */
-	pos = g_strstr_len (output->str, output->len, match);
-	if (pos == NULL)
-		return NULL;
-	pos += strlen (match);
-
-	/* Find the end */
-	end = strchr (pos, '\n');
-	if (end == NULL)
-		end = output->str + output->len;
-
-	workgroup = g_strndup (pos, end - pos);
-	g_strstrip (workgroup);
-	return workgroup;
-}
-
-static void
-on_net_ads_workgroup (GObject *source,
-                      GAsyncResult *result,
-                      gpointer user_data)
-{
-	EggTask *task = EGG_TASK (user_data);
-	JoinClosure *join = egg_task_get_task_data (task);
-	GError *error = NULL;
-	GString *output = NULL;
-	gchar *workgroup;
-	gint status;
-
-	status = realm_command_run_finish (result, &output, &error);
-	if (error == NULL && status != 0) {
-		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Couldn't lookup domain info");
-	}
-
-	if (error == NULL) {
-		workgroup = find_workgroup_in_output (output);
-		if (workgroup) {
-			realm_diagnostics_info (join->invocation, "Looked up workgroup name: %s", workgroup);
-			realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL,
-			                      "workgroup", workgroup, NULL);
-			g_free (workgroup);
-		}
-
-		g_string_free (output, TRUE);
-
-	} else {
-		realm_diagnostics_error (join->invocation, error, NULL);
-		g_error_free (error);
-	}
-
-	begin_config_and_join (join, task);
-
-	g_object_unref (task);
-}
-
-
-static void
-begin_net_lookup (JoinClosure *join,
-                  EggTask *task,
-                  GHashTable *discovery)
-{
-	const gchar **kdcs;
-
-	kdcs = realm_discovery_get_strings (discovery, REALM_DBUS_DISCOVERY_KDCS);
-
-	/* If we discovered KDCs then try to ask first one what the workgroup name is */
-	if (kdcs && kdcs[0]) {
-		begin_net_process (join, NULL,
-		                   on_net_ads_workgroup, g_object_ref (task),
-		                   "ads", "workgroup", "-S", kdcs[0], NULL);
-
-	} else {
-		begin_config_and_join (join, task);
-	}
-}
-
-static void
-on_discover_do_lookup (GObject *source,
-                       GAsyncResult *result,
-                       gpointer user_data)
-{
-	EggTask *task = EGG_TASK (user_data);
-	JoinClosure *join = egg_task_get_task_data (task);
-	GError *error = NULL;
-	GHashTable *discovery;
-
-	realm_kerberos_discover_finish (result, &discovery, &error);
-	if (error == NULL) {
-		begin_net_lookup (join, task, discovery);
-		g_hash_table_unref (discovery);
-
-	} else {
-		egg_task_return_error (task, error);
-	}
-
-	g_object_unref (task);
-}
-
 static void
 begin_join (EggTask *task,
             JoinClosure *join,
             const gchar *realm,
-            GVariant *options,
-            GHashTable *discovery)
+            GVariant *options)
 {
 	const gchar *computer_ou;
 	gchar *strange_ou;
@@ -479,12 +344,23 @@ begin_join (EggTask *task,
 	if (error != NULL) {
 		egg_task_return_error (task, error);
 
-	} else if (discovery) {
-		begin_net_lookup (join, task, discovery);
+	/* Do join with a user name */
+	} else if (join->user_name) {
+		begin_net_process (join, join->password_input,
+				   on_join_do_keytab, g_object_ref (task),
+				   "-U", join->user_name, "ads", "join", join->realm,
+				   join->join_args[0], join->join_args[1],
+				   join->join_args[2], join->join_args[3],
+				   join->join_args[4], NULL);
 
+	/* Do join with a ccache */
 	} else {
-		realm_kerberos_discover_async (join->realm, join->invocation,
-		                               on_discover_do_lookup, g_object_ref (task));
+		begin_net_process (join, NULL,
+				   on_join_do_keytab, g_object_ref (task),
+				   "-k", "ads", "join", join->realm,
+				   join->join_args[0], join->join_args[1],
+				   join->join_args[2], join->join_args[3],
+				   join->join_args[4], NULL);
 	}
 }
 
@@ -492,7 +368,7 @@ void
 realm_samba_enroll_join_async (const gchar *realm,
                                RealmCredential *cred,
                                GVariant *options,
-                               GHashTable *discovery,
+                               RealmDisco *disco,
                                GDBusMethodInvocation *invocation,
                                GAsyncReadyCallback callback,
                                gpointer user_data)
@@ -504,7 +380,7 @@ realm_samba_enroll_join_async (const gchar *realm,
 	g_return_if_fail (cred != NULL);
 
 	task = egg_task_new (NULL, NULL, callback, user_data);
-	join = join_closure_init (task, realm, invocation);
+	join = join_closure_init (task, realm, disco, invocation);
 
 	switch (cred->type) {
 	case REALM_CREDENTIAL_PASSWORD:
@@ -518,7 +394,7 @@ realm_samba_enroll_join_async (const gchar *realm,
 		g_return_if_reached ();
 	}
 
-	begin_join (task, join, realm, options, discovery);
+	begin_join (task, join, realm, options);
 
 	g_object_unref (task);
 }
@@ -577,7 +453,7 @@ realm_samba_enroll_leave_async (const gchar *realm,
 	JoinClosure *join;
 
 	task = egg_task_new (NULL, NULL, callback, user_data);
-	join = join_closure_init (task, realm, invocation);
+	join = join_closure_init (task, realm, NULL, invocation);
 
 	switch (cred->type) {
 	case REALM_CREDENTIAL_PASSWORD:

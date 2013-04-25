@@ -54,6 +54,7 @@ static guint service_bus_name_owner_id = 0;
 static gboolean service_bus_name_claimed = FALSE;
 static GDBusObjectManagerServer *object_server = NULL;
 static gboolean service_debug = FALSE;
+static gboolean service_replace = FALSE;
 static gchar *service_install = NULL;
 static gint service_dbus_fd = -1;
 
@@ -220,6 +221,7 @@ on_bus_get_connection (GObject *source,
                        GAsyncResult *result,
                        gpointer unused)
 {
+	GBusNameOwnerFlags flags = G_BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT;
 	GError *error = NULL;
 	GDBusConnection *connection;
 	guint owner_id;
@@ -235,9 +237,11 @@ on_bus_get_connection (GObject *source,
 
 		initialize_service (connection);
 
+		if (service_replace)
+			flags |= G_BUS_NAME_OWNER_FLAGS_REPLACE;
+
 		owner_id = g_bus_own_name_on_connection (connection,
-		                                         REALM_DBUS_BUS_NAME,
-		                                         G_BUS_NAME_OWNER_FLAGS_NONE,
+		                                         REALM_DBUS_BUS_NAME, flags,
 		                                         on_name_acquired, on_name_lost,
 		                                         NULL, NULL);
 
@@ -454,6 +458,8 @@ main (int argc,
 		  "Turn on installer mode, install to this prefix", NULL },
 		{ "dbus-peer", 0, 0, G_OPTION_ARG_INT, &service_dbus_fd,
 		  "Use a peer to peer dbus connection on this fd", NULL },
+		{ "replace", 0, 0, G_OPTION_ARG_NONE, &service_replace,
+		  "Replace a running realmd searvice", NULL },
 		{ NULL }
 	};
 

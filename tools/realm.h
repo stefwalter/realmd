@@ -23,7 +23,7 @@
 
 G_BEGIN_DECLS
 
-#define               realm_operation_id           "client-operation"
+extern gchar *        realm_operation_id;
 
 extern GOptionEntry   realm_global_options[];
 

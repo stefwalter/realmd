@@ -29,6 +29,7 @@
 
 static gchar *arg_install = NULL;
 gboolean realm_verbose = FALSE;
+gchar *realm_operation_id = NULL;
 
 struct {
 	const char *name;
@@ -69,8 +70,17 @@ realm_handle_error (GError *error,
                     const gchar *format,
                     ...)
 {
+	static gboolean diag_hint = TRUE;
 	GString *message;
 	va_list va;
+
+#ifdef WITH_JOURNAL
+	if (diag_hint && realm_operation_id && !realm_verbose) {
+		g_printerr ("See: journalctl REALMD_OPERATION=%s\n",
+		            realm_operation_id);
+		diag_hint = FALSE;
+	}
+#endif
 
 	message = g_string_new ("");
 	g_string_append_printf (message, "%s: ", g_get_prgname ());
@@ -121,6 +131,12 @@ realm_build_options (const gchar *first,
 	if (arg_install) {
 		option = g_variant_new ("{sv}", "assume-packages", g_variant_new_boolean (TRUE));
 		g_ptr_array_add (opts, option);
+	}
+
+	if (!realm_operation_id) {
+		realm_operation_id = g_strdup_printf ("r%lld.%d",
+		                                (long long int)g_get_monotonic_time () / G_TIME_SPAN_SECOND,
+		                                (gint)getpid ());
 	}
 
 	option = g_variant_new ("{sv}", "operation", g_variant_new_string (realm_operation_id));
@@ -241,6 +257,7 @@ main (int argc,
 	if (ret == 2 && i == G_N_ELEMENTS (realm_commands))
 		usage(2);
 
+	g_free (realm_operation_id);
 	g_free (arg_install);
 	return ret;
 

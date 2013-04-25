@@ -21,11 +21,14 @@
 #include "realm-errors.h"
 #include "realm-invocation.h"
 #include "realm-kerberos.h"
+#include "realm-network.h"
 #include "realm-provider.h"
 #include "realm-settings.h"
 
 #include <glib/gi18n.h>
 #include <gio/gio.h>
+
+#define TIMEOUT_SECONDS 15
 
 G_DEFINE_TYPE (RealmProvider, realm_provider, G_TYPE_DBUS_OBJECT_SKELETON);
 
@@ -37,15 +40,20 @@ struct _RealmProviderPrivate {
 typedef struct {
 	RealmProvider *self;
 	GDBusMethodInvocation *invocation;
+	GVariant *options;
+	gchar *string;
+	guint timeout_id;
 } MethodClosure;
 
 static MethodClosure *
 method_closure_new (RealmProvider *self,
-                    GDBusMethodInvocation *invocation)
+                    GDBusMethodInvocation *invocation,
+                    GVariant *options)
 {
-	MethodClosure *closure = g_slice_new (MethodClosure);
+	MethodClosure *closure = g_slice_new0 (MethodClosure);
 	closure->self = g_object_ref (self);
 	closure->invocation = g_object_ref (invocation);
+	closure->options = g_variant_ref (options);
 	return closure;
 }
 
@@ -54,6 +62,9 @@ method_closure_free (MethodClosure *closure)
 {
 	g_object_unref (closure->self);
 	g_object_unref (closure->invocation);
+	g_variant_unref (closure->options);
+	g_free (closure->string);
+	g_assert (closure->timeout_id == 0);
 	g_slice_free (MethodClosure, closure);
 }
 
@@ -67,23 +78,31 @@ sort_configured_first (gconstpointer a,
 }
 
 static void
-on_discover_complete (GObject *source,
-                      GAsyncResult *result,
-                      gpointer user_data)
+return_discover_result (MethodClosure *closure,
+                        GList *realms,
+                        gint relevance,
+                        GError *error)
 {
-	MethodClosure *closure = user_data;
 	GCancellable *cancellable;
 	GVariant *retval;
-	GError *error = NULL;
 	GPtrArray *results;
 	const gchar *path;
-	GList *realms = NULL;
-	gint relevance;
 	GList *l;
 
-	cancellable = realm_invocation_get_cancellable (closure->invocation);
-	if (!g_cancellable_set_error_if_cancelled (cancellable, &error))
-		realms = realm_provider_discover_finish (closure->self, result, &relevance, &error);
+	/* Timeout was fired, cancel means timed out */
+	if (closure->timeout_id == 0) {
+		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+			g_clear_error (&error);
+
+	} else {
+		g_source_remove (closure->timeout_id);
+		closure->timeout_id = 0;
+
+		if (error == NULL) {
+			cancellable = realm_invocation_get_cancellable (closure->invocation);
+			g_cancellable_set_error_if_cancelled (cancellable, &error);
+		}
+	}
 
 	if (error == NULL) {
 		realms = g_list_sort (realms, sort_configured_first);
@@ -123,6 +142,66 @@ on_discover_complete (GObject *source,
 	method_closure_free (closure);
 }
 
+static void
+on_discover_complete (GObject *source,
+                      GAsyncResult *result,
+                      gpointer user_data)
+{
+	MethodClosure *method = user_data;
+	GError *error = NULL;
+	gint relevance;
+	GList *realms;
+
+	realms = realm_provider_discover_finish (method->self, result, &relevance, &error);
+	return_discover_result (method, realms, relevance, error);
+}
+
+static void
+on_discover_default (GObject *source,
+                     GAsyncResult *result,
+                     gpointer user_data)
+{
+	MethodClosure *method = user_data;
+	GError *error = NULL;
+
+	method->string = realm_network_get_dhcp_domain_finish (result, &error);
+	if (error != NULL) {
+		realm_diagnostics_error (method->invocation, error, "Couldn't get default domain from DHCP");
+		g_clear_error (&error);
+	}
+
+	if (method->string) {
+		g_strstrip (method->string);
+		if (g_str_equal (method->string, "")) {
+			g_free (method->string);
+			method->string = NULL;
+		}
+	}
+
+	/* Yay we have a default domain from DHCP, use it */
+	if (method->string) {
+		realm_provider_discover (method->self, method->string,
+		                         method->options, method->invocation,
+		                         on_discover_complete, method);
+
+	} else {
+		realm_diagnostics_info (method->invocation, "No default domain received via DHCP");
+		return_discover_result (method, NULL, 0, NULL);
+	}
+}
+
+static gboolean
+on_discover_timeout (gpointer user_data)
+{
+	MethodClosure *method = user_data;
+	method->timeout_id = 0;
+
+	realm_diagnostics_error (method->invocation, NULL,
+	                         "Discovery timed out after %d seconds", TIMEOUT_SECONDS);
+	g_cancellable_cancel (realm_invocation_get_cancellable (method->invocation));
+	return FALSE;
+}
+
 static gboolean
 realm_provider_handle_discover (RealmDbusProvider *provider,
                                 GDBusMethodInvocation *invocation,
@@ -131,9 +210,24 @@ realm_provider_handle_discover (RealmDbusProvider *provider,
                                 gpointer user_data)
 {
 	RealmProvider *self = REALM_PROVIDER (user_data);
+	GDBusConnection *connection;
+	MethodClosure *method;
 
-	realm_provider_discover (self, string, options, invocation, on_discover_complete,
-	                         method_closure_new (self, invocation));
+	method = method_closure_new (self, invocation, options);
+	method->timeout_id = g_timeout_add_seconds (TIMEOUT_SECONDS,
+	                                            on_discover_timeout, method);
+	method->string = g_strdup (string);
+	g_strstrip (method->string);
+
+	if (g_str_equal (string, "")) {
+		connection = g_dbus_method_invocation_get_connection (invocation);
+		realm_network_get_dhcp_domain_async (connection, on_discover_default,
+		                                     method);
+
+	} else {
+		realm_provider_discover (self, method->string, options, invocation,
+		                         on_discover_complete, method);
+	}
 
 	return TRUE;
 }

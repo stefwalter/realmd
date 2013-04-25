@@ -120,6 +120,9 @@ void                realm_kerberos_set_configured              (RealmKerberos *s
 void                realm_kerberos_set_required_package_sets   (RealmKerberos *self,
                                                                 const gchar **package_sets);
 
+gboolean            realm_kerberos_matches                     (RealmKerberos *self,
+                                                                const gchar *string);
+
 G_END_DECLS
 
 #endif /* __REALM_KERBEROS_H__ */

@@ -54,27 +54,27 @@ realm_all_provider_constructed (GObject *obj)
 }
 
 static void
-update_realms_property (RealmAllProvider *self)
+update_realms_property (RealmProvider *self)
 {
-	const gchar *const * paths;
-	GPtrArray *realms;
+	GPtrArray *paths;
+	GList *realms;
 	GList *l;
-	gint i;
 
-	realms = g_ptr_array_new ();
-	for (l = self->providers; l != NULL; l = g_list_next (l)) {
-		paths = realm_provider_get_realms (l->data);
-		for (i = 0; paths != NULL && paths[i] != NULL; i++)
-			g_ptr_array_add (realms, (gchar *)paths[i]);
-	}
+	realms = realm_provider_get_realms (self);
 
-	g_ptr_array_add (realms, NULL);
-	realm_provider_set_realms (REALM_PROVIDER (self), (const gchar **)realms->pdata);
-	g_ptr_array_free (realms, TRUE);
+	paths = g_ptr_array_new ();
+	for (l = realms; l != NULL; l = g_list_next (l))
+		g_ptr_array_add (paths, (gchar *)g_dbus_object_get_object_path (l->data));
+	g_ptr_array_add (paths, NULL);
+
+	g_list_free (realms);
+
+	realm_provider_set_realm_paths (REALM_PROVIDER (self), (const gchar **)paths->pdata);
+	g_ptr_array_free (paths, TRUE);
 }
 
 static void
-update_all_properties (RealmAllProvider *self)
+update_all_properties (RealmProvider *self)
 {
 	update_realms_property (self);
 }
@@ -84,7 +84,7 @@ on_provider_notify (GObject *obj,
                     GParamSpec *spec,
                     gpointer user_data)
 {
-	RealmAllProvider *self = REALM_ALL_PROVIDER (user_data);
+	RealmProvider *self = REALM_PROVIDER (user_data);
 	update_all_properties (self);
 }
 
@@ -262,6 +262,20 @@ realm_all_provider_discover_finish (RealmProvider *provider,
 	return realms;
 }
 
+static GList *
+realm_all_provider_get_realms (RealmProvider *provider)
+{
+	RealmAllProvider *self = REALM_ALL_PROVIDER (provider);
+	GList *realms = NULL;
+	GList *l;
+
+	for (l = self->providers; l != NULL; l = g_list_next (l))
+		realms = g_list_concat (realms, realm_provider_get_realms (l->data));
+
+	return realms;
+}
+
+
 static void
 realm_all_provider_finalize (GObject *obj)
 {
@@ -286,6 +300,7 @@ realm_all_provider_class_init (RealmAllProviderClass *klass)
 
 	provider_class->discover_async = realm_all_provider_discover_async;
 	provider_class->discover_finish = realm_all_provider_discover_finish;
+	provider_class->get_realms = realm_all_provider_get_realms;
 }
 
 RealmProvider *
@@ -327,6 +342,6 @@ realm_all_provider_register (RealmProvider *all_provider,
 	self = REALM_ALL_PROVIDER (all_provider);
 	self->providers = g_list_prepend (self->providers, g_object_ref (provider));
 
-	update_all_properties (self);
+	update_all_properties (all_provider);
 	g_signal_connect (provider, "notify", G_CALLBACK (on_provider_notify), self);
 }

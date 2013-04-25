@@ -55,6 +55,8 @@ struct _RealmProviderClass {
 	                                  GAsyncResult *result,
 	                                  gint *relevance,
 	                                  GError **error);
+
+	GList *      (* get_realms)      (RealmProvider *provider);
 };
 
 GType                    realm_provider_get_type                 (void) G_GNUC_CONST;
@@ -87,9 +89,9 @@ GList *                  realm_provider_discover_finish          (RealmProvider 
 void                     realm_provider_set_name                 (RealmProvider *self,
                                                                   const gchar *value);
 
-const gchar **           realm_provider_get_realms               (RealmProvider *self);
+GList *                  realm_provider_get_realms               (RealmProvider *self);
 
-void                     realm_provider_set_realms               (RealmProvider *self,
+void                     realm_provider_set_realm_paths          (RealmProvider *self,
                                                                   const gchar **value);
 
 gboolean                 realm_provider_match_software           (GVariant *options,

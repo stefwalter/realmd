@@ -779,6 +779,27 @@ realm_kerberos_set_domain_name (RealmKerberos *self,
 	realm_dbus_kerberos_set_domain_name (self->pv->kerberos_iface, value);
 }
 
+gboolean
+realm_kerberos_matches (RealmKerberos *self,
+                        const gchar *string)
+{
+	const gchar *value;
+
+	g_return_val_if_fail (REALM_IS_KERBEROS (self), FALSE);
+
+	value = realm_dbus_realm_get_name (self->pv->realm_iface);
+	if (value != NULL && g_utf8_collate (value, string) == 0)
+		return TRUE;
+	value = realm_dbus_kerberos_get_domain_name (self->pv->kerberos_iface);
+	if (value != NULL && g_utf8_collate (value, string) == 0)
+		return TRUE;
+	value = realm_dbus_kerberos_get_realm_name (self->pv->kerberos_iface);
+	if (value != NULL && g_utf8_collate (value, string) == 0)
+		return TRUE;
+
+	return FALSE;
+}
+
 void
 realm_kerberos_set_suggested_admin (RealmKerberos *self,
                                     const gchar *value)

@@ -77,6 +77,25 @@ sort_configured_first (gconstpointer a,
 	return a_val - b_val;
 }
 
+static GList *
+discover_configured (RealmProvider *self,
+                     const gchar *string)
+{
+	GList *matched = NULL;
+	GList *realms;
+	GList *l;
+
+	realms = realm_provider_get_realms (self);
+	for (l = realms; l != NULL; l = g_list_next (l)) {
+		if (realm_kerberos_is_configured (l->data) &&
+		    realm_kerberos_matches (l->data, string))
+			matched = g_list_prepend (matched, g_object_ref (l->data));
+	}
+	g_list_free (realms);
+
+	return matched;
+}
+
 static void
 return_discover_result (MethodClosure *closure,
                         GList *realms,
@@ -104,6 +123,12 @@ return_discover_result (MethodClosure *closure,
 		}
 	}
 
+	/* If no realms were discovered, try matching configured realms */
+	if (error == NULL && realms == NULL && closure->string) {
+		realms = discover_configured (closure->self, closure->string);
+		relevance = 20;
+	}
+
 	if (error == NULL) {
 		realms = g_list_sort (realms, sort_configured_first);
 		results = g_ptr_array_new ();
@@ -111,7 +136,6 @@ return_discover_result (MethodClosure *closure,
 			path = g_dbus_object_get_object_path (l->data);
 			g_ptr_array_add (results, g_variant_new_object_path (path));
 		}
-		g_list_free_full (realms, g_object_unref);
 
 		retval = g_variant_new ("(i@ao)", relevance,
 		                        g_variant_new_array (G_VARIANT_TYPE ("o"),
@@ -139,6 +163,7 @@ return_discover_result (MethodClosure *closure,
 		g_error_free (error);
 	}
 
+	g_list_free_full (realms, g_object_unref);
 	method_closure_free (closure);
 }
 
@@ -240,6 +265,20 @@ realm_provider_authorize_method (GDBusObjectSkeleton *skeleton,
 	return realm_invocation_authorize (invocation);
 }
 
+static GList *
+realm_provider_real_get_realms (RealmProvider *self)
+{
+	GHashTableIter iter;
+	GList *realms = NULL;
+	RealmKerberos *realm;
+
+	g_hash_table_iter_init (&iter, self->pv->realms);
+	while (g_hash_table_iter_next (&iter, NULL, (gpointer *)&realm))
+		realms = g_list_prepend (realms, realm);
+
+	return realms;
+}
+
 static void
 realm_provider_init (RealmProvider *self)
 {
@@ -283,7 +322,7 @@ update_realms_property (RealmProvider *self)
 
 	g_ptr_array_add (realms, NULL);
 
-	realm_provider_set_realms (self, (const gchar **)realms->pdata);
+	realm_provider_set_realm_paths (self, (const gchar **)realms->pdata);
 	g_ptr_array_free (realms, TRUE);
 }
 
@@ -306,6 +345,8 @@ realm_provider_class_init (RealmProviderClass *klass)
 	object_class->constructed = realm_provider_constructed;
 	object_class->finalize = realm_provider_finalize;
 	skeleton_class->authorize_method = realm_provider_authorize_method;
+
+	klass->get_realms = realm_provider_real_get_realms;
 
 	g_type_class_add_private (klass, sizeof (RealmProviderPrivate));
 }
@@ -376,16 +417,21 @@ realm_provider_set_name (RealmProvider *self,
 	realm_dbus_provider_set_name (self->pv->provider_iface, value);
 }
 
-const gchar **
+GList *
 realm_provider_get_realms (RealmProvider *self)
 {
+	RealmProviderClass *klass;
+
 	g_return_val_if_fail (REALM_IS_PROVIDER (self), NULL);
-	return (const gchar **)realm_dbus_provider_get_realms (self->pv->provider_iface);
+	klass = REALM_PROVIDER_GET_CLASS (self);
+	g_return_val_if_fail (klass->get_realms != NULL, NULL);
+
+	return (klass->get_realms) (self);
 }
 
 void
-realm_provider_set_realms (RealmProvider *self,
-                           const gchar **value)
+realm_provider_set_realm_paths (RealmProvider *self,
+                                const gchar **value)
 {
 	g_return_if_fail (REALM_IS_PROVIDER (self));
 	g_return_if_fail (value != NULL);

@@ -343,6 +343,7 @@ realm_client_discover (RealmClient *self,
                        const gchar *server_software,
                        const gchar *membership_software,
                        const gchar *dbus_interface,
+                       gboolean *had_mismatched,
                        GError **error)
 {
 	GDBusObjectManager *manager;
@@ -390,7 +391,10 @@ realm_client_discover (RealmClient *self,
 	for (i = 0; realm_paths[i] != NULL; i++) {
 		iface = g_dbus_object_manager_get_interface (manager, realm_paths[i],
 		                                             dbus_interface);
-		if (iface != NULL) {
+		if (iface == NULL) {
+			if (had_mismatched)
+				*had_mismatched = TRUE;
+		} else {
 			g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (iface), G_MAXINT);
 			realms = g_list_prepend (realms, iface);
 		}

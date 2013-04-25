@@ -44,6 +44,7 @@ GList *                        realm_client_discover                 (RealmClien
                                                                       const gchar *server_software,
                                                                       const gchar *membership_software,
                                                                       const gchar *dbus_interface,
+                                                                      gboolean *had_mismatched,
                                                                       GError **error);
 
 RealmDbusRealm *               realm_client_get_realm                (RealmClient *self,

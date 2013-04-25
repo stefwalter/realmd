@@ -181,6 +181,7 @@ perform_join (RealmClient *client,
               RealmJoinArgs *args)
 {
 	RealmDbusKerberosMembership *membership;
+	gboolean had_mismatched = FALSE;
 	gboolean try_other = FALSE;
 	RealmDbusRealm *realm;
 	GError *error = NULL;
@@ -190,13 +191,17 @@ perform_join (RealmClient *client,
 
 	realms = realm_client_discover (client, string, args->client_software,
 	                                args->server_software, args->membership_software,
-	                                REALM_DBUS_KERBEROS_MEMBERSHIP_INTERFACE, &error);
+	                                REALM_DBUS_KERBEROS_MEMBERSHIP_INTERFACE,
+	                                &had_mismatched, &error);
 
 	if (error != NULL) {
-		realm_handle_error(error, _("Couldn't discover realm"));
+		realm_handle_error(error, NULL);
 		return 1;
 	} else if (realms == NULL) {
-		realm_handle_error(NULL, _("No such realm found"));
+		if (had_mismatched)
+			realm_handle_error (NULL, _("Cannot join this realm"));
+		else
+			realm_handle_error(NULL, _("No such realm found"));
 		return 1;
 	}
 

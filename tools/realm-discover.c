@@ -126,7 +126,7 @@ perform_discover (RealmClient *client,
 
 	realms = realm_client_discover (client, string, client_software,
 	                                server_software, membership_software,
-	                                REALM_DBUS_REALM_INTERFACE, &error);
+	                                REALM_DBUS_REALM_INTERFACE, NULL, &error);
 
 	if (error != NULL) {
 		realm_handle_error (error, _("Couldn't discover realms"));

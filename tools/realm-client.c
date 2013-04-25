@@ -392,6 +392,7 @@ realm_client_discover (RealmClient *self,
 		}
 	}
 
+	g_strfreev (realm_paths);
 	return g_list_reverse (realms);
 }
 

@@ -105,6 +105,8 @@ join_closure_init (EggTask *task,
 		}
 
 		close (temp_fd);
+	} else {
+		g_warning ("Couldn't create temp file in: %s", g_get_tmp_dir ());
 	}
 
 	return join;

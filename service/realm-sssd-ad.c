@@ -160,17 +160,19 @@ configure_sssd_for_domain (RealmIniConfig *config,
                            GError **error)
 {
 	const gchar *access_provider;
+	gboolean qualify;
 	gboolean ret;
 	gchar *section;
 	gchar *home;
 
 	home = realm_sssd_build_default_home (realm_settings_string ("users", "default-home"));
+	qualify = realm_options_qualify_names (disco->domain_name);
 
 	ret = realm_sssd_config_add_domain (config, disco->workgroup, error,
 	                                    "re_expression", "(?P<domain>[^\\\\]+)\\\\(?P<name>[^\\\\]+)",
-	                                    "full_name_format", "%2$s\\%1$s",
+	                                    "full_name_format", qualify ? "%2$s\\%1$s" : "%1$s",
 	                                    "cache_credentials", "True",
-	                                    "use_fully_qualified_names", "True",
+		                            "use_fully_qualified_names", qualify ? "True" : "False",
 
 	                                    "id_provider", "ad",
 

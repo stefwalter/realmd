@@ -299,5 +299,23 @@ manage-system = no
 
 	</section>
 
+	<section>
+
+		<title>fully-qualified-names</title>
+
+		<para>This option is on by default. If turned off then realm
+		user and group names are not qualified their name. This may
+		cause them to conflict with local user and group names.</para>
+
+		<informalexample>
+<programlisting>
+[domain.example.com]
+fully-qualified-names = no
+# fully-qualified-names = yes
+</programlisting>
+	</informalexample>
+
+	</section>
+
 </section>
 </chapter>

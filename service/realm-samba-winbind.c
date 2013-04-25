@@ -19,6 +19,7 @@
 #include "realm-daemon.h"
 #include "realm-diagnostics.h"
 #include "realm-errors.h"
+#include "realm-options.h"
 #include "realm-samba-config.h"
 #include "realm-samba-winbind.h"
 #include "realm-settings.h"
@@ -71,7 +72,7 @@ on_enable_do_nss (GObject *source,
 
 void
 realm_samba_winbind_configure_async (RealmIniConfig *config,
-                                     gboolean automatic_mapping,
+                                     const gchar *domain_name,
                                      GDBusMethodInvocation *invocation,
                                      GAsyncReadyCallback callback,
                                      gpointer user_data)
@@ -94,10 +95,11 @@ realm_samba_winbind_configure_async (RealmIniConfig *config,
 		                      "winbind enum groups", "no",
 		                      "winbind offline logon", "yes",
 		                      "winbind refresh tickets", "yes",
+		                      "winbind use default domain", realm_options_qualify_names (domain_name )? "no" : "yes",
 		                      "template shell", realm_settings_string ("users", "default-shell"),
 		                      NULL);
 
-		if (automatic_mapping) {
+		if (realm_options_automatic_mapping (domain_name)) {
 			realm_ini_config_set (config, REALM_SAMBA_CONFIG_GLOBAL,
 			                      "idmap uid", "10000-2000000",
 			                      "idmap gid", "10000-2000000",

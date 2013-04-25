@@ -57,3 +57,36 @@ realm_samba_config_new (GError **error)
 {
 	return realm_samba_config_new_with_flags (REALM_INI_NONE, error);
 }
+
+gboolean
+realm_samba_config_get_boolean (RealmIniConfig *config,
+                                const gchar *section,
+                                const gchar *key,
+                                gboolean defalt)
+{
+	gchar *string = NULL;
+	gboolean ret;
+
+	string = realm_ini_config_get (config, section, key);
+	if (string == NULL) {
+		ret = defalt;
+
+	} else if (g_ascii_strcasecmp (string, "true") == 0 ||
+	           g_ascii_strcasecmp (string, "1") == 0 ||
+	           g_ascii_strcasecmp (string, "yes") == 0) {
+		ret = TRUE;
+
+	} else if (g_ascii_strcasecmp (string, "false") == 0 ||
+	           g_ascii_strcasecmp (string, "0") == 0 ||
+	           g_ascii_strcasecmp (string, "no") == 0) {
+		ret = FALSE;
+
+	} else {
+		g_message ("Unexpected boolean value in samba config [%s] %s = %s\n",
+		           section, key, string);
+		ret = defalt;
+	}
+
+	g_free (string);
+	return ret;
+}

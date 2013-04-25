@@ -34,6 +34,8 @@ const gchar *  realm_options_user_principal           (GVariant *options,
 
 gboolean       realm_options_automatic_mapping        (const gchar *realm_name);
 
+gboolean       realm_options_qualify_names            (const gchar *realm_name);
+
 G_END_DECLS
 
 #endif /* __REALM_OPTIONS_H__ */

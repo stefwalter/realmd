@@ -94,3 +94,16 @@ realm_options_automatic_mapping (const gchar *realm_name)
 
 	return mapping;
 }
+
+gboolean
+realm_options_qualify_names (const gchar *realm_name)
+{
+	gchar *section;
+	gboolean qualify;
+
+	section = g_utf8_casefold (realm_name, -1);
+	qualify = realm_settings_boolean (realm_name, "fully-qualified-names", TRUE);
+	g_free (section);
+
+	return qualify;
+}

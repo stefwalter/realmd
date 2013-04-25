@@ -28,6 +28,11 @@ RealmIniConfig *    realm_samba_config_new                      (GError **error)
 RealmIniConfig *    realm_samba_config_new_with_flags           (RealmIniFlags flags,
                                                                  GError **error);
 
+gboolean            realm_samba_config_get_boolean              (RealmIniConfig *config,
+                                                                 const gchar *section,
+                                                                 const gchar *key,
+                                                                 gboolean defalt);
+
 G_END_DECLS
 
 #endif /* __REALM_SAMBA_CONFIG_H__ */

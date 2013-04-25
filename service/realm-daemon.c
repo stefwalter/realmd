@@ -491,7 +491,8 @@ main (int argc,
 	g_free (path);
 
 	/* Setup our TMPDIR to our own cache directory */
-	g_setenv ("TMPDIR", CACHEDIR, TRUE);
+	if (g_file_test (CACHEDIR, G_FILE_TEST_IS_DIR))
+		g_setenv ("TMPDIR", CACHEDIR, TRUE);
 
 	context = g_option_context_new ("realmd");
 	g_option_context_add_main_entries (context, option_entries, NULL);

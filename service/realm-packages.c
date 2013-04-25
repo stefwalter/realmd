@@ -19,6 +19,7 @@
 #include "realm-daemon.h"
 #include "realm-errors.h"
 #include "realm-invocation.h"
+#include "realm-options.h"
 #include "realm-packages.h"
 #include "realm-settings.h"
 
@@ -29,8 +30,9 @@
 
 typedef struct {
 	PkTask *task;
-	GHashTable *packages;
+	GHashTable *check;
 	GDBusMethodInvocation *invocation;
+	gboolean automatic;
 } InstallClosure;
 
 static void
@@ -39,8 +41,8 @@ install_closure_free (gpointer data)
 	InstallClosure *install = data;
 	g_object_ref (install->task);
 	g_clear_object (&install->invocation);
-	if (install->packages)
-		g_hash_table_destroy (install->packages);
+	if (install->check)
+		g_hash_table_destroy (install->check);
 	g_slice_free (InstallClosure, install);
 }
 
@@ -129,56 +131,48 @@ package_names_to_list (GHashTable *packages)
 }
 
 static gchar **
-extract_results (PkResults *results,
-                 GDBusMethodInvocation *invocation,
-                 GHashTable *require,
+extract_results (InstallClosure *install,
+                 PkResults *results,
+                 GHashTable *names,
                  GError **error)
 {
 	GPtrArray *packages;
 	GPtrArray *messages;
 	PkPackage *package;
 	GPtrArray *ids;
-	GString *installing;
 	const gchar *name;
 	gchar *missing;
 	guint i;
 
 	messages = pk_results_get_message_array (results);
 	for (i = 0; i < messages->len; i++) {
-		realm_diagnostics_info (invocation, "%s",
+		realm_diagnostics_info (install->invocation, "%s",
 		                        pk_message_get_details (messages->pdata[i]));
 	}
 	g_ptr_array_free (messages, TRUE);
 
 	packages = pk_results_get_package_array (results);
 	ids = g_ptr_array_new_with_free_func (g_free);
-	installing = g_string_new ("");
 
 	for (i = 0; i < packages->len; i++) {
 		package = PK_PACKAGE (packages->pdata[i]);
 		name = pk_package_get_name (package);
-		g_hash_table_remove (require, name);
+		g_hash_table_remove (install->check, name);
 		if (pk_package_get_info (package) != PK_INFO_ENUM_INSTALLED) {
 			g_ptr_array_add (ids, g_strdup (pk_package_get_id (package)));
-			if (installing->len)
-				g_string_append (installing, ", ");
-			g_string_append (installing, name);
+			g_hash_table_add (names, g_strdup (name));
 		}
 	}
 
 	g_ptr_array_free (packages, TRUE);
 
-	if (g_hash_table_size (require) == 0) {
-		if (ids->len > 0)
-			realm_diagnostics_info (invocation, "Installing: %s", installing->str);
+	if (g_hash_table_size (install->check) == 0) {
 		g_ptr_array_add (ids, NULL);
-		g_string_free (installing, TRUE);
 		return (gchar **)g_ptr_array_free (ids, FALSE);
 
 	/* If not all packages were found, then this is an error */
 	} else {
-		g_string_free (installing, TRUE);
-		missing = package_names_to_list (require);
+		missing = package_names_to_list (install->check);
 		g_set_error (error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             _("The following packages are not available for installation: %s"), missing);
 		g_free (missing);
@@ -216,15 +210,18 @@ on_install_resolved (GObject *source,
 	EggTask *task = EGG_TASK (user_data);
 	InstallClosure *install = egg_task_get_task_data (task);
 	gchar **package_ids = NULL;
+	GHashTable *names;
 	GCancellable *cancellable;
 	GError *error = NULL;
 	PkResults *results;
 	gchar *remote;
 	gchar *missing;
 
+	names = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+
 	results = pk_task_generic_finish (install->task, result, &error);
 	if (error == NULL) {
-		package_ids = extract_results (results, install->invocation, install->packages, &error);
+		package_ids = extract_results (install, results, names, &error);
 		g_object_unref (results);
 	}
 
@@ -232,15 +229,21 @@ on_install_resolved (GObject *source,
 		if (package_ids == NULL || *package_ids == NULL) {
 			egg_task_return_boolean (task, TRUE);
 
+		} else if (!install->automatic) {
+			missing = package_names_to_list (names);
+			g_set_error (&error, REALM_ERROR, REALM_ERROR_FAILED,
+			             _("Necessary packages are not installed: %s"), missing);
+			g_free (missing);
+
 		} else {
 			cancellable = realm_invocation_get_cancellable (install->invocation);
 			pk_task_install_packages_async (install->task, package_ids, cancellable,
 			                                on_install_progress, install,
 			                                on_install_installed, g_object_ref (task));
 		}
+	}
 
-
-	} else {
+	if (error != NULL) {
 		/*
 		 * This is after our first interaction with package-kit. If it's
 		 * not installed then we'll get a standard DBus error that it
@@ -257,7 +260,7 @@ on_install_resolved (GObject *source,
 				g_dbus_error_strip_remote_error (error);
 				realm_diagnostics_error (install->invocation, error, "PackageKit not available");
 				g_clear_error (&error);
-				missing = package_names_to_list (install->packages);
+				missing = package_names_to_list (install->check);
 				g_set_error (&error, REALM_ERROR, REALM_ERROR_FAILED,
 				             _("Necessary packages are not installed: %s"), missing);
 				g_free (missing);
@@ -268,6 +271,7 @@ on_install_resolved (GObject *source,
 		egg_task_return_error (task, error);
 	}
 
+	g_hash_table_unref (names);
 	g_strfreev (package_ids);
 	g_object_unref (task);
 }
@@ -350,6 +354,7 @@ realm_packages_expand_sets (const gchar **package_sets)
 void
 realm_packages_install_async (const gchar **package_sets,
                               GDBusMethodInvocation *invocation,
+                              GVariant *options,
                               GAsyncReadyCallback callback,
                               gpointer user_data)
 {
@@ -370,20 +375,23 @@ realm_packages_install_async (const gchar **package_sets,
 	task = egg_task_new (NULL, NULL, callback, user_data);
 	install = g_slice_new0 (InstallClosure);
 	install->task = pk_task_new ();
+	install->automatic = realm_options_automatic_install (options);
 	pk_task_set_interactive (install->task, FALSE);
 	pk_client_set_background (PK_CLIENT (install->task), FALSE);
 	install->invocation = invocation ? g_object_ref (invocation) : NULL;
 	egg_task_set_task_data (task, install, install_closure_free);
 
-	if (unconditional) {
+	if (realm_daemon_is_install_mode ()) {
+		have = TRUE;
+		realm_diagnostics_info (invocation, "Assuming packages are installed");
+
+	} else if (unconditional) {
 		have = FALSE;
 		realm_diagnostics_info (invocation, "Unconditionally checking packages");
 
 	} else {
 		have = realm_packages_check_paths ((const gchar **)required_files, invocation);
-		if (required_files[0] == NULL) {
-			realm_diagnostics_info (invocation, "Assuming packages installed");
-		} else {
+		if (required_files[0] != NULL) {
 			string = g_strjoinv (", ", required_files);
 			realm_diagnostics_info (invocation, "Required files: %s", string);
 			g_free (string);
@@ -405,9 +413,9 @@ realm_packages_install_async (const gchar **package_sets,
 		 * So we make a note of the ones we requested here, to compare against
 		 * what we get back.
 		 */
-		install->packages = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+		install->check = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 		for (i = 0; packages[i] != NULL; i++)
-			g_hash_table_add (install->packages, g_strdup (packages[i]));
+			g_hash_table_add (install->check, g_strdup (packages[i]));
 
 		pk_task_resolve_async (install->task,
 		                       pk_filter_bitfield_from_string ("arch"),

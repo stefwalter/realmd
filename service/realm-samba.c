@@ -59,10 +59,6 @@ static const gchar *SAMBA_PACKAGES[] = {
 	NULL
 };
 
-const gchar *NO_PACKAGES[] = {
-	NULL
-};
-
 static void realm_samba_kerberos_membership_iface (RealmKerberosMembershipIface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (RealmSamba, realm_samba, REALM_TYPE_KERBEROS,
@@ -263,7 +259,6 @@ realm_samba_join_async (RealmKerberosMembership *membership,
 	RealmSamba *self = REALM_SAMBA (realm);
 	EggTask *task;
 	EnrollClosure *enroll;
-	const gchar **packages;
 	GError *error = NULL;
 	gchar *enrolled;
 
@@ -285,11 +280,7 @@ realm_samba_join_async (RealmKerberosMembership *membership,
 		egg_task_return_error (task, error);
 
 	} else {
-		if (realm_options_assume_packages (options))
-			packages = NO_PACKAGES;
-		else
-			packages = SAMBA_PACKAGES;
-		realm_packages_install_async (packages, enroll->invocation,
+		realm_packages_install_async (SAMBA_PACKAGES, enroll->invocation, options,
 		                              on_install_do_join, g_object_ref (task));
 	}
 

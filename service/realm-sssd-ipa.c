@@ -44,10 +44,6 @@ typedef struct {
 	RealmSssdClass parent_class;
 } RealmSssdIpaClass;
 
-static const gchar *NO_PACKAGES[] = {
-	NULL,
-};
-
 static const gchar *IPA_PACKAGES[] = {
 	REALM_DBUS_IDENTIFIER_FREEIPA,
 	REALM_DBUS_IDENTIFIER_SSSD,
@@ -297,7 +293,6 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 	const gchar *domain_name;
 	const gchar *computer_ou;
 	const gchar *software;
-	const gchar **packages;
 	GPtrArray *argv;
 
 	domain_name = realm_kerberos_get_name (realm);
@@ -326,10 +321,6 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 		                           _("A domain with this name is already configured"));
 
 	} else {
-		packages = IPA_PACKAGES;
-		if (realm_options_assume_packages (options))
-			packages = NO_PACKAGES;
-
 		disco = realm_kerberos_get_disco (realm);
 		g_return_if_fail (disco != NULL);
 
@@ -384,7 +375,7 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 		g_ptr_array_add (argv, NULL);
 		enroll->argv = argv;
 
-		realm_packages_install_async (packages, invocation,
+		realm_packages_install_async (IPA_PACKAGES, invocation, options,
 		                              on_install_do_join, g_object_ref (task));
 	}
 

@@ -128,11 +128,6 @@ realm_build_options (const gchar *first,
 
 	va_end (va);
 
-	if (arg_install) {
-		option = g_variant_new ("{sv}", "assume-packages", g_variant_new_boolean (TRUE));
-		g_ptr_array_add (opts, option);
-	}
-
 	if (!realm_operation_id) {
 		realm_operation_id = g_strdup_printf ("r%lld.%d",
 		                                (long long int)g_get_monotonic_time () / G_TIME_SPAN_SECOND,

@@ -613,9 +613,6 @@
 		    <listitem><para><literal>user-principal</literal>: a string
 		      containing an kerberos user principal name to be set on the
 		      computer account</para></listitem>
-		    <listitem><para><literal>assume-packages</literal>: a boolean
-		      which makes the join assume that all needed
-		      software packages have already been installed</para></listitem>
 		    <listitem><para><literal>membership-software</literal>: a string
 		      containing the membership software identifier that the returned
 		      realms should match.</para></listitem>

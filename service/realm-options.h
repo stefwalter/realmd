@@ -24,7 +24,7 @@ G_BEGIN_DECLS
 gboolean       realm_options_manage_system            (GVariant *options,
                                                        const gchar *realm_name);
 
-gboolean       realm_options_assume_packages          (GVariant *options);
+gboolean       realm_options_automatic_install        (GVariant *options);
 
 const gchar *  realm_options_computer_ou              (GVariant *options,
                                                        const gchar *realm_name);

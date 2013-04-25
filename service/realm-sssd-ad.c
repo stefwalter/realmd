@@ -62,10 +62,6 @@ static const gchar *ALL_PACKAGES[] = {
 	NULL
 };
 
-static const gchar *NO_PACKAGES[] = {
-	NULL,
-};
-
 static void realm_sssd_ad_kerberos_membership_iface (RealmKerberosMembershipIface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (RealmSssdAd, realm_sssd_ad, REALM_TYPE_SSSD,
@@ -400,9 +396,7 @@ realm_sssd_ad_join_async (RealmKerberosMembership *membership,
 
 	/* Prepared successfully without an error */
 	} else {
-		if (realm_options_assume_packages (options))
-			join->packages = NO_PACKAGES;
-		realm_packages_install_async (join->packages, join->invocation,
+		realm_packages_install_async (join->packages, join->invocation, options,
 		                              on_install_do_join, g_object_ref (task));
 	}
 

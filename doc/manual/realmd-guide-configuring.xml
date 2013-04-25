@@ -107,6 +107,29 @@ os-version = 9.9.9.9.9
 
 	</section>
 
+<section id="guide-configuring-service">
+	<title>service</title>
+	<para>These options should go in an <option>[service]</option>
+	section of the <filename>/etc/realmd.conf</filename> file. Only
+	specify the settings you wish to override.</para>
+
+	<section>
+		<title>automatic-install</title>
+
+		<para>Set this to <parameter>no</parameter> to disable automatic
+		installation of packages via package-kit.</para>
+
+		<informalexample>
+<programlisting language="js">
+[service]
+automatic-install = no
+# automatic-install = yes
+</programlisting>
+		</informalexample>
+	</section>
+
+</section>
+
 	<section id="guide-configuring-users">
 		<title>user</title>
 		<para>These options should go in an <option>[users]</option>

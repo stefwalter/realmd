@@ -19,14 +19,9 @@
 #include "realm-settings.h"
 
 gboolean
-realm_options_assume_packages (GVariant *options)
+realm_options_automatic_install (GVariant *options)
 {
-	gboolean assume;
-
-	if (!g_variant_lookup (options, REALM_DBUS_OPTION_ASSUME_PACKAGES, "b", &assume))
-		assume = FALSE;
-
-	return assume;
+	return realm_settings_boolean ("service", "automatic-install", TRUE);
 }
 
 gboolean

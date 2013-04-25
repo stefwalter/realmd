@@ -293,6 +293,7 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 	RealmSssd *sssd = REALM_SSSD (realm);
 	EggTask *task;
 	EnrollClosure *enroll;
+	RealmDisco *disco;
 	const gchar *domain_name;
 	const gchar *computer_ou;
 	const gchar *software;
@@ -329,15 +330,25 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 		if (realm_options_assume_packages (options))
 			packages = NO_PACKAGES;
 
+		disco = realm_kerberos_get_disco (realm);
+		g_return_if_fail (disco != NULL);
+
 		argv = g_ptr_array_new ();
 		push_arg (argv, realm_settings_string ("paths", "ipa-client-install"));
 		push_arg (argv, "--domain");
-		push_arg (argv, realm_kerberos_get_name (realm));
+		push_arg (argv, disco->domain_name);
 		push_arg (argv, "--realm");
-		push_arg (argv, realm_kerberos_get_realm_name (realm));
+		push_arg (argv, disco->kerberos_realm);
 		push_arg (argv, "--mkhomedir");
 		push_arg (argv, "--enable-dns-updates");
 		push_arg (argv, "--unattended");
+
+		/* If the caller specified a server directly */
+		if (disco->explicit_server) {
+			push_arg (argv, "--server");
+			push_arg (argv, disco->explicit_server);
+			push_arg (argv, "--fixed-primary");
+		}
 
 		switch (cred->type) {
 		case REALM_CREDENTIAL_SECRET:

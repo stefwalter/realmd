@@ -51,6 +51,9 @@ $ <command>realm discover --verbose domain.example.com</command>
 ...
 </screen>
 		</informalexample>
+
+		<para>In addition an Active Directory domain controller's host name
+		or IP address may be specified directly.</para>
 	</section>
 
 	<section id="guide-active-directory-client">
@@ -143,6 +146,10 @@ $ <command>realm join --verbose domain.example.com</command>
 			<listitem><para>Configures the SSSD or Winbind services, and restarts and enables them as appropriate.</para></listitem>
 			<listitem><para>Enables domain users in <filename>/etc/nsswitch.conf</filename></para></listitem>
 		</itemizedlist>
+
+		<para>In addition an Active Directory domain controller's host name
+		or IP address may be specified to join via that domain controller
+		directly.</para>
 
 		<para>After the join operation is complete, domain accounts should
 		be usable locally, although logins using domain accounts are

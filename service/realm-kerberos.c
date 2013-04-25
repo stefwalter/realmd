@@ -669,6 +669,10 @@ RealmDisco *
 realm_kerberos_get_disco (RealmKerberos *self)
 {
 	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
+	if (!self->pv->disco) {
+		self->pv->disco = realm_disco_new (realm_kerberos_get_name (self));
+		self->pv->disco->kerberos_realm = g_strdup (realm_kerberos_get_realm_name (self));
+	}
 	return self->pv->disco;
 }
 

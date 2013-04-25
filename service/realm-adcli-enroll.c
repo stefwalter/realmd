@@ -31,7 +31,6 @@ on_join_process (GObject *source,
 {
 	EggTask *task = EGG_TASK (user_data);
 	GError *error = NULL;
-	RealmIniConfig *config;
 	GString *output = NULL;
 	gint status;
 
@@ -53,11 +52,8 @@ on_join_process (GObject *source,
 		}
 	}
 
-	/* Because of --print-details, we can parse the output */
 	if (error == NULL) {
-		config = realm_ini_config_new (REALM_INI_NONE);
-		realm_ini_config_read_string (config, output->str);
-		egg_task_return_pointer (task, config, g_object_unref);
+		egg_task_return_boolean (task, TRUE);
 
 	} else {
 		egg_task_return_error (task, error);
@@ -69,7 +65,7 @@ on_join_process (GObject *source,
 }
 
 void
-realm_adcli_enroll_join_async (const gchar *realm,
+realm_adcli_enroll_join_async (RealmDisco *disco,
                                RealmCredential *cred,
                                GVariant *options,
                                GDBusMethodInvocation *invocation,
@@ -87,7 +83,7 @@ realm_adcli_enroll_join_async (const gchar *realm,
 	gchar *upn_arg = NULL;
 
 	g_return_if_fail (cred != NULL);
-	g_return_if_fail (realm != NULL);
+	g_return_if_fail (disco != NULL);
 	g_return_if_fail (invocation != NULL);
 
 	task = egg_task_new (NULL, NULL, callback, user_data);
@@ -97,11 +93,17 @@ realm_adcli_enroll_join_async (const gchar *realm,
 	g_ptr_array_add (args, (gpointer)realm_settings_path ("adcli"));
 	g_ptr_array_add (args, "join");
 	g_ptr_array_add (args, "--verbose");
-	g_ptr_array_add (args, "--show-details");
 	g_ptr_array_add (args, "--domain");
-	g_ptr_array_add (args, (gpointer)realm);
+	g_ptr_array_add (args, (gpointer)disco->domain_name);
+	g_ptr_array_add (args, "--domain-realm");
+	g_ptr_array_add (args, (gpointer)disco->kerberos_realm);
 
-	computer_ou = realm_options_computer_ou (options, realm);
+	if (disco->explicit_server) {
+		g_ptr_array_add (args, "--domain-controller");
+		g_ptr_array_add (args, (gpointer)disco->explicit_server);
+	}
+
+	computer_ou = realm_options_computer_ou (options, disco->domain_name);
 	if (computer_ou) {
 		g_ptr_array_add (args, "--computer-ou");
 		g_ptr_array_add (args, (gpointer)computer_ou);
@@ -146,7 +148,7 @@ realm_adcli_enroll_join_async (const gchar *realm,
 		break;
 	}
 
-	upn = realm_options_user_principal (options, realm);
+	upn = realm_options_user_principal (options, disco->domain_name);
 	if (upn) {
 		if (g_str_equal (upn, "")) {
 			g_ptr_array_add (args, "--user-principal");
@@ -174,19 +176,8 @@ realm_adcli_enroll_join_async (const gchar *realm,
 
 gboolean
 realm_adcli_enroll_join_finish (GAsyncResult *result,
-                                gchar **workgroup,
                                 GError **error)
 {
-	RealmIniConfig *config;
-
 	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
-
-	config = egg_task_propagate_pointer (EGG_TASK (result), error);
-	if (config) {
-		*workgroup = realm_ini_config_get (config, "domain", "domain-short");
-		g_object_unref (config);
-		return TRUE;
-	}
-
-	return FALSE;
+	return egg_task_propagate_boolean (EGG_TASK (result), error);
 }

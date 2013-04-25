@@ -26,19 +26,17 @@
 
 G_BEGIN_DECLS
 
-void               realm_samba_enroll_join_async           (const gchar *realm,
+void               realm_samba_enroll_join_async           (RealmDisco *disco,
                                                             RealmCredential *cred,
                                                             GVariant *options,
-                                                            RealmDisco *disco,
                                                             GDBusMethodInvocation *invocation,
                                                             GAsyncReadyCallback callback,
                                                             gpointer user_data);
 
 gboolean           realm_samba_enroll_join_finish          (GAsyncResult *result,
-                                                            GHashTable **settings,
                                                             GError **error);
 
-void               realm_samba_enroll_leave_async          (const gchar *realm,
+void               realm_samba_enroll_leave_async          (RealmDisco *disco,
                                                             RealmCredential *cred,
                                                             GVariant *options,
                                                             GDBusMethodInvocation *invocation,

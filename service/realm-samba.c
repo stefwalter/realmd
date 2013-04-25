@@ -141,7 +141,7 @@ lookup_login_prefix (RealmSamba *self)
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	GVariant *options;
-	gchar *realm_name;
+	RealmDisco *disco;
 	RealmCredential *cred;
 } EnrollClosure;
 
@@ -149,7 +149,7 @@ static void
 enroll_closure_free (gpointer data)
 {
 	EnrollClosure *enroll = data;
-	g_free (enroll->realm_name);
+	realm_disco_unref (enroll->disco);
 	g_variant_unref (enroll->options);
 	realm_credential_unref (enroll->cred);
 	g_object_unref (enroll->invocation);
@@ -182,25 +182,17 @@ on_join_do_winbind (GObject *source,
 	RealmSamba *self = egg_task_get_source_object (task);
 	GHashTable *settings = NULL;
 	GError *error = NULL;
-	const gchar *workgroup = NULL;
 	const gchar *name;
 
-	realm_samba_enroll_join_finish (result, &settings, &error);
-	if (error == NULL) {
-		workgroup = g_hash_table_lookup (settings, "workgroup");
-		if (workgroup == NULL) {
-			g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-			             _("Failed to calculate domain workgroup"));
-		}
-	}
-
+	realm_samba_enroll_join_finish (result, &error);
 	if (error == NULL) {
 		realm_ini_config_change (self->config, REALM_SAMBA_CONFIG_GLOBAL, &error,
 		                         "security", "ads",
-		                         "realm", enroll->realm_name,
-		                         "workgroup", workgroup,
+		                         "realm", enroll->disco->kerberos_realm,
+		                         "workgroup", enroll->disco->workgroup,
 		                         "template homedir", realm_settings_string ("users", "default-home"),
 		                         "template shell", realm_settings_string ("users", "default-shell"),
+		                         enroll->disco->explicit_server ? "password server" : NULL, enroll->disco->explicit_server,
 		                         NULL);
 	}
 
@@ -226,14 +218,13 @@ on_install_do_join (GObject *source,
 {
 	EggTask *task = EGG_TASK (user_data);
 	EnrollClosure *enroll = egg_task_get_task_data (task);
-	RealmKerberos *kerberos = egg_task_get_source_object (task);
 	GError *error = NULL;
 
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
-		realm_samba_enroll_join_async (enroll->realm_name, enroll->cred,
-		                               enroll->options, realm_kerberos_get_disco (kerberos),
-		                               enroll->invocation, on_join_do_winbind, g_object_ref (task));
+		realm_samba_enroll_join_async (enroll->disco, enroll->cred, enroll->options,
+		                               enroll->invocation, on_join_do_winbind,
+		                               g_object_ref (task));
 
 	} else {
 		egg_task_return_error (task, error);
@@ -278,7 +269,7 @@ realm_samba_join_async (RealmKerberosMembership *membership,
 
 	task = egg_task_new (realm, NULL, callback, user_data);
 	enroll = g_slice_new0 (EnrollClosure);
-	enroll->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
+	enroll->disco = realm_disco_ref (realm_kerberos_get_disco (realm));
 	enroll->invocation = g_object_ref (invocation);
 	enroll->options = g_variant_ref (options);
 	enroll->cred = realm_credential_ref (cred);
@@ -308,14 +299,14 @@ realm_samba_join_async (RealmKerberosMembership *membership,
 
 typedef struct {
 	GDBusMethodInvocation *invocation;
-	gchar *realm_name;
+	RealmDisco *disco;
 } LeaveClosure;
 
 static void
 leave_closure_free (gpointer data)
 {
 	LeaveClosure *leave = data;
-	g_free (leave->realm_name);
+	realm_disco_unref (leave->disco);
 	g_object_unref (leave->invocation);
 	g_slice_free (LeaveClosure, leave);
 }
@@ -348,7 +339,7 @@ leave_deconfigure_begin (RealmSamba *self,
 	/* Flush the keytab of all the entries for this realm */
 	realm_diagnostics_info (leave->invocation, "Removing entries from keytab for realm");
 
-	if (!realm_kerberos_flush_keytab (leave->realm_name, &error)) {
+	if (!realm_kerberos_flush_keytab (leave->disco->kerberos_realm, &error)) {
 		egg_task_return_error (task, error);
 		return;
 	}
@@ -400,16 +391,17 @@ realm_samba_leave_async (RealmKerberosMembership *membership,
                          gpointer user_data)
 {
 	RealmSamba *self = REALM_SAMBA (membership);
+	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	EggTask *task;
 	LeaveClosure *leave;
 	const gchar *realm_name;
 	gchar *enrolled;
 
-	realm_name = realm_kerberos_get_realm_name (REALM_KERBEROS (self));
+	realm_name = realm_kerberos_get_realm_name (kerberos);
 
 	task = egg_task_new (self, NULL, callback, user_data);
 	leave = g_slice_new0 (LeaveClosure);
-	leave->realm_name = g_strdup (realm_name);
+	leave->disco = realm_disco_ref (realm_kerberos_get_disco (kerberos));
 	leave->invocation = g_object_ref (invocation);
 	egg_task_set_task_data (task, leave, leave_closure_free);
 
@@ -424,9 +416,8 @@ realm_samba_leave_async (RealmKerberosMembership *membership,
 
 	switch (cred->type) {
 	case REALM_CREDENTIAL_PASSWORD:
-		realm_samba_enroll_leave_async (leave->realm_name, cred, options,
-		                                leave->invocation, on_leave_do_deconfigure,
-		                                g_object_ref (task));
+		realm_samba_enroll_leave_async (leave->disco, cred, options, leave->invocation,
+		                                on_leave_do_deconfigure, g_object_ref (task));
 		break;
 	case REALM_CREDENTIAL_AUTOMATIC:
 		leave_deconfigure_begin (self, task);

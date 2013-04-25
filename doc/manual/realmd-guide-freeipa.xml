@@ -51,6 +51,8 @@ $ <command>realm --verbose discover domain.example.com</command>
 </screen>
 		</informalexample>
 
+		<para>In addition a FreeIPA domain server's host name
+		or IP address may be specified.</para>
 	</section>
 
 	<section id="guide-freeipa-client">
@@ -95,6 +97,10 @@ $ <command>realm join --verbose ipa.example.com</command>
 			<listitem><para>Configures the SSSD service, and restarts and enables it as appropriate.</para></listitem>
 			<listitem><para>Enables domain users in <filename>/etc/nsswitch.conf</filename></para></listitem>
 		</itemizedlist>
+
+		<para>In addition an FreeIPA domain server's host name
+		or IP address may be specified to join via that domain controller
+		directly.</para>
 
 		<para>After the join operation is complete, domain accounts should
 		be usable locally, although logins using domain accounts are

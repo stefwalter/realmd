@@ -37,8 +37,8 @@
 
 typedef struct {
 	GDBusMethodInvocation *invocation;
-	gchar *join_args[5];
-	gchar *realm;
+	gchar *join_args[8];
+	RealmDisco *disco;
 	gchar *user_name;
 	GBytes *password_input;
 	RealmIniConfig *config;
@@ -56,7 +56,7 @@ join_closure_free (gpointer data)
 	g_free (join->user_name);
 	for (i = 0; i < G_N_ELEMENTS (join->join_args); i++)
 		g_free (join->join_args[i]);
-	g_free (join->realm);
+	realm_disco_unref (join->disco);
 	g_free (join->envvar);
 	g_clear_object (&join->invocation);
 	g_clear_object (&join->config);
@@ -84,7 +84,6 @@ fallback_workgroup (const gchar *realm)
 
 static JoinClosure *
 join_closure_init (EggTask *task,
-                   const gchar *realm,
                    RealmDisco *disco,
                    GDBusMethodInvocation *invocation)
 {
@@ -94,7 +93,7 @@ join_closure_init (EggTask *task,
 	int temp_fd;
 
 	join = g_slice_new0 (JoinClosure);
-	join->realm = g_strdup (realm);
+	join->disco = realm_disco_ref (disco);
 	join->invocation = invocation ? g_object_ref (invocation) : NULL;
 	egg_task_set_task_data (task, join, join_closure_free);
 
@@ -102,7 +101,7 @@ join_closure_init (EggTask *task,
 	realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL,
 	                      "security", "ads",
 	                      "kerberos method", "system keytab",
-	                      "realm", disco && disco->kerberos_realm ? disco->kerberos_realm : join->realm,
+	                      "realm", disco->kerberos_realm,
 	                      NULL);
 
 	/*
@@ -116,7 +115,7 @@ join_closure_init (EggTask *task,
 		                      "workgroup", disco->workgroup, NULL);
 
 	} else {
-		workgroup = fallback_workgroup (realm);
+		workgroup = fallback_workgroup (disco->domain_name);
 		realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL,
 		                      "workgroup", workgroup, NULL);
 		if (disco)
@@ -187,6 +186,11 @@ begin_net_process (JoinClosure *join,
 	if (join->custom_smb_conf) {
 		g_ptr_array_add (args, "-s");
 		g_ptr_array_add (args, join->custom_smb_conf);
+	}
+
+	if (join->disco->explicit_server) {
+		g_ptr_array_add (args, "-S");
+		g_ptr_array_add (args, join->disco->explicit_server);
 	}
 
 	va_start (va, user_data);
@@ -262,7 +266,7 @@ on_join_do_keytab (GObject *source,
 		    g_pattern_match_simple ("*failure*: *specified account is not allowed to authenticate to the machine*", output->str)) {
 			g_set_error (&error, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
 			             "Insufficient permissions to join the domain %s",
-			             join->realm);
+			             join->disco->domain_name);
 		} else if (g_pattern_match_simple ("*: Logon failure*", output->str) ||
 		           g_pattern_match_simple ("*: Password expired*", output->str)) {
 			g_set_error (&error, REALM_ERROR, REALM_ERROR_AUTH_FAILED,
@@ -270,7 +274,7 @@ on_join_do_keytab (GObject *source,
 			             join->user_name);
 		} else {
 			g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-			             "Joining the domain %s failed", join->realm);
+			             "Joining the domain %s failed", join->disco->domain_name);
 		}
 	}
 
@@ -299,7 +303,6 @@ on_join_do_keytab (GObject *source,
 static void
 begin_join (EggTask *task,
             JoinClosure *join,
-            const gchar *realm,
             GVariant *options)
 {
 	const gchar *computer_ou;
@@ -309,9 +312,9 @@ begin_join (EggTask *task,
 	const gchar *os;
 	int at = 0;
 
-	computer_ou = realm_options_computer_ou (options, realm);
+	computer_ou = realm_options_computer_ou (options, join->disco->domain_name);
 	if (computer_ou != NULL) {
-		strange_ou = realm_samba_util_build_strange_ou (computer_ou, realm);
+		strange_ou = realm_samba_util_build_strange_ou (computer_ou, join->disco->domain_name);
 		if (strange_ou) {
 			if (!g_str_equal (strange_ou, ""))
 				join->join_args[at++] = g_strdup_printf ("createcomputer=%s", strange_ou);
@@ -330,7 +333,7 @@ begin_join (EggTask *task,
 	if (os != NULL && !g_str_equal (os, ""))
 		join->join_args[at++] = g_strdup_printf ("osVer=%s", os);
 
-	upn = realm_options_user_principal (options, realm);
+	upn = realm_options_user_principal (options, join->disco->domain_name);
 	if (upn) {
 		if (g_str_equal (upn, ""))
 			upn = NULL;
@@ -347,28 +350,27 @@ begin_join (EggTask *task,
 	/* Do join with a user name */
 	} else if (join->user_name) {
 		begin_net_process (join, join->password_input,
-				   on_join_do_keytab, g_object_ref (task),
-				   "-U", join->user_name, "ads", "join", join->realm,
-				   join->join_args[0], join->join_args[1],
-				   join->join_args[2], join->join_args[3],
-				   join->join_args[4], NULL);
+		                   on_join_do_keytab, g_object_ref (task),
+		                   "-U", join->user_name, "ads", "join", join->disco->domain_name,
+		                   join->join_args[0], join->join_args[1],
+		                   join->join_args[2], join->join_args[3],
+		                   join->join_args[4], NULL);
 
 	/* Do join with a ccache */
 	} else {
 		begin_net_process (join, NULL,
-				   on_join_do_keytab, g_object_ref (task),
-				   "-k", "ads", "join", join->realm,
-				   join->join_args[0], join->join_args[1],
-				   join->join_args[2], join->join_args[3],
-				   join->join_args[4], NULL);
+		                   on_join_do_keytab, g_object_ref (task),
+		                   "-k", "ads", "join", join->disco->domain_name,
+		                   join->join_args[0], join->join_args[1],
+		                   join->join_args[2], join->join_args[3],
+		                   join->join_args[4], NULL);
 	}
 }
 
 void
-realm_samba_enroll_join_async (const gchar *realm,
+realm_samba_enroll_join_async (RealmDisco *disco,
                                RealmCredential *cred,
                                GVariant *options,
-                               RealmDisco *disco,
                                GDBusMethodInvocation *invocation,
                                GAsyncReadyCallback callback,
                                gpointer user_data)
@@ -376,11 +378,11 @@ realm_samba_enroll_join_async (const gchar *realm,
 	EggTask *task;
 	JoinClosure *join;
 
-	g_return_if_fail (realm != NULL);
+	g_return_if_fail (disco != NULL);
 	g_return_if_fail (cred != NULL);
 
 	task = egg_task_new (NULL, NULL, callback, user_data);
-	join = join_closure_init (task, realm, disco, invocation);
+	join = join_closure_init (task, disco, invocation);
 
 	switch (cred->type) {
 	case REALM_CREDENTIAL_PASSWORD:
@@ -394,29 +396,17 @@ realm_samba_enroll_join_async (const gchar *realm,
 		g_return_if_reached ();
 	}
 
-	begin_join (task, join, realm, options);
+	begin_join (task, join, options);
 
 	g_object_unref (task);
 }
 
 gboolean
 realm_samba_enroll_join_finish (GAsyncResult *result,
-                                GHashTable **settings,
                                 GError **error)
 {
-	JoinClosure *join;
-
 	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
-
-	if (!egg_task_propagate_boolean (EGG_TASK (result), error))
-		return FALSE;
-
-	if (settings != NULL) {
-		join = egg_task_get_task_data (EGG_TASK (result));
-		*settings = realm_ini_config_get_all (join->config, REALM_SAMBA_CONFIG_GLOBAL);
-	}
-
-	return TRUE;
+	return egg_task_propagate_boolean (EGG_TASK (result), error);
 }
 
 static void
@@ -432,7 +422,7 @@ on_leave_complete (GObject *source,
 	status = realm_command_run_finish (result, NULL, &error);
 	if (error == NULL && status != 0)
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             "Leaving the domain %s failed", join->realm);
+		             "Leaving the domain %s failed", join->disco->domain_name);
 
 	if (error != NULL)
 		egg_task_return_error (task, error);
@@ -442,7 +432,7 @@ on_leave_complete (GObject *source,
 }
 
 void
-realm_samba_enroll_leave_async (const gchar *realm,
+realm_samba_enroll_leave_async (RealmDisco *disco,
                                 RealmCredential *cred,
                                 GVariant *options,
                                 GDBusMethodInvocation *invocation,
@@ -453,7 +443,7 @@ realm_samba_enroll_leave_async (const gchar *realm,
 	JoinClosure *join;
 
 	task = egg_task_new (NULL, NULL, callback, user_data);
-	join = join_closure_init (task, realm, NULL, invocation);
+	join = join_closure_init (task, disco, invocation);
 
 	switch (cred->type) {
 	case REALM_CREDENTIAL_PASSWORD:

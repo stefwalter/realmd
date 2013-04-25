@@ -99,7 +99,7 @@ typedef struct {
 	GDBusMethodInvocation *invocation;
 	RealmCredential *cred;
 	GVariant *options;
-	gchar *realm_name;
+	RealmDisco *disco;
 	gboolean use_adcli;
 	const gchar **packages;
 } JoinClosure;
@@ -108,7 +108,7 @@ static void
 join_closure_free (gpointer data)
 {
 	JoinClosure *join = data;
-	g_free (join->realm_name);
+	realm_disco_unref (join->disco);
 	g_object_unref (join->invocation);
 	realm_credential_unref (join->cred);
 	g_variant_ref (join->options);
@@ -159,35 +159,18 @@ on_sssd_enable_nss (GObject *source,
 
 static gboolean
 configure_sssd_for_domain (RealmIniConfig *config,
-                           const gchar *realm,
-                           const gchar *workgroup,
+                           RealmDisco *disco,
                            GVariant *options,
                            GError **error)
 {
 	const gchar *access_provider;
 	gboolean ret;
-	gchar *domain;
 	gchar *section;
-	gchar **parts;
-	gchar *rdn;
-	gchar *dn;
 	gchar *home;
-	gint i;
-
-	/* Calculate the domain and dn */
-	domain = g_ascii_strdown (realm, -1);
-	parts = g_strsplit (domain, ".", -1);
-	for (i = 0; parts[i] != NULL; i++) {
-		rdn = g_strdup_printf ("dc=%s", parts[i]);
-		g_free (parts[i]);
-		parts[i] = rdn;
-	}
-	dn = g_strjoinv (",", parts);
-	g_strfreev (parts);
 
 	home = realm_sssd_build_default_home (realm_settings_string ("users", "default-home"));
 
-	ret = realm_sssd_config_add_domain (config, workgroup, error,
+	ret = realm_sssd_config_add_domain (config, disco->workgroup, error,
 	                                    "re_expression", "(?P<domain>[^\\\\]+)\\\\(?P<name>[^\\\\]+)",
 	                                    "full_name_format", "%2$s\\%1$s",
 	                                    "cache_credentials", "True",
@@ -195,27 +178,26 @@ configure_sssd_for_domain (RealmIniConfig *config,
 
 	                                    "id_provider", "ad",
 
-	                                    "ad_domain", domain,
-	                                    "krb5_realm", realm,
+	                                    "ad_domain", disco->domain_name,
+	                                    "krb5_realm", disco->kerberos_realm,
 	                                    "krb5_store_password_if_offline", "True",
-	                                    "ldap_id_mapping", realm_options_automatic_mapping (domain) ? "True" : "False",
+	                                    "ldap_id_mapping", realm_options_automatic_mapping (disco->domain_name) ? "True" : "False",
 
 	                                    "fallback_homedir", home,
+	                                    disco->explicit_server ? "ad_server" : NULL, disco->explicit_server,
 	                                    NULL);
 
 	if (ret) {
-		if (realm_options_manage_system (options, domain))
+		if (realm_options_manage_system (options, disco->domain_name))
 			access_provider = "ad";
 		else
 			access_provider = "simple";
-		section = realm_sssd_config_domain_to_section (workgroup);
+		section = realm_sssd_config_domain_to_section (disco->workgroup);
 		ret = realm_sssd_set_login_policy (config, section, access_provider, NULL, NULL, error);
 		free (section);
 	}
 
 	g_free (home);
-	g_free (domain);
-	g_free (dn);
 
 	return ret;
 }
@@ -228,14 +210,10 @@ on_join_do_sssd (GObject *source,
 	EggTask *task = EGG_TASK (user_data);
 	JoinClosure *join = egg_task_get_task_data (task);
 	RealmSssd *sssd = egg_task_get_source_object (task);
-	GHashTable *settings = NULL;
 	GError *error = NULL;
-	gchar *workgroup = NULL;
-
 
 	if (join->use_adcli) {
-		if (!realm_adcli_enroll_join_finish (result, &workgroup, &error)) {
-			workgroup = NULL;
+		if (!realm_adcli_enroll_join_finish (result, &error)) {
 			if (join->cred->type == REALM_CREDENTIAL_AUTOMATIC &&
 			    g_error_matches (error, REALM_ERROR, REALM_ERROR_AUTH_FAILED)) {
 				g_clear_error (&error);
@@ -244,20 +222,11 @@ on_join_do_sssd (GObject *source,
 			}
 		}
 	} else {
-		if (realm_samba_enroll_join_finish (result, &settings, &error)) {
-			workgroup = g_strdup (g_hash_table_lookup (settings, "workgroup"));
-			g_hash_table_unref (settings);
-		}
-	}
-
-	if (error == NULL && workgroup == NULL) {
-		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
-		             _("Failed to calculate domain workgroup"));
+		realm_samba_enroll_join_finish (result, &error);
 	}
 
 	if (error == NULL) {
-		configure_sssd_for_domain (realm_sssd_get_config (sssd),
-		                           join->realm_name, workgroup,
+		configure_sssd_for_domain (realm_sssd_get_config (sssd), join->disco,
 		                           join->options, &error);
 	}
 
@@ -269,7 +238,6 @@ on_join_do_sssd (GObject *source,
 		egg_task_return_error (task, error);
 	}
 
-	g_free (workgroup);
 	g_object_unref (task);
 }
 
@@ -280,23 +248,21 @@ on_install_do_join (GObject *source,
 {
 	EggTask *task = EGG_TASK (user_data);
 	JoinClosure *join = egg_task_get_task_data (task);
-	RealmKerberos *kerberos = egg_task_get_source_object (task);
 	GError *error = NULL;
 
 	realm_packages_install_finish (result, &error);
 	if (error == NULL) {
 		if (join->use_adcli) {
-			realm_adcli_enroll_join_async (join->realm_name,
+			realm_adcli_enroll_join_async (join->disco,
 			                               join->cred,
 			                               join->options,
 			                               join->invocation,
 			                               on_join_do_sssd,
 			                               g_object_ref (task));
 		} else {
-			realm_samba_enroll_join_async (join->realm_name,
+			realm_samba_enroll_join_async (join->disco,
 			                               join->cred,
 			                               join->options,
-			                               realm_kerberos_get_disco (kerberos),
 			                               join->invocation, on_join_do_sssd,
 			                               g_object_ref (task));
 		}
@@ -369,10 +335,13 @@ parse_join_options (JoinClosure *join,
 	/*
 	 * For other supported enrolling credentials, we support either adcli or
 	 * samba. But since adcli is pretty immature at this point, we use samba
-	 * by default.
+	 * by default. Samba falls over with hostnames that are not perfectly
+	 * specified, so use adcli there.
 	 */
 	} else if (cred->type == REALM_CREDENTIAL_PASSWORD && cred->owner == REALM_CREDENTIAL_OWNER_ADMIN) {
-		if (!software)
+		if (!software && join->disco->explicit_server)
+			software = REALM_DBUS_IDENTIFIER_ADCLI;
+		else if (!software)
 			software = REALM_DBUS_IDENTIFIER_SAMBA;
 
 	/* It would be odd to get here */
@@ -411,7 +380,7 @@ realm_sssd_ad_join_async (RealmKerberosMembership *membership,
 
 	task = egg_task_new (realm, NULL, callback, user_data);
 	join = g_slice_new0 (JoinClosure);
-	join->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
+	join->disco = realm_disco_ref (realm_kerberos_get_disco (realm));
 	join->invocation = g_object_ref (invocation);
 	join->options = g_variant_ref (options);
 	join->cred = realm_credential_ref (cred);
@@ -422,7 +391,7 @@ realm_sssd_ad_join_async (RealmKerberosMembership *membership,
 		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
 		                           _("Already joined to this domain"));
 
-	} else if (realm_sssd_config_have_domain (realm_sssd_get_config (sssd), join->realm_name)) {
+	} else if (realm_sssd_config_have_domain (realm_sssd_get_config (sssd), realm_kerberos_get_realm_name (realm))) {
 		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
 		                           _("A domain with this name is already configured"));
 
@@ -485,6 +454,7 @@ realm_sssd_ad_leave_async (RealmKerberosMembership *membership,
                            gpointer user_data)
 {
 	RealmSssdAd *self = REALM_SSSD_AD (membership);
+	RealmKerberos *realm = REALM_KERBEROS (self);
 	EggTask *task;
 	LeaveClosure *leave;
 
@@ -505,10 +475,10 @@ realm_sssd_ad_leave_async (RealmKerberosMembership *membership,
 	case REALM_CREDENTIAL_CCACHE:
 	case REALM_CREDENTIAL_PASSWORD:
 		leave = g_slice_new0 (LeaveClosure);
-		leave->realm_name = g_strdup (realm_kerberos_get_realm_name (REALM_KERBEROS (self)));
+		leave->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
 		leave->invocation = g_object_ref (invocation);
 		egg_task_set_task_data (task, leave, leave_closure_free);
-		realm_samba_enroll_leave_async (leave->realm_name, cred, options, invocation,
+		realm_samba_enroll_leave_async (realm_kerberos_get_disco (realm), cred, options, invocation,
 		                                on_leave_do_deconfigure, g_object_ref (task));
 		break;
 	default:

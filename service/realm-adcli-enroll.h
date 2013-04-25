@@ -18,6 +18,7 @@
 #define __REALM_ADCLI_ENROLL_H__
 
 #include "realm-credential.h"
+#include "realm-disco.h"
 
 #include <gio/gio.h>
 
@@ -25,7 +26,7 @@
 
 G_BEGIN_DECLS
 
-void         realm_adcli_enroll_join_async    (const gchar *realm,
+void         realm_adcli_enroll_join_async    (RealmDisco *disco,
                                                RealmCredential *cred,
                                                GVariant *options,
                                                GDBusMethodInvocation *invocation,
@@ -33,7 +34,6 @@ void         realm_adcli_enroll_join_async    (const gchar *realm,
                                                gpointer user_data);
 
 gboolean     realm_adcli_enroll_join_finish   (GAsyncResult *result,
-                                               gchar **workgroup,
                                                GError **error);
 
 G_END_DECLS

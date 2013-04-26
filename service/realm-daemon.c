@@ -505,8 +505,9 @@ main (int argc,
 
 	g_option_context_free (context);
 
-	/* Load the platform specific data */
+	/* Load the default and platform specific data */
 	realm_settings_init ();
+	service_debug = realm_settings_boolean ("service", "debug", FALSE);
 
 	if (service_install) {
 		if (chdir (service_install) < 0) {

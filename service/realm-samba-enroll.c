@@ -64,7 +64,8 @@ join_closure_free (gpointer data)
 	g_clear_object (&join->config);
 
 	if (join->custom_smb_conf) {
-		g_unlink (join->custom_smb_conf);
+		if (!realm_daemon_has_debug_flag ())
+			g_unlink (join->custom_smb_conf);
 		g_free (join->custom_smb_conf);
 	}
 

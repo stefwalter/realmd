@@ -470,7 +470,10 @@ main (int argc,
 #endif
 
 	prepare_syslog ();
+
+#if !GLIB_CHECK_VERSION(2, 36, 0)
 	g_type_init ();
+#endif
 
 	/*
 	 * Add /sbin to path as a around for problems with authconfig.

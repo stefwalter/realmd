@@ -282,6 +282,10 @@ update_domain (RealmSssd *self)
 
 static gchar *
 build_login_format (const gchar *format,
+                    ...) G_GNUC_PRINTF (1, 2);
+
+static gchar *
+build_login_format (const gchar *format,
                     ...)
 {
 	gchar *result;
@@ -299,6 +303,8 @@ build_login_format (const gchar *format,
 	return result;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 
 static void
 update_login_formats (RealmSssd *self)
@@ -321,6 +327,8 @@ update_login_formats (RealmSssd *self)
 	g_free (login_formats[0]);
 	g_free (format);
 }
+
+#pragma GCC diagnostic pop
 
 static void
 update_login_policy (RealmSssd *self)

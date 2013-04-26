@@ -183,8 +183,6 @@ realm_discover (RealmClient *client,
 		{ NULL, }
 	};
 
-	g_type_init ();
-
 	context = g_option_context_new ("realm-or-domain");
 	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
 	g_option_context_add_main_entries (context, option_entries, NULL);

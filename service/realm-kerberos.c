@@ -928,6 +928,12 @@ kinit_closure_free (gpointer data)
 	g_slice_free (KinitClosure, kinit);
 }
 
+static void
+set_krb5_error (GError **error,
+                krb5_error_code code,
+                krb5_context context,
+                const gchar *message,
+                ...) G_GNUC_PRINTF (4, 5);
 
 static void
 set_krb5_error (GError **error,

@@ -32,7 +32,7 @@
 #include "eggdbusobjectproxy.h"
 #include "eggdbusobjectmanagerclient.h"
 
-#if GLIB_CHECK_VERSION(2,36,0)
+#if GLIB_CHECK_VERSION(2, 37, 0)
 #warning Switch back to glib implementation
 #endif
 

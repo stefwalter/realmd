@@ -140,6 +140,13 @@ propagate_krb5_error (GError **dest,
                       krb5_context context,
                       krb5_error_code code,
                       const gchar *format,
+                      ...) G_GNUC_PRINTF (4, 5);
+
+static void
+propagate_krb5_error (GError **dest,
+                      krb5_context context,
+                      krb5_error_code code,
+                      const gchar *format,
                       ...)
 {
 	GString *message;
@@ -343,7 +350,9 @@ main (int argc,
 	textdomain (GETTEXT_PACKAGE);
 #endif
 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
 	g_type_init ();
+#endif
 
 	/* Parse the global options, don't display help or failure here */
 	context = g_option_context_new ("realm");

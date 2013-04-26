@@ -65,7 +65,10 @@ main (int argc,
 	gchar *name;
 	gint i;
 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
 	g_type_init ();
+#endif
+
 	g_test_init (&argc, &argv, NULL);
 	g_set_prgname ("test-samba-ou-format");
 

@@ -127,10 +127,26 @@ begin_net_process (JoinClosure *join,
                    gpointer user_data,
                    ...)
 {
-	char *env[] = { "LANG=C", join->envvar, NULL };
+	char *env[8];
 	GPtrArray *args;
+	gchar *logenv = NULL;
 	gchar *arg;
 	va_list va;
+	int at = 0;
+
+	env[at++] = "LANG=C";
+
+	/*
+	 * HACK: Samba's 'net ads -k join' requires that LOGNAME is set or
+	 * otherwise it fails to authenticate.
+	 */
+	if (!g_getenv ("LOGNAME"))
+		env[at++] = logenv = g_strdup_printf ("LOGNAME=%s", g_get_user_name ());
+	if (join->envvar)
+		env[at++] = join->envvar;
+
+	env[at++] = NULL;
+	g_assert (at < G_N_ELEMENTS (env));
 
 	args = g_ptr_array_new ();
 
@@ -151,6 +167,7 @@ begin_net_process (JoinClosure *join,
 	realm_command_runv_async ((gchar **)args->pdata, env, input,
 	                          join->invocation, callback, user_data);
 
+	g_free (logenv);
 	g_ptr_array_free (args, TRUE);
 }
 

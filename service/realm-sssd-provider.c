@@ -120,6 +120,7 @@ realm_sssd_provider_discover_async (RealmProvider *provider,
 	EggTask *task;
 
 	task = egg_task_new (provider, NULL, callback, user_data);
+	egg_task_set_task_data (task, g_variant_ref (options), (GDestroyNotify)g_variant_unref);
 
 	if (!realm_provider_match_software (options,
 	                                    REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY,
@@ -151,19 +152,27 @@ realm_sssd_provider_discover_finish (RealmProvider *provider,
 {
 	RealmKerberos *realm = NULL;
 	RealmDisco *disco;
+	GVariant *options;
 	gint priority;
 
 	disco = egg_task_propagate_pointer (EGG_TASK (result), error);
 	if (disco == NULL)
 		return NULL;
 
-	if (g_strcmp0 (disco->server_software, REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY) == 0) {
+	options = egg_task_get_task_data (EGG_TASK (result));
+
+	if (disco->server_software == NULL ||
+	    !realm_provider_match_software (options, disco->server_software,
+	                                    REALM_DBUS_IDENTIFIER_SSSD, NULL)) {
+		realm = NULL;
+
+	} else if (g_str_equal (disco->server_software, REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY)) {
 		realm = realm_provider_lookup_or_register_realm (provider,
 		                                                 REALM_TYPE_SSSD_AD,
 		                                                 disco->domain_name, disco);
 		priority = realm_provider_is_default (REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY, REALM_DBUS_IDENTIFIER_SSSD) ? 100 : 50;
 
-	} else if (g_strcmp0 (disco->server_software, REALM_DBUS_IDENTIFIER_FREEIPA) == 0) {
+	} else if (g_str_equal (disco->server_software, REALM_DBUS_IDENTIFIER_FREEIPA) == 0) {
 		realm = realm_provider_lookup_or_register_realm (provider,
 		                                                 REALM_TYPE_SSSD_IPA,
 		                                                 disco->domain_name, disco);

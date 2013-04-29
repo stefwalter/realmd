@@ -442,7 +442,6 @@ realm_provider_match_software (GVariant *options,
 
 	g_return_val_if_fail (server_software != NULL, FALSE);
 	g_return_val_if_fail (client_software != NULL, FALSE);
-	g_return_val_if_fail (membership_software != NULL, FALSE);
 
 	if (g_variant_lookup (options, REALM_DBUS_OPTION_SERVER_SOFTWARE, "&s", &string)) {
 		if (!g_str_equal (server_software, string))
@@ -454,7 +453,8 @@ realm_provider_match_software (GVariant *options,
 			return FALSE;
 	}
 
-	if (g_variant_lookup (options, REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, "&s", &string)) {
+	if (membership_software &&
+	    g_variant_lookup (options, REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, "&s", &string)) {
 		if (!g_str_equal (membership_software, string))
 			return FALSE;
 	}

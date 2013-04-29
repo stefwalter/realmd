@@ -121,6 +121,9 @@ realm_diagnostics_error (GDBusMethodInvocation *invocation,
 
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
+	if (!format && g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+		return;
+
 	message = g_string_new (" ! ");
 
 	if (format) {

@@ -562,7 +562,7 @@ realm_command_run_known_async (const gchar *known_command,
 	GError *error = NULL;
 	gchar *message = NULL;
 	gint exit_code = -1;
-	gchar **argv;
+	gchar **argv = NULL;
 	gint unused;
 
 	g_return_if_fail (known_command != NULL);

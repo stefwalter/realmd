@@ -562,7 +562,6 @@ realm_invocation_get_key (GDBusMethodInvocation *invocation)
 {
 	InvocationData *invo;
 	g_return_val_if_fail (invocation != NULL, NULL);
-	invo = g_object_get_qdata (G_OBJECT (invocation), invocation_data_quark);
 	invo = lookup_invocation_data (invocation);
 	return invo ? invo->identifier : NULL;
 }

@@ -303,7 +303,7 @@ parse_join_options (JoinClosure *join,
 		if (!software)
 			software = REALM_DBUS_IDENTIFIER_ADCLI;
 		if (!g_str_equal (software, REALM_DBUS_IDENTIFIER_ADCLI)) {
-			g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+			g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
 			             _("Joining a domain with a one time password is only supported with the '%s' membership software"),
 			             REALM_DBUS_IDENTIFIER_ADCLI);
 			return FALSE;

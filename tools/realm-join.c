@@ -123,7 +123,8 @@ perform_automatic_join (RealmClient *client,
 
 	if (error != NULL) {
 		remote = g_dbus_error_get_remote_error (error);
-		if (g_strcmp0 (remote, REALM_DBUS_ERROR_AUTH_FAILED) == 0) {
+		if (g_strcmp0 (remote, REALM_DBUS_ERROR_AUTH_FAILED) == 0 ||
+		    g_error_matches (error, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED)) {
 			*try_other = TRUE;
 			g_error_free (error);
 		} else {

@@ -211,7 +211,6 @@ realm_ldap_connect_anonymous (GSocketAddress *address,
 
 	switch (protocol) {
 	case G_SOCKET_PROTOCOL_TCP:
-		url = g_strdup_printf ("ldap://%s:%d", addrname, port);
 		ls->sock = socket (g_socket_address_get_family (address),
 		                   SOCK_STREAM, IPPROTO_TCP);
 
@@ -238,7 +237,7 @@ realm_ldap_connect_anonymous (GSocketAddress *address,
 		if (!g_unix_set_fd_nonblocking (ls->sock, FALSE, NULL))
 			g_warning ("couldn't set to blocking");
 
-		rc = ldap_init_fd (ls->sock, 1, url, &ls->ldap);
+		rc = ldap_init_fd (ls->sock, 1, NULL, &ls->ldap);
 
 		g_free (native);
 
@@ -259,6 +258,7 @@ realm_ldap_connect_anonymous (GSocketAddress *address,
 		 * block while connecting anyway, so just use ldap_initialize()
 		 */
 		rc = ldap_initialize (&ls->ldap, url);
+		g_free (url);
 
 		/* Not an expected failure */
 		if (rc != LDAP_SUCCESS) {
@@ -297,7 +297,6 @@ realm_ldap_connect_anonymous (GSocketAddress *address,
 	}
 
 	g_free (addrname);
-	g_free (url);
 
 	version = LDAP_VERSION3;
 	if (ldap_set_option (ls->ldap, LDAP_OPT_PROTOCOL_VERSION, &version) != 0)

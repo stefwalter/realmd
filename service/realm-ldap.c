@@ -104,7 +104,7 @@ ldap_source_dispatch (GSource     *source,
 	RealmLdapCallback func = (RealmLdapCallback)callback;
 	LdapSource *ls = (LdapSource *)source;
 	GIOCondition cond;
-	socklen_t dummy;
+	socklen_t slen;
 	int error;
 
 	cond = ls->pollfd.revents & ls->condition;
@@ -128,7 +128,8 @@ ldap_source_dispatch (GSource     *source,
 		 */
 		if (!ls->connect_done) {
 			ls->connect_done = TRUE;
-			if (getsockopt(ls->sock, SOL_SOCKET, SO_ERROR, &error, &dummy) < 0) {
+			slen = sizeof (int);
+			if (getsockopt (ls->sock, SOL_SOCKET, SO_ERROR, &error, &slen) != 0) {
 				g_warning ("getsockopt() for SO_ERROR failed");
 				ls->force_fail = LDAP_SERVER_DOWN;
 			} else if (error != 0) {

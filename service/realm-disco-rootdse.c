@@ -152,6 +152,9 @@ result_domain_info (EggTask *task,
 	}
 	ldap_value_free_len (bvs);
 
+	if (clo->disco->server_software)
+		g_debug ("Got server software: %s", clo->disco->server_software);
+
 	/* What is the domain name? */
 	g_free (clo->disco->domain_name);
 	clo->disco->domain_name = NULL;

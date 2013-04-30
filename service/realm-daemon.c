@@ -494,6 +494,10 @@ main (int argc,
 	if (g_file_test (CACHEDIR, G_FILE_TEST_IS_DIR))
 		g_setenv ("TMPDIR", CACHEDIR, TRUE);
 
+	/* Load the default and platform specific data */
+	realm_settings_init ();
+	service_debug = realm_settings_boolean ("service", "debug", FALSE);
+
 	context = g_option_context_new ("realmd");
 	g_option_context_add_main_entries (context, option_entries, NULL);
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
@@ -504,10 +508,6 @@ main (int argc,
 	}
 
 	g_option_context_free (context);
-
-	/* Load the default and platform specific data */
-	realm_settings_init ();
-	service_debug = realm_settings_boolean ("service", "debug", FALSE);
 
 	if (service_install) {
 		if (chdir (service_install) < 0) {

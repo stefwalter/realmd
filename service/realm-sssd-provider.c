@@ -172,7 +172,7 @@ realm_sssd_provider_discover_finish (RealmProvider *provider,
 		                                                 disco->domain_name, disco);
 		priority = realm_provider_is_default (REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY, REALM_DBUS_IDENTIFIER_SSSD) ? 100 : 50;
 
-	} else if (g_str_equal (disco->server_software, REALM_DBUS_IDENTIFIER_FREEIPA) == 0) {
+	} else if (g_str_equal (disco->server_software, REALM_DBUS_IDENTIFIER_FREEIPA)) {
 		realm = realm_provider_lookup_or_register_realm (provider,
 		                                                 REALM_TYPE_SSSD_IPA,
 		                                                 disco->domain_name, disco);

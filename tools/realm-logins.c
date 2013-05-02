@@ -84,7 +84,8 @@ perform_permit_specific (RealmClient *client,
                          const gchar *realm_name,
                          const gchar **logins,
                          gint n_logins,
-                         gboolean withdraw)
+                         gboolean withdraw,
+                         gboolean names_are_groups)
 {
 	RealmDbusRealm *realm;
 	SyncClosure sync;
@@ -104,7 +105,8 @@ perform_permit_specific (RealmClient *client,
 	sync.result = NULL;
 	sync.loop = g_main_loop_new (NULL, FALSE);
 
-	options = realm_build_options (NULL, NULL);
+	options = realm_build_options ("groups", names_are_groups,
+	                               NULL);
 	g_variant_ref_sink (options);
 
 	realm_dbus_realm_call_change_login_policy (realm, REALM_DBUS_LOGIN_POLICY_PERMITTED,
@@ -185,6 +187,7 @@ realm_permit_or_deny (RealmClient *client,
 {
 	GOptionContext *context;
 	gboolean arg_all = FALSE;
+	gboolean arg_groups = FALSE;
 	gboolean arg_withdraw = FALSE;
 	gchar *realm_name = NULL;
 	GError *error = NULL;
@@ -197,6 +200,8 @@ realm_permit_or_deny (RealmClient *client,
 		  permit ? N_("Permit any realm account login") : N_("Deny any realm account login"), NULL },
 		{ "withdraw", 'x', 0, G_OPTION_ARG_NONE, &arg_withdraw,
 		  N_("Withdraw permit for a realm account to login"), NULL },
+		{ "groups", 'g', 0, G_OPTION_ARG_NONE, &arg_groups,
+		  N_("Treat names as groups which to permit"), NULL },
 		{ "realm", 'R', 0, G_OPTION_ARG_STRING, &realm_name, N_("Realm to permit/deny logins for"), NULL },
 		{ NULL, }
 	};
@@ -219,6 +224,9 @@ realm_permit_or_deny (RealmClient *client,
 	} else if (arg_all && arg_withdraw) {
 		realm_print_error (_("Specific logins must be specified with --withdraw"));
 
+	} else if (arg_all && arg_groups) {
+		realm_print_error (_("Groups may not be specified with -a or --all"));
+
 	} else if (arg_all) {
 		ret = perform_logins_all (client, realm_name, permit);
 
@@ -236,7 +244,7 @@ realm_permit_or_deny (RealmClient *client,
 
 		ret = perform_permit_specific (client, realm_name,
 		                               (const gchar **)(argv + 1),
-		                               argc - 1, arg_withdraw);
+		                               argc - 1, arg_withdraw, arg_groups);
 	}
 
 	g_free (realm_name);

@@ -344,6 +344,12 @@ $ realm permit --withdraw DOMAIN\User
 			in.</para></listitem>
 		</varlistentry>
 		<varlistentry>
+			<term><option>--groups, -g</option></term>
+			<listitem><para>Treat the specified names as groups
+			rather than user login names. Permit login by users in
+			the specified groups.</para></listitem>
+		</varlistentry>
+		<varlistentry>
 			<term><option>--realm, -R</option></term>
 			<listitem><para>Specify the of the realm to change login
 			policy for.</para></listitem>

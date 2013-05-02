@@ -72,6 +72,7 @@ gboolean            realm_sssd_set_login_policy         (RealmIniConfig *config,
                                                          const gchar *access_provider,
                                                          const gchar **add_names,
                                                          const gchar **remove_names,
+                                                         gboolean names_are_groups,
                                                          GError **error);
 
 void                realm_sssd_update_properties        (RealmSssd *self);

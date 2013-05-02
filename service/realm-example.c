@@ -326,6 +326,7 @@ realm_example_logins_async (RealmKerberos *realm,
                             RealmKerberosLoginPolicy login_policy,
                             const gchar **add,
                             const gchar **remove,
+                            GVariant *options,
                             GAsyncReadyCallback callback,
                             gpointer user_data)
 {

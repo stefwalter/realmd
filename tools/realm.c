@@ -108,6 +108,7 @@ realm_build_options (const gchar *first,
                      ...)
 {
 	const gchar *value;
+	gboolean bvalue;
 	GPtrArray *opts;
 	GVariant *options;
 	GVariant *option;
@@ -117,12 +118,18 @@ realm_build_options (const gchar *first,
 
 	opts = g_ptr_array_new ();
 	while (first != NULL) {
-		value = va_arg (va, const gchar *);
-		if (value != NULL) {
-			option = g_variant_new ("{sv}", first, g_variant_new_string (value));
-			g_ptr_array_add (opts, option);
+		option = NULL;
+		if (g_str_equal (first, "groups")) {
+			bvalue = va_arg (va, gboolean);
+			option = g_variant_new ("{sv}", first, g_variant_new_boolean (bvalue));
+		} else {
+			value = va_arg (va, const gchar *);
+			if (value != NULL)
+				option = g_variant_new ("{sv}", first, g_variant_new_string (value));
 		}
 
+		if (option)
+			g_ptr_array_add (opts, option);
 		first = va_arg (va, const gchar *);
 	}
 

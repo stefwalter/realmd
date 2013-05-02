@@ -485,7 +485,7 @@ handle_change_login_policy (RealmDbusRealm *realm,
 	g_return_val_if_fail (klass->logins_async != NULL, FALSE);
 
 	(klass->logins_async) (self, invocation, policy, (const gchar **)add,
-	                       (const gchar **)remove, on_logins_complete,
+	                       (const gchar **)remove, options, on_logins_complete,
 	                       method_closure_new (self, invocation));
 
 	return TRUE;
@@ -819,6 +819,14 @@ realm_kerberos_set_permitted_logins (RealmKerberos *self,
 {
 	g_return_if_fail (REALM_IS_KERBEROS (self));
 	realm_dbus_realm_set_permitted_logins (self->pv->realm_iface, (const gchar * const*)value);
+}
+
+void
+realm_kerberos_set_permitted_groups (RealmKerberos *self,
+                                     const gchar **value)
+{
+	g_return_if_fail (REALM_IS_KERBEROS (self));
+	realm_dbus_realm_set_permitted_groups (self->pv->realm_iface, (const gchar * const*)value);
 }
 
 const gchar *

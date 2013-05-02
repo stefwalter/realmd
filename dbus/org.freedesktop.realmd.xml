@@ -411,6 +411,17 @@
 		<property name="PermittedLogins" type="as" access="read"/>
 
 		<!--
+		  PermittedGroups: the permitted group names
+
+		  The list of groups which users need to be in to be allowed
+		  to log into this computer. This is only relevant if the
+		  #org.freedesktop.realmd.Realm:LoginPolicy property
+		  contains the <literal>allow-permitted-logins</literal>
+		  string.
+		-->
+		<property name="PermittedGroups" type="as" access="read"/>
+
+		<!--
 		  ChangeLoginPolicy:
 		  @login_policy: the new login policy, or an empty string
 		  @permitted_add: a list of logins to permit
@@ -436,6 +447,10 @@
 		      identifier chosen by the client, which can then later be
 		      passed to org.freedesktop.realmd.Service.Cancel() in order
 		      to cancel the operation</para></listitem>
+		    <listitem><para><literal>groups</literal>: boolean which if
+		    set to <literal>TRUE</literal> means that the names in
+		    @permitted_add and @permitted_remove are group names instead
+		    of login names.</para></listitem>
 		  </itemizedlist>
 
 		  This method requires authorization for the PolicyKit action

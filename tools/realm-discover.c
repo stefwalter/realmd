@@ -104,6 +104,9 @@ print_realm_info (RealmClient *client,
 			string = g_strjoinv (", ", (gchar **)realm_dbus_realm_get_permitted_logins (realm));
 			g_print ("  permitted-logins: %s\n", string);
 			g_free (string);
+			string = g_strjoinv (", ", (gchar **)realm_dbus_realm_get_permitted_groups (realm));
+			g_print ("  permitted-groups: %s\n", string);
+			g_free (string);
 		}
 	}
 }

@@ -58,6 +58,7 @@ struct _RealmKerberosClass {
 	                                         RealmKerberosLoginPolicy login_policy,
 	                                         const gchar **permitted_add,
 	                                         const gchar **permitted_remove,
+	                                         GVariant *options,
 	                                         GAsyncReadyCallback callback,
 	                                         gpointer user_data);
 
@@ -99,6 +100,9 @@ void                realm_kerberos_set_suggested_admin         (RealmKerberos *s
                                                                 const gchar *value);
 
 void                realm_kerberos_set_permitted_logins        (RealmKerberos *self,
+                                                                const gchar **value);
+
+void                realm_kerberos_set_permitted_groups        (RealmKerberos *self,
                                                                 const gchar **value);
 
 void                realm_kerberos_set_login_policy            (RealmKerberos *self,

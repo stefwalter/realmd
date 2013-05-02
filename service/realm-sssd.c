@@ -76,8 +76,10 @@ realm_sssd_set_login_policy (RealmIniConfig *config,
                              const gchar *access_provider,
                              const gchar **add_names,
                              const gchar **remove_names,
+                             gboolean names_are_groups,
                              GError **error)
 {
+	const gchar *field = names_are_groups ? "simple_allow_groups" : "simple_allow_users";
 	gchar *allow;
 
 	if (!realm_ini_config_begin_change (config, error))
@@ -85,14 +87,13 @@ realm_sssd_set_login_policy (RealmIniConfig *config,
 
 	if (access_provider)
 		realm_ini_config_set (config, section, "access_provider", access_provider, NULL);
-	realm_ini_config_set_list_diff (config, section, "simple_allow_users", ",",
-	                                add_names, remove_names);
+	realm_ini_config_set_list_diff (config, section, field, ",", add_names, remove_names);
 
 	/*
 	 * HACK: Work around for sssd problem where it allows users if
 	 * simple_allow_users is empty. Set it to a dollar in this case.
 	 */
-	allow = realm_ini_config_get (config, section, "simple_allow_users");
+	allow = realm_ini_config_get (config, section, field);
 	if (allow != NULL) {
 		g_strstrip (allow);
 		if (g_str_equal (allow, "") || g_str_equal (allow, "$") || g_str_equal (allow, ",")) {
@@ -103,9 +104,9 @@ realm_sssd_set_login_policy (RealmIniConfig *config,
 
 	if (allow == NULL) {
 		if (g_str_equal (access_provider, "simple"))
-			realm_ini_config_set (config, section, "simple_allow_users", "$", NULL);
+			realm_ini_config_set (config, section, field, "$", NULL);
 		else
-			realm_ini_config_set (config, section, "simple_allow_users", NULL, NULL);
+			realm_ini_config_set (config, section, field, NULL, NULL);
 	}
 
 	g_free (allow);
@@ -114,7 +115,7 @@ realm_sssd_set_login_policy (RealmIniConfig *config,
 }
 
 static gboolean
-sssd_config_check_login_list (gchar **logins,
+sssd_config_check_login_list (const gchar **logins,
                               GError **error)
 {
 	#define INVALID_CHARS ",$"
@@ -139,11 +140,13 @@ realm_sssd_logins_async (RealmKerberos *realm,
                          RealmKerberosLoginPolicy login_policy,
                          const gchar **add,
                          const gchar **remove,
+                         GVariant *options,
                          GAsyncReadyCallback callback,
                          gpointer user_data)
 {
 	RealmSssdClass *sssd_class = REALM_SSSD_GET_CLASS (realm);
 	RealmSssd *self = REALM_SSSD (realm);
+	gboolean names_are_groups = FALSE;
 	EggTask *task;
 	gchar **remove_names = NULL;
 	gchar **add_names = NULL;
@@ -179,21 +182,28 @@ realm_sssd_logins_async (RealmKerberos *realm,
 		g_return_if_reached ();
 	}
 
-	add_names = realm_kerberos_parse_logins (realm, TRUE, add, &error);
-	if (add_names != NULL)
-		remove_names = realm_kerberos_parse_logins (realm, TRUE, remove, &error);
+	if (!g_variant_lookup (options, "groups", "b", &names_are_groups))
+		names_are_groups = FALSE;
+
+	if (!names_are_groups) {
+		add_names = realm_kerberos_parse_logins (realm, TRUE, add, &error);
+		if (add_names != NULL)
+			remove_names = realm_kerberos_parse_logins (realm, TRUE, remove, &error);
+		add = (const gchar **)add_names;
+		remove = (const gchar **)remove_names;
+	}
 
 	if (error == NULL)
-	    sssd_config_check_login_list (add_names, &error);
+		sssd_config_check_login_list (add, &error);
 	if (error == NULL)
-	    sssd_config_check_login_list (remove_names, &error);
+		sssd_config_check_login_list (remove, &error);
 
 	if (error == NULL) {
 		realm_sssd_set_login_policy (self->pv->config,
 		                             self->pv->section,
 		                             access_provider,
-		                             (const gchar **)add_names,
-		                             (const gchar **)remove_names,
+		                             add, remove,
+		                             names_are_groups,
 		                             &error);
 	}
 
@@ -332,12 +342,14 @@ update_login_policy (RealmSssd *self)
 	RealmSssdClass *sssd_class = REALM_SSSD_GET_CLASS (self);
 	RealmKerberosLoginPolicy policy = REALM_KERBEROS_POLICY_NOT_SET;
 	RealmKerberos *kerberos = REALM_KERBEROS (self);
-	GPtrArray *permitted;
+	GPtrArray *permitted_logins;
+	GPtrArray *permitted_groups;
 	gchar *access = NULL;
 	gchar **values;
 	gint i;
 
-	permitted = g_ptr_array_new_full (0, g_free);
+	permitted_logins = g_ptr_array_new_full (0, g_free);
+	permitted_groups = g_ptr_array_new_full (0, g_free);
 	if (self->pv->section != NULL)
 		access = realm_ini_config_get (self->pv->config, self->pv->section, "access_provider");
 	if (g_strcmp0 (access, "simple") == 0) {
@@ -345,10 +357,16 @@ update_login_policy (RealmSssd *self)
 		                                    "simple_allow_users", ",");
 		for (i = 0; values != NULL && values[i] != NULL; i++) {
 			if (!g_str_equal (values[i], "") && !g_str_equal (values[i], "$"))
-				g_ptr_array_add (permitted, realm_kerberos_format_login (kerberos, values[i]));
+				g_ptr_array_add (permitted_logins, realm_kerberos_format_login (kerberos, values[i]));
 		}
 		g_strfreev (values);
-		g_free (access);
+		values = realm_ini_config_get_list (self->pv->config, self->pv->section,
+		                                    "simple_allow_groups", ",");
+		for (i = 0; values != NULL && values[i] != NULL; i++) {
+			if (!g_str_equal (values[i], "") && !g_str_equal (values[i], "$"))
+				g_ptr_array_add (permitted_groups, g_strdup (values[i]));
+		}
+		g_strfreev (values);
 		policy = REALM_KERBEROS_ALLOW_PERMITTED_LOGINS;
 	} else if (g_strcmp0 (access, sssd_class->sssd_conf_provider_name) == 0) {
 		policy = REALM_KERBEROS_ALLOW_REALM_LOGINS;
@@ -360,12 +378,16 @@ update_login_policy (RealmSssd *self)
 		policy = REALM_KERBEROS_POLICY_NOT_SET;
 	}
 
-	g_ptr_array_add (permitted, NULL);
+	g_ptr_array_add (permitted_logins, NULL);
+	g_ptr_array_add (permitted_groups, NULL);
 
 	realm_kerberos_set_login_policy (kerberos, policy);
-	realm_kerberos_set_permitted_logins (kerberos, (const gchar **)permitted->pdata);
+	realm_kerberos_set_permitted_logins (kerberos, (const gchar **)permitted_logins->pdata);
+	realm_kerberos_set_permitted_groups (kerberos, (const gchar **)permitted_groups->pdata);
 
-	g_ptr_array_free (permitted, TRUE);
+	g_ptr_array_free (permitted_logins, TRUE);
+	g_ptr_array_free (permitted_groups, TRUE);
+	g_free (access);
 }
 
 void

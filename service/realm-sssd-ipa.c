@@ -212,7 +212,7 @@ on_ipa_client_do_restart (GObject *source,
 		else
 			access_provider = "simple";
 		section = realm_sssd_config_domain_to_section (domain);
-		realm_sssd_set_login_policy (config, section, access_provider, NULL, NULL, &error);
+		realm_sssd_set_login_policy (config, section, access_provider, NULL, NULL, FALSE, &error);
 		free (section);
 	}
 

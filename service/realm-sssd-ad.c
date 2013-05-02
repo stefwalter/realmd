@@ -191,7 +191,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 		else
 			access_provider = "simple";
 		section = realm_sssd_config_domain_to_section (disco->workgroup);
-		ret = realm_sssd_set_login_policy (config, section, access_provider, NULL, NULL, error);
+		ret = realm_sssd_set_login_policy (config, section, access_provider, NULL, NULL, FALSE, error);
 		free (section);
 	}
 

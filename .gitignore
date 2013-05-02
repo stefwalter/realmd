@@ -3,6 +3,7 @@
 *.o
 *.gcda
 *.gcno
+*.plist
 *.service
 *.tar.gz
 
@@ -15,6 +16,7 @@
 
 aclocal.m4
 autom4te.cache
+clang_*
 compile
 config.guess
 config.h

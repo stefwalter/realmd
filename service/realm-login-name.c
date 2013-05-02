@@ -51,8 +51,10 @@ realm_login_name_parse (const gchar *const *formats,
                         gboolean lower,
                         const gchar *login)
 {
-	const gchar *prefix, *suffix;
-	gsize prefix_len, suffix_len;
+	const gchar *prefix = NULL;
+	const gchar *suffix = NULL;
+	gsize prefix_len = 0;
+	gsize suffix_len = 0;
 	gchar length;
 	const gchar *user;
 	gsize user_len;
@@ -121,8 +123,10 @@ gchar *
 realm_login_name_format (const gchar *format,
                          const gchar *user)
 {
-	const gchar *prefix, *suffix;
-	gsize prefix_len, suffix_len;
+	const gchar *prefix = NULL;
+	const gchar *suffix = NULL;
+	gsize prefix_len = 0;
+	gsize suffix_len = 0;
 	GString *string;
 
 	g_return_val_if_fail (format != NULL, NULL);

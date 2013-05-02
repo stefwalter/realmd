@@ -120,7 +120,7 @@ sssd_config_check_login_list (gchar **logins,
 	#define INVALID_CHARS ",$"
 	gint i;
 
-	for (i = 0; logins[i] != NULL; i++) {
+	for (i = 0; logins != NULL && logins[i] != NULL; i++) {
 		if (strcspn (logins[i], INVALID_CHARS) != strlen (logins[i])) {
 			g_set_error (error, G_DBUS_ERROR,
 			             G_DBUS_ERROR_INVALID_ARGS,

@@ -191,15 +191,15 @@ realm_discover (RealmClient *client,
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
 		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
 		g_error_free (error);
-		ret = 2;
+		result = 2;
 
 	/* The default realm? */
 	} else if (argc == 1) {
-		ret = perform_discover (client, NULL, arg_all,
-		                        arg_name_only,
-		                        arg_server_software,
-		                        arg_client_software,
-		                        arg_membership_software);
+		result = perform_discover (client, NULL, arg_all,
+		                           arg_name_only,
+		                           arg_server_software,
+		                           arg_client_software,
+		                           arg_membership_software);
 
 	/* Specific realms */
 	} else {

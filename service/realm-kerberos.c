@@ -290,6 +290,8 @@ join_or_leave (RealmKerberos *self,
 	MethodClosure *method;
 	GError *error = NULL;
 
+	g_return_if_fail (iface != NULL);
+
 	if ((join && iface && iface->join_async == NULL) ||
 	    (!join && iface && iface->leave_async == NULL)) {
 		g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
@@ -523,6 +525,8 @@ realm_kerberos_constructed (GObject *obj)
 	RealmKerberos *self = REALM_KERBEROS (obj);
 	const gchar *supported_interfaces[3];
 	GVariant *supported;
+
+	g_return_if_fail (self != NULL);
 
 	G_OBJECT_CLASS (realm_kerberos_parent_class)->constructed (obj);
 

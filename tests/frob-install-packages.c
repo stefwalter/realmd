@@ -86,7 +86,7 @@ on_progress_callback (PkProgress *progress,
 	case PK_PROGRESS_TYPE_ITEM_PROGRESS:
 		g_object_get (progress, "item-progress-id", &string, "item-progress-value", &unumber, NULL);
 		g_printerr ("progress: package: %s %u\n", string, unumber);
-		g_object_unref (package);
+		g_free (string);
 		break;
 	case PK_PROGRESS_TYPE_INVALID:
 	default:

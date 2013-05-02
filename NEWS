@@ -1,3 +1,10 @@
+0.13.91
+ * Add support for permitting logins by group [#58397]
+ * Fix regression of service --debug argument
+ * Fix regression of discovery of FreeIPA
+ * Fix regression in 'realm join --one-time-password'
+ * Fix lots of possible uninitialized memory usage
+
 0.13.90
  * Rework the discovery mechanisms for AD and IPA [#62863 #63907 #63907]
  * Allow specifying of servers for discovery and join [#63907]

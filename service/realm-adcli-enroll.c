@@ -134,14 +134,15 @@ realm_adcli_enroll_join_async (RealmDisco *disco,
 		g_ptr_array_add (args, ccache_arg);
 		break;
 	case REALM_CREDENTIAL_PASSWORD:
-		input = realm_command_build_password_line (cred->x.password.value);
+		input = g_bytes_ref (cred->x.secret.value);
 		g_ptr_array_add (args, "--login-type");
 		g_ptr_array_add (args, "user");
 		g_ptr_array_add (args, "--login-user");
 		g_ptr_array_add (args, cred->x.password.name);
+		g_ptr_array_add (args, "--stdin-password");
 		break;
 	case REALM_CREDENTIAL_SECRET:
-		input = realm_command_build_password_line (cred->x.secret.value);
+		input = g_bytes_ref (cred->x.secret.value);
 		g_ptr_array_add (args, "--login-type");
 		g_ptr_array_add (args, "computer");
 		g_ptr_array_add (args, "--stdin-password");

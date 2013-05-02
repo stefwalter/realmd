@@ -238,7 +238,7 @@ is_credential_supported (RealmKerberosMembershipIface *iface,
                          GError **error)
 {
 	const RealmCredential *supported;
-	const char *message;
+	const char *message = NULL;
 	gboolean found = FALSE;
 	gint i;
 

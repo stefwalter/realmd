@@ -420,7 +420,7 @@ realm_sssd_ipa_leave_async (RealmKerberosMembership *membership,
 	EggTask *task;
 	EnrollClosure *enroll;
 	const gchar *computer_ou;
-	GBytes *input;
+	GBytes *input = NULL;
 	const gchar **argv;
 
 	const gchar *env[] = {

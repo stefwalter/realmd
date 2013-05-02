@@ -682,7 +682,7 @@ copy_or_kinit_to_ccache (krb5_context krb5,
 {
 	krb5_principal principal;
 	krb5_error_code code;
-	gchar *full_name;
+	gchar *full_name = NULL;
 	gboolean ret;
 
 	if (strchr (user_name, '@') == NULL)

@@ -62,7 +62,8 @@ temp.txt
 /doc/manual/*.types
 /doc/manual/tmpl/
 /doc/manual/realmd-org.freedesktop.*.xml
-/doc/manual/realm.8
+/doc/manual/*.8
+/doc/manual/*.5
 /doc/website/html
 
 /po/realmd.pot

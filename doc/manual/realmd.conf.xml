@@ -1,34 +1,79 @@
-<?xml version="1.0"?>
-<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
-               "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
-[
-  <!ENTITY % local.common.attrib "xmlns:xi  CDATA  #FIXED 'http://www.w3.org/2003/XInclude'">
-]>
+<?xml version='1.0'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+        "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
 
-<chapter id="guide-configuring">
-	<title>Configuring realmd</title>
+<refentry id="realmd-conf">
+
+<refentryinfo>
+	<title>realmd.conf</title>
+	<productname>realmd</productname>
+	<authorgroup>
+		<author>
+			<contrib>Maintainer</contrib>
+			<firstname>Stef</firstname>
+			<surname>Walter</surname>
+			<email>stef@thewalter.net</email>
+		</author>
+	</authorgroup>
+</refentryinfo>
+
+<refmeta>
+	<refentrytitle>realmd.conf</refentrytitle>
+	<manvolnum>5</manvolnum>
+	<refmiscinfo class="manual">File Formats</refmiscinfo>
+</refmeta>
+
+<refnamediv>
+	<refname>realmd.conf</refname>
+	<refpurpose>Tweak behavior of realmd</refpurpose>
+</refnamediv>
+
+<refsect1>
+	<title>Configuration File</title>
 
 	<para><command>realmd</command> can be tweaked by network administrators
 	to act in specific ways. This is done by placing settings in a
-	<filename>/etc/realmd.conf</filename>. The syntax of this file is the
-	same as an INI file or Desktop Entry file.</para>
+	<filename>/etc/realmd.conf</filename>. This file does not exist by
+	default. The syntax of this file is the same as an INI file or
+	Desktop Entry file.</para>
 
 	<para>Only specify the settings you wish to override in the
 	<filename>/etc/realmd.conf</filename> file. Settings not specified will
-	be loaded either from their packaged defaults. Only override the settings
-	below. You may find other settings if you root around the
+	be loaded from their packaged defaults. Only override the settings
+	below. You may find other settings if you look through the
 	<command>realmd</command> source code. However these are not guaranteed
 	to remain stable.</para>
 
-	<section id="guide-configuring-active-directory">
-		<title>active-directory</title>
-		<para>These options should go in an <option>[active-directory]</option>
-		section of the <filename>/etc/realmd.conf</filename> file. Only
-		specify the settings you wish to override.</para>
+	<para>There are various sections in the config file. Some sections are
+	global topic sections, and are listed below. Other sections are specific
+	to a given realm. These realm specific sections should always contain
+	the domain name in lower case as their section header.</para>
 
-	<section>
-		<title>default-client</title>
+	<para>Examples of each setting is found below, including the header
+	of the section it should be placed in. However in the resulting file
+	only include each section once, and combine the various section setting
+	together as lines underneath the section. For example</para>
 
+	<informalexample>
+<programlisting>
+[users]
+default-home = /home/%U
+default-shell = /bin/bash
+</programlisting>
+	</informalexample>
+</refsect1>
+
+<refsect1 id="realmd-conf-active-directory">
+	<title>active-directory</title>
+	<para>These options should go in an <option>[active-directory]</option>
+	section of the <filename>/etc/realmd.conf</filename> file. Only
+	specify the settings you wish to override.</para>
+
+	<variablelist>
+
+	<varlistentry>
+	<term><option>default-client</option></term>
+	<listitem>
 		<para>Specify the <option>default-client</option> setting in
 		order to control which client software is the preferred default
 		for use with Active Directory.</para>
@@ -38,8 +83,9 @@
 [active-directory]
 default-client = sssd
 # default-client = winbind
+
 </programlisting>
-	</informalexample>
+		</informalexample>
 
 		<para>The default setting for this is
 		<option>sssd</option> which uses
@@ -77,22 +123,21 @@ domain.example.com
   realm-name: AD.THEWALTER.LAN
   domain-name: ad.thewalter.lan
 </screen>
-	</informalexample>
+		</informalexample>
+	</listitem>
+	</varlistentry>
 
-	</section>
+	<varlistentry>
+	<term><option>os-name</option></term>
+	<listitem><para>(see below)</para></listitem>
+	</varlistentry>
 
-	<section>
-		<title>os-name</title>
-
-		<para><emphasis>see below</emphasis></para>
-	</section>
-
-	<section>
-		<title>os-version</title>
-
+	<varlistentry>
+	<term><option>os-version</option></term>
+	<listitem>
 		<para>Specify the <option>os-name</option> and/or
 		<option>os-version</option> settings to control the values that
-		are placed in the computer account <option>operatingSystem</option>
+		are placed in the computer account <option>operatingSystem</option> and
 		<option>operatingSystemVersion</option> attributes.</para>
 
 		<informalexample>
@@ -101,21 +146,25 @@ domain.example.com
 os-name = Gentoo Linux
 os-version = 9.9.9.9.9
 </programlisting>
-	</informalexample>
+		</informalexample>
+	</listitem>
+	</varlistentry>
 
-	</section>
+	</variablelist>
 
-	</section>
+</refsect1>
 
-<section id="guide-configuring-service">
+<refsect1 id="realmd-conf-service">
 	<title>service</title>
 	<para>These options should go in an <option>[service]</option>
 	section of the <filename>/etc/realmd.conf</filename> file. Only
 	specify the settings you wish to override.</para>
 
-	<section>
-		<title>automatic-install</title>
+	<variablelist>
 
+	<varlistentry>
+	<term><option>automatic-install</option></term>
+	<listitem>
 		<para>Set this to <parameter>no</parameter> to disable automatic
 		installation of packages via package-kit.</para>
 
@@ -126,19 +175,23 @@ automatic-install = no
 # automatic-install = yes
 </programlisting>
 		</informalexample>
-	</section>
+	</listitem>
+	</varlistentry>
 
-</section>
+	</variablelist>
+</refsect1>
 
-	<section id="guide-configuring-users">
-		<title>user</title>
-		<para>These options should go in an <option>[users]</option>
-		section of the <filename>/etc/realmd.conf</filename> file. Only
-		specify the settings you wish to override.</para>
+<refsect1 id="realmd-conf-users">
+	<title>users</title>
 
-	<section>
-		<title>default-home</title>
+	<para>These options should go in an <option>[users]</option>
+	section of the <filename>/etc/realmd.conf</filename> file. Only
+	specify the settings you wish to override.</para>
 
+	<variablelist>
+	<varlistentry>
+	<term><option>default-home</option></term>
+	<listitem>
 		<para>Specify the <option>default-home</option> setting in
 		order to control how to set the home directory for accounts
 		that have no home directory explicitly set.</para>
@@ -148,6 +201,7 @@ automatic-install = no
 [users]
 default-home = /home/%D/%U
 # default-home = /nfs/home/%D-%U
+
 </programlisting>
 		</informalexample>
 
@@ -162,15 +216,16 @@ default-home = /home/%D/%U
 		<informalexample>
 <screen>
 $ <command>getent passwd 'DOMAIN/User'</command>
-DOMAIN\user:*:1344600500:1344600513:User Name:/home/DOMAIN/user:/bin/bash
+DOMAIN\user:*:13445:13446:Name:/home/DOMAIN/user:/bin/bash
 </screen>
 		</informalexample>
 
-	</section>
+	</listitem>
+	</varlistentry>
 
-	<section>
-		<title>default-shell</title>
-
+	<varlistentry>
+	<term><option>default-shell</option></term>
+	<listitem>
 		<para>Specify the <option>default-shell</option> setting in
 		order to control how to set the Unix shell for accounts that
 		have no shell explicitly set.</para>
@@ -180,6 +235,7 @@ DOMAIN\user:*:1344600500:1344600513:User Name:/home/DOMAIN/user:/bin/bash
 [users]
 default-shell = /bin/bash
 # default-shell = /bin/sh
+
 </programlisting>
 		</informalexample>
 
@@ -193,35 +249,41 @@ default-shell = /bin/bash
 		<informalexample>
 <screen>
 $ <command>getent passwd 'DOMAIN/User'</command>
-DOMAIN\user:*:1344600500:1344600513:User Name:/home/DOMAIN/user:/bin/bash
+DOMAIN\user:*:13445:13446:Name:/home/DOMAIN/user:/bin/bash
 </screen>
 		</informalexample>
 
-	</section>
+	</listitem>
+	</varlistentry>
 
-	</section>
+	</variablelist>
 
-	<section id="guide-configuring-realm">
-		<title>Realm specific settings</title>
-		<para>These options should go in an section with the same name
-		as the realm in the <filename>/etc/realmd.conf</filename> file.
-		For example for the <option>domain.example.com</option> domain
-		the section would be called <option>[domain.example.com]</option>.
-		To figure out the canonical name for a realm use the
-		<command>realm</command> command:</para>
+</refsect1>
 
-		<informalexample>
+<refsect1>
+	<title>Realm specific settings</title>
+	<para>These options should go in an section with the same name
+	as the realm in the <filename>/etc/realmd.conf</filename> file.
+	For example for the <option>domain.example.com</option> domain
+	the section would be called <option>[domain.example.com]</option>.
+	To figure out the canonical name for a realm use the
+	<command>realm</command> command:</para>
+
+	<informalexample>
 <screen>
 $ <command>realm discover --name DOMAIN.example.com</command>
 domain.example.com
 ...
 </screen>
-		</informalexample>
+	</informalexample>
 
-		<para>Only specify the settings you wish to override.</para>
-	<section>
-		<title>computer-ou</title>
+	<para>Only specify the settings you wish to override.</para>
 
+	<variablelist>
+
+	<varlistentry>
+	<term><option>computer-ou</option></term>
+	<listitem>
 		<para>Specify this option to create directory computer accounts
 		in a location other than the default. This currently only works
 		with Active Directory domains.</para>
@@ -231,22 +293,23 @@ domain.example.com
 [domain.example.com]
 computer-ou = OU=Linux Computers,DC=domain,DC=example,DC=com
 # computer-ou = OU=Linux Computers,
+
 </programlisting>
-	</informalexample>
+		</informalexample>
 
 		<para>Specify the OU as an LDAP DN. It can be relative to the
 		Root DSE, or a complete LDAP DN. Obviously the OU must exist
 		in the directory.</para>
 
 		<para>It is also possible to use the <option>--computer-ou</option>
-		argument of the <link linkend="realm">realm</link> command to
+		argument of the <command>realm</command> command to
 		create a computer account at a specific OU.</para>
+	</listitem>
+	</varlistentry>
 
-	</section>
-
-	<section>
-		<title>user-prinicpal</title>
-
+	<varlistentry>
+	<term><option>user-prinicpal</option></term>
+	<listitem>
 		<para>Set the <option>user-prinicpal</option> to <code>yes</code>
 		to create <option>userPrincipalName</option> attributes for the
 		computer account in the realm, in the form
@@ -257,14 +320,13 @@ computer-ou = OU=Linux Computers,DC=domain,DC=example,DC=com
 [domain.example.com]
 user-principal = yes
 </programlisting>
-	</informalexample>
+		</informalexample>
+	</listitem>
+	</varlistentry>
 
-	</section>
-
-	<section>
-
-		<title>automatic-id-mapping</title>
-
+	<varlistentry>
+	<term><option>automatic-id-mapping</option></term>
+	<listitem>
 		<para>This option is on by default for Active Directory realms.
 		Turn it off to use UID and GID information stored in the
 		directory (as-per RFC2307) rather than automatically generating
@@ -276,14 +338,13 @@ user-principal = yes
 automatic-id-mapping = no
 # automatic-id-mapping = yes
 </programlisting>
-	</informalexample>
+		</informalexample>
+	</listitem>
+	</varlistentry>
 
-	</section>
-
-	<section>
-
-		<title>manage-system</title>
-
+	<varlistentry>
+	<term><option>manage-system</option></term>
+	<listitem>
 		<para>This option is on by default. Normally joining a realm
 		affects many aspects of the configuration and management of the
 		system. Turning this off limits the interaction with the realm
@@ -295,14 +356,13 @@ automatic-id-mapping = no
 manage-system = no
 # manage-system = yes
 </programlisting>
-	</informalexample>
+		</informalexample>
+	</listitem>
+	</varlistentry>
 
-	</section>
-
-	<section>
-
-		<title>fully-qualified-names</title>
-
+	<varlistentry>
+	<term><option>fully-qualified-names</option></term>
+	<listitem>
 		<para>This option is on by default. If turned off then realm
 		user and group names are not qualified their name. This may
 		cause them to conflict with local user and group names.</para>
@@ -313,9 +373,11 @@ manage-system = no
 fully-qualified-names = no
 # fully-qualified-names = yes
 </programlisting>
-	</informalexample>
+		</informalexample>
+	</listitem>
+	</varlistentry>
 
-	</section>
+	</variablelist>
+</refsect1>
 
-</section>
-</chapter>
+</refentry>

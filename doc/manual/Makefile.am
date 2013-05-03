@@ -3,14 +3,18 @@ NULL =
 
 man8_MANS = \
 	realm.8
+man5_MANS = \
+	realmd.conf.5
 
-MAN_IN_FILES = $(man8_MANS:.8=.xml)
+MAN_IN_FILES = \
+	$(man8_MANS:.8=.xml) \
+	$(man8_MANS:.5=.xml) \
+	$(NULL)
 
 DOCBOOK_FILE = realmd-docs.xml
 
 CONTENT_INCLUDES = \
 	realmd-guide-active-directory.xml \
-	realmd-guide-configuring.xml \
 	realmd-guide-freeipa.xml \
 	realmd-guide-kerberos.xml \
 	$(NULL)
@@ -52,6 +56,8 @@ CLEANFILES = \
 	$(NULL)
 
 .xml.8:
+	$(AM_V_GEN) $(XSLTPROC) $(XSLTPROC_FLAGS) http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl $<
+.xml.5:
 	$(AM_V_GEN) $(XSLTPROC) $(XSLTPROC_FLAGS) http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl $<
 
 $(DBUS_GENERATED): $(DBUS_INTERFACE) gdbus-fix-bugs.xsl

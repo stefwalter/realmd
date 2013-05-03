@@ -16,12 +16,12 @@
 		<chapter id="realm-manual">
 			<title>Command manual pages</title>
 			<xi:include href="realm.xml"/>
+			<xi:include href="realmd.conf.xml"/>
 		</chapter>
 
 		<xi:include href="realmd-guide-active-directory.xml"/>
 		<xi:include href="realmd-guide-freeipa.xml"/>
 		<xi:include href="realmd-guide-kerberos.xml"/>
-		<xi:include href="realmd-guide-configuring.xml"/>
 
 		<chapter id="guide-integration">
 			<title>Integration</title>

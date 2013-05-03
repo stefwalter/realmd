@@ -99,7 +99,7 @@ $ <command>realm join --client-software=sssd domain.example.com</command>
 
 			<para>To have <command>realmd</command> use Winbind as the
 			client software, configure the
-			<link linkend="guide-configuring-active-directory"><option>default-client</option> setting</link>.
+			<link linkend="realmd-conf-active-directory"><option>default-client</option> setting</link>.
 			You can force use of Winbind by specifying the
 			<option>--client-software=winbind</option> when joining the
 			domain with the
@@ -167,7 +167,7 @@ $ <command>getent passwd DOMAIN\Administrator</command>
 		<para>The join operation will create or update a computer account
 		in the domain. If you wish to specify a specific organizational unit
 		where this account is created, you can use the
-		<link linkend="guide-configuring-realm"><option>computer-ou</option> setting</link>.</para>
+		<link linkend="realmd-conf-active-directory"><option>computer-ou</option> setting</link>.</para>
 
 		<para>Specify the <option>--user</option> to choose a different
 		user name than the default <literal>Administrator</literal> user.</para>

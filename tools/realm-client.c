@@ -660,7 +660,8 @@ kinit_to_ccache (krb5_context krb5,
 	krb5_get_init_creds_opt_free (krb5, options);
 
 	if (code == KRB5KDC_ERR_PREAUTH_FAILED ||
-	    code == KRB5KRB_AP_ERR_BAD_INTEGRITY) {
+	    code == KRB5KRB_AP_ERR_BAD_INTEGRITY ||
+	    code == KRB5_PREAUTH_FAILED) {
 		propagate_krb5_error (error, krb5, code, _("Invalid password for %s"), name);
 		return FALSE;
 

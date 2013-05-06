@@ -1,3 +1,8 @@
+0.14.0
+ * Work around krb5 bugs in krb5_get_init_creds_password()
+ * Fine tune the regular expressions and formats for AD and IPA
+ * Put documentation about realmd.conf in a manual page [#64182]
+
 0.13.91
  * Add support for permitting logins by group [#58397]
  * Fix regression of service --debug argument

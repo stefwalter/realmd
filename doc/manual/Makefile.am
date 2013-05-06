@@ -8,7 +8,7 @@ man5_MANS = \
 
 MAN_IN_FILES = \
 	$(man8_MANS:.8=.xml) \
-	$(man8_MANS:.5=.xml) \
+	$(man5_MANS:.5=.xml) \
 	$(NULL)
 
 DOCBOOK_FILE = realmd-docs.xml
@@ -53,6 +53,7 @@ CLEANFILES = \
 	$(DBUS_GENERATED) \
 	$(DBUS_ESCAPED) \
 	$(man8_MANS) \
+	$(man5_MANS) \
 	$(NULL)
 
 .xml.8:

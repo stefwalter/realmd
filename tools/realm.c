@@ -73,14 +73,24 @@ realm_handle_error (GError *error,
 {
 	static gboolean diag_hint = TRUE;
 	GString *message;
+	gchar *remote;
 	va_list va;
 
+	if (realm_cancelled &&
+	    g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+		g_error_free (error);
+		return;
+	}
+
 #ifdef WITH_JOURNAL
-	if (diag_hint && realm_operation_id && !realm_verbose) {
+	remote = error ? g_dbus_error_get_remote_error (error) : NULL;
+	if (diag_hint && realm_operation_id && !realm_verbose &&
+	    g_strcmp0 (remote, REALM_DBUS_ERROR_NOT_AUTHORIZED) != 0) {
 		g_printerr ("See: journalctl REALMD_OPERATION=%s\n",
 		            realm_operation_id);
 		diag_hint = FALSE;
 	}
+	g_free (remote);
 #endif
 
 	message = g_string_new ("");

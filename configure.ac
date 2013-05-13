@@ -248,6 +248,42 @@ fi
 
 AM_CONDITIONAL([ENABLE_DOC], [test "$enable_doc" = "yes"])
 
+AC_MSG_CHECKING([whether to build with gcov testing])
+AC_ARG_ENABLE([coverage],
+              AS_HELP_STRING([--enable-coverage],
+                             [Whether to enable coverage testing ]),
+              [], [enable_coverage=no])
+AC_MSG_RESULT([$enable_coverage])
+
+if test "$enable_coverage" = "yes"; then
+	if test "$GCC" != "yes"; then
+		AC_MSG_ERROR(Coverage testing requires GCC)
+	fi
+
+	AC_PATH_PROG(GCOV, gcov, no)
+	if test "$GCOV" = "no" ; then
+		AC_MSG_ERROR(gcov tool is not available)
+	fi
+
+	AC_PATH_PROG(LCOV, lcov, no)
+	if test "$LCOV" = "no" ; then
+		AC_MSG_ERROR(lcov tool is not installed)
+	fi
+
+	AC_PATH_PROG(GENHTML, genhtml, no)
+	if test "$GENHTML" = "no" ; then
+		AC_MSG_ERROR(lcov's genhtml tool is not installed)
+	fi
+
+	CFLAGS="$CFLAGS -O0 -g -fprofile-arcs -ftest-coverage"
+	LDFLAGS="$LDFLAGS -lgcov"
+fi
+
+AM_CONDITIONAL([WITH_COVERAGE], [test "$enable_coverage" = "yes"])
+AC_SUBST(LCOV)
+AC_SUBST(GCOV)
+AC_SUBST(GENHTML)
+
 AC_MSG_CHECKING([for debug mode])
 AC_ARG_ENABLE(debug,
               AC_HELP_STRING([--enable-debug=no/default/yes],
@@ -326,42 +362,6 @@ fi
 
 AC_MSG_RESULT($enable_strict)
 AC_SUBST(TEST_MODE)
-
-AC_MSG_CHECKING([whether to build with gcov testing])
-AC_ARG_ENABLE([coverage],
-              AS_HELP_STRING([--enable-coverage],
-                             [Whether to enable coverage testing ]),
-              [], [enable_coverage=no])
-AC_MSG_RESULT([$enable_coverage])
-
-if test "$enable_coverage" = "yes"; then
-	if test "$GCC" != "yes"; then
-		AC_MSG_ERROR(Coverage testing requires GCC)
-	fi
-
-	AC_PATH_PROG(GCOV, gcov, no)
-	if test "$GCOV" = "no" ; then
-		AC_MSG_ERROR(gcov tool is not available)
-	fi
-
-	AC_PATH_PROG(LCOV, lcov, no)
-	if test "$LCOV" = "no" ; then
-		AC_MSG_ERROR(lcov tool is not installed)
-	fi
-
-	AC_PATH_PROG(GENHTML, genhtml, no)
-	if test "$GENHTML" = "no" ; then
-		AC_MSG_ERROR(lcov's genhtml tool is not installed)
-	fi
-
-	CFLAGS="$CFLAGS -O0 -g -fprofile-arcs -ftest-coverage"
-	LDFLAGS="$LDFLAGS -lgcov"
-fi
-
-AM_CONDITIONAL([WITH_COVERAGE], [test "$enable_coverage" = "yes"])
-AC_SUBST(LCOV)
-AC_SUBST(GCOV)
-AC_SUBST(GENHTML)
 
 # ------------------------------------------------------------------------------
 # Results

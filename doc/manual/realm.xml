@@ -100,6 +100,11 @@ $ realm discover domain.example.com
 
 	<variablelist>
 		<varlistentry>
+			<term><option>--all</option></term>
+			<listitem><para>Show all discovered realms (in various
+			configurations).</para></listitem>
+		</varlistentry>
+		<varlistentry>
 			<term><option>--client-software=xxx</option></term>
 			<listitem><para>Only discover realms for which we can
 			use the given client software. Possible values include

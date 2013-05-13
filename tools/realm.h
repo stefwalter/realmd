@@ -29,6 +29,8 @@ extern GOptionEntry   realm_global_options[];
 
 extern gboolean       realm_verbose;
 
+extern gboolean       realm_cancelled;
+
 int                   realm_join                   (RealmClient *client,
                                                     int argc,
                                                     char *argv[]);

@@ -139,14 +139,16 @@ static gboolean
 on_ctrl_c_cancel_operation (gpointer data)
 {
 	RealmDbusService *service = REALM_DBUS_SERVICE (data);
-	if (realm_operation_id) {
+
+	if (!realm_cancelled && realm_operation_id) {
 		realm_dbus_service_call_cancel (service, realm_operation_id,
 		                                NULL, NULL, NULL);
 		g_printerr ("Cancelling...\n");
+		realm_cancelled = TRUE;
+		_exit (1);
 	}
 
-	/* Remove this handler */
-	return FALSE;
+	return TRUE;
 }
 
 static RealmClient *

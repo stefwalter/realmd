@@ -29,6 +29,7 @@
 
 static gchar *arg_install = NULL;
 gboolean realm_verbose = FALSE;
+gboolean realm_cancelled = FALSE;
 gchar *realm_operation_id = NULL;
 
 struct {

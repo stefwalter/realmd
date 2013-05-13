@@ -1,3 +1,17 @@
+0.14.1
+ * Don't use the slice allocator for small memory allocations [#56157]
+ * Don't do critical warning when service.Release() is called
+ * Just quit when Ctrl-C is pressed twice [#64538]
+ * Don't remove sssd domain if already removed
+ * Document the 'realm discover --all' option
+ * sssd-tools is no longer needed on Fedora
+ * Don't print journalctl command when cancelled [#64539]
+ * Enable sssd service even when in install mode [#64542]
+ * Use the full AD domain name as sssd.conf domain [#64544]
+ * When failing to write out data to subprocess, print errno
+ * Work around authconfig bug [#953851]
+ * Build fixes
+
 0.14.0
  * Work around krb5 bugs in krb5_get_init_creds_password()
  * Fine tune the regular expressions and formats for AD and IPA

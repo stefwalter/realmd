@@ -636,12 +636,14 @@ on_sssd_clear_cache (GObject *source,
 		g_clear_error (&error);
 	}
 
-	/* Deconfigure sssd.conf */
-	realm_diagnostics_info (deconf->invocation, "Removing domain configuration from sssd.conf");
-	if (!realm_sssd_config_remove_domain (deconf->config, deconf->domain, &error)) {
-		egg_task_return_error (deconf->task, error);
-		deconfigure_closure_free (deconf);
-		return;
+	/* Deconfigure sssd.conf, may have already been done, if so NULL */
+	if (deconf->domain) {
+		realm_diagnostics_info (deconf->invocation, "Removing domain configuration from sssd.conf");
+		if (!realm_sssd_config_remove_domain (deconf->config, deconf->domain, &error)) {
+			egg_task_return_error (deconf->task, error);
+			deconfigure_closure_free (deconf);
+			return;
+		}
 	}
 
 	/* If no domains, then disable sssd */

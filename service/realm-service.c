@@ -24,14 +24,15 @@
 
 static void
 begin_service_command (const gchar *command,
+                       gboolean skip_in_install_mode,
                        GDBusMethodInvocation *invocation,
                        GAsyncReadyCallback callback,
                        gpointer user_data)
 {
 	EggTask *task;
 
-	/* If install mode, never do any service stuff */
-	if (realm_daemon_is_install_mode ()) {
+	/* If install mode, don't do certain service stuff */
+	if (skip_in_install_mode && realm_daemon_is_install_mode ()) {
 		g_debug ("skipping %s command in install mode", command);
 		task = egg_task_new (NULL, NULL, callback, user_data);
 		egg_task_set_source_tag (task, begin_service_command);
@@ -63,7 +64,7 @@ realm_service_enable (const gchar *service_name,
 	gchar *command;
 
 	command = g_strdup_printf ("%s-enable-service", service_name);
-	begin_service_command (command, invocation, callback, user_data);
+	begin_service_command (command, FALSE, invocation, callback, user_data);
 	g_free (command);
 }
 
@@ -83,7 +84,7 @@ realm_service_disable (const gchar *service_name,
 	gchar *command;
 
 	command = g_strdup_printf ("%s-disable-service", service_name);
-	begin_service_command (command, invocation, callback, user_data);
+	begin_service_command (command, FALSE, invocation, callback, user_data);
 	g_free (command);
 }
 
@@ -103,7 +104,7 @@ realm_service_restart (const gchar *service_name,
 	gchar *command;
 
 	command = g_strdup_printf ("%s-restart-service", service_name);
-	begin_service_command (command, invocation, callback, user_data);
+	begin_service_command (command, TRUE, invocation, callback, user_data);
 	g_free (command);
 }
 
@@ -123,7 +124,7 @@ realm_service_stop (const gchar *service_name,
 	gchar *command;
 
 	command = g_strdup_printf ("%s-stop-service", service_name);
-	begin_service_command (command, invocation, callback, user_data);
+	begin_service_command (command, TRUE, invocation, callback, user_data);
 	g_free (command);
 }
 

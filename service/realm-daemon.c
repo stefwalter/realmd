@@ -89,13 +89,17 @@ realm_daemon_hold (const gchar *hold)
 	g_hash_table_add (service_holds, g_strdup (hold));
 }
 
-void
+gboolean
 realm_daemon_release (const gchar *hold)
 {
 	g_assert (hold != NULL);
-	g_debug ("releasing daemon: %s", hold);
-	if (!g_hash_table_remove (service_holds, hold))
-		g_critical ("realm_daemon_release: don't have hold: %s", hold);
+
+	if (g_hash_table_remove (service_holds, hold)) {
+		g_debug ("released daemon: %s", hold);
+		return TRUE;
+	}
+
+	return FALSE;
 }
 
 static gboolean
@@ -211,7 +215,8 @@ initialize_service (GDBusConnection *connection)
 	                        all_provider, g_object_unref);
 
 	/* Matches the hold() in main() */
-	realm_daemon_release ("startup");
+	if (!realm_daemon_release ("startup"))
+		g_warn_if_reached ();
 
 	g_dbus_connection_start_message_processing (connection);
 }

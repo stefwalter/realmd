@@ -23,7 +23,7 @@ G_BEGIN_DECLS
 
 void                 realm_daemon_hold                       (const gchar *identifier);
 
-void                 realm_daemon_release                    (const gchar *identifier);
+gboolean             realm_daemon_release                    (const gchar *identifier);
 
 gboolean             realm_daemon_is_dbus_peer               (void);
 

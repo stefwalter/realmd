@@ -608,5 +608,6 @@ realm_invocation_unlock_daemon (GDBusMethodInvocation *invocation)
 	current_invocation = NULL;
 
 	/* Matches the hold in realm_invocation_lock_daemon() */
-	realm_daemon_release ("current-invocation");
+	if (!realm_daemon_release ("current-invocation"))
+		g_warn_if_reached ();
 }

@@ -463,11 +463,11 @@ main (int argc,
 		{ NULL }
 	};
 
-	/* Behave well under valgrind */
-	if (RUNNING_ON_VALGRIND) {
-		if (!g_getenv ("G_SLICE"))
-			g_setenv ("G_SLICE", "always-malloc", TRUE);
-	}
+	/* Always use malloc for now, in order to find malloc bugs */
+#if 0
+	if (RUNNING_ON_VALGRIND && !g_getenv ("G_SLICE"))
+#endif
+		g_setenv ("G_SLICE", "always-malloc", TRUE);
 
 #ifdef ENABLE_NLS
 	bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);

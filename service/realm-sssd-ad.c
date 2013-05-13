@@ -168,8 +168,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	home = realm_sssd_build_default_home (realm_settings_string ("users", "default-home"));
 	qualify = realm_options_qualify_names (disco->domain_name);
 
-	ret = realm_sssd_config_add_domain (config, disco->workgroup, error,
-	                                    "full_name_format", "%2$s\\%1$s",
+	ret = realm_sssd_config_add_domain (config, disco->domain_name, error,
 	                                    "cache_credentials", "True",
 		                            "use_fully_qualified_names", qualify ? "True" : "False",
 
@@ -189,7 +188,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 			access_provider = "ad";
 		else
 			access_provider = "simple";
-		section = realm_sssd_config_domain_to_section (disco->workgroup);
+		section = realm_sssd_config_domain_to_section (disco->domain_name);
 		ret = realm_sssd_set_login_policy (config, section, access_provider, NULL, NULL, FALSE, error);
 		free (section);
 	}

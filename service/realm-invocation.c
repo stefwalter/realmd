@@ -85,7 +85,7 @@ invocation_data_free (void *data)
 	if (invo->cancellable)
 		g_object_unref (invo->cancellable);
 	g_free (invo->identifier);
-	g_slice_free (InvocationData, invo);
+	g_free (invo);
 }
 
 static void
@@ -112,7 +112,7 @@ lookup_or_register_client (const gchar *sender)
 
 	client = g_hash_table_lookup (invocation_clients, sender);
 	if (!client) {
-		client = g_slice_new0 (InvocationClient);
+		client = g_new0 (InvocationClient, 1);
 		if (!g_str_equal (sender, PEER)) {
 			client->watch = g_bus_watch_name (G_BUS_TYPE_SYSTEM, sender,
 			                                  G_BUS_NAME_WATCHER_FLAGS_NONE,
@@ -204,7 +204,7 @@ prepare_method_in_dbus_worker_thread (GDBusMessage *message,
 
 	/* Find the operation id for this message */
 	if (invo_method) {
-		invo = g_slice_new0 (InvocationData);
+		invo = g_new0 (InvocationData, 1);
 		invo->method = invo_method;
 
 		operation = extract_operation (message, invo_method);
@@ -375,7 +375,7 @@ unwatch_and_free_client (gpointer data)
 	if (client->watch)
 		g_bus_unwatch_name (client->watch);
 	g_free (client->locale);
-	g_slice_free (InvocationClient, client);
+	g_free (client);
 
 	realm_daemon_poke ();
 }

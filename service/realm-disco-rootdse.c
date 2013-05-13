@@ -52,7 +52,7 @@ closure_free (gpointer data)
 	g_source_destroy (clo->source);
 	g_source_unref (clo->source);
 	realm_disco_unref (clo->disco);
-	g_slice_free (Closure, clo);
+	g_free (clo);
 }
 
 static gboolean
@@ -302,7 +302,7 @@ realm_disco_rootdse_async (GSocketAddress *address,
 	g_return_if_fail (address != NULL);
 
 	task = egg_task_new (NULL, cancellable, callback, user_data);
-	clo = g_slice_new0 (Closure);
+	clo = g_new0 (Closure, 1);
 	clo->disco = realm_disco_new (NULL);
 	clo->disco->explicit_server = g_strdup (explicit_server);
 	clo->request = request_root_dse;

@@ -109,7 +109,7 @@ discover_result_free (gpointer data)
 {
 	DiscoverResult *disco = data;
 	g_list_free_full (disco->realms, g_object_unref);
-	g_slice_free (DiscoverResult, disco);
+	g_free (disco);
 }
 
 static void
@@ -123,7 +123,7 @@ discover_closure_free (gpointer data)
 	while (!g_queue_is_empty (&discover->failures))
 		g_error_free (g_queue_pop_head (&discover->failures));
 	g_list_free_full (discover->realms, g_object_unref);
-	g_slice_free (DiscoverClosure, discover);
+	g_free (discover);
 }
 
 static gint
@@ -182,7 +182,7 @@ on_provider_discover (GObject *source,
 
 	realms = realm_provider_discover_finish (REALM_PROVIDER (source), result, &relevance, &error);
 	if (error == NULL) {
-		disco = g_slice_new (DiscoverResult);
+		disco = g_new0 (DiscoverResult, 1);
 		disco->realms = realms;
 		disco->relevance = relevance;
 		g_queue_push_tail (&discover->results, disco);
@@ -219,7 +219,7 @@ realm_all_provider_discover_async (RealmProvider *provider,
 
 	res = g_simple_async_result_new (G_OBJECT (self), callback, user_data,
 	                                 realm_all_provider_discover_async);
-	discover = g_slice_new0 (DiscoverClosure);
+	discover = g_new0 (DiscoverClosure, 1);
 	g_queue_init (&discover->results);
 	discover->invocation = g_object_ref (invocation);
 	g_simple_async_result_set_op_res_gpointer (res, discover, discover_closure_free);

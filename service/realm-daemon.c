@@ -468,12 +468,6 @@ main (int argc,
 		{ NULL }
 	};
 
-	/* Always use malloc for now, in order to find malloc bugs */
-#if 0
-	if (RUNNING_ON_VALGRIND && !g_getenv ("G_SLICE"))
-#endif
-		g_setenv ("G_SLICE", "always-malloc", TRUE);
-
 #ifdef ENABLE_NLS
 	bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
 	bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");

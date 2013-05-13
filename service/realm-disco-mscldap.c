@@ -47,7 +47,7 @@ closure_free (gpointer data)
 		g_source_remove (clo->normal_id);
 	g_source_destroy (clo->source);
 	g_source_unref (clo->source);
-	g_slice_free (Closure, clo);
+	g_free (clo);
 }
 
 static gchar *
@@ -286,7 +286,7 @@ realm_disco_mscldap_async (GSocketAddress *address,
 	g_return_if_fail (address != NULL);
 
 	task = egg_task_new (NULL, cancellable, callback, user_data);
-	clo = g_slice_new0 (Closure);
+	clo = g_new0 (Closure, 1);
 	clo->explicit_server = g_strdup (explicit_server);
 	clo->protocol = get_cldap_protocol ();
 	egg_task_set_task_data (task, clo, closure_free);

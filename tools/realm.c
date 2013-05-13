@@ -204,12 +204,6 @@ main (int argc,
 	gint ret;
 	gint i;
 
-	/* Behave well under valgrind */
-	if (RUNNING_ON_VALGRIND) {
-		if (!g_getenv ("G_SLICE"))
-			g_setenv ("G_SLICE", "always-malloc", TRUE);
-	}
-
 	setlocale (LC_ALL, "");
 
 #ifdef ENABLE_NLS

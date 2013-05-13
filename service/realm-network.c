@@ -28,7 +28,7 @@ lookup_closure_free (gpointer data)
 	LookupClosure *lookup = data;
 	g_assert (lookup->outstanding == 0);
 	g_list_free_full (lookup->values, (GDestroyNotify)g_variant_unref);
-	g_slice_free (LookupClosure, lookup);
+	g_free (lookup);
 }
 
 static GVariant *
@@ -229,7 +229,7 @@ realm_network_get_dhcp_domain_async (GDBusConnection *connection,
 
 	res = g_simple_async_result_new (NULL, callback, user_data,
 	                                 realm_network_get_dhcp_domain_async);
-	lookup = g_slice_new0 (LookupClosure);
+	lookup = g_new0 (LookupClosure, 1);
 	g_simple_async_result_set_op_res_gpointer (res, lookup, lookup_closure_free);
 
 	lookup_get_property_async (connection, "/org/freedesktop/NetworkManager",

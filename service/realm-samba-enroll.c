@@ -67,7 +67,7 @@ join_closure_free (gpointer data)
 		g_free (join->custom_smb_conf);
 	}
 
-	g_slice_free (JoinClosure, join);
+	g_free (join);
 }
 
 static gchar *
@@ -92,7 +92,7 @@ join_closure_init (EggTask *task,
 	GError *error = NULL;
 	int temp_fd;
 
-	join = g_slice_new0 (JoinClosure);
+	join = g_new0 (JoinClosure, 1);
 	join->disco = realm_disco_ref (disco);
 	join->invocation = invocation ? g_object_ref (invocation) : NULL;
 	egg_task_set_task_data (task, join, join_closure_free);

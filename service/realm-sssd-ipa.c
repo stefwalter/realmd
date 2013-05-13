@@ -106,7 +106,7 @@ enroll_closure_free (gpointer data)
 		g_ptr_array_unref (enroll->argv);
 	g_variant_unref (enroll->options);
 	g_bytes_unref (enroll->input);
-	g_slice_free (EnrollClosure, enroll);
+	g_free (enroll);
 }
 
 static void
@@ -296,7 +296,7 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 	domain_name = realm_kerberos_get_name (realm);
 
 	task = egg_task_new (realm, NULL, callback, user_data);
-	enroll = g_slice_new0 (EnrollClosure);
+	enroll = g_new0 (EnrollClosure, 1);
 	enroll->invocation = g_object_ref (invocation);
 	enroll->options = g_variant_ref (options);
 	egg_task_set_task_data (task, enroll, enroll_closure_free);
@@ -443,7 +443,7 @@ realm_sssd_ipa_leave_async (RealmKerberosMembership *membership,
 	};
 
 	task = egg_task_new (realm, NULL, callback, user_data);
-	enroll = g_slice_new0 (EnrollClosure);
+	enroll = g_new0 (EnrollClosure, 1);
 	enroll->invocation = g_object_ref (invocation);
 	enroll->options = g_variant_ref (options);
 	egg_task_set_task_data (task, enroll, enroll_closure_free);

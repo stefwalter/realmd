@@ -88,7 +88,7 @@ static MethodClosure *
 method_closure_new (RealmKerberos *self,
                     GDBusMethodInvocation *invocation)
 {
-	MethodClosure *method = g_slice_new0 (MethodClosure);
+	MethodClosure *method = g_new0 (MethodClosure, 1);
 	method->self = g_object_ref (self);
 	method->invocation = g_object_ref (invocation);
 	return method;
@@ -101,7 +101,7 @@ method_closure_free (MethodClosure *closure)
 	g_object_unref (closure->invocation);
 	if (closure->cred)
 		realm_credential_unref (closure->cred);
-	g_slice_free (MethodClosure, closure);
+	g_free (closure);
 }
 
 static void

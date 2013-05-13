@@ -143,7 +143,7 @@ complete_discover (RealmDiscoDomain *self)
 		next = call->next;
 		if (call->function)
 			(call->function) (NULL, G_ASYNC_RESULT (self), call->user_data);
-		g_slice_free (Callback, call);
+		g_free (call);
 		call = next;
 	}
 }
@@ -315,7 +315,7 @@ realm_disco_domain_async (const gchar *string,
 		g_object_ref (self);
 	}
 
-	call = g_slice_new0 (Callback);
+	call = g_new0 (Callback, 1);
 	call->function = callback;
 	call->user_data = user_data;
 	call->next = self->callback;

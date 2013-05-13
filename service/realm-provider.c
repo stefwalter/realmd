@@ -50,7 +50,7 @@ method_closure_new (RealmProvider *self,
                     GDBusMethodInvocation *invocation,
                     GVariant *options)
 {
-	MethodClosure *closure = g_slice_new0 (MethodClosure);
+	MethodClosure *closure = g_new0 (MethodClosure, 1);
 	closure->self = g_object_ref (self);
 	closure->invocation = g_object_ref (invocation);
 	closure->options = g_variant_ref (options);
@@ -65,7 +65,7 @@ method_closure_free (MethodClosure *closure)
 	g_variant_unref (closure->options);
 	g_free (closure->string);
 	g_assert (closure->timeout_id == 0);
-	g_slice_free (MethodClosure, closure);
+	g_free (closure);
 }
 
 static gint

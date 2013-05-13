@@ -560,7 +560,7 @@ deconfigure_closure_free (gpointer data)
 	g_object_unref (deconf->invocation);
 	g_object_unref (deconf->config);
 	g_free (deconf->domain);
-	g_slice_free (DeconfClosure, deconf);
+	g_free (deconf);
 }
 
 static void

@@ -146,7 +146,7 @@ call_closure_free (gpointer data)
 	CallClosure *call = data;
 	g_free (call->service_name);
 	g_clear_object (&call->invocation);
-	g_slice_free (CallClosure, call);
+	g_free (call);
 }
 
 static void
@@ -196,7 +196,7 @@ realm_service_enable_and_restart (const gchar *service_name,
 	CallClosure *call;
 
 	task = egg_task_new (NULL, NULL, callback, user_data);
-	call = g_slice_new0 (CallClosure);
+	call = g_new0 (CallClosure, 1);
 	call->service_name = g_strdup (service_name);
 	call->invocation = invocation ? g_object_ref (invocation) : invocation;
 	egg_task_set_task_data (task, call, call_closure_free);
@@ -263,7 +263,7 @@ realm_service_disable_and_stop (const gchar *service_name,
 	CallClosure *call;
 
 	task = egg_task_new (NULL, NULL, callback, user_data);
-	call = g_slice_new0 (CallClosure);
+	call = g_new0 (CallClosure, 1);
 	call->service_name = g_strdup (service_name);
 	call->invocation = invocation ? g_object_ref (invocation) : invocation;
 	egg_task_set_task_data (task, call, call_closure_free);

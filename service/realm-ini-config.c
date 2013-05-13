@@ -102,7 +102,7 @@ config_section_free (gpointer data)
 {
 	ConfigSection *sect = data;
 	g_hash_table_destroy (sect->parameters);
-	g_slice_free (ConfigSection, sect);
+	g_free (sect);
 }
 
 static void
@@ -111,7 +111,7 @@ config_line_free (gpointer data)
 	ConfigLine *line = data;
 	g_free (line->name);
 	g_bytes_unref (line->bytes);
-	g_slice_free (ConfigLine, line);
+	g_free (line);
 }
 
 static void
@@ -465,7 +465,7 @@ parse_config_line (RealmIniConfig *self,
 	gchar *name = NULL;
 	gint type;
 
-	line = g_slice_new0 (ConfigLine);
+	line = g_new0 (ConfigLine, 1);
 	line->bytes = g_bytes_ref (bytes);
 
 	/* What kind of line is this? */
@@ -474,7 +474,7 @@ parse_config_line (RealmIniConfig *self,
 	case SECTION:
 		sect = g_hash_table_lookup (self->sections, name);
 		if (sect == NULL) {
-			sect = g_slice_new0 (ConfigSection);
+			sect = g_new0 (ConfigSection, 1);
 			sect->parameters = g_hash_table_new (conf_str_hash, conf_str_equal);
 			g_hash_table_replace (self->sections, name, sect);
 			sect->head = line;
@@ -777,20 +777,20 @@ config_set_value (RealmIniConfig *self,
 			return;
 
 		/* A blank line */
-		line = g_slice_new0 (ConfigLine);
+		line = g_new0 (ConfigLine, 1);
 		line->bytes = g_bytes_new ("\n", 1);
 		line->name = NULL;
 		append_config_line (self, line);
 
 		/* The actual section header */
 		data = g_strdup_printf ("[%s]\n", section);
-		line = g_slice_new0 (ConfigLine);
+		line = g_new0 (ConfigLine, 1);
 		line->bytes = g_bytes_new_take (data, strlen (data));
 		line->name = g_strdup (section);
 		append_config_line (self, line);
 
 		/* Register it */
-		sect = g_slice_new0 (ConfigSection);
+		sect = g_new0 (ConfigSection, 1);
 		sect->parameters = g_hash_table_new (conf_str_hash, conf_str_equal);
 		sect->head = sect->tail = line;
 		g_hash_table_replace (self->sections, line->name, sect);
@@ -819,7 +819,7 @@ config_set_value (RealmIniConfig *self,
 
 	/* Don't have this line, add to section */
 	if (line == NULL) {
-		line = g_slice_new0 (ConfigLine);
+		line = g_new0 (ConfigLine, 1);
 		line->bytes = g_bytes_new_take (data, strlen (data));
 		line->name = g_strdup (name);
 		insert_config_line (self, sect->tail, line);

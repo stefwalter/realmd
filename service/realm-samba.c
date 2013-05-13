@@ -154,7 +154,7 @@ enroll_closure_free (gpointer data)
 	g_variant_unref (enroll->options);
 	realm_credential_unref (enroll->cred);
 	g_object_unref (enroll->invocation);
-	g_slice_free (EnrollClosure, enroll);
+	g_free (enroll);
 }
 
 static void
@@ -267,7 +267,7 @@ realm_samba_join_async (RealmKerberosMembership *membership,
 	gchar *enrolled;
 
 	task = egg_task_new (realm, NULL, callback, user_data);
-	enroll = g_slice_new0 (EnrollClosure);
+	enroll = g_new0 (EnrollClosure, 1);
 	enroll->disco = realm_disco_ref (realm_kerberos_get_disco (realm));
 	enroll->invocation = g_object_ref (invocation);
 	enroll->options = g_variant_ref (options);
@@ -303,7 +303,7 @@ leave_closure_free (gpointer data)
 	LeaveClosure *leave = data;
 	realm_disco_unref (leave->disco);
 	g_object_unref (leave->invocation);
-	g_slice_free (LeaveClosure, leave);
+	g_free (leave);
 }
 
 static void
@@ -395,7 +395,7 @@ realm_samba_leave_async (RealmKerberosMembership *membership,
 	realm_name = realm_kerberos_get_realm_name (kerberos);
 
 	task = egg_task_new (self, NULL, callback, user_data);
-	leave = g_slice_new0 (LeaveClosure);
+	leave = g_new0 (LeaveClosure, 1);
 	leave->disco = realm_disco_ref (realm_kerberos_get_disco (kerberos));
 	leave->invocation = g_object_ref (invocation);
 	egg_task_set_task_data (task, leave, leave_closure_free);

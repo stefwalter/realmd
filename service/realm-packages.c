@@ -43,7 +43,7 @@ install_closure_free (gpointer data)
 	g_clear_object (&install->invocation);
 	if (install->check)
 		g_hash_table_destroy (install->check);
-	g_slice_free (InstallClosure, install);
+	g_free (install);
 }
 
 static void
@@ -373,7 +373,7 @@ realm_packages_install_async (const gchar **package_sets,
 	lookup_required_files_and_packages (package_sets, &packages, &required_files, &unconditional);
 
 	task = egg_task_new (NULL, NULL, callback, user_data);
-	install = g_slice_new0 (InstallClosure);
+	install = g_new0 (InstallClosure, 1);
 	install->task = pk_task_new ();
 	install->automatic = realm_options_automatic_install (options);
 	pk_task_set_interactive (install->task, FALSE);

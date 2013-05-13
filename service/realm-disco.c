@@ -34,7 +34,7 @@ realm_disco_new (const gchar *domain)
 {
 	RealmDisco *disco;
 
-	disco = g_slice_new0 (RealmDisco);
+	disco = g_new0 (RealmDisco, 1);
 	disco->refs = 1;
 	disco->domain_name = g_strdup (domain);
 	return disco;
@@ -61,6 +61,6 @@ realm_disco_unref (gpointer data)
 		g_free (disco->explicit_server);
 		g_free (disco->kerberos_realm);
 		g_free (disco->workgroup);
-		g_slice_free (RealmDisco, disco);
+		g_free (disco);
 	}
 }

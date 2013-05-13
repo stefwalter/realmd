@@ -70,7 +70,7 @@ command_closure_free (gpointer data)
 		g_object_unref (command->invocation);
 	g_string_free (command->output, TRUE);
 	g_assert (command->source_sig == 0);
-	g_slice_free (CommandClosure, command);
+	g_free (command);
 }
 
 static void
@@ -474,7 +474,7 @@ realm_command_runv_async (gchar **argv,
 	g_strfreev (env);
 
 	res = g_simple_async_result_new (NULL, callback, user_data, realm_command_runv_async);
-	command = g_slice_new0 (CommandClosure);
+	command = g_new0 (CommandClosure, 1);
 	command->input = input ? g_bytes_ref (input) : NULL;
 	command->output = g_string_sized_new (128);
 	command->invocation = invocation ? g_object_ref (invocation) : NULL;
@@ -592,7 +592,7 @@ realm_command_run_known_async (const gchar *known_command,
 
 	} else {
 		async = g_simple_async_result_new (NULL, callback, user_data, realm_command_runv_async);
-		command = g_slice_new0 (CommandClosure);
+		command = g_new0 (CommandClosure, 1);
 		command->output = g_string_new (message);
 		command->exit_code = exit_code;
 		g_simple_async_result_set_op_res_gpointer (async, command, command_closure_free);

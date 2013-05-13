@@ -108,7 +108,7 @@ join_closure_free (gpointer data)
 	g_object_unref (join->invocation);
 	realm_credential_unref (join->cred);
 	g_variant_ref (join->options);
-	g_slice_free (JoinClosure, join);
+	g_free (join);
 }
 
 static void
@@ -375,7 +375,7 @@ realm_sssd_ad_join_async (RealmKerberosMembership *membership,
 	GError *error = NULL;
 
 	task = egg_task_new (realm, NULL, callback, user_data);
-	join = g_slice_new0 (JoinClosure);
+	join = g_new0 (JoinClosure, 1);
 	join->disco = realm_disco_ref (realm_kerberos_get_disco (realm));
 	join->invocation = g_object_ref (invocation);
 	join->options = g_variant_ref (options);
@@ -414,7 +414,7 @@ leave_closure_free (gpointer data)
 	LeaveClosure *leave = data;
 	g_free (leave->realm_name);
 	g_object_unref (leave->invocation);
-	g_slice_free (LeaveClosure, leave);
+	g_free (leave);
 }
 
 static void
@@ -468,7 +468,7 @@ realm_sssd_ad_leave_async (RealmKerberosMembership *membership,
 		break;
 	case REALM_CREDENTIAL_CCACHE:
 	case REALM_CREDENTIAL_PASSWORD:
-		leave = g_slice_new0 (LeaveClosure);
+		leave = g_new0 (LeaveClosure, 1);
 		leave->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
 		leave->invocation = g_object_ref (invocation);
 		egg_task_set_task_data (task, leave, leave_closure_free);

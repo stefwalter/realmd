@@ -455,7 +455,7 @@ realm_samba_enroll_leave_async (RealmDisco *disco,
 		break;
 	case REALM_CREDENTIAL_CCACHE:
 		join->envvar = g_strdup_printf ("KRB5CCNAME=%s", cred->x.ccache.file);
-		begin_net_process (join, join->password_input,
+		begin_net_process (join, NULL,
 		                   on_leave_complete, g_object_ref (task),
 		                   "-k", "ads", "leave", NULL);
 		break;

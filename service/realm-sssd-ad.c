@@ -160,6 +160,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
                            GError **error)
 {
 	const gchar *access_provider;
+	const gchar *realmd_tags;
 	gboolean qualify;
 	gboolean ret;
 	gchar *section;
@@ -167,6 +168,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 
 	home = realm_sssd_build_default_home (realm_settings_string ("users", "default-home"));
 	qualify = realm_options_qualify_names (disco->domain_name);
+	realmd_tags = realm_options_manage_system (options, disco->domain_name) ? "manages-system" : "";
 
 	ret = realm_sssd_config_add_domain (config, disco->domain_name, error,
 	                                    "cache_credentials", "True",
@@ -178,6 +180,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	                                    "krb5_realm", disco->kerberos_realm,
 	                                    "krb5_store_password_if_offline", "True",
 	                                    "ldap_id_mapping", realm_options_automatic_mapping (disco->domain_name) ? "True" : "False",
+	                                    "realmd_tags", realmd_tags,
 
 	                                    "fallback_homedir", home,
 	                                    disco->explicit_server ? "ad_server" : NULL, disco->explicit_server,

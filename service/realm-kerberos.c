@@ -54,7 +54,11 @@ enum {
 	PROP_NAME,
 	PROP_DISCO,
 	PROP_PROVIDER,
+	PROP_MANAGES_SYSTEM,
 };
+
+/* A global weak pointer which tracks the manage-system domain */
+static RealmKerberos *realm_which_manages_system = NULL;
 
 G_DEFINE_TYPE (RealmKerberos, realm_kerberos, G_TYPE_DBUS_OBJECT_SKELETON);
 
@@ -343,6 +347,7 @@ handle_join (RealmDbusKerberosMembership *membership,
 {
 	RealmKerberos *self = REALM_KERBEROS (user_data);
 	gchar hostname[HOST_NAME_MAX + 1];
+	RealmKerberos *manages;
 	gint ret;
 
 	/* Check the host name */
@@ -352,6 +357,17 @@ handle_join (RealmDbusKerberosMembership *membership,
 		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_FAILED,
 		                                       "This computer's host name is not set correctly.");
 		return TRUE;
+	}
+
+	if (realm_options_manage_system (options, realm_kerberos_get_name (self))) {
+		manages = realm_kerberos_which_manages_system ();
+		if (manages != NULL && manages != self) {
+			g_dbus_method_invocation_return_error (invocation, REALM_ERROR,
+			                                       REALM_ERROR_ALREADY_CONFIGURED,
+			                                       _("Already joined to another domain: %s"),
+			                                       realm_kerberos_get_name (manages));
+			return TRUE;
+		}
 	}
 
 	join_or_leave (self, credentials, options, invocation, TRUE);
@@ -581,6 +597,9 @@ realm_kerberos_get_property (GObject *obj,
 	case PROP_DISCO:
 		g_value_set_boxed (value, realm_kerberos_get_disco (self));
 		break;
+	case PROP_MANAGES_SYSTEM:
+		g_value_set_boolean (value, realm_kerberos_get_manages_system (self));
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
 		break;
@@ -605,6 +624,9 @@ realm_kerberos_set_property (GObject *obj,
 		break;
 	case PROP_PROVIDER:
 		/* ignore */
+		break;
+	case PROP_MANAGES_SYSTEM:
+		realm_kerberos_set_manages_system (self, g_value_get_boolean (value));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -654,6 +676,10 @@ realm_kerberos_class_init (RealmKerberosClass *klass)
 	g_object_class_install_property (object_class, PROP_PROVIDER,
 	            g_param_spec_object ("provider", "Provider", "Realm Provider",
 	                                 REALM_TYPE_PROVIDER, G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+
+	g_object_class_install_property (object_class, PROP_MANAGES_SYSTEM,
+	            g_param_spec_boolean ("manages-system", "Manages System", "Whether domain configured to manage system",
+	                                  FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 }
 
 void
@@ -781,6 +807,45 @@ realm_kerberos_set_domain_name (RealmKerberos *self,
 {
 	g_return_if_fail (REALM_IS_KERBEROS (self));
 	realm_dbus_kerberos_set_domain_name (self->pv->kerberos_iface, value);
+}
+
+gboolean
+realm_kerberos_get_manages_system (RealmKerberos *self)
+{
+	g_return_val_if_fail (REALM_IS_KERBEROS (self), FALSE);
+	return (self == realm_which_manages_system);
+}
+
+void
+realm_kerberos_set_manages_system (RealmKerberos *self,
+                                   gboolean manages)
+{
+	GObject *obj;
+
+	g_return_if_fail (REALM_IS_KERBEROS (self));
+
+	if (manages == realm_kerberos_get_manages_system (self))
+		return;
+
+	if (realm_which_manages_system) {
+		obj = G_OBJECT (realm_which_manages_system);
+		g_object_remove_weak_pointer (G_OBJECT (obj), (gpointer *)&realm_which_manages_system);
+		realm_which_manages_system = NULL;
+		g_object_notify (obj, "manages-system");
+	}
+
+	if (manages) {
+		obj = G_OBJECT (self);
+		realm_which_manages_system = self;
+		g_object_add_weak_pointer (G_OBJECT (obj), (gpointer *)&realm_which_manages_system);
+		g_object_notify (obj, "manages-system");
+	}
+}
+
+RealmKerberos *
+realm_kerberos_which_manages_system (void)
+{
+	return realm_which_manages_system;
 }
 
 gboolean

@@ -507,6 +507,7 @@ update_properties (RealmSamba *self)
 	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	GPtrArray *permitted;
 	gchar *login_formats[2] = { NULL, NULL };
+	gboolean configured;
 	const gchar *name;
 	gchar *domain;
 	gchar *realm;
@@ -524,7 +525,15 @@ update_properties (RealmSamba *self)
 	realm_kerberos_set_realm_name (kerberos, realm);
 	g_free (realm);
 
-	realm_kerberos_set_configured (kerberos, lookup_is_enrolled (self));
+	/*
+	 * Although samba domains do not do much management of the system or
+	 * pull that much policy, we cannot limit who can log in from the domain
+	 * and also cannot join more than one domain, so this we mark a
+	 * configured domain as one that manages the system.
+	 */
+	configured = lookup_is_enrolled (self);
+	realm_kerberos_set_configured (kerberos, configured);
+	realm_kerberos_set_manages_system (kerberos, configured);
 
 	/* Setup the workgroup property */
 	prefix = lookup_login_prefix (self);

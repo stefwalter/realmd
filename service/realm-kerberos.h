@@ -96,6 +96,13 @@ void                realm_kerberos_set_realm_name              (RealmKerberos *s
 void                realm_kerberos_set_domain_name             (RealmKerberos *self,
                                                                 const gchar *value);
 
+gboolean            realm_kerberos_get_manages_system          (RealmKerberos *self);
+
+void                realm_kerberos_set_manages_system          (RealmKerberos *self,
+                                                                gboolean manages);
+
+RealmKerberos *     realm_kerberos_which_manages_system        (void);
+
 void                realm_kerberos_set_suggested_admin         (RealmKerberos *self,
                                                                 const gchar *value);
 

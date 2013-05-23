@@ -230,10 +230,23 @@ realm_sssd_generic_finish (RealmKerberos *realm,
 }
 
 static void
-update_enrolled (RealmSssd *self)
+update_configured (RealmSssd *self)
 {
+	gboolean manages_system;
+	gchar *value;
+
 	realm_kerberos_set_configured (REALM_KERBEROS (self),
 	                               self->pv->section ? TRUE : FALSE);
+
+	manages_system = FALSE;
+	if (self->pv->section) {
+		value = realm_ini_config_get (self->pv->config, self->pv->section, "realmd_tags");
+		if (value && strstr (value, "manages-system"))
+			manages_system = TRUE;
+		g_free (value);
+	}
+
+	realm_kerberos_set_manages_system (REALM_KERBEROS (self), manages_system);
 }
 
 static void
@@ -426,7 +439,7 @@ realm_sssd_update_properties (RealmSssd *self)
 	g_strfreev (domains);
 
 	/* Update all the other properties */
-	update_enrolled (self);
+	update_configured (self);
 	update_realm_name (self);
 	update_domain (self);
 	update_login_formats (self);

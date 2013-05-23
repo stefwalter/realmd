@@ -161,6 +161,7 @@ on_ipa_client_do_restart (GObject *source,
 	RealmSssd *sssd = egg_task_get_source_object (task);
 	RealmKerberos *realm = REALM_KERBEROS (sssd);
 	const gchar *access_provider;
+	const gchar *realmd_tags;
 	GError *error = NULL;
 	GString *output = NULL;
 	RealmIniConfig *config;
@@ -193,12 +194,14 @@ on_ipa_client_do_restart (GObject *source,
 
 	if (error == NULL) {
 		home = realm_sssd_build_default_home (realm_settings_string ("users", "default-home"));
+		realmd_tags = realm_options_manage_system (enroll->options, domain) ? "manages-system" : "";
 
 		realm_sssd_config_update_domain (config, domain, &error,
 		                                 "cache_credentials", "True",
 		                                 "use_fully_qualified_names", realm_options_qualify_names (domain) ? "True" : "False",
 		                                 "krb5_store_password_if_offline", "True",
 		                                 "fallback_homedir", home,
+		                                 "realmd_tags", realmd_tags,
 		                                 NULL);
 
 		g_free (home);

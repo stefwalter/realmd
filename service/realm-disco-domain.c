@@ -149,26 +149,6 @@ complete_discover (RealmDiscoDomain *self)
 }
 
 static void
-on_discover_mscldap (GObject *source,
-                     GAsyncResult *result,
-                     gpointer user_data)
-{
-	RealmDiscoDomain *self = REALM_DISCO_DOMAIN (user_data);
-	GError *error = NULL;
-	RealmDisco *disco;
-
-	self->outstanding--;
-	disco = realm_disco_mscldap_finish (result, &error);
-
-	if (error && !self->completed)
-		realm_diagnostics_error (self->invocation, error, NULL);
-	g_clear_error (&error);
-	step_discover (self, disco);
-
-	g_object_unref (self);
-}
-
-static void
 on_discover_rootdse (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
@@ -223,21 +203,12 @@ on_discover_next_address (GObject *source,
 			explicit_host = realm_disco_dns_get_name (enumerator);
 		else
 			explicit_host = NULL;
-		if (!(hint & REALM_DISCO_HINT_IS_NOT_MSDCS)) {
-			realm_diagnostics_info (self->invocation, "Sending MS-CLDAP ping to: %s", string);
-			realm_disco_mscldap_async (address, explicit_host,
-			                           self->cancellable, on_discover_mscldap,
-			                           g_object_ref (self));
-			self->outstanding++;
-		}
-		if (!(hint & REALM_DISCO_HINT_IS_MSDCS)) {
-			realm_diagnostics_info (self->invocation, "Performing LDAP DSE lookup on: %s", string);
-			realm_disco_rootdse_async (address, explicit_host,
-			                           self->cancellable, on_discover_rootdse,
-			                           g_object_ref (self));
-			self->outstanding++;
-		}
 
+		realm_diagnostics_info (self->invocation, "Performing LDAP DSE lookup on: %s", string);
+		realm_disco_rootdse_async (address, explicit_host,
+		                           self->invocation, self->cancellable,
+		                           on_discover_rootdse, g_object_ref (self));
+		self->outstanding++;
 		g_free (string);
 	}
 

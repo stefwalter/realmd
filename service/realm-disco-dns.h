@@ -20,8 +20,6 @@
 #include <gio/gio.h>
 
 typedef enum {
-	REALM_DISCO_HINT_IS_MSDCS = 1 << 1,
-	REALM_DISCO_HINT_IS_NOT_MSDCS = 1 << 2,
 	REALM_DISCO_IS_SERVER = 1 << 3,
 } RealmDiscoDnsHint;
 

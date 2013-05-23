@@ -16,6 +16,8 @@
 
 #include "egg-task.h"
 #include "realm-dbus-constants.h"
+#include "realm-diagnostics.h"
+#include "realm-disco-mscldap.h"
 #include "realm-disco-rootdse.h"
 #include "realm-ldap.h"
 
@@ -28,6 +30,8 @@ typedef struct _Closure Closure;
 struct _Closure {
 	RealmDisco *disco;
 	GSource *source;
+	GSocketAddress *address;
+	GDBusMethodInvocation *invocation;
 
 	gchar *default_naming_context;
 	gint msgid;
@@ -51,8 +55,57 @@ closure_free (gpointer data)
 
 	g_source_destroy (clo->source);
 	g_source_unref (clo->source);
+	g_object_unref (clo->address);
+	g_clear_object (&clo->invocation);
 	realm_disco_unref (clo->disco);
 	g_free (clo);
+}
+
+static gboolean
+entry_has_attribute (LDAP *ldap,
+                     LDAPMessage *entry,
+                     const gchar *field,
+                     const gchar *value)
+{
+	struct berval **bvs = NULL;
+	gboolean has = FALSE;
+	gsize len;
+	int i;
+
+	len = strlen (value);
+	if (entry != NULL)
+		bvs = ldap_get_values_len (ldap, entry, field);
+
+	for (i = 0; bvs && bvs[i]; i++) {
+		if (bvs[i]->bv_len == len &&
+		    memcmp (bvs[i]->bv_val, value, len) == 0) {
+			has = TRUE;
+			break;
+		}
+	}
+
+	ldap_value_free_len (bvs);
+
+	return has;
+}
+
+static gchar *
+entry_get_attribute (LDAP *ldap,
+                     LDAPMessage *entry,
+                     const gchar *field)
+{
+	struct berval **bvs = NULL;
+	gchar *value = NULL;
+
+	if (entry != NULL)
+		bvs = ldap_get_values_len (ldap, entry, field);
+
+	if (bvs && bvs[0])
+		value = g_strndup (bvs[0]->bv_val, bvs[0]->bv_len);
+
+	ldap_value_free_len (bvs);
+
+	return value;
 }
 
 static gboolean
@@ -89,19 +142,12 @@ result_krb_realm (EggTask *task,
                   LDAP *ldap,
                   LDAPMessage *message)
 {
-	struct berval **bvs = NULL;
 	LDAPMessage *entry;
 
 	entry = ldap_first_entry (ldap, message);
 
 	g_free (clo->disco->kerberos_realm);
-	clo->disco->kerberos_realm = NULL;
-
-	if (entry != NULL)
-		bvs = ldap_get_values_len (ldap, entry, "cn");
-	if (bvs && bvs[0])
-		clo->disco->kerberos_realm = g_strndup (bvs[0]->bv_val, bvs[0]->bv_len);
-	ldap_value_free_len (bvs);
+	clo->disco->kerberos_realm = entry_get_attribute (ldap, entry, "cn");
 
 	g_debug ("Found realm: %s", clo->disco->kerberos_realm);
 
@@ -157,11 +203,7 @@ result_domain_info (EggTask *task,
 
 	/* What is the domain name? */
 	g_free (clo->disco->domain_name);
-	clo->disco->domain_name = NULL;
-	bvs = ldap_get_values_len (ldap, entry, "associatedDomain");
-	if (bvs && bvs[0])
-		clo->disco->domain_name = g_strndup (bvs[0]->bv_val, bvs[0]->bv_len);
-	ldap_value_free_len (bvs);
+	clo->disco->domain_name = entry_get_attribute (ldap, entry, "associatedDomain");
 
 	g_debug ("Got associatedDomain: %s", clo->disco->domain_name);
 
@@ -185,42 +227,130 @@ request_domain_info (EggTask *task,
 	                    LDAP_SCOPE_BASE, NULL, attrs);
 }
 
+static void
+on_udp_mscldap_complete (GObject *source,
+                         GAsyncResult *result,
+                         gpointer user_data)
+{
+	EggTask *task = EGG_TASK (user_data);
+	Closure *clo = egg_task_get_task_data (task);
+	GError *error = NULL;
+
+	realm_disco_unref (clo->disco);
+	clo->disco = realm_disco_mscldap_finish (result, &error);
+
+	if (error != NULL) {
+		g_debug ("Failed UDP Netlogon response: %s", error->message);
+		egg_task_return_error (task, error);
+	} else {
+		g_debug ("Received UDP Netlogon response");
+		egg_task_return_boolean (task, TRUE);
+	}
+
+	g_object_unref (task);
+}
+
+static gboolean
+result_netlogon (EggTask *task,
+                 Closure *clo,
+                 LDAP *ldap,
+                 LDAPMessage *message)
+{
+	GError *error = NULL;
+
+	if (realm_disco_mscldap_result (ldap, message, clo->disco, &error)) {
+		g_debug ("Received TCP Netlogon response");
+		egg_task_return_boolean (task, TRUE);
+	} else {
+		g_debug ("Failed TCP Netlogon response: %s", error->message);
+		egg_task_return_error (task, error);
+	}
+
+	/* All done */
+	return FALSE;
+}
+
+static gboolean
+request_netlogon (EggTask *task,
+                  Closure *clo,
+                  LDAP *ldap)
+{
+	GError *error = NULL;
+
+	g_debug ("Sending TCP Netlogon request");
+
+	if (!realm_disco_mscldap_request (ldap, &clo->msgid, &error)) {
+		egg_task_return_error (task, error);
+		return FALSE;
+	}
+
+	clo->request = NULL;
+	clo->result = result_netlogon;
+	return TRUE;
+}
+
 static gboolean
 result_root_dse (EggTask *task,
                  Closure *clo,
                  LDAP *ldap,
                  LDAPMessage *message)
 {
-	struct berval **bvs = NULL;
+	GInetSocketAddress *inet;
 	LDAPMessage *entry;
-	LDAPDN dn;
+	gchar *string;
 
 	entry = ldap_first_entry (ldap, message);
 
 	/* Parse out the default naming context */
-	if (entry != NULL)
-		bvs = ldap_get_values_len (ldap, entry, "defaultNamingContext");
-	if (!bvs || !bvs[0] || ldap_bv2dn (bvs[0], &dn, 0) != 0)
-		dn = NULL;
-	ldap_value_free_len (bvs);
-
-	if (dn == NULL) {
-		egg_task_return_new_error (task, REALM_LDAP_ERROR, LDAP_NO_SUCH_OBJECT,
-		                           "Couldn't find default naming context on LDAP server");
-		return FALSE;
-	}
-
-	ldap_memfree (clo->default_naming_context);
-	if (ldap_dn2str (dn, &clo->default_naming_context, LDAP_DN_FORMAT_LDAPV3) != 0)
-		g_return_val_if_reached (FALSE);
-	ldap_dnfree (dn);
+	clo->default_naming_context = entry_get_attribute (ldap, entry, "defaultNamingContext");
 
 	g_debug ("Got defaultNamingContext: %s", clo->default_naming_context);
 
-	/* Next search for IPA field */
-	clo->request = request_domain_info;
-	clo->result = NULL;
-	return TRUE;
+	/* This means that this is an Active Directory server */
+	if (entry_has_attribute (ldap, entry, "supportedCapabilities",
+	                         "1.2.840.113556.1.4.800")) {
+
+		/* This means that this is Windows 2003+ */
+		if (entry_has_attribute (ldap, entry, "supportedCapabilities",
+		                         "1.2.840.113556.1.4.1670")) {
+
+			/*
+			 * Do a TCP NetLogon request since doing this over
+			 * TCP is supported, and we already have a connection
+			 */
+			clo->request = request_netlogon;
+			clo->result = NULL;
+			return TRUE;
+
+		/* Prior to Windows 2003 we have to use UDP for netlogon lookup */
+		} else {
+			inet = G_INET_SOCKET_ADDRESS (clo->address);
+			string = g_inet_address_to_string (g_inet_socket_address_get_address (inet));
+			realm_diagnostics_info (clo->invocation, "Sending MS-CLDAP ping to: %s", string);
+			g_free (string);
+
+			realm_disco_mscldap_async (clo->address, G_SOCKET_PROTOCOL_UDP,
+			                           clo->disco->explicit_server, egg_task_get_cancellable (task),
+			                           on_udp_mscldap_complete, g_object_ref (task));
+
+			/* Disconnect from TCP at this point */
+			return FALSE;
+		}
+
+	/* Not an Active Directory server, check for IPA */
+	} else {
+
+		if (clo->default_naming_context == NULL) {
+			egg_task_return_new_error (task, REALM_LDAP_ERROR, LDAP_NO_SUCH_OBJECT,
+			                           "Couldn't find default naming context on LDAP server");
+			return FALSE;
+		}
+
+		/* Next search for IPA field */
+		clo->request = request_domain_info;
+		clo->result = NULL;
+		return TRUE;
+	}
 }
 
 static gboolean
@@ -228,7 +358,7 @@ request_root_dse (EggTask *task,
                   Closure *clo,
                   LDAP *ldap)
 {
-	const char *attrs[] = { "defaultNamingContext", NULL };
+	const char *attrs[] = { "defaultNamingContext", "supportedCapabilities", NULL };
 
 	clo->request = NULL;
 	clo->result = result_root_dse;
@@ -292,6 +422,7 @@ on_ldap_io (LDAP *ldap,
 void
 realm_disco_rootdse_async (GSocketAddress *address,
                            const gchar *explicit_server,
+                           GDBusMethodInvocation *invocation,
                            GCancellable *cancellable,
                            GAsyncReadyCallback callback,
                            gpointer user_data)
@@ -305,6 +436,8 @@ realm_disco_rootdse_async (GSocketAddress *address,
 	clo = g_new0 (Closure, 1);
 	clo->disco = realm_disco_new (NULL);
 	clo->disco->explicit_server = g_strdup (explicit_server);
+	clo->address = g_object_ref (address);
+	clo->invocation = invocation ? g_object_ref (invocation) : NULL;
 	clo->request = request_root_dse;
 	egg_task_set_task_data (task, clo, closure_free);
 

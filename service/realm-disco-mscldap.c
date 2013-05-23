@@ -25,7 +25,6 @@
 
 typedef struct {
 	gchar *explicit_server;
-	GSocketProtocol protocol;
 	GSource *source;
 	gint count;
 	gint fever_id;
@@ -110,24 +109,25 @@ skip_n (unsigned char **at,
 	return TRUE;
 }
 
-static RealmDisco *
+static gboolean
 parse_netlogon (struct berval **bvs,
+                RealmDisco *disco,
                 GError **error)
 {
-	RealmDisco *disco = NULL;
 	guchar *at, *end, *beg;
 	gchar *unused = NULL;
 	guint type, flags;
+	gboolean success = FALSE;
 
 	if (bvs != NULL && bvs[0] != NULL) {
 		beg = (guchar *)bvs[0]->bv_val;
 		end = beg + bvs[0]->bv_len;
 		at = beg;
-		disco = realm_disco_new (NULL);
+		success = TRUE;
 	}
 
 	/* domain forest */
-	if (disco == NULL ||
+	if (!success ||
 	    !get_32_le (&at, end, &type) || type != 23 ||
 	    !get_32_le (&at, end, &flags) ||
 	    !skip_n (&at, end, 16) || /* guid */
@@ -139,39 +139,60 @@ parse_netlogon (struct berval **bvs,
 	    !parse_string (beg, end, &at, &unused) || /* user */
 	    !parse_string (beg, end, &at, &unused) || /* server site */
 	    !parse_string (beg, end, &at, &unused)) { /* client site */
-		realm_disco_unref (disco);
-		disco = NULL;
+		success = FALSE;
 	}
 
 	g_free (unused);
 
-	if (disco == NULL) {
+	if (!success) {
 		g_set_error (error, REALM_LDAP_ERROR, LDAP_PROTOCOL_ERROR,
-		             _("Received invalid Netlogon data from server"));
-		return NULL;
+		             _("Received invalid or unsupported Netlogon data from server"));
+		return FALSE;
 	}
 
 	disco->server_software = REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY;
 	disco->kerberos_realm = g_ascii_strup (disco->domain_name, -1);
-	return disco;
+	return TRUE;
 }
 
-static RealmDisco *
-parse_disco (LDAP *ldap,
-             LDAPMessage *message,
-             GError **error)
+gboolean
+realm_disco_mscldap_result (LDAP *ldap,
+                            LDAPMessage *message,
+                            RealmDisco *disco,
+                            GError **error)
 {
-	RealmDisco *disco = NULL;
 	struct berval **bvs = NULL;
 	LDAPMessage *entry;
+	gboolean ret;
 
 	entry = ldap_first_entry (ldap, message);
 	if (entry != NULL)
 		bvs = ldap_get_values_len (ldap, entry, "NetLogon");
-	disco = parse_netlogon (bvs, error);
+	ret = parse_netlogon (bvs, disco, error);
 	ldap_value_free_len (bvs);
 
-	return disco;
+	return ret;
+}
+
+gboolean
+realm_disco_mscldap_request (LDAP *ldap,
+                             int *msgidp,
+                             GError **error)
+{
+	char *attrs[] = { "NetLogon", NULL };
+	int rc;
+
+	rc = ldap_search_ext (ldap, "", LDAP_SCOPE_BASE,
+	                      "(&(NtVer=\\06\\00\\00\\00)(AAC=\\00\\00\\00\\00))",
+	                      attrs, 0, NULL, NULL, NULL,
+	                      -1, msgidp);
+
+	if (rc != LDAP_SUCCESS) {
+		realm_ldap_set_error (error, ldap, rc);
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 static gboolean
@@ -188,13 +209,11 @@ on_ldap_io (LDAP *ldap,
 {
 	EggTask *task = EGG_TASK (user_data);
 	Closure *clo = egg_task_get_task_data (task);
-	char *attrs[] = { "NetLogon", NULL };
 	struct timeval tvpoll = { 0, 0 };
 	LDAPMessage *message;
 	GError *error = NULL;
 	RealmDisco *disco;
 	int msgid;
-	gint rc;
 
 	/* Cancelled */
 	if (cond & G_IO_ERR) {
@@ -206,13 +225,7 @@ on_ldap_io (LDAP *ldap,
 	/* Ready for input */
 	if (cond & G_IO_OUT) {
 		g_debug ("Sending NetLogon ping");
-		rc = ldap_search_ext (ldap, "", LDAP_SCOPE_BASE,
-		                      "(&(NtVer=\\06\\00\\00\\00)(AAC=\\00\\00\\00\\00))",
-		                      attrs, 0, NULL, NULL, NULL,
-		                      -1, &msgid);
-
-		if (rc != LDAP_SUCCESS) {
-			realm_ldap_set_error (&error, ldap, rc);
+		if (!realm_disco_mscldap_request (ldap, &msgid, &error)) {
 			egg_task_return_error (task, error);
 			return G_IO_NVAL;
 		}
@@ -228,15 +241,16 @@ on_ldap_io (LDAP *ldap,
 	if (cond & G_IO_IN) {
 		switch (ldap_result (ldap, LDAP_RES_ANY, 0, &tvpoll, &message)) {
 		case LDAP_RES_SEARCH_ENTRY:
-			g_debug ("Received response");
-			disco = parse_disco (ldap, message, &error);
-			if (disco && clo->explicit_server)
-				disco->explicit_server = g_strdup (clo->explicit_server);
-			egg_task_return_pointer (task, disco, realm_disco_unref);
-			ldap_msgfree (message);
-			return G_IO_NVAL;
 		case LDAP_RES_SEARCH_RESULT:
-			egg_task_return_pointer (task, NULL, NULL);
+			g_debug ("Received response");
+			disco = realm_disco_new (NULL);
+			if (realm_disco_mscldap_result (ldap, message, disco, &error)) {
+				disco->explicit_server = g_strdup (clo->explicit_server);
+				egg_task_return_pointer (task, disco, realm_disco_unref);
+			} else {
+				realm_disco_unref (disco);
+				egg_task_return_error (task, error);
+			}
 			ldap_msgfree (message);
 			return G_IO_NVAL;
 		case -1:
@@ -256,25 +270,9 @@ on_ldap_io (LDAP *ldap,
 	return G_IO_IN;
 }
 
-static GSocketProtocol
-get_cldap_protocol (void)
-{
-	static gboolean checked = FALSE;
-	static GSocketProtocol protocol;
-
-	if (!checked) {
-		if (ldap_is_ldap_url ("cldap://hostname"))
-			protocol = G_SOCKET_PROTOCOL_UDP;
-		else
-			protocol = G_SOCKET_PROTOCOL_TCP;
-		checked = TRUE;
-	}
-
-	return protocol;
-}
-
 void
 realm_disco_mscldap_async (GSocketAddress *address,
+                           GSocketProtocol protocol,
                            const gchar *explicit_server,
                            GCancellable *cancellable,
                            GAsyncReadyCallback callback,
@@ -288,16 +286,22 @@ realm_disco_mscldap_async (GSocketAddress *address,
 	task = egg_task_new (NULL, cancellable, callback, user_data);
 	clo = g_new0 (Closure, 1);
 	clo->explicit_server = g_strdup (explicit_server);
-	clo->protocol = get_cldap_protocol ();
 	egg_task_set_task_data (task, clo, closure_free);
 
-	clo->source = realm_ldap_connect_anonymous (address, clo->protocol,
-	                                            cancellable);
+	if (protocol == G_SOCKET_PROTOCOL_UDP &&
+	    !ldap_is_ldap_url ("cldap://hostname")) {
+		egg_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+		                           _("LDAP on this system does not support UDP connections"));
+		g_object_unref (task);
+		return;
+	}
+
+	clo->source = realm_ldap_connect_anonymous (address, protocol, cancellable);
 	g_source_set_callback (clo->source, (GSourceFunc)on_ldap_io,
 	                       g_object_ref (task), g_object_unref);
 	g_source_attach (clo->source, egg_task_get_context (task));
 
-	if (clo->protocol == G_SOCKET_PROTOCOL_UDP) {
+	if (protocol == G_SOCKET_PROTOCOL_UDP) {
 		clo->fever_id = g_timeout_add (100, on_resend, clo->source);
 		clo->normal_id = g_timeout_add (1000, on_resend, clo->source);
 	}

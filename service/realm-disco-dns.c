@@ -22,7 +22,6 @@
 
 typedef enum {
 	PHASE_NONE,
-	PHASE_MSDCS,
 	PHASE_SRV,
 	PHASE_HOST,
 	PHASE_DONE
@@ -172,7 +171,6 @@ return_or_resolve (RealmDiscoDns *self,
 {
 	GSocketAddress *address;
 	GSrvTarget *target;
-	gchar *msdcs;
 
 	address = g_queue_pop_head (&self->addresses);
 	if (address) {
@@ -193,15 +191,6 @@ return_or_resolve (RealmDiscoDns *self,
 
 	switch (self->returned > 0 ? PHASE_DONE : self->phase) {
 	case PHASE_NONE:
-		msdcs = g_strdup_printf ("dc._msdcs.%s", self->name);
-		realm_diagnostics_info (self->invocation, "Resolving: _ldap._tcp.%s", msdcs);
-		g_resolver_lookup_service_async (self->resolver, "ldap", "tcp", msdcs,
-		                                 egg_task_get_cancellable (task),
-		                                 on_service_resolved, g_object_ref (task));
-		self->phase = PHASE_MSDCS;
-		g_free (msdcs);
-		break;
-	case PHASE_MSDCS:
 		realm_diagnostics_info (self->invocation, "Resolving: _ldap._tcp.%s", self->name);
 		g_resolver_lookup_service_async (self->resolver, "ldap", "tcp", self->name,
 		                                 egg_task_get_cancellable (task),
@@ -295,10 +284,6 @@ realm_disco_dns_get_hint (GSocketAddressEnumerator *enumerator)
 {
 	g_return_val_if_fail (REALM_IS_DISCO_DNS (enumerator), FALSE);
 	switch (REALM_DISCO_DNS (enumerator)->phase) {
-	case PHASE_MSDCS:
-		return REALM_DISCO_HINT_IS_MSDCS;
-	case PHASE_SRV:
-		return REALM_DISCO_HINT_IS_NOT_MSDCS;
 	case PHASE_HOST:
 		return REALM_DISCO_IS_SERVER;
 	default:

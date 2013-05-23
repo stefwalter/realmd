@@ -15,17 +15,29 @@
 #ifndef __REALM_DISCO_MSCLDAP_H__
 #define __REALM_DISCO_MSCLDAP_H__
 
-#include <gio/gio.h>
-
 #include "realm-disco.h"
 
+#include <gio/gio.h>
+
+#include <ldap.h>
+
 void           realm_disco_mscldap_async      (GSocketAddress *address,
+                                               GSocketProtocol protocol,
                                                const gchar *explicit_server,
                                                GCancellable *cancellable,
                                                GAsyncReadyCallback callback,
                                                gpointer user_data);
 
 RealmDisco *   realm_disco_mscldap_finish     (GAsyncResult *result,
+                                               GError **error);
+
+gboolean       realm_disco_mscldap_result     (LDAP *ldap,
+                                               LDAPMessage *message,
+                                               RealmDisco *disco,
+                                               GError **error);
+
+gboolean       realm_disco_mscldap_request    (LDAP *ldap,
+                                               int *msgidp,
                                                GError **error);
 
 #endif /* __REALM_DISCO_MSCLDAP_H__ */

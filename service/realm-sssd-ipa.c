@@ -367,7 +367,9 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 			g_return_if_reached ();
 		}
 
-		if (!realm_options_manage_system (options, domain_name)) {
+		if (realm_options_manage_system (options, domain_name)) {
+			push_arg (argv, "--force-ntpd");
+		} else {
 			push_arg (argv, "--no-ssh");
 			push_arg (argv, "--no-sshd");
 			push_arg (argv, "--no-ntp");

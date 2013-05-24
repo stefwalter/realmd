@@ -80,33 +80,35 @@ realm_sssd_set_login_policy (RealmIniConfig *config,
                              GError **error)
 {
 	const gchar *field = names_are_groups ? "simple_allow_groups" : "simple_allow_users";
-	gchar *allow;
+	gchar *allow = NULL;
 
 	if (!realm_ini_config_begin_change (config, error))
 		return FALSE;
 
 	if (access_provider)
 		realm_ini_config_set (config, section, "access_provider", access_provider, NULL);
-	realm_ini_config_set_list_diff (config, section, field, ",", add_names, remove_names);
 
-	/*
-	 * HACK: Work around for sssd problem where it allows users if
-	 * simple_allow_users is empty. Set it to a dollar in this case.
-	 */
-	allow = realm_ini_config_get (config, section, field);
-	if (allow != NULL) {
-		g_strstrip (allow);
-		if (g_str_equal (allow, "") || g_str_equal (allow, "$") || g_str_equal (allow, ",")) {
-			g_free (allow);
-			allow = NULL;
+	if (!access_provider || g_str_equal (access_provider, "simple")) {
+		realm_ini_config_set_list_diff (config, section, field, ",", add_names, remove_names);
+
+		/*
+		 * HACK: Work around for sssd problem where it allows users if
+		 * simple_allow_users is empty. Set it to a dollar in this case.
+		 */
+		allow = realm_ini_config_get (config, section, field);
+		if (allow != NULL) {
+			g_strstrip (allow);
+			if (g_str_equal (allow, "") || g_str_equal (allow, "$") || g_str_equal (allow, ",")) {
+				g_free (allow);
+				allow = NULL;
+			}
 		}
-	}
 
-	if (allow == NULL) {
-		if (g_str_equal (access_provider, "simple"))
+		if (allow == NULL)
 			realm_ini_config_set (config, section, field, "$", NULL);
-		else
-			realm_ini_config_set (config, section, field, NULL, NULL);
+	} else {
+		realm_ini_config_set (config, section, "simple_allow_users", NULL, NULL);
+		realm_ini_config_set (config, section, "simple_allow_groups", NULL, NULL);
 	}
 
 	g_free (allow);

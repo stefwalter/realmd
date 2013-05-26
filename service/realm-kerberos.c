@@ -354,7 +354,7 @@ handle_join (RealmDbusKerberosMembership *membership,
 	ret = gethostname (hostname, sizeof (hostname));
 	if (ret < 0 || g_ascii_strcasecmp (hostname, "localhost") == 0 ||
 	    g_ascii_strncasecmp (hostname, "localhost.", 10) == 0) {
-		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_FAILED,
+		g_dbus_method_invocation_return_error (invocation, REALM_ERROR, REALM_ERROR_BAD_HOSTNAME,
 		                                       "This computer's host name is not set correctly.");
 		return TRUE;
 	}

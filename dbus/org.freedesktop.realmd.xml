@@ -654,6 +654,9 @@
 		    <listitem><para><literal>org.freedesktop.realmd.Error.AlreadyEnrolled</literal>:
 		      returned if already enrolled in this realm, or if already enrolled in another realm
 		      (if enrolling in multiple realms is not supported).</para></listitem>
+		    <listitem><para><literal>org.freedesktop.realmd.Error.BadHostname</literal>:
+		      returned if the machine has a hostname that is not usable for a join
+		      or is in conflict with those in the domain.</para></listitem>
 		    <listitem><para><literal>org.freedesktop.realmd.Error.Busy</literal>:
 		      returned if the service is currently performing another operation like
 		      join or leave.</para></listitem>

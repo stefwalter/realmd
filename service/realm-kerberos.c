@@ -698,11 +698,23 @@ realm_kerberos_set_disco (RealmKerberos *self,
 RealmDisco *
 realm_kerberos_get_disco (RealmKerberos *self)
 {
+	RealmKerberosClass *klass;
+	RealmDisco *disco;
+
 	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
+
 	if (!self->pv->disco) {
-		self->pv->disco = realm_disco_new (realm_kerberos_get_name (self));
-		self->pv->disco->kerberos_realm = g_strdup (realm_kerberos_get_realm_name (self));
+		disco = realm_disco_new (NULL);
+		if (!disco->domain_name)
+			disco->domain_name = g_strdup (realm_kerberos_get_domain_name (self));
+		if (!disco->kerberos_realm)
+			disco->kerberos_realm = g_strdup (realm_kerberos_get_realm_name (self));
+		klass = REALM_KERBEROS_GET_CLASS (self);
+		if (klass->discover_myself)
+			(klass->discover_myself) (self, disco);
+		self->pv->disco = disco;
 	}
+
 	return self->pv->disco;
 }
 
@@ -799,6 +811,13 @@ realm_kerberos_set_realm_name (RealmKerberos *self,
 {
 	g_return_if_fail (REALM_IS_KERBEROS (self));
 	realm_dbus_kerberos_set_realm_name (self->pv->kerberos_iface, value);
+}
+
+const gchar *
+realm_kerberos_get_domain_name (RealmKerberos *self)
+{
+	g_return_val_if_fail (REALM_IS_KERBEROS (self), NULL);
+	return realm_dbus_kerberos_get_domain_name (self->pv->kerberos_iface);
 }
 
 void

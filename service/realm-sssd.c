@@ -251,8 +251,8 @@ update_configured (RealmSssd *self)
 	realm_kerberos_set_manages_system (REALM_KERBEROS (self), manages_system);
 }
 
-static void
-update_realm_name (RealmSssd *self)
+static gchar *
+calc_realm_name (RealmSssd *self)
 {
 	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	const char *name;
@@ -272,12 +272,19 @@ update_realm_name (RealmSssd *self)
 		realm = name ? g_ascii_strup (name, -1) : NULL;
 	}
 
-	realm_kerberos_set_realm_name (kerberos, realm);
-	g_free (realm);
+	return realm;
 }
 
 static void
-update_domain (RealmSssd *self)
+update_realm_name (RealmSssd *self)
+{
+	gchar *realm = calc_realm_name (self);
+	realm_kerberos_set_realm_name (REALM_KERBEROS (self), realm);
+	g_free (realm);
+}
+
+static gchar *
+calc_domain (RealmSssd *self)
 {
 	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	const char *name;
@@ -297,7 +304,14 @@ update_domain (RealmSssd *self)
 		domain = name ? g_ascii_strdown (name, -1) : NULL;
 	}
 
-	realm_kerberos_set_domain_name (kerberos, domain);
+	return domain;
+}
+
+static void
+update_domain (RealmSssd *self)
+{
+	gchar *domain = calc_domain (self);
+	realm_kerberos_set_domain_name (REALM_KERBEROS (self), domain);
 	g_free (domain);
 }
 

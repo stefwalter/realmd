@@ -157,10 +157,11 @@ static gboolean
 configure_sssd_for_domain (RealmIniConfig *config,
                            RealmDisco *disco,
                            GVariant *options,
+                           gboolean use_adcli,
                            GError **error)
 {
+	GString *realmd_tags;
 	const gchar *access_provider;
-	const gchar *realmd_tags;
 	gboolean qualify;
 	gboolean ret;
 	gchar *section;
@@ -168,7 +169,11 @@ configure_sssd_for_domain (RealmIniConfig *config,
 
 	home = realm_sssd_build_default_home (realm_settings_string ("users", "default-home"));
 	qualify = realm_options_qualify_names (disco->domain_name);
-	realmd_tags = realm_options_manage_system (options, disco->domain_name) ? "manages-system" : "";
+
+	realmd_tags = g_string_new ("");
+	if (realm_options_manage_system (options, disco->domain_name))
+		g_string_append (realmd_tags, "manages-system ");
+	g_string_append (realmd_tags, use_adcli ? "joined-with-adcli " : "joined-with-samba ");
 
 	ret = realm_sssd_config_add_domain (config, disco->domain_name, error,
 	                                    "cache_credentials", "True",
@@ -180,11 +185,13 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	                                    "krb5_realm", disco->kerberos_realm,
 	                                    "krb5_store_password_if_offline", "True",
 	                                    "ldap_id_mapping", realm_options_automatic_mapping (disco->domain_name) ? "True" : "False",
-	                                    "realmd_tags", realmd_tags,
+	                                    "realmd_tags", realmd_tags->str,
 
 	                                    "fallback_homedir", home,
 	                                    disco->explicit_server ? "ad_server" : NULL, disco->explicit_server,
 	                                    NULL);
+
+	g_string_free (realmd_tags, TRUE);
 
 	if (ret) {
 		if (realm_options_manage_system (options, disco->domain_name))
@@ -226,7 +233,7 @@ on_join_do_sssd (GObject *source,
 
 	if (error == NULL) {
 		configure_sssd_for_domain (realm_sssd_get_config (sssd), join->disco,
-		                           join->options, &error);
+		                           join->options, join->use_adcli, &error);
 	}
 
 	if (error == NULL) {
@@ -409,6 +416,7 @@ realm_sssd_ad_join_async (RealmKerberosMembership *membership,
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	gchar *realm_name;
+	gboolean use_adcli;
 } LeaveClosure;
 
 static void
@@ -431,7 +439,11 @@ on_leave_do_deconfigure (GObject *source,
 	GError *error = NULL;
 
 	/* We don't care if we can leave or not, just continue with other steps */
-	realm_samba_enroll_leave_finish (result, &error);
+	if (leave->use_adcli)
+		realm_adcli_enroll_delete_finish (result, &error);
+	else
+		realm_samba_enroll_leave_finish (result, &error);
+
 	if (error != NULL) {
 		realm_diagnostics_error (leave->invocation, error, NULL);
 		g_error_free (error);
@@ -452,18 +464,24 @@ realm_sssd_ad_leave_async (RealmKerberosMembership *membership,
 {
 	RealmSssdAd *self = REALM_SSSD_AD (membership);
 	RealmKerberos *realm = REALM_KERBEROS (self);
+	RealmSssd *sssd = REALM_SSSD (self);
+	const gchar *section;
 	EggTask *task;
 	LeaveClosure *leave;
+	gchar *tags;
 
 	task = egg_task_new (self, NULL, callback, user_data);
 
 	/* Check that enrolled in this realm */
-	if (!realm_sssd_get_config_section (REALM_SSSD (self))) {
+	section = realm_sssd_get_config_section (sssd);
+	if (!section) {
 		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
 		                           _("Not currently joined to this domain"));
 		g_object_unref (task);
 		return;
 	}
+
+	tags = realm_ini_config_get (realm_sssd_get_config (sssd), section, "realmd_tags");
 
 	switch (cred->type) {
 	case REALM_CREDENTIAL_AUTOMATIC:
@@ -474,14 +492,23 @@ realm_sssd_ad_leave_async (RealmKerberosMembership *membership,
 		leave = g_new0 (LeaveClosure, 1);
 		leave->realm_name = g_strdup (realm_kerberos_get_realm_name (realm));
 		leave->invocation = g_object_ref (invocation);
+		leave->use_adcli = strstr (tags ? tags : "", "joined-with-adcli") ? TRUE : FALSE;
 		egg_task_set_task_data (task, leave, leave_closure_free);
-		realm_samba_enroll_leave_async (realm_kerberos_get_disco (realm), cred, options, invocation,
-		                                on_leave_do_deconfigure, g_object_ref (task));
+		if (leave->use_adcli) {
+			realm_adcli_enroll_delete_async (realm_kerberos_get_disco (realm),
+			                                 cred, options, invocation,
+			                                 on_leave_do_deconfigure, g_object_ref (task));
+		} else {
+			realm_samba_enroll_leave_async (realm_kerberos_get_disco (realm),
+			                                cred, options, invocation,
+			                                on_leave_do_deconfigure, g_object_ref (task));
+		}
 		break;
 	default:
 		g_return_if_reached ();
 	}
 
+	g_free (tags);
 	g_object_unref (task);
 }
 
@@ -493,16 +520,34 @@ realm_sssd_ad_generic_finish (RealmKerberosMembership *realm,
 	return egg_task_propagate_boolean (EGG_TASK (result), error);
 }
 
+static void
+realm_sssd_ad_discover_myself (RealmKerberos *realm,
+                               RealmDisco *disco)
+{
+	RealmSssd *sssd = REALM_SSSD (realm);
+	gchar *explicit_server;
+
+	explicit_server = realm_ini_config_get (realm_sssd_get_config (sssd),
+	                                        realm_sssd_get_config_section (sssd),
+	                                        "ad_server");
+
+	g_free (disco->explicit_server);
+	disco->explicit_server = explicit_server;
+}
+
 void
 realm_sssd_ad_class_init (RealmSssdAdClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	RealmKerberosClass *kerberos_class = REALM_KERBEROS_CLASS (klass);
 	RealmSssdClass *sssd_class = REALM_SSSD_CLASS (klass);
 
 	object_class->constructed = realm_sssd_ad_constructed;
 
 	/* The provider in sssd.conf relevant to this realm type */
 	sssd_class->sssd_conf_provider_name = "ad";
+
+	kerberos_class->discover_myself = realm_sssd_ad_discover_myself;
 }
 
 static void

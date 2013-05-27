@@ -66,6 +66,8 @@ struct _RealmKerberosClass {
 	                                         GAsyncResult *result,
 	                                         GError **error);
 
+	void       (* discover_myself)          (RealmKerberos *realm,
+	                                         RealmDisco *disco);
 };
 
 GType               realm_kerberos_get_type              (void) G_GNUC_CONST;
@@ -92,6 +94,8 @@ const gchar *       realm_kerberos_get_realm_name              (RealmKerberos *s
 
 void                realm_kerberos_set_realm_name              (RealmKerberos *self,
                                                                 const gchar *value);
+
+const gchar *       realm_kerberos_get_domain_name             (RealmKerberos *self);
 
 void                realm_kerberos_set_domain_name             (RealmKerberos *self,
                                                                 const gchar *value);

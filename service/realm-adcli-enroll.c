@@ -182,3 +182,78 @@ realm_adcli_enroll_join_finish (GAsyncResult *result,
 	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
 	return egg_task_propagate_boolean (EGG_TASK (result), error);
 }
+
+void
+realm_adcli_enroll_delete_async (RealmDisco *disco,
+                                 RealmCredential *cred,
+                                 GVariant *options,
+                                 GDBusMethodInvocation *invocation,
+                                 GAsyncReadyCallback callback,
+                                 gpointer user_data)
+{
+	gchar *environ[] = { "LANG=C", NULL };
+	EggTask *task;
+	GBytes *input = NULL;
+	GPtrArray *args;
+	gchar *ccache_arg = NULL;
+
+	g_return_if_fail (cred != NULL);
+	g_return_if_fail (disco != NULL);
+	g_return_if_fail (invocation != NULL);
+
+	task = egg_task_new (NULL, NULL, callback, user_data);
+	args = g_ptr_array_new ();
+
+	/* Use our custom smb.conf */
+	g_ptr_array_add (args, (gpointer)realm_settings_path ("adcli"));
+	g_ptr_array_add (args, "delete-computer");
+	g_ptr_array_add (args, "--verbose");
+	g_ptr_array_add (args, "--domain");
+	g_ptr_array_add (args, (gpointer)disco->domain_name);
+	g_ptr_array_add (args, "--domain-realm");
+	g_ptr_array_add (args, (gpointer)disco->kerberos_realm);
+
+	if (disco->explicit_server) {
+		g_ptr_array_add (args, "--domain-controller");
+		g_ptr_array_add (args, (gpointer)disco->explicit_server);
+	}
+
+	switch (cred->type) {
+	case REALM_CREDENTIAL_AUTOMATIC:
+	case REALM_CREDENTIAL_SECRET:
+		g_return_if_reached ();
+		break;
+	case REALM_CREDENTIAL_CCACHE:
+		ccache_arg = g_strdup_printf ("--login-ccache=%s", cred->x.ccache.file);
+		g_ptr_array_add (args, ccache_arg);
+		break;
+	case REALM_CREDENTIAL_PASSWORD:
+		input = g_bytes_ref (cred->x.password.value);
+		g_ptr_array_add (args, "--login-user");
+		g_ptr_array_add (args, cred->x.password.name);
+		g_ptr_array_add (args, "--stdin-password");
+		break;
+	}
+
+	g_ptr_array_add (args, NULL);
+
+	realm_command_runv_async ((gchar **)args->pdata, environ, input,
+	                          invocation, on_join_process,
+	                          g_object_ref (task));
+
+	g_ptr_array_free (args, TRUE);
+	g_object_unref (task);
+
+	if (input)
+		g_bytes_unref (input);
+
+	free (ccache_arg);
+}
+
+gboolean
+realm_adcli_enroll_delete_finish (GAsyncResult *result,
+                                  GError **error)
+{
+	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
+	return egg_task_propagate_boolean (EGG_TASK (result), error);
+}

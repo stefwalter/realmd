@@ -36,6 +36,16 @@ void         realm_adcli_enroll_join_async    (RealmDisco *disco,
 gboolean     realm_adcli_enroll_join_finish   (GAsyncResult *result,
                                                GError **error);
 
+void         realm_adcli_enroll_delete_async  (RealmDisco *disco,
+                                               RealmCredential *cred,
+                                               GVariant *options,
+                                               GDBusMethodInvocation *invocation,
+                                               GAsyncReadyCallback callback,
+                                               gpointer user_data);
+
+gboolean     realm_adcli_enroll_delete_finish (GAsyncResult *result,
+                                               GError **error);
+
 G_END_DECLS
 
 #endif /* __REALM_ADCLI_ENROLL_H__ */

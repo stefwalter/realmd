@@ -1,3 +1,11 @@
+0.14.2
+ * Rework discovery for changes in FreeIPA 3.0 [#64895]
+ * Remove simple_allow_users/groups when permit/deny access provider [#64903]
+ * When FreeIPA domain with manage-system, we want NTP, so --force-ntpd
+ * Only allow joining one manage-system=true domain [#64928]
+ * Return a specific error code when host name is invalid
+ * Enable oddjobd service on Fedora and RHEL
+
 0.14.1
  * Don't use the slice allocator for small memory allocations [#56157]
  * Don't do critical warning when service.Release() is called

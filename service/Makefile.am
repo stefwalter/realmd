@@ -69,7 +69,7 @@ realmd_CFLAGS = \
 	-DSYSCONF_DIR="\"$(sysconfdir)\"" \
 	-DPROVIDER_DIR="\"$(privatedir)/provider.d\"" \
 	-DLOCALEDIR=\""$(datadir)/locale"\" \
-	-DSTATE_DIR="\"$(localstatedir)/realmd\"" \
+	-DSTATE_DIR="\"$(localstatedir)/lib/realmd\"" \
 	-DCACHEDIR="\"$(cachedir)\"" \
 	$(PACKAGEKIT_CFLAGS) \
 	$(POLKIT_CFLAGS) \
@@ -92,7 +92,7 @@ realmd_LDADD = \
 # Install and uninstall the config for this distro
 install-data-local:
 	$(INSTALL_PROGRAM) -d $(DESTDIR)$(privatedir)
-	$(INSTALL_PROGRAM) -d $(DESTDIR)$(localstatedir)/realmd
+	$(INSTALL_PROGRAM) -d $(DESTDIR)$(localstatedir)/lib/realmd
 	$(INSTALL_PROGRAM) -d $(DESTDIR)$(cachedir)
 	$(INSTALL_DATA) $(srcdir)/realmd-$(DISTRO).conf $(DESTDIR)$(privatedir)/realmd-distro.conf
 uninstall-local:

@@ -661,6 +661,7 @@ realm_samba_kerberos_membership_iface (RealmKerberosMembershipIface *iface)
 	static const RealmCredential join_supported[] = {
 		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN },
 		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_USER },
+		{ REALM_CREDENTIAL_CCACHE, REALM_CREDENTIAL_OWNER_ADMIN },
 		{ 0, },
 	};
 

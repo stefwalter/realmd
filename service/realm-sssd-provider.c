@@ -133,7 +133,11 @@ realm_sssd_provider_discover_async (RealmProvider *provider,
 	    !realm_provider_match_software (options,
 	                                    REALM_DBUS_IDENTIFIER_FREEIPA,
 	                                    REALM_DBUS_IDENTIFIER_SSSD,
-	                                    REALM_DBUS_IDENTIFIER_FREEIPA)) {
+	                                    REALM_DBUS_IDENTIFIER_FREEIPA) &&
+	    !realm_provider_match_software (options,
+	                                    REALM_DBUS_IDENTIFIER_IPA,
+	                                    REALM_DBUS_IDENTIFIER_SSSD,
+	                                    REALM_DBUS_IDENTIFIER_IPA)) {
 		egg_task_return_pointer (task, NULL, NULL);
 
 	} else {
@@ -172,7 +176,7 @@ realm_sssd_provider_discover_finish (RealmProvider *provider,
 		                                                 disco->domain_name, disco);
 		priority = realm_provider_is_default (REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY, REALM_DBUS_IDENTIFIER_SSSD) ? 100 : 50;
 
-	} else if (g_str_equal (disco->server_software, REALM_DBUS_IDENTIFIER_FREEIPA)) {
+	} else if (g_str_equal (disco->server_software, REALM_DBUS_IDENTIFIER_IPA)) {
 		realm = realm_provider_lookup_or_register_realm (provider,
 		                                                 REALM_TYPE_SSSD_IPA,
 		                                                 disco->domain_name, disco);

@@ -20,7 +20,7 @@
 		</chapter>
 
 		<xi:include href="realmd-guide-active-directory.xml"/>
-		<xi:include href="realmd-guide-freeipa.xml"/>
+		<xi:include href="realmd-guide-ipa.xml"/>
 		<xi:include href="realmd-guide-kerberos.xml"/>
 
 		<chapter id="guide-integration">

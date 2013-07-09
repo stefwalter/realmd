@@ -53,9 +53,9 @@
 		<listitem><para>winbind client software (with samba membership software).</para></listitem>
 	</itemizedlist>
 
-	<para>For freeipa server software, realmd supports:</para>
+	<para>For IPA server software, realmd supports:</para>
 	<itemizedlist>
-		<listitem><para>sssd client software (with 'freeipa' membership software).</para></listitem>
+		<listitem><para>sssd client software (with 'ipa' membership software).</para></listitem>
 	</itemizedlist>
 </section>
 
@@ -188,7 +188,7 @@
 		<itemizedlist>
 			<listitem><para>{sssd, active-directory, samba}</para></listitem>
 			<listitem><para>{sssd, active-directory, adcli}</para></listitem>
-			<listitem><para>{sssd, freeipa, freeipa}</para></listitem>
+			<listitem><para>{sssd, ipa, ipa}</para></listitem>
 		</itemizedlist>
 		</listitem>
 	</itemizedlist>
@@ -281,7 +281,7 @@
 	<itemizedlist>
 		<title>RealmSssdIpa</title>
 		<listitem><para>has a dynamically generated object path upon realm creation.</para></listitem>
-		<listitem><para>membership software supported: freeipa</para></listitem>
+		<listitem><para>membership software supported: ipa</para></listitem>
 		<listitem><para>config file modified: sssd.conf</para></listitem>
 		<listitem><para>required_packages: sssd, freeipa-client</para></listitem>
 		<listitem><para>credentials supported: </para>

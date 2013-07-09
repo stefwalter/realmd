@@ -194,7 +194,7 @@ result_domain_info (EggTask *task,
 	bvs = ldap_get_values_len (ldap, entry, "info");
 	if (bvs && bvs[0] && bvs[0]->bv_len >= 3) {
 		if (g_ascii_strncasecmp (bvs[0]->bv_val, "IPA", 3) == 0)
-			clo->disco->server_software = REALM_DBUS_IDENTIFIER_FREEIPA;
+			clo->disco->server_software = REALM_DBUS_IDENTIFIER_IPA;
 	}
 	ldap_value_free_len (bvs);
 

@@ -490,6 +490,8 @@ realm_provider_match_software (GVariant *options,
 	g_return_val_if_fail (client_software != NULL, FALSE);
 
 	if (g_variant_lookup (options, REALM_DBUS_OPTION_SERVER_SOFTWARE, "&s", &string)) {
+		if (g_str_equal (string, REALM_DBUS_IDENTIFIER_FREEIPA))
+			string = REALM_DBUS_IDENTIFIER_IPA;
 		if (!g_str_equal (server_software, string))
 			return FALSE;
 	}

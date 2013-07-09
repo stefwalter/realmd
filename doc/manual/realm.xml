@@ -116,7 +116,7 @@ $ realm discover domain.example.com
 			<listitem><para>Only discover realms which run the
 			given server software. Possible values include
 			<replaceable>active-directory</replaceable> or
-			<replaceable>freeipa</replaceable>.</para></listitem>
+			<replaceable>ipa</replaceable>.</para></listitem>
 		</varlistentry>
 		<varlistentry>
 			<term><option>--membership-software=xxx</option></term>
@@ -153,7 +153,7 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
 
 	<para>Joining arbitrary kerberos realms is not supported. The realm
 	must have a supported mechanism for joining from a client machine, such
-	as Active Directory or FreeIPA.</para>
+	as Active Directory or IPA.</para>
 
 	<para>Unless a <literal>--user</literal> is explicitly specified, an automatic join is attempted first.</para>
 
@@ -168,7 +168,7 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
 	from the credential cache. The <command>realm</command> respects the
 	<literal>KRB5_CCACHE</literal> environment variable, but uses the default
 	kerberos credential cache if it's not present. Not all types of servers
-	can be joined using kerberos credentials, some (like FreeIPA) insist on
+	can be joined using kerberos credentials, some (like IPA) insist on
 	prompting for a password.</para>
 
 	<para>The following options can be used:</para>
@@ -213,7 +213,7 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
 			<listitem><para>Only join realms for run the
 			given server software. Possible values include
 			<replaceable>active-directory</replaceable> or
-			<replaceable>freeipa</replaceable>.</para></listitem>
+			<replaceable>ipa</replaceable>.</para></listitem>
 		</varlistentry>
 		<varlistentry>
 			<term><option>--membership-software=xxx</option></term>
@@ -266,7 +266,7 @@ $ realm leave domain.example.com
 			<listitem><para>Only leave the realm which is using the
 			given server software. Possible values include
 			<replaceable>active-directory</replaceable> or
-			<replaceable>freeipa</replaceable>.</para></listitem>
+			<replaceable>ipa</replaceable>.</para></listitem>
 		</varlistentry>
 		<varlistentry>
 			<term><option>--remove</option></term>

@@ -15,7 +15,7 @@ DOCBOOK_FILE = realmd-docs.xml
 
 CONTENT_INCLUDES = \
 	realmd-guide-active-directory.xml \
-	realmd-guide-freeipa.xml \
+	realmd-guide-ipa.xml \
 	realmd-guide-kerberos.xml \
 	$(NULL)
 

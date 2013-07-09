@@ -68,6 +68,7 @@ G_BEGIN_DECLS
 
 #define   REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY   "active-directory"
 #define   REALM_DBUS_IDENTIFIER_WINBIND            "winbind"
+#define   REALM_DBUS_IDENTIFIER_IPA                "ipa"
 #define   REALM_DBUS_IDENTIFIER_FREEIPA            "freeipa"
 #define   REALM_DBUS_IDENTIFIER_SSSD               "sssd"
 #define   REALM_DBUS_IDENTIFIER_SAMBA              "samba"

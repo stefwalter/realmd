@@ -45,7 +45,7 @@ typedef struct {
 } RealmSssdIpaClass;
 
 static const gchar *IPA_PACKAGES[] = {
-	REALM_DBUS_IDENTIFIER_FREEIPA,
+	REALM_DBUS_IDENTIFIER_IPA,
 	REALM_DBUS_IDENTIFIER_SSSD,
 	NULL
 };
@@ -70,7 +70,7 @@ realm_sssd_ipa_constructed (GObject *obj)
 	G_OBJECT_CLASS (realm_sssd_ipa_parent_class)->constructed (obj);
 
 	realm_kerberos_set_details (kerberos,
-	                            REALM_DBUS_OPTION_SERVER_SOFTWARE, REALM_DBUS_IDENTIFIER_FREEIPA,
+	                            REALM_DBUS_OPTION_SERVER_SOFTWARE, REALM_DBUS_IDENTIFIER_IPA,
 	                            REALM_DBUS_OPTION_CLIENT_SOFTWARE, REALM_DBUS_IDENTIFIER_SSSD,
 	                            NULL);
 
@@ -309,7 +309,8 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 		                           _("The computer-ou argument is not supported when joining an IPA domain."));
 
 	} else if (g_variant_lookup (options, REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, "&s", &software) &&
-	           !g_str_equal (software, REALM_DBUS_IDENTIFIER_FREEIPA)) {
+	           !g_str_equal (software, REALM_DBUS_IDENTIFIER_FREEIPA) &&
+	           !g_str_equal (software, REALM_DBUS_IDENTIFIER_IPA)) {
 		egg_task_return_new_error (task, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
 		                           _("Unsupported or unknown membership software '%s'"), software);
 

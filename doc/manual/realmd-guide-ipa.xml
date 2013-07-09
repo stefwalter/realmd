@@ -5,19 +5,19 @@
   <!ENTITY % local.common.attrib "xmlns:xi  CDATA  #FIXED 'http://www.w3.org/2003/XInclude'">
 ]>
 
-<chapter id="guide-freeipa">
-	<title>Using with FreeIPA</title>
+<chapter id="guide-ipa">
+	<title>Using with IPA</title>
 
-	<para><command>realmd</command> can discover FreeIPA domains and join
+	<para><command>realmd</command> can discover IPA domains and join
 	the current computer as an account on a domain. This allows using domain
-	users locally, and log into the local machine with FreeIPA domain
+	users locally, and log into the local machine with IPA domain
 	credentials.</para>
 
 	<section>
-		<title>Discovering FreeIPA domains</title>
+		<title>Discovering IPA domains</title>
 		<para><command>realmd</command> discovers which domains or
 		realms it can use or configure. It can discover and identify
-		FreeIPA domains by looking up the appropriate DNS SRV
+		IPA domains by looking up the appropriate DNS SRV
 		records and by connecting to the domain LDAP server.</para>
 
 		<para>The following DNS SRV records are required to be present
@@ -26,13 +26,13 @@
 
 		<informalexample>
 <screen>
-# In this example the FreeIPA domain is 'domain.example.com'
+# In this example the IPA domain is 'domain.example.com'
 <emphasis>_ldap._tcp.</emphasis>domain.example.com.
 </screen>
 		</informalexample>
 
 		<para>In addition <command>realmd</command> connects to the LDAP
-		server on the FreeIPA domain server's on port 389 and reads the
+		server on the IPA domain server's on port 389 and reads the
 		Root DSE information about the domain.</para>
 
 		<para>To see how <command>realmd</command> is discovering a
@@ -51,26 +51,26 @@ $ <command>realm --verbose discover domain.example.com</command>
 </screen>
 		</informalexample>
 
-		<para>In addition a FreeIPA domain server's host name
+		<para>In addition a IPA domain server's host name
 		or IP address may be specified.</para>
 	</section>
 
-	<section id="guide-freeipa-client">
-		<title>FreeIPA client software</title>
-		<para>As part of configuring an FreeIPA  domain for use
+	<section id="guide-ipa-client">
+		<title>IPA client software</title>
+		<para>As part of configuring an IPA  domain for use
 		on the local computer, <command>realmd</command> will install and
 		configure client software to enable domain accounts to be used on
 		the local computer.</para>
 
-		<para>For a FreeIPA domain this is
+		<para>For a IPA domain this is
 		<ulink url="https://fedorahosted.org/sssd/">SSSD</ulink>.</para>
 
 	</section>
 
-	<section id="guide-freeipa-join">
-		<title>Joining a FreeIPA domain</title>
+	<section id="guide-ipa-join">
+		<title>Joining a IPA domain</title>
 
-		<para>To join a FreeIPA domain with <command>realmd</command>
+		<para>To join a IPA domain with <command>realmd</command>
 		you can use the <link linkend="realm"><command>realm</command></link>
 		command line tool:</para>
 
@@ -98,7 +98,7 @@ $ <command>realm join --verbose ipa.example.com</command>
 			<listitem><para>Enables domain users in <filename>/etc/nsswitch.conf</filename></para></listitem>
 		</itemizedlist>
 
-		<para>In addition an FreeIPA domain server's host name
+		<para>In addition an IPA domain server's host name
 		or IP address may be specified to join via that domain controller
 		directly.</para>
 
@@ -120,12 +120,12 @@ $ <command>getent passwd admin@ipa.example.com</command>
 
 	</section>
 
-	<section id="guide-freeipa-permit">
+	<section id="guide-ipa-permit">
 		<title>Logins using Domain Accounts</title>
 
 		<para>Once the
-		<link linkend="guide-freeipa-join">computer is joined</link>
-		to a FreeIPA domain, the machine will automatically follow the
+		<link linkend="guide-ipa-join">computer is joined</link>
+		to a IPA domain, the machine will automatically follow the
 		domain settings for whether users are able to log into the
 		machine or not.</para>
 

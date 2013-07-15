@@ -77,6 +77,7 @@ realm_samba_winbind_configure_async (RealmIniConfig *config,
                                      GAsyncReadyCallback callback,
                                      gpointer user_data)
 {
+	RealmIniConfig *pwc;
 	EggTask *task;
 	GError *error = NULL;
 
@@ -116,6 +117,18 @@ realm_samba_winbind_configure_async (RealmIniConfig *config,
 		}
 
 		realm_ini_config_finish_change (config, &error);
+	}
+
+	/* Setup pam_winbind.conf with decent defaults matching our expectations */
+	if (error == NULL) {
+		pwc = realm_ini_config_new (REALM_INI_NO_WATCH);
+		realm_ini_config_set_filename (pwc, realm_settings_path ("pam_winbind.conf"));
+		realm_ini_config_change (pwc, "global", &error,
+		                         "krb5_auth", "yes",
+		                         "krb5_ccache_type", "FILE",
+		                         "cached_login", "yes",
+		                         NULL);
+		g_object_unref (pwc);
 	}
 
 	if (error == NULL) {

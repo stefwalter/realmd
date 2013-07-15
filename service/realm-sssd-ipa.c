@@ -335,6 +335,7 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 		push_arg (argv, "--mkhomedir");
 		push_arg (argv, "--enable-dns-updates");
 		push_arg (argv, "--unattended");
+		push_arg (argv, "--force-join");
 
 		/* If the caller specified a server directly */
 		if (disco->explicit_server) {

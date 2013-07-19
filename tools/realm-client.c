@@ -768,6 +768,31 @@ build_ccache_credential (const gchar *user_name,
 	return result;
 }
 
+static gchar *
+prompt_stdin (const gchar *prompt)
+{
+	static const gsize pass_max = 8192;
+	gchar *password;
+	gsize len;
+
+	g_printf ("%s", prompt);
+	fflush (stdout);
+
+	password = malloc (pass_max);
+	if (!fgets (password, pass_max, stdin)) {
+		free (password);
+		password = NULL;
+	}
+
+	g_printf ("\n");
+
+	len = strlen (password);
+	if (len > 0 && password[len - 1] == '\n')
+		password[len - 1] = '\0';
+
+	return password;
+}
+
 static GVariant *
 build_password_credential (const gchar *user_name,
                            const gchar *credential_owner,
@@ -775,10 +800,23 @@ build_password_credential (const gchar *user_name,
 {
 	const gchar *password;
 	GVariant *result;
+	gchar *alloced;
 	gchar *prompt;
 
 	prompt = g_strdup_printf (_("Password for %s: "), user_name);
-	password = getpass (prompt);
+
+	/*
+	 * Yeah, getpass is obselete. Have fun trying to recreate it even
+	 * semi-portably.
+	 */
+	if (isatty (0)) {
+		password = getpass (prompt);
+		alloced = NULL;
+	} else {
+		alloced = prompt_stdin (prompt);
+		password = alloced;
+	}
+
 	g_free (prompt);
 
 	if (password == NULL) {
@@ -792,6 +830,7 @@ build_password_credential (const gchar *user_name,
 
 	if (password)
 		memset ((char *)password, 0, strlen (password));
+	free (alloced);
 
 	return result;
 }

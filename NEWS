@@ -1,3 +1,17 @@
+0.14.3
+ * Populate LoginFormats properly when use_fully_qualified_names = False
+ * Several documentation fixes
+ * Set sssd.conf default_shell per domain
+ * Notify in terminal output when installing packages
+ * If joined via adcli, delete computer account with adcli as well
+ * If input is not tty, then just read from stdin without getpass()
+ * Force IPA joins so that computer can rejoin a domain
+ * Configure pam_winbind.conf appropriately when using winbind [#66831]
+ * Refer to FreeIPA as IPA [#66734]
+ * Support use of kerberos ccache to join when using winbind
+ * Don't create a top level directory in /var [#65435]
+ * Other build fixes
+
 0.14.2
  * Rework discovery for changes in FreeIPA 3.0 [#64895]
  * Remove simple_allow_users/groups when permit/deny access provider [#64903]

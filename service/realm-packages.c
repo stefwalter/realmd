@@ -226,21 +226,25 @@ on_install_resolved (GObject *source,
 	}
 
 	if (error == NULL) {
+		missing = package_names_to_list (names);
 		if (package_ids == NULL || *package_ids == NULL) {
 			egg_task_return_boolean (task, TRUE);
 
 		} else if (!install->automatic) {
-			missing = package_names_to_list (names);
 			g_set_error (&error, REALM_ERROR, REALM_ERROR_FAILED,
 			             _("Necessary packages are not installed: %s"), missing);
-			g_free (missing);
 
 		} else {
+			/* String should match that in realm-client.c */
+			realm_diagnostics_info (install->invocation, "%s: %s",
+			                        _("Installing necessary packages"), missing);
 			cancellable = realm_invocation_get_cancellable (install->invocation);
 			pk_task_install_packages_async (install->task, package_ids, cancellable,
 			                                on_install_progress, install,
 			                                on_install_installed, g_object_ref (task));
 		}
+
+		g_free (missing);
 	}
 
 	if (error != NULL) {

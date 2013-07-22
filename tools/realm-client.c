@@ -128,11 +128,23 @@ on_diagnostics_signal (GDBusConnection *connection,
                        GVariant *parameters,
                        gpointer user_data)
 {
+	gboolean verbose = GPOINTER_TO_INT (user_data);
 	const gchar *operation_id;
 	const gchar *data;
 
 	g_variant_get (parameters, "(&s&s)", &data, &operation_id);
-	g_printerr ("%s", data);
+
+	/*
+	 * Various people have been worried by installing packages
+	 * quietly, so notify about what's going on.
+	 *
+	 * In reality *configuring* and *starting* a daemon is far
+	 * more worrisome than the installation. It's realmd's job
+	 * to configure, enable and start stuff. So if you're properly
+	 * worried, remove realmd and do stuff manually.
+	 */
+	if (verbose || strstr (data, _("Installing necessary packages")))
+		g_printerr ("%s", data);
 }
 
 static gboolean
@@ -167,14 +179,13 @@ realm_client_new_on_connection (GDBusConnection *connection,
 	if (bus_name == NULL)
 		flags |= G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE;
 
-	if (verbose) {
-		g_dbus_connection_signal_subscribe (connection, bus_name,
-		                                    REALM_DBUS_SERVICE_INTERFACE,
-		                                    REALM_DBUS_DIAGNOSTICS_SIGNAL,
-		                                    REALM_DBUS_SERVICE_PATH,
-		                                    NULL, flags,
-		                                    on_diagnostics_signal, NULL, NULL);
-	}
+	g_dbus_connection_signal_subscribe (connection, bus_name,
+	                                    REALM_DBUS_SERVICE_INTERFACE,
+	                                    REALM_DBUS_DIAGNOSTICS_SIGNAL,
+	                                    REALM_DBUS_SERVICE_PATH,
+	                                    NULL, flags,
+	                                    on_diagnostics_signal,
+	                                    GINT_TO_POINTER (verbose), NULL);
 
 	provider = realm_dbus_provider_proxy_new_sync (connection,
 	                                               G_DBUS_PROXY_FLAGS_NONE,

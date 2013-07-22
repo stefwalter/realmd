@@ -162,6 +162,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 {
 	GString *realmd_tags;
 	const gchar *access_provider;
+	const gchar *shell;
 	gboolean qualify;
 	gboolean ret;
 	gchar *section;
@@ -169,6 +170,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 
 	home = realm_sssd_build_default_home (realm_settings_string ("users", "default-home"));
 	qualify = realm_options_qualify_names (disco->domain_name);
+	shell = realm_settings_string ("users", "default-shell");
 
 	realmd_tags = g_string_new ("");
 	if (realm_options_manage_system (options, disco->domain_name))
@@ -188,6 +190,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	                                    "realmd_tags", realmd_tags->str,
 
 	                                    "fallback_homedir", home,
+	                                    "default_shell", shell,
 	                                    disco->explicit_server ? "ad_server" : NULL, disco->explicit_server,
 	                                    NULL);
 

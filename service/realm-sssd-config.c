@@ -106,15 +106,6 @@ update_domain (RealmIniConfig *config,
 	GHashTable *parameters;
 	const gchar *name;
 	const gchar *value;
-	gchar *shell;
-
-	/* Always make sure this is set */
-	shell = realm_ini_config_get (config, "nss", "default_shell");
-	if (shell == NULL) {
-		realm_ini_config_set (config, "nss", "default_shell",
-		                      realm_settings_string ("users", "default-shell"), NULL);
-	}
-	g_free (shell);
 
 	parameters = g_hash_table_new (g_str_hash, g_str_equal);
 	while ((name = va_arg (va, const gchar *)) != NULL) {

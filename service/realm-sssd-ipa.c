@@ -166,6 +166,7 @@ on_ipa_client_do_restart (GObject *source,
 	GString *output = NULL;
 	RealmIniConfig *config;
 	const gchar *domain;
+	const gchar *shell;
 	gchar *section;
 	gchar *home;
 	gint status;
@@ -191,6 +192,7 @@ on_ipa_client_do_restart (GObject *source,
 
 	domain = realm_kerberos_get_name (realm);
 	config = realm_sssd_get_config (sssd);
+	shell = realm_settings_string ("users", "default-shell");
 
 	if (error == NULL) {
 		home = realm_sssd_build_default_home (realm_settings_string ("users", "default-home"));
@@ -200,6 +202,7 @@ on_ipa_client_do_restart (GObject *source,
 		                                 "cache_credentials", "True",
 		                                 "use_fully_qualified_names", realm_options_qualify_names (domain) ? "True" : "False",
 		                                 "krb5_store_password_if_offline", "True",
+		                                 "default_shell", shell,
 		                                 "fallback_homedir", home,
 		                                 "realmd_tags", realmd_tags,
 		                                 NULL);

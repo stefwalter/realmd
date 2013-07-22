@@ -367,6 +367,11 @@ manage-system = no
 # manage-system = yes
 </programlisting>
 		</informalexample>
+
+		<para>When this option is turned on <command>realmd</command>
+		defaults to using domain policy to control who can log into
+		this machine. Further adjustments to login policy can be made
+		with the <command>realm permit</command> command.</para>
 	</listitem>
 	</varlistentry>
 

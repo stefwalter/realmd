@@ -90,7 +90,7 @@ test_add_domain (Test *test,
                  gconstpointer unused)
 {
 	const gchar *data = "[domain/one]\nval=1\n[sssd]\ndomains=one";
-	const gchar *check = "[domain/one]\nval=1\n[sssd]\ndomains = one, two\n\n[nss]\ndefault_shell = /bin/bash\n\n[domain/two]\ndos = 2\n";
+	const gchar *check = "[domain/one]\nval=1\n[sssd]\ndomains = one, two\n\n[domain/two]\ndos = 2\n";
 	GError *error = NULL;
 	gchar *output;
 	gboolean ret;
@@ -140,7 +140,7 @@ static void
 test_add_domain_only (Test *test,
                       gconstpointer unused)
 {
-	const gchar *check = "\n[sssd]\ndomains = two\nconfig_file_version = 2\nservices = nss, pam\n\n[nss]\ndefault_shell = /bin/bash\n\n[domain/two]\ndos = 2\n";
+	const gchar *check = "\n[sssd]\ndomains = two\nconfig_file_version = 2\nservices = nss, pam\n\n[domain/two]\ndos = 2\n";
 	GError *error = NULL;
 	gchar *output;
 	gboolean ret;
@@ -168,7 +168,7 @@ test_update_domain (Test *test,
                     gconstpointer unused)
 {
 	const gchar *data = "[domain/one]\nval=1\n[sssd]\ndomains=one";
-	const gchar *check = "[domain/one]\nval=1\nuno = 1\neins = one\n[sssd]\ndomains=one\n\n[nss]\ndefault_shell = /bin/bash\n";
+	const gchar *check = "[domain/one]\nval=1\nuno = 1\neins = one\n[sssd]\ndomains=one";
 	GError *error = NULL;
 	gchar *output;
 	gboolean ret;

@@ -140,7 +140,7 @@ domain.example.com
 		are placed in the computer account <option>operatingSystem</option> and
 		<option>operatingSystemVersion</option> attributes.</para>
 
-		<para>These is an Active Directory specific option.</para>
+		<para>This is an Active Directory specific option.</para>
 
 		<informalexample>
 <programlisting language="js">
@@ -365,6 +365,7 @@ automatic-id-mapping = no
 [domain.example.com]
 manage-system = no
 # manage-system = yes
+
 </programlisting>
 		</informalexample>
 

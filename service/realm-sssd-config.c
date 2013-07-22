@@ -31,7 +31,7 @@ realm_sssd_config_new_with_flags (RealmIniFlags flags,
 	const gchar *filename;
 	GError *err = NULL;
 
-	config = realm_ini_config_new (flags | REALM_INI_PRIVATE);
+	config = realm_ini_config_new (flags | REALM_INI_PRIVATE | REALM_INI_STRICT_BOOLEAN);
 
 	filename = realm_settings_path ("sssd.conf");
 	realm_ini_config_read_file (config, filename, &err);

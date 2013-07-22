@@ -633,6 +633,43 @@ test_change_list_null_remove (Test *test,
 	g_free (output);
 }
 
+static void
+test_get_boolean (void)
+{
+	RealmIniConfig *config;
+
+	config = realm_ini_config_new (0);
+
+	realm_ini_config_read_string (config, "[section]\nboolean = true");
+	g_assert_cmpint (TRUE, ==, realm_ini_config_get_boolean (config, "section", "boolean", FALSE));
+
+	realm_ini_config_read_string (config, "[section]\nboolean = FalSE");
+	g_assert_cmpint (FALSE, ==, realm_ini_config_get_boolean (config, "section", "boolean", TRUE));
+
+	realm_ini_config_read_string (config, "[section]\nboolean = false");
+	g_assert_cmpint (FALSE, ==, realm_ini_config_get_boolean (config, "section", "boolean", TRUE));
+
+	realm_ini_config_read_string (config, "[section]\nboolean = false");
+	g_assert_cmpint (TRUE, ==, realm_ini_config_get_boolean (config, "section", "non-existant", TRUE));
+
+	realm_ini_config_read_string (config, "[section]\nboolean = false");
+	g_assert_cmpint (TRUE, ==, realm_ini_config_get_boolean (config, "section", "non-existant", TRUE));
+
+	realm_ini_config_read_string (config, "[section]\nboolean = yes");
+	g_assert_cmpint (TRUE, ==, realm_ini_config_get_boolean (config, "section", "boolean", TRUE));
+
+	realm_ini_config_read_string (config, "[section]\nboolean = no");
+	g_assert_cmpint (FALSE, ==, realm_ini_config_get_boolean (config, "section", "boolean", FALSE));
+
+	realm_ini_config_read_string (config, "[section]\nboolean = 1");
+	g_assert_cmpint (TRUE, ==, realm_ini_config_get_boolean (config, "section", "boolean", TRUE));
+
+	realm_ini_config_read_string (config, "[section]\nboolean = 0");
+	g_assert_cmpint (FALSE, ==, realm_ini_config_get_boolean (config, "section", "boolean", FALSE));
+
+	g_object_unref (config);
+}
+
 int
 main (int argc,
       char **argv)
@@ -677,6 +714,8 @@ main (int argc,
 	g_test_add ("/realmd/ini-config/change-list-new", Test, NULL, setup, test_change_list_new, teardown);
 	g_test_add ("/realmd/ini-config/change-list-null-add", Test, NULL, setup, test_change_list_null_add, teardown);
 	g_test_add ("/realmd/ini-config/change-list-null-remove", Test, NULL, setup, test_change_list_null_remove, teardown);
+
+	g_test_add_func ("/realmd/ini-config/get-boolean", test_get_boolean);
 
 	return g_test_run ();
 }

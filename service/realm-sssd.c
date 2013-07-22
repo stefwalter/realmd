@@ -347,8 +347,18 @@ update_login_formats (RealmSssd *self)
 	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	gchar *login_formats[2] = { NULL, NULL };
 	gchar *format = NULL;
+	gboolean qualify;
 
 	if (self->pv->section == NULL) {
+		realm_kerberos_set_login_formats (kerberos, (const gchar **)login_formats);
+		return;
+	}
+
+	qualify = realm_ini_config_get_boolean (self->pv->config, self->pv->section,
+	                                        "use_fully_qualified_names", FALSE);
+
+	if (!qualify) {
+		login_formats[0] = "%U";
 		realm_kerberos_set_login_formats (kerberos, (const gchar **)login_formats);
 		return;
 	}

@@ -1046,6 +1046,46 @@ realm_ini_config_get_sections (RealmIniConfig *self)
 }
 
 gboolean
+realm_ini_config_get_boolean (RealmIniConfig *config,
+                              const gchar *section,
+                              const gchar *name,
+                              gboolean defahlt)
+{
+	gboolean ret;
+	gchar *value;
+
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (config), FALSE);
+	g_return_val_if_fail (section != NULL, FALSE);
+	g_return_val_if_fail (name != NULL, FALSE);
+
+	value = realm_ini_config_get (config, section, name);
+	if (value == NULL) {
+		ret = defahlt;
+	} else if (g_ascii_strcasecmp (value, "true") == 0) {
+		ret = TRUE;
+	} else if (g_ascii_strcasecmp (value, "false") == 0) {
+		ret = FALSE;
+	} else if (config->flags & REALM_INI_STRICT_BOOLEAN) {
+		g_warning ("Invalid %s boolean value for %s field: %s",
+		           value, config->filename ? config->filename : "", name);
+		ret = defahlt;
+	} else if (g_ascii_strcasecmp (value, "1") == 0 ||
+	           g_ascii_strcasecmp (value, "yes") == 0) {
+		ret = TRUE;
+	} else if (g_ascii_strcasecmp (value, "0") == 0 ||
+	           g_ascii_strcasecmp (value, "no") == 0) {
+		ret = FALSE;
+	} else {
+		g_warning ("Invalid %s boolean value for %s field: %s",
+		           value, config->filename ? config->filename : "", name);
+		ret = defahlt;
+	}
+
+	g_free (value);
+	return ret;
+}
+
+gboolean
 realm_ini_config_have_section (RealmIniConfig *self,
                                const gchar *section)
 {

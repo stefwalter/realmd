@@ -24,6 +24,7 @@ typedef enum {
 	REALM_INI_LINE_CONTINUATIONS = 1 << 1,
 	REALM_INI_NO_WATCH = 1 << 2,
 	REALM_INI_PRIVATE = 1 << 3,
+	REALM_INI_STRICT_BOOLEAN = 1 << 4,
 } RealmIniFlags;
 
 #define REALM_TYPE_INI_CONFIG            (realm_ini_config_get_type ())
@@ -109,6 +110,11 @@ GHashTable *        realm_ini_config_get_all                  (RealmIniConfig *s
 void                realm_ini_config_set_all                  (RealmIniConfig *self,
                                                                const gchar *section,
                                                                GHashTable *parameters);
+
+gboolean            realm_ini_config_get_boolean              (RealmIniConfig *config,
+                                                               const gchar *section,
+                                                               const gchar *name,
+                                                               gboolean defahlt);
 
 gchar **            realm_ini_config_get_sections             (RealmIniConfig *self);
 

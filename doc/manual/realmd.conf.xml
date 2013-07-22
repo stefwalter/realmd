@@ -140,6 +140,8 @@ domain.example.com
 		are placed in the computer account <option>operatingSystem</option> and
 		<option>operatingSystemVersion</option> attributes.</para>
 
+		<para>These is an Active Directory specific option.</para>
+
 		<informalexample>
 <programlisting language="js">
 [active-directory]
@@ -206,8 +208,7 @@ default-home = /home/%D/%U
 		</informalexample>
 
 		<para>The default setting for this is <option>/home/%D/%U</option>. The
-		<option>%D</option> format is replaced by the domain name. In the case of
-		Active Directory this is the short domain name. The <option>%U</option>
+		<option>%D</option> format is replaced by the domain name. The <option>%U</option>
 		format is replaced by the user name.</para>
 
 		<para>You can verify the home directory for a user by running the
@@ -220,6 +221,9 @@ DOMAIN\user:*:13445:13446:Name:/home/DOMAIN/user:/bin/bash
 </screen>
 		</informalexample>
 
+		<para>Note that in the case of IPA domains, most users already have a
+		home directory configured in the domain. Therefore this configuration
+		setting may rarely show through.</para>
 	</listitem>
 	</varlistentry>
 
@@ -253,6 +257,9 @@ DOMAIN\user:*:13445:13446:Name:/home/DOMAIN/user:/bin/bash
 </screen>
 		</informalexample>
 
+		<para>Note that in the case of IPA domains, most users already have a
+		shell configured in the domain. Therefore this configuration setting
+		may rarely show through.</para>
 	</listitem>
 	</varlistentry>
 
@@ -331,6 +338,9 @@ user-principal = yes
 		Turn it off to use UID and GID information stored in the
 		directory (as-per RFC2307) rather than automatically generating
 		UID and GID numbers.</para>
+
+		<para>This option only makes sense for Active Directory
+		realms.</para>
 
 		<informalexample>
 <programlisting>

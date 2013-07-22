@@ -155,7 +155,9 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
 	must have a supported mechanism for joining from a client machine, such
 	as Active Directory or IPA.</para>
 
-	<para>Unless a <literal>--user</literal> is explicitly specified, an automatic join is attempted first.</para>
+	<para>Unless a <literal>--user</literal> is explicitly specified, an
+	automatic join is attempted first. Automatic joins require pre-configuration
+	on the domain side, and may not be supported by all domains.</para>
 
 	<para>Note that the <literal>--user </literal>, <literal>--no-password</literal>,
 	and <literal>--one-time-password </literal> options are mutually exclusive.
@@ -186,7 +188,8 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
 			unit to create the computer account. The exact format
 			of the distinguished name depends on the client software
 			and membership software. You can usually omit the root
-			DSE portion of distinguished name.</para></listitem>
+			DSE portion of distinguished name. This is an Active
+			Directory specific option.</para></listitem>
 		</varlistentry>
 		<varlistentry>
 			<term><option>--no-password</option></term>

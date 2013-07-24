@@ -31,6 +31,8 @@ extern gboolean       realm_verbose;
 
 extern gboolean       realm_cancelled;
 
+extern gboolean       realm_unattended;
+
 int                   realm_join                   (RealmClient *client,
                                                     int argc,
                                                     char *argv[]);

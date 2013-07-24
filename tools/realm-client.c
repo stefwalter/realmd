@@ -813,6 +813,15 @@ build_password_credential (const gchar *user_name,
 	GVariant *result;
 	gchar *alloced;
 	gchar *prompt;
+	int istty;
+
+	istty = isatty (0);
+
+	if (istty && realm_unattended) {
+		g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+		             _("Cannot prompt for a password when running in unattended mode"));
+		return NULL;
+	}
 
 	prompt = g_strdup_printf (_("Password for %s: "), user_name);
 
@@ -820,7 +829,7 @@ build_password_credential (const gchar *user_name,
 	 * Yeah, getpass is obselete. Have fun trying to recreate it even
 	 * semi-portably.
 	 */
-	if (isatty (0)) {
+	if (istty) {
 		password = getpass (prompt);
 		alloced = NULL;
 	} else {

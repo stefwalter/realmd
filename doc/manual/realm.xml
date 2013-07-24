@@ -42,7 +42,7 @@
 		<command>realm list</command>
 	</cmdsynopsis>
 	<cmdsynopsis>
-		<command>realm permit</command> <arg choice="opt">-ax</arg> <arg choice="opt">-R realm</arg> <arg choice="req" rep="repeat">user</arg>
+		<command>realm permit</command> <arg choice="opt">-ax</arg> <arg choice="opt">-R realm</arg> <arg choice="req" rep="repeat">user@domain</arg>
 	</cmdsynopsis>
 	<cmdsynopsis>
 		<command>realm deny</command> <arg choice="plain">-a</arg> <arg choice="opt">-R realm</arg>
@@ -327,19 +327,14 @@ $ realm list
 	<informalexample>
 <programlisting>
 $ realm permit --all
-$ realm permit DOMAIN\User
-$ realm permit DOMAIN\User2
-$ realm permit --withdraw DOMAIN\User
+$ realm permit user@example.com
+$ realm permit DOMAIN\\User2
+$ realm permit --withdraw user@example.com
 </programlisting>
 	</informalexample>
 
 	<para>The current login policy and format of the user names can be seen
 	 by using the <command>realm list</command> command.</para>
-
-	<para>The following options can be used:</para>
-
-	<para>The format of the user name can be seen by using the
-	<option>list</option> command.</para>
 
 	<para>The following options can be used:</para>
 

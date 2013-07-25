@@ -880,6 +880,29 @@ realm_ini_config_get (RealmIniConfig *self,
 	return parse_config_line_value (self, line->bytes);
 }
 
+gboolean
+realm_ini_config_have (RealmIniConfig *self,
+                       const gchar *section,
+                       const gchar *name)
+{
+	ConfigSection *sect;
+	ConfigLine *line;
+
+	g_return_val_if_fail (REALM_IS_INI_CONFIG (self), FALSE);
+	g_return_val_if_fail (section != NULL, FALSE);
+	g_return_val_if_fail (name != NULL, FALSE);
+
+	sect = g_hash_table_lookup (self->sections, section);
+	if (sect == NULL)
+		return FALSE;
+
+	line = g_hash_table_lookup (sect->parameters, name);
+	if (line == NULL)
+		return FALSE;
+
+	return TRUE;
+}
+
 GHashTable *
 realm_ini_config_get_all (RealmIniConfig *self,
                           const gchar *section)

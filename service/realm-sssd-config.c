@@ -148,12 +148,10 @@ realm_sssd_config_add_domain (RealmIniConfig *config,
 	}
 
 	/* Setup a default sssd section */
-	if (!realm_ini_config_have_section (config, "sssd")) {
-		realm_ini_config_set (config, "sssd",
-		                      "services", "nss, pam",
-		                      "config_file_version", "2",
-		                      NULL);
-	}
+	if (!realm_ini_config_have (config, "section", "services"))
+		realm_ini_config_set (config, "sssd", "services", "nss, pam", NULL);
+	if (!realm_ini_config_have (config, "sssd", "config_file_version"))
+		realm_ini_config_set (config, "sssd", "config_file_version", "2", NULL);
 
 	domains[0] = domain;
 	domains[1] = NULL;

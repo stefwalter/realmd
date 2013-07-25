@@ -86,6 +86,10 @@ gchar *             realm_ini_config_get                      (RealmIniConfig *s
                                                                const gchar *section,
                                                                const gchar *name);
 
+gboolean            realm_ini_config_have                     (RealmIniConfig *self,
+                                                               const gchar *section,
+                                                               const gchar *name);
+
 gchar **            realm_ini_config_get_list                 (RealmIniConfig *self,
                                                                const gchar *section,
                                                                const gchar *name,

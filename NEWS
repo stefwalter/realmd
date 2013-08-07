@@ -1,3 +1,9 @@
+0.14.4
+ * Fix up the [sssd] section in sssd.conf if it's screwed up
+ * Add an --unattended argument to realm command line client
+ * Clearer 'realm permit' manual page example
+ * Other documentation fixes
+
 0.14.3
  * Populate LoginFormats properly when use_fully_qualified_names = False
  * Several documentation fixes

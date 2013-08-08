@@ -37,6 +37,13 @@
 	default. The syntax of this file is the same as an INI file or
 	Desktop Entry file.</para>
 
+	<para>In general, settings in this file only apply at the point of
+	joining a domain or realm. Once the realm has been setup the settings
+	have no effect. You may choose to configure
+	<ulink url="https://fedorahosted.org/sssd/">SSSD</ulink> or
+	<ulink url="http://www.samba.org/samba/docs/man/Samba-HOWTO-Collection/winbind.html">Winbind</ulink>
+	directly.</para>
+
 	<para>Only specify the settings you wish to override in the
 	<filename>/etc/realmd.conf</filename> file. Settings not specified will
 	be loaded from their packaged defaults. Only override the settings

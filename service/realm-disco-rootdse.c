@@ -30,7 +30,6 @@ typedef struct _Closure Closure;
 struct _Closure {
 	RealmDisco *disco;
 	GSource *source;
-	GSocketAddress *address;
 	GDBusMethodInvocation *invocation;
 
 	gchar *default_naming_context;
@@ -55,7 +54,6 @@ closure_free (gpointer data)
 
 	g_source_destroy (clo->source);
 	g_source_unref (clo->source);
-	g_object_unref (clo->address);
 	g_clear_object (&clo->invocation);
 	realm_disco_unref (clo->disco);
 	g_free (clo);
@@ -324,12 +322,12 @@ result_root_dse (EggTask *task,
 
 		/* Prior to Windows 2003 we have to use UDP for netlogon lookup */
 		} else {
-			inet = G_INET_SOCKET_ADDRESS (clo->address);
+			inet = G_INET_SOCKET_ADDRESS (clo->disco->server_address);
 			string = g_inet_address_to_string (g_inet_socket_address_get_address (inet));
 			realm_diagnostics_info (clo->invocation, "Sending MS-CLDAP ping to: %s", string);
 			g_free (string);
 
-			realm_disco_mscldap_async (clo->address, G_SOCKET_PROTOCOL_UDP,
+			realm_disco_mscldap_async (clo->disco->server_address, G_SOCKET_PROTOCOL_UDP,
 			                           clo->disco->explicit_server, egg_task_get_cancellable (task),
 			                           on_udp_mscldap_complete, g_object_ref (task));
 
@@ -436,7 +434,8 @@ realm_disco_rootdse_async (GSocketAddress *address,
 	clo = g_new0 (Closure, 1);
 	clo->disco = realm_disco_new (NULL);
 	clo->disco->explicit_server = g_strdup (explicit_server);
-	clo->address = g_object_ref (address);
+	clo->disco->server_address = g_object_ref (address);
+
 	clo->invocation = invocation ? g_object_ref (invocation) : NULL;
 	clo->request = request_root_dse;
 	egg_task_set_task_data (task, clo, closure_free);

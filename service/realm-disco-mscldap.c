@@ -25,6 +25,7 @@
 
 typedef struct {
 	gchar *explicit_server;
+	GSocketAddress *address;
 	GSource *source;
 	gint count;
 	gint fever_id;
@@ -40,6 +41,7 @@ closure_free (gpointer data)
 	Closure *clo = data;
 
 	g_free (clo->explicit_server);
+	g_object_unref (clo->address);
 	if (clo->fever_id)
 		g_source_remove (clo->fever_id);
 	if (clo->normal_id)
@@ -244,6 +246,7 @@ on_ldap_io (LDAP *ldap,
 		case LDAP_RES_SEARCH_RESULT:
 			g_debug ("Received response");
 			disco = realm_disco_new (NULL);
+			disco->server_address = g_object_ref (clo->address);
 			if (realm_disco_mscldap_result (ldap, message, disco, &error)) {
 				disco->explicit_server = g_strdup (clo->explicit_server);
 				egg_task_return_pointer (task, disco, realm_disco_unref);
@@ -286,6 +289,7 @@ realm_disco_mscldap_async (GSocketAddress *address,
 	task = egg_task_new (NULL, cancellable, callback, user_data);
 	clo = g_new0 (Closure, 1);
 	clo->explicit_server = g_strdup (explicit_server);
+	clo->address = g_object_ref (address);
 	egg_task_set_task_data (task, clo, closure_free);
 
 	if (protocol == G_SOCKET_PROTOCOL_UDP &&

@@ -17,6 +17,7 @@
 
 #include <glib.h>
 #include <glib-object.h>
+#include <gio/gio.h>
 
 G_BEGIN_DECLS
 
@@ -27,6 +28,7 @@ typedef struct {
 	gchar *kerberos_realm;
 	gchar *workgroup;
 	gchar *explicit_server;
+	GSocketAddress *server_address;
 } RealmDisco;
 
 #define        REALM_TYPE_DISCO             (realm_disco_get_type ())

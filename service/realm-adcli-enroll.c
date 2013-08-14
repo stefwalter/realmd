@@ -73,6 +73,7 @@ realm_adcli_enroll_join_async (RealmDisco *disco,
                                gpointer user_data)
 {
 	gchar *environ[] = { "LANG=C", NULL };
+	GInetAddress *address;
 	const gchar *computer_ou;
 	EggTask *task;
 	GBytes *input = NULL;
@@ -81,6 +82,7 @@ realm_adcli_enroll_join_async (RealmDisco *disco,
 	const gchar *os;
 	gchar *ccache_arg = NULL;
 	gchar *upn_arg = NULL;
+	gchar *server_arg = NULL;
 
 	g_return_if_fail (cred != NULL);
 	g_return_if_fail (disco != NULL);
@@ -98,7 +100,15 @@ realm_adcli_enroll_join_async (RealmDisco *disco,
 	g_ptr_array_add (args, "--domain-realm");
 	g_ptr_array_add (args, (gpointer)disco->kerberos_realm);
 
-	if (disco->explicit_server) {
+	if (G_IS_INET_SOCKET_ADDRESS (disco->server_address)) {
+		address = g_inet_socket_address_get_address (G_INET_SOCKET_ADDRESS (disco->server_address));
+		server_arg = g_inet_address_to_string (address);
+		if (server_arg) {
+			g_ptr_array_add (args, "--domain-controller");
+			g_ptr_array_add (args, server_arg);
+		}
+
+	} else if (disco->explicit_server) {
 		g_ptr_array_add (args, "--domain-controller");
 		g_ptr_array_add (args, (gpointer)disco->explicit_server);
 	}
@@ -173,6 +183,7 @@ realm_adcli_enroll_join_async (RealmDisco *disco,
 
 	free (ccache_arg);
 	free (upn_arg);
+	free (server_arg);
 }
 
 gboolean
@@ -192,10 +203,12 @@ realm_adcli_enroll_delete_async (RealmDisco *disco,
                                  gpointer user_data)
 {
 	gchar *environ[] = { "LANG=C", NULL };
+	GInetAddress *address;
 	EggTask *task;
 	GBytes *input = NULL;
 	GPtrArray *args;
 	gchar *ccache_arg = NULL;
+	gchar *server_arg = NULL;
 
 	g_return_if_fail (cred != NULL);
 	g_return_if_fail (disco != NULL);
@@ -213,7 +226,15 @@ realm_adcli_enroll_delete_async (RealmDisco *disco,
 	g_ptr_array_add (args, "--domain-realm");
 	g_ptr_array_add (args, (gpointer)disco->kerberos_realm);
 
-	if (disco->explicit_server) {
+	if (G_IS_INET_SOCKET_ADDRESS (disco->server_address)) {
+		address = g_inet_socket_address_get_address (G_INET_SOCKET_ADDRESS (disco->server_address));
+		server_arg = g_inet_address_to_string (address);
+		if (server_arg) {
+			g_ptr_array_add (args, "--domain-controller");
+			g_ptr_array_add (args, server_arg);
+		}
+
+	} else if (disco->explicit_server) {
 		g_ptr_array_add (args, "--domain-controller");
 		g_ptr_array_add (args, (gpointer)disco->explicit_server);
 	}
@@ -248,6 +269,7 @@ realm_adcli_enroll_delete_async (RealmDisco *disco,
 		g_bytes_unref (input);
 
 	free (ccache_arg);
+	g_free (server_arg);
 }
 
 gboolean

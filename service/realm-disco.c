@@ -61,6 +61,8 @@ realm_disco_unref (gpointer data)
 		g_free (disco->explicit_server);
 		g_free (disco->kerberos_realm);
 		g_free (disco->workgroup);
+		if (disco->server_address)
+			g_object_unref (disco->server_address);
 		g_free (disco);
 	}
 }

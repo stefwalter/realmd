@@ -283,19 +283,17 @@ realm_join (RealmClient *client,
 		ret = 2;
 
 	} else if (argc > 2) {
-		g_printerr ("%s: %s\n", _("Specify one realm to join"), g_get_prgname ());
+		g_printerr ("%s: %s\n", g_get_prgname (), _("Specify one realm to join"));
 		ret = 2;
 
 	} else if (args.no_password && (args.one_time_password || args.user)) {
-		g_printerr ("%s: %s\n",
-		            _("The --no-password argument cannot be used with --one-time-password or --user"),
-		            g_get_prgname ());
+		g_printerr ("%s: %s\n", g_get_prgname (),
+		            _("The --no-password argument cannot be used with --one-time-password or --user"));
 		ret = 2;
 
 	} else if (args.one_time_password && args.user) {
-		g_printerr ("%s: %s\n",
-		            _("The --one-time-password argument cannot be used with --user"),
-		            g_get_prgname ());
+		g_printerr ("%s: %s\n", g_get_prgname (),
+		            _("The --one-time-password argument cannot be used with --user"));
 		ret = 2;
 
 	} else {

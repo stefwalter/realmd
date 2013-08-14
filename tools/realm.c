@@ -191,7 +191,7 @@ usage (int code)
 GOptionEntry realm_global_options[] = {
 	{ "install", 'i', 0, G_OPTION_ARG_STRING, &arg_install, N_("Install mode to a specific prefix"), NULL },
 	{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &realm_verbose, N_("Verbose output"), NULL },
-	{ "unattended", 'U', 0, G_OPTION_ARG_NONE, &realm_unattended, N_("Do not prompt for input"), NULL },
+	{ "unattended", 0, 0, G_OPTION_ARG_NONE, &realm_unattended, N_("Do not prompt for input"), NULL },
 	{ NULL, }
 };
 

@@ -68,6 +68,11 @@
 			when running in this mode.</para></listitem>
 		</varlistentry>
 		<varlistentry>
+			<term><option>--unattended</option></term>
+			<listitem><para>Run in unattended mode without prompting
+			for input.</para></listitem>
+		</varlistentry>
+		<varlistentry>
 			<term><option>--verbose, -v</option></term>
 			<listitem><para>Display verbose diagnostics while doing
 			running commands.</para></listitem>

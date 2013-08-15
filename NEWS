@@ -1,3 +1,8 @@
+0.14.5
+ * Fix regression where --unattended conflicted with -U as in --user [#68112]
+ * Pass discovered server address to adcli [#68111]
+ * Fix failure message output
+
 0.14.4
  * Fix up the [sssd] section in sssd.conf if it's screwed up
  * Add an --unattended argument to realm command line client

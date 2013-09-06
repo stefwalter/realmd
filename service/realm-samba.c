@@ -195,6 +195,7 @@ on_join_do_winbind (GObject *source,
 		                         "template shell", realm_settings_string ("users", "default-shell"),
 		                         "netbios name", enroll->disco->explicit_netbios,
 		                         "password server", enroll->disco->explicit_server,
+		                         "kerberos method", "system keytab",
 		                         NULL);
 	}
 

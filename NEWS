@@ -1,3 +1,7 @@
+0.14.6
+ * Set 'kerberos method = system keytab' in smb.conf properly [#69037]
+ * Limit Netbios name to 15 chars when joining AD domain [#69016]
+
 0.14.5
  * Fix regression where --unattended conflicted with -U as in --user [#68112]
  * Pass discovered server address to adcli [#68111]

@@ -102,6 +102,7 @@ join_closure_init (EggTask *task,
 	                      "security", "ads",
 	                      "kerberos method", "system keytab",
 	                      "realm", disco->kerberos_realm,
+	                      "netbios name", disco->explicit_netbios,
 	                      NULL);
 
 	/*
@@ -383,6 +384,11 @@ realm_samba_enroll_join_async (RealmDisco *disco,
 
 	task = egg_task_new (NULL, NULL, callback, user_data);
 	join = join_closure_init (task, disco, invocation);
+
+	if (disco->explicit_netbios) {
+		realm_diagnostics_info (invocation, "Joining using a truncated netbios name: %s",
+		                        disco->explicit_netbios);
+	}
 
 	switch (cred->type) {
 	case REALM_CREDENTIAL_PASSWORD:

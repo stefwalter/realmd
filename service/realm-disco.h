@@ -28,6 +28,7 @@ typedef struct {
 	gchar *kerberos_realm;
 	gchar *workgroup;
 	gchar *explicit_server;
+	gchar *explicit_netbios;
 	GSocketAddress *server_address;
 } RealmDisco;
 

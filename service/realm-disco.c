@@ -59,6 +59,7 @@ realm_disco_unref (gpointer data)
 	if (disco->refs-- == 1) {
 		g_free (disco->domain_name);
 		g_free (disco->explicit_server);
+		g_free (disco->explicit_netbios);
 		g_free (disco->kerberos_realm);
 		g_free (disco->workgroup);
 		if (disco->server_address)

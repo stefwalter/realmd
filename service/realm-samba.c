@@ -193,7 +193,8 @@ on_join_do_winbind (GObject *source,
 		                         "workgroup", enroll->disco->workgroup,
 		                         "template homedir", realm_settings_string ("users", "default-home"),
 		                         "template shell", realm_settings_string ("users", "default-shell"),
-		                         enroll->disco->explicit_server ? "password server" : NULL, enroll->disco->explicit_server,
+		                         "netbios name", enroll->disco->explicit_netbios,
+		                         "password server", enroll->disco->explicit_server,
 		                         NULL);
 	}
 
@@ -632,6 +633,26 @@ realm_samba_finalize (GObject *obj)
 	G_OBJECT_CLASS (realm_samba_parent_class)->finalize (obj);
 }
 
+static void
+realm_samba_discover_myself (RealmKerberos *realm,
+                             RealmDisco *disco)
+{
+	RealmSamba *self = REALM_SAMBA (realm);
+	gchar *value;
+
+	value = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "workgroup");
+	g_free (disco->workgroup);
+	disco->workgroup = value;
+
+	value = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "netbios name");
+	g_free (disco->explicit_netbios);
+	disco->explicit_netbios = value;
+
+	value = realm_ini_config_get (self->config, REALM_SAMBA_CONFIG_GLOBAL, "password server");
+	g_free (disco->explicit_server);
+	disco->explicit_server = value;
+}
+
 void
 realm_samba_class_init (RealmSambaClass *klass)
 {
@@ -640,6 +661,7 @@ realm_samba_class_init (RealmSambaClass *klass)
 
 	kerberos_class->logins_async = realm_samba_logins_async;
 	kerberos_class->logins_finish = realm_samba_generic_finish;
+	kerberos_class->discover_myself = realm_samba_discover_myself;
 
 	object_class->constructed = realm_samba_constructed;
 	object_class->set_property = realm_samba_set_property;

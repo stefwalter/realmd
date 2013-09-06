@@ -163,6 +163,7 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	GString *realmd_tags;
 	const gchar *access_provider;
 	const gchar *shell;
+	gchar *authid = NULL;
 	gboolean qualify;
 	gboolean ret;
 	gchar *section;
@@ -176,6 +177,13 @@ configure_sssd_for_domain (RealmIniConfig *config,
 	if (realm_options_manage_system (options, disco->domain_name))
 		g_string_append (realmd_tags, "manages-system ");
 	g_string_append (realmd_tags, use_adcli ? "joined-with-adcli " : "joined-with-samba ");
+
+	/*
+	 * Explicitly set the netbios authid for sssd to use in this case, since
+	 * otherwise sssd won't know which kerberos principal to use
+	 */
+	if (disco->explicit_netbios)
+		authid = g_strdup_printf ("%s$", disco->explicit_netbios);
 
 	ret = realm_sssd_config_add_domain (config, disco->domain_name, error,
 	                                    "cache_credentials", "True",
@@ -191,9 +199,11 @@ configure_sssd_for_domain (RealmIniConfig *config,
 
 	                                    "fallback_homedir", home,
 	                                    "default_shell", shell,
-	                                    disco->explicit_server ? "ad_server" : NULL, disco->explicit_server,
+	                                    "ad_server", disco->explicit_server,
+	                                    "ldap_sasl_authid", authid,
 	                                    NULL);
 
+	g_free (authid);
 	g_string_free (realmd_tags, TRUE);
 
 	if (ret) {
@@ -468,6 +478,7 @@ realm_sssd_ad_leave_async (RealmKerberosMembership *membership,
 	RealmSssdAd *self = REALM_SSSD_AD (membership);
 	RealmKerberos *realm = REALM_KERBEROS (self);
 	RealmSssd *sssd = REALM_SSSD (self);
+	RealmDisco *disco;
 	const gchar *section;
 	EggTask *task;
 	LeaveClosure *leave;
@@ -486,6 +497,9 @@ realm_sssd_ad_leave_async (RealmKerberosMembership *membership,
 
 	tags = realm_ini_config_get (realm_sssd_get_config (sssd), section, "realmd_tags");
 
+	/* This also has the side-effect of populating the disco info if necessary */
+	disco = realm_kerberos_get_disco (realm);
+
 	switch (cred->type) {
 	case REALM_CREDENTIAL_AUTOMATIC:
 		realm_sssd_deconfigure_domain_tail (REALM_SSSD (self), task, invocation);
@@ -498,12 +512,10 @@ realm_sssd_ad_leave_async (RealmKerberosMembership *membership,
 		leave->use_adcli = strstr (tags ? tags : "", "joined-with-adcli") ? TRUE : FALSE;
 		egg_task_set_task_data (task, leave, leave_closure_free);
 		if (leave->use_adcli) {
-			realm_adcli_enroll_delete_async (realm_kerberos_get_disco (realm),
-			                                 cred, options, invocation,
+			realm_adcli_enroll_delete_async (disco, cred, options, invocation,
 			                                 on_leave_do_deconfigure, g_object_ref (task));
 		} else {
-			realm_samba_enroll_leave_async (realm_kerberos_get_disco (realm),
-			                                cred, options, invocation,
+			realm_samba_enroll_leave_async (disco, cred, options, invocation,
 			                                on_leave_do_deconfigure, g_object_ref (task));
 		}
 		break;
@@ -528,14 +540,40 @@ realm_sssd_ad_discover_myself (RealmKerberos *realm,
                                RealmDisco *disco)
 {
 	RealmSssd *sssd = REALM_SSSD (realm);
-	gchar *explicit_server;
+	RealmIniConfig *config;
+	const gchar *section;
+	gchar *dollar;
+	gchar *value;
 
-	explicit_server = realm_ini_config_get (realm_sssd_get_config (sssd),
-	                                        realm_sssd_get_config_section (sssd),
-	                                        "ad_server");
+	config = realm_sssd_get_config (sssd);
+	section = realm_sssd_get_config_section (sssd);
 
+	if (section == NULL)
+		return;
+
+	value = realm_ini_config_get (config, section, "ad_server");
 	g_free (disco->explicit_server);
-	disco->explicit_server = explicit_server;
+	disco->explicit_server = value;
+
+	/*
+	 * If this field has an authid that looks like a samAccountName
+	 * (ie: Netbios name with a $ suffix) then it looks like an explicit
+	 * netbios server name has been set.
+	 */
+	value = realm_ini_config_get (config, section, "ldap_sasl_authid");
+	if (value) {
+		dollar = strrchr (value, '$');
+		if (dollar && dollar[1] == '\0') {
+			dollar[0] = '\0';
+
+		} else {
+			g_free (value);
+			value = NULL;
+		}
+	}
+
+	g_free (disco->explicit_netbios);
+	disco->explicit_netbios = value;
 }
 
 void

@@ -113,6 +113,13 @@ realm_adcli_enroll_join_async (RealmDisco *disco,
 		g_ptr_array_add (args, (gpointer)disco->explicit_server);
 	}
 
+	if (disco->explicit_netbios) {
+		realm_diagnostics_info (invocation, "Joining using a truncated netbios name: %s",
+		                        disco->explicit_netbios);
+		g_ptr_array_add (args, "--computer-name");
+		g_ptr_array_add (args, disco->explicit_netbios);
+	}
+
 	computer_ou = realm_options_computer_ou (options, disco->domain_name);
 	if (computer_ou) {
 		g_ptr_array_add (args, "--computer-ou");

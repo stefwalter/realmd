@@ -21,7 +21,9 @@
 
 #include <glib/gi18n.h>
 
+#include <errno.h>
 #include <resolv.h>
+#include <unistd.h>
 
 typedef struct {
 	gchar *explicit_server;
@@ -34,6 +36,10 @@ typedef struct {
 
 /* Number of rapid requets to do */
 #define DISCO_FEVER  4
+
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX 255
+#endif
 
 static void
 closure_free (gpointer data)
@@ -49,6 +55,42 @@ closure_free (gpointer data)
 	g_source_destroy (clo->source);
 	g_source_unref (clo->source);
 	g_free (clo);
+}
+
+static gchar *
+explicit_netbios_name (void)
+{
+	gchar hostname[HOST_NAME_MAX + 1];
+	gchar *dot;
+
+	/*
+	 * Only return a explicit truncated host name if the
+	 * computer host name cannot be made seamlessly translated
+	 * to a netbios name due to it's length.
+	 *
+	 * We would love to leave this responsibility to our lower level
+	 * tools, but unfortunately samba doesn't know how to do this
+	 * properly, and expects us to set it properly in smb.conf
+	 *
+	 * In addition sssd falls over if truncation is done. So we have
+	 * to tell sssd about it.
+	 */
+
+	if (gethostname (hostname, sizeof (hostname)) < 0) {
+		g_warning ("Couldn't get the computer host name: %s", g_strerror (errno));
+		return NULL;
+	}
+
+	dot = strchr (hostname, '.');
+	if (dot != NULL)
+		dot[0] = '\0';
+
+	if (strlen (hostname) > 15) {
+		hostname[15] = '\0';
+		return g_ascii_strup (hostname, -1);
+	}
+
+	return NULL;
 }
 
 static gchar *
@@ -153,6 +195,7 @@ parse_netlogon (struct berval **bvs,
 	}
 
 	disco->server_software = REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY;
+	disco->explicit_netbios = explicit_netbios_name ();
 	disco->kerberos_realm = g_ascii_strup (disco->domain_name, -1);
 	return TRUE;
 }

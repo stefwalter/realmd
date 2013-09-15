@@ -88,6 +88,10 @@ typedef struct {
 	RealmCredential *cred;
 } MethodClosure;
 
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX 255
+#endif
+
 static MethodClosure *
 method_closure_new (RealmKerberos *self,
                     GDBusMethodInvocation *invocation)

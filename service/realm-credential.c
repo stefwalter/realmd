@@ -54,7 +54,7 @@ write_ccache_file (GVariant *ccache,
 	while (length > 0) {
 		res = write (fd, data, length);
 		if (res <= 0) {
-			if (errno == EAGAIN && errno == EINTR)
+			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			g_warning ("couldn't write kerberos cache to file %s: %s",
 			           filename, g_strerror (errno));

@@ -18,9 +18,6 @@
 #include "realm-client.h"
 #include "realm-dbus-constants.h"
 
-#include "eggdbusobjectproxy.h"
-#include "eggdbusobjectmanagerclient.h"
-
 #include <glib/gi18n.h>
 #include <glib/gstdio.h>
 #include <glib-unix.h>
@@ -34,16 +31,16 @@
 #include <string.h>
 
 struct _RealmClient {
-	EggDBusObjectManagerClient parent;
+	GDBusObjectManagerClient parent;
 	RealmDbusProvider *provider;
 	GPid peer_pid;
 };
 
 struct _RealmClientClass {
-	EggDBusObjectManagerClientClass parent;
+	GDBusObjectManagerClientClass parent;
 };
 
-G_DEFINE_TYPE (RealmClient, realm_client, EGG_TYPE_DBUS_OBJECT_MANAGER_CLIENT);
+G_DEFINE_TYPE (RealmClient, realm_client, G_TYPE_DBUS_OBJECT_MANAGER_CLIENT);
 
 typedef struct {
 	GAsyncResult *result;
@@ -91,7 +88,7 @@ realm_client_class_init (RealmClientClass *klass)
 }
 
 static GType
-realm_object_client_get_proxy_type (EggDBusObjectManagerClient *manager,
+realm_object_client_get_proxy_type (GDBusObjectManagerClient *manager,
                                     const gchar *object_path,
                                     const gchar *interface_name,
                                     gpointer user_data)
@@ -101,7 +98,7 @@ realm_object_client_get_proxy_type (EggDBusObjectManagerClient *manager,
 	GType ret;
 
 	if (interface_name == NULL)
-		return EGG_TYPE_DBUS_OBJECT_PROXY;
+		return G_TYPE_DBUS_OBJECT_PROXY;
 
 	if (g_once_init_enter (&once_init_value)) {
 		lookup_hash = g_hash_table_new (g_str_hash, g_str_equal);
@@ -115,7 +112,7 @@ realm_object_client_get_proxy_type (EggDBusObjectManagerClient *manager,
 
 	ret = GPOINTER_TO_SIZE (g_hash_table_lookup (lookup_hash, interface_name));
 	if (ret == 0)
-		ret = EGG_TYPE_DBUS_OBJECT_PROXY;
+		ret = G_TYPE_DBUS_OBJECT_PROXY;
 	return ret;
 }
 

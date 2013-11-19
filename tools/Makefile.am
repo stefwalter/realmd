@@ -11,10 +11,6 @@ realm_SOURCES = \
 	realm-join.c \
 	realm-leave.c \
 	realm-logins.c \
-	eggdbusobjectmanagerclient.c \
-	eggdbusobjectmanagerclient.h \
-	eggdbusobjectproxy.c \
-	eggdbusobjectproxy.h \
 	$(NULL)
 
 AM_CFLAGS = \

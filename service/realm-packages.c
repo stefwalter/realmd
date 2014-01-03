@@ -137,12 +137,14 @@ extract_results (InstallClosure *install,
                  GError **error)
 {
 	GPtrArray *packages;
-	GPtrArray *messages;
 	PkPackage *package;
 	GPtrArray *ids;
 	const gchar *name;
 	gchar *missing;
 	guint i;
+
+#if !PK_CHECK_VERSION(0, 8, 13)
+	GPtrArray *messages;
 
 	messages = pk_results_get_message_array (results);
 	for (i = 0; i < messages->len; i++) {
@@ -150,6 +152,7 @@ extract_results (InstallClosure *install,
 		                        pk_message_get_details (messages->pdata[i]));
 	}
 	g_ptr_array_free (messages, TRUE);
+#endif
 
 	packages = pk_results_get_package_array (results);
 	ids = g_ptr_array_new_with_free_func (g_free);

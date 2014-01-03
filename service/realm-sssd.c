@@ -25,6 +25,7 @@
 #include "realm-service.h"
 #include "realm-sssd.h"
 #include "realm-sssd-config.h"
+#include "safe-printf.h"
 
 #include <glib/gstdio.h>
 #include <glib/gi18n.h>
@@ -315,38 +316,13 @@ update_domain (RealmSssd *self)
 	g_free (domain);
 }
 
-static gchar *
-build_login_format (const gchar *format,
-                    ...) G_GNUC_PRINTF (1, 2);
-
-static gchar *
-build_login_format (const gchar *format,
-                    ...)
-{
-	gchar *result;
-	va_list va;
-
-	/* This function exists mostly to get around gcc warnings */
-
-	if (format == NULL)
-		format = "%1$s@%2$s";
-
-	va_start (va, format);
-	result = g_strdup_vprintf (format, va);
-	va_end (va);
-
-	return result;
-}
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-nonliteral"
-
 static void
 update_login_formats (RealmSssd *self)
 {
 	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	gchar *login_formats[2] = { NULL, NULL };
 	gchar *format = NULL;
+	gchar *domain_name;
 	gboolean qualify;
 
 	if (self->pv->section == NULL) {
@@ -366,10 +342,28 @@ update_login_formats (RealmSssd *self)
 	/* Setup the login formats */
 	format = realm_ini_config_get (self->pv->config, self->pv->section, "full_name_format");
 
-	/* Here we place a '%s' in the place of the user in the format */
-	login_formats[0] = build_login_format (format, "%U", self->pv->domain);
-	realm_kerberos_set_login_formats (kerberos, (const gchar **)login_formats);
+	/* The full domain name */
+	domain_name = calc_domain (self);
+
+	/*
+	 * In theory we should be discovering the short name or flat name as sssd
+	 * calls it. We configured it as the sssd.conf 'domains' name, so we just
+	 * use that. Eventually we want to have a way to query sssd for that.
+	 */
+
+	/*
+	 * Here we place a '%U' in the place of the user in the format, and
+	 * fill in the domain appropriately. sssd uses snprintf for this, which
+	 * is risky and very compex to do right with positional arguments.
+	 *
+	 * We only replace the arguments documented in sssd.conf, as well as
+	 * other non-field printf replacements.
+	 */
+
+	if (safe_asprintf (login_formats, format, "%U", domain_name ? domain_name : "", self->pv->domain, NULL) >= 0)
+		realm_kerberos_set_login_formats (kerberos, (const gchar **)login_formats);
 	g_free (login_formats[0]);
+	g_free (domain_name);
 	g_free (format);
 }
 

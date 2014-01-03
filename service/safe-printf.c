@@ -56,7 +56,7 @@ int
 safe_printf_cb (void (* callback) (void *, const char *, size_t),
                 void *data,
                 const char *format,
-                const char *args[],
+                const char * const args[],
                 int num_args)
 {
 	int at_arg = 0;
@@ -332,7 +332,8 @@ safe_snprintf (char *str,
 	if (args == NULL)
 		return -1;
 
-	cx.data[0] = '\0';
+	if (len)
+		cx.data[0] = '\0';
 
 	ret = safe_printf_cb (snprintf_callback, &cx, format, args, num_args);
 	if (ret < 0)

@@ -39,7 +39,7 @@ int        safe_snprintf     (char *str,
 int        safe_printf_cb    (void (* callback) (void *data, const char *piece, size_t len),
                               void *data,
                               const char *format,
-                              const char *args[],
+                              const char * const args[],
                               int num_args);
 
 #endif /* __SAFE_PRINTF_H__ */

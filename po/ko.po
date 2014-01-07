@@ -4,13 +4,14 @@
 # 
 # Translators:
 # Darkcircle <darkcircle.0426@gmail.com>, 2013
+# Darkcircle <darkcircle.0426@gmail.com>, 2013
 msgid ""
 msgstr ""
 "Project-Id-Version: realmd\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2013-09-09 16:14+0200\n"
-"PO-Revision-Date: 2013-09-09 14:16+0000\n"
-"Last-Translator: stef0x77 <stefw@gnome.org>\n"
+"POT-Creation-Date: 2014-01-07 18:08+0100\n"
+"PO-Revision-Date: 2013-11-20 09:15+0000\n"
+"Last-Translator: Darkcircle <darkcircle.0426@gmail.com>\n"
 "Language-Team: Korean (http://www.transifex.com/projects/p/freedesktop/language/ko/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -58,7 +59,7 @@ msgstr "이 컴퓨터에 누가 로그인할 수 있는지 바꾸려면 인증�
 msgid "Process was terminated with signal: %d"
 msgstr "다음 시그널로 프로세스가 멈추었습니다: %d"
 
-#: ../service/realm-command.c:396 ../service/realm-ldap.c:350
+#: ../service/realm-command.c:396 ../service/realm-ldap.c:349
 #, c-format
 msgid "The operation was cancelled"
 msgstr "처리를 취소했습니다"
@@ -78,132 +79,132 @@ msgstr "명령을 건너뛰었습니다: %s"
 msgid "Configured command invalid: %s"
 msgstr "설정한 명령이 잘못되었습니다: %s"
 
-#: ../service/realm-disco-mscldap.c:193
+#: ../service/realm-disco-mscldap.c:192
 #, c-format
 msgid "Received invalid or unsupported Netlogon data from server"
-msgstr ""
+msgstr "잘못되거나 지원하지 않은 네트워크 로그온 데이터를 서버로부터 받았습니다"
 
-#: ../service/realm-disco-mscldap.c:341
+#: ../service/realm-disco-mscldap.c:340
 msgid "LDAP on this system does not support UDP connections"
-msgstr ""
+msgstr "이 시스템의 LDAP 는 UDP 연결을 지원하지 않습니다"
 
-#: ../service/realm-example.c:83 ../service/realm-samba.c:248
+#: ../service/realm-example.c:82 ../service/realm-samba.c:247
 #: ../service/realm-sssd-ad.c:309 ../service/realm-sssd-ipa.c:318
 #, c-format
 msgid "Unsupported or unknown membership software '%s'"
 msgstr "지원하지 않거나 알 수 없는 구성원 소프트웨어 '%s' 입니다"
 
-#: ../service/realm-example.c:171 ../service/realm-samba.c:283
+#: ../service/realm-example.c:170 ../service/realm-samba.c:282
 msgid "Already joined to a domain"
 msgstr "이미 도메인에 참여했습니"
 
-#: ../service/realm-example.c:179 ../service/realm-example.c:261
+#: ../service/realm-example.c:178 ../service/realm-example.c:260
 msgid "Admin name or password is not valid"
 msgstr "관리자 이름 또는 암호가 유효하지 않습니"
 
-#: ../service/realm-example.c:232 ../service/realm-samba.c:409
+#: ../service/realm-example.c:231 ../service/realm-samba.c:408
 #: ../service/realm-sssd-ad.c:493
 msgid "Not currently joined to this domain"
 msgstr "현재 이 도메인에 참여하고 있지 않습니다"
 
-#: ../service/realm-example.c:291
+#: ../service/realm-example.c:290
 msgid "Need credentials for leaving this domain"
-msgstr ""
+msgstr "이 도메인을 떠나려면 인증서가 필요합니다"
 
 #: ../service/realm-ini-config.c:736
 #, c-format
 msgid "Couldn't write out config: %s"
-msgstr ""
+msgstr "설정 파일에 기록할 수 없습니다: %s"
 
 #: ../service/realm-invocation.c:536
 msgid "Not authorized to perform this action"
 msgstr ""
 
-#: ../service/realm-kerberos.c:126 ../service/realm-kerberos.c:204
+#: ../service/realm-kerberos.c:130 ../service/realm-kerberos.c:208
 #: ../service/realm-provider.c:156
 msgid "Operation was cancelled."
-msgstr ""
+msgstr "처리가 취소되었습니다."
 
-#: ../service/realm-kerberos.c:131
+#: ../service/realm-kerberos.c:135
 msgid "Failed to enroll machine in realm. See diagnostics."
 msgstr "장비를 영역에 참여하는데 실패했습니다. 진단 기록을 보십시오."
 
-#: ../service/realm-kerberos.c:209
+#: ../service/realm-kerberos.c:213
 msgid "Failed to unenroll machine from domain. See diagnostics."
 msgstr "장비를 도메인에서 가입 해제하는데 실패했습니다. 진단 기록을 보십시오."
 
-#: ../service/realm-kerberos.c:264
-msgid "Joining this realm without credentials is not supported"
-msgstr ""
-
-#: ../service/realm-kerberos.c:265
-msgid "Leaving this realm without credentials is not supported"
-msgstr ""
-
 #: ../service/realm-kerberos.c:268
-msgid "Joining this realm using a credential cache is not supported"
-msgstr ""
+msgid "Joining this realm without credentials is not supported"
+msgstr "인증서없이 이 영역으로의 참여는 지원하지 않습니다"
 
 #: ../service/realm-kerberos.c:269
-msgid "Leaving this realm using a credential cache is not supported"
-msgstr ""
+msgid "Leaving this realm without credentials is not supported"
+msgstr "인증서 없이 이 영역을 떠나는 기능은 지원하지 않습니다"
 
 #: ../service/realm-kerberos.c:272
-msgid "Joining this realm using a secret is not supported"
-msgstr ""
+msgid "Joining this realm using a credential cache is not supported"
+msgstr "인증서 캐를 사용하여 이 영역에 참여하는 기능은 지원하지 않습니다"
 
 #: ../service/realm-kerberos.c:273
+msgid "Leaving this realm using a credential cache is not supported"
+msgstr "인증서 캐시를 사용하여 이 영역을 떠나는 기능은 지원하지 않습니다"
+
+#: ../service/realm-kerberos.c:276
+msgid "Joining this realm using a secret is not supported"
+msgstr "비밀을 사용하여 이 영역으로 참여하는 기능은 지원하지 않습니다"
+
+#: ../service/realm-kerberos.c:277
 msgid "Unenrolling this realm using a secret is not supported"
 msgstr ""
 
-#: ../service/realm-kerberos.c:276
+#: ../service/realm-kerberos.c:280
 msgid "Enrolling this realm using a password is not supported"
 msgstr ""
 
-#: ../service/realm-kerberos.c:277
+#: ../service/realm-kerberos.c:281
 msgid "Unenrolling this realm using a password is not supported"
 msgstr ""
 
-#: ../service/realm-kerberos.c:302
+#: ../service/realm-kerberos.c:306
 msgid "Joining this realm is not supported"
-msgstr ""
+msgstr "이 영역으로의 참여는 지원하지 않습니다"
 
-#: ../service/realm-kerberos.c:303
+#: ../service/realm-kerberos.c:307
 msgid "Leaving this realm is not supported"
-msgstr ""
+msgstr "이 영역을 떠나는 기능은 지원하지 않습니다"
 
-#: ../service/realm-kerberos.c:323 ../service/realm-kerberos.c:497
+#: ../service/realm-kerberos.c:327 ../service/realm-kerberos.c:501
 msgid "Already running another action"
-msgstr ""
+msgstr "다른 동작을 이미 실행중입니다"
 
-#: ../service/realm-kerberos.c:368
+#: ../service/realm-kerberos.c:372
 #, c-format
 msgid "Already joined to another domain: %s"
-msgstr ""
+msgstr "다른 도메인에 이미 참여했습니다: %s"
 
-#: ../service/realm-kerberos.c:439
+#: ../service/realm-kerberos.c:443
 msgid "Failed to change permitted logins. See diagnostics."
 msgstr ""
 
-#: ../service/realm-kerberos.c:738
+#: ../service/realm-kerberos.c:742
 #, c-format
 msgid "The realm does not allow specifying logins"
 msgstr ""
 
-#: ../service/realm-kerberos.c:746
+#: ../service/realm-kerberos.c:750
 #, c-format
 msgid "Invalid login argument%s%s%s does not match the login format."
 msgstr ""
 
-#: ../service/realm-packages.c:177
+#: ../service/realm-packages.c:179
 #, c-format
 msgid "The following packages are not available for installation: %s"
-msgstr ""
+msgstr "설치에 다음 패키지가 없습니다: %s"
 
-#: ../service/realm-packages.c:235 ../service/realm-packages.c:269
+#: ../service/realm-packages.c:237 ../service/realm-packages.c:271
 #, c-format
 msgid "Necessary packages are not installed: %s"
-msgstr ""
+msgstr "필요한 패키지를 설치하지 않았습니다: %s"
 
 #. * Various people have been worried by installing packages
 #. * quietly, so notify about what's going on.
@@ -213,20 +214,20 @@ msgstr ""
 #. * to configure, enable and start stuff. So if you're properly
 #. * worried, remove realmd and do stuff manually.
 #. 
-#: ../service/realm-packages.c:240 ../tools/realm-client.c:146
+#: ../service/realm-packages.c:242 ../tools/realm-client.c:143
 msgid "Installing necessary packages"
-msgstr ""
+msgstr "필요 패키지 설치중"
 
 #: ../service/realm-provider.c:161
 msgid "Failed to discover realm. See diagnostics."
 msgstr ""
 
-#: ../service/realm-samba.c:441
+#: ../service/realm-samba.c:440
 #, c-format
 msgid "Not joined to this domain"
-msgstr ""
+msgstr "이 도메인에 참여하지 않았습니다"
 
-#: ../service/realm-samba.c:451 ../service/realm-samba.c:493
+#: ../service/realm-samba.c:450 ../service/realm-samba.c:492
 #, c-format
 msgid "The Samba provider cannot restrict permitted logins."
 msgstr ""
@@ -234,7 +235,7 @@ msgstr ""
 #: ../service/realm-sssd.c:130
 #, c-format
 msgid "Invalid login argument '%s' contains unsupported characters."
-msgstr ""
+msgstr "지원하지 않는 문자가 들어간 '%s' 로그인 인자가 잘못되었습니다"
 
 #: ../service/realm-sssd-ad.c:126 ../service/realm-sssd-ipa.c:124
 #, c-format
@@ -282,7 +283,7 @@ msgstr ""
 #: ../service/realm-sssd-config.c:190
 #, c-format
 msgid "Don't have domain %s in sssd.conf config file"
-msgstr ""
+msgstr "sssd.conf 설정 파일에 %s 도메인이 없습니다"
 
 #: ../service/realm-sssd-ipa.c:312
 msgid "The computer-ou argument is not supported when joining an IPA domain."
@@ -318,136 +319,136 @@ msgstr ""
 
 #: ../tools/realm.c:192
 msgid "Install mode to a specific prefix"
-msgstr ""
+msgstr "지정한 접두어에 따른 설치 모드"
 
 #: ../tools/realm.c:193
 msgid "Verbose output"
-msgstr ""
+msgstr "자세한 출력"
 
 #: ../tools/realm.c:194
 msgid "Do not prompt for input"
 msgstr ""
 
-#: ../tools/realm-client.c:196 ../tools/realm-client.c:206
+#: ../tools/realm-client.c:193 ../tools/realm-client.c:203
 msgid "Couldn't connect to realm service"
-msgstr ""
+msgstr "영역 서비스에 연결할 수 없습니다"
 
-#: ../tools/realm-client.c:235
+#: ../tools/realm-client.c:232
 msgid "Couldn't load the realm service"
-msgstr ""
+msgstr "영역 서비스를 불러올 수 없습니다"
 
-#: ../tools/realm-client.c:252
+#: ../tools/realm-client.c:249
 msgid "Couldn't connect to system bus"
-msgstr ""
+msgstr "시스템 버스에 연결할 수 없습니"
 
-#: ../tools/realm-client.c:282
+#: ../tools/realm-client.c:279
 #, c-format
 msgid "Couldn't create socket pair: %s"
-msgstr ""
+msgstr "소켓 쌍을 생성할 수 없습니다: %s"
 
-#: ../tools/realm-client.c:290 ../tools/realm-client.c:322
+#: ../tools/realm-client.c:287 ../tools/realm-client.c:319
 msgid "Couldn't create socket"
-msgstr ""
+msgstr "소켓을 만들 수 없습니다"
 
-#: ../tools/realm-client.c:303
+#: ../tools/realm-client.c:300
 msgid "Couldn't run realmd"
-msgstr ""
+msgstr "realmd를 실행할 수 없습니다"
 
-#: ../tools/realm-client.c:568
+#: ../tools/realm-client.c:565
 #, c-format
 msgid "Couldn't create runtime directory: %s: %s"
 msgstr ""
 
-#: ../tools/realm-client.c:578
+#: ../tools/realm-client.c:575
 #, c-format
 msgid "Couldn't create credential cache file: %s: %s"
 msgstr ""
 
-#: ../tools/realm-client.c:588
+#: ../tools/realm-client.c:585
 msgid "Couldn't resolve credential cache"
-msgstr ""
+msgstr "인증서 캐시를 해석할 수 없습니다"
 
-#: ../tools/realm-client.c:678
+#: ../tools/realm-client.c:675
 #, c-format
 msgid "Invalid password for %s"
-msgstr ""
+msgstr "%s의 암호가 잘못되었습니다"
 
-#: ../tools/realm-client.c:682
+#: ../tools/realm-client.c:679
 #, c-format
 msgid "Couldn't authenticate as %s"
-msgstr ""
+msgstr "%s(으)로 인증할 수 없습니다"
 
-#: ../tools/realm-client.c:707
+#: ../tools/realm-client.c:704
 #, c-format
 msgid "Couldn't parse user name: %s"
-msgstr ""
+msgstr "사용자 이름을 해석할 수 없습니다: %s"
 
-#: ../tools/realm-client.c:731
+#: ../tools/realm-client.c:728
 msgid "Couldn't read credential cache"
-msgstr ""
+msgstr "인증서 캐시를 읽을 수 없습니다"
 
-#: ../tools/realm-client.c:757 ../tools/realm-client.c:966
+#: ../tools/realm-client.c:754 ../tools/realm-client.c:963
 msgid "Couldn't initialize kerberos"
-msgstr ""
+msgstr "커베로스를 초기화 할 수 없습니다"
 
-#: ../tools/realm-client.c:822
+#: ../tools/realm-client.c:819
 #, c-format
 msgid "Cannot prompt for a password when running in unattended mode"
 msgstr ""
 
-#: ../tools/realm-client.c:826
+#: ../tools/realm-client.c:823
 #, c-format
 msgid "Password for %s: "
-msgstr ""
+msgstr " %s 암호:"
 
-#: ../tools/realm-client.c:844
+#: ../tools/realm-client.c:841
 #, c-format
 msgid "Couldn't prompt for password: %s"
-msgstr ""
+msgstr "암호를 물어볼 수 없습니다: %s"
 
-#: ../tools/realm-client.c:879
+#: ../tools/realm-client.c:876
 #, c-format
 msgid "Realm does not support membership using a password"
 msgstr ""
 
-#: ../tools/realm-client.c:918
+#: ../tools/realm-client.c:915
 #, c-format
 msgid "Realm does not support membership using a one time password"
 msgstr ""
 
-#: ../tools/realm-client.c:986
+#: ../tools/realm-client.c:983
 msgid "Couldn't select kerberos credentials"
 msgstr ""
 
-#: ../tools/realm-client.c:1000
+#: ../tools/realm-client.c:997
 msgid "Couldn't read kerberos credentials"
 msgstr ""
 
-#: ../tools/realm-client.c:1050
+#: ../tools/realm-client.c:1047
 #, c-format
 msgid "Realm does not support automatic membership"
-msgstr ""
+msgstr "영역에 자동 구성원 가입을 지원하지 않습니다"
 
 #: ../tools/realm-discover.c:135
 msgid "Couldn't discover realms"
-msgstr ""
+msgstr "영역을 발견할 수 없었습니다"
 
 #: ../tools/realm-discover.c:155
 msgid "No default realm discovered"
-msgstr ""
+msgstr "발견한 기본 영역이 없습니다"
 
 #: ../tools/realm-discover.c:157
 #, c-format
 msgid "No such realm found: %s"
-msgstr ""
+msgstr "찾은 영역이 없습니다: %s"
 
 #: ../tools/realm-discover.c:181
 msgid "Show all discovered realms"
-msgstr ""
+msgstr "발견한 영역만 표시"
 
 #: ../tools/realm-discover.c:182 ../tools/realm-discover.c:273
 msgid "Show only the names"
-msgstr ""
+msgstr "이름만 표시"
 
 #: ../tools/realm-discover.c:183 ../tools/realm-join.c:259
 #: ../tools/realm-leave.c:266
@@ -515,15 +516,15 @@ msgstr ""
 
 #: ../tools/realm-leave.c:181 ../tools/realm-leave.c:208
 msgid "Couldn't leave realm"
-msgstr ""
+msgstr "영역을 떠날 수 없습니다"
 
 #: ../tools/realm-leave.c:267
 msgid "Remove computer from realm"
-msgstr ""
+msgstr "영역에서 컴퓨터 제거"
 
 #: ../tools/realm-leave.c:270
 msgid "User name to use for removal"
-msgstr ""
+msgstr "제거하는데 사용할 사용자 이름"
 
 #: ../tools/realm-logins.c:129 ../tools/realm-logins.c:175
 msgid "Couldn't change permitted logins"
@@ -547,7 +548,7 @@ msgstr ""
 
 #: ../tools/realm-logins.c:205
 msgid "Realm to permit/deny logins for"
-msgstr ""
+msgstr "로그인을 허용하거나 거절할 영역"
 
 #: ../tools/realm-logins.c:219
 msgid "No logins should be specified with -a or --all"

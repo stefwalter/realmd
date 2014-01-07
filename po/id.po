@@ -8,9 +8,9 @@ msgid ""
 msgstr ""
 "Project-Id-Version: realmd\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2013-09-09 16:14+0200\n"
-"PO-Revision-Date: 2013-09-09 14:16+0000\n"
-"Last-Translator: stef0x77 <stefw@gnome.org>\n"
+"POT-Creation-Date: 2014-01-07 18:08+0100\n"
+"PO-Revision-Date: 2013-12-06 06:30+0000\n"
+"Last-Translator: Andika Triwidada <andika@gmail.com>\n"
 "Language-Team: Indonesian (http://www.transifex.com/projects/p/freedesktop/language/id/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -58,7 +58,7 @@ msgstr "Perlu otentikasi untuk mengubah kebijakan tentang siapa yang dapat log m
 msgid "Process was terminated with signal: %d"
 msgstr "Proses diakhiri dengan sinyal: %d"
 
-#: ../service/realm-command.c:396 ../service/realm-ldap.c:350
+#: ../service/realm-command.c:396 ../service/realm-ldap.c:349
 #, c-format
 msgid "The operation was cancelled"
 msgstr "Operasi dibatalkan"
@@ -78,132 +78,132 @@ msgstr "Perintah dilewati: %s"
 msgid "Configured command invalid: %s"
 msgstr "Perintah yang ditata tak valid: %s"
 
-#: ../service/realm-disco-mscldap.c:193
+#: ../service/realm-disco-mscldap.c:192
 #, c-format
 msgid "Received invalid or unsupported Netlogon data from server"
-msgstr ""
+msgstr "Menerima data Netlogon yang tak valid atau tak didukung dari server"
 
-#: ../service/realm-disco-mscldap.c:341
+#: ../service/realm-disco-mscldap.c:340
 msgid "LDAP on this system does not support UDP connections"
-msgstr ""
+msgstr "LDAP pada sistem ini tak mendukung koneksi UDP"
 
-#: ../service/realm-example.c:83 ../service/realm-samba.c:248
+#: ../service/realm-example.c:82 ../service/realm-samba.c:247
 #: ../service/realm-sssd-ad.c:309 ../service/realm-sssd-ipa.c:318
 #, c-format
 msgid "Unsupported or unknown membership software '%s'"
 msgstr "Perangkat lunak '%s' keanggotaan tak didukung atau tak dikenal"
 
-#: ../service/realm-example.c:171 ../service/realm-samba.c:283
+#: ../service/realm-example.c:170 ../service/realm-samba.c:282
 msgid "Already joined to a domain"
 msgstr "Telah bergabung ke suatu domain"
 
-#: ../service/realm-example.c:179 ../service/realm-example.c:261
+#: ../service/realm-example.c:178 ../service/realm-example.c:260
 msgid "Admin name or password is not valid"
 msgstr "Nama atau sandi admin tak valid"
 
-#: ../service/realm-example.c:232 ../service/realm-samba.c:409
+#: ../service/realm-example.c:231 ../service/realm-samba.c:408
 #: ../service/realm-sssd-ad.c:493
 msgid "Not currently joined to this domain"
 msgstr "Tak sedang bergabung ke domain ini"
 
-#: ../service/realm-example.c:291
+#: ../service/realm-example.c:290
 msgid "Need credentials for leaving this domain"
 msgstr "Perlu kredensial untuk meninggalkan domain ini"
 
 #: ../service/realm-ini-config.c:736
 #, c-format
 msgid "Couldn't write out config: %s"
-msgstr ""
+msgstr "Tak bisa menulis config: %s"
 
 #: ../service/realm-invocation.c:536
 msgid "Not authorized to perform this action"
 msgstr "Tak diotorisasi untuk melakukan aksi ini"
 
-#: ../service/realm-kerberos.c:126 ../service/realm-kerberos.c:204
+#: ../service/realm-kerberos.c:130 ../service/realm-kerberos.c:208
 #: ../service/realm-provider.c:156
 msgid "Operation was cancelled."
 msgstr "Operasi dibatalkan."
 
-#: ../service/realm-kerberos.c:131
+#: ../service/realm-kerberos.c:135
 msgid "Failed to enroll machine in realm. See diagnostics."
 msgstr "Gagal mendaftarkan mesin ke realm. Lihat diagnostik."
 
-#: ../service/realm-kerberos.c:209
+#: ../service/realm-kerberos.c:213
 msgid "Failed to unenroll machine from domain. See diagnostics."
 msgstr "Gagal membatalkan pendaftaran mesin dari domain. Lihat diagnostik."
 
-#: ../service/realm-kerberos.c:264
-msgid "Joining this realm without credentials is not supported"
-msgstr ""
-
-#: ../service/realm-kerberos.c:265
-msgid "Leaving this realm without credentials is not supported"
-msgstr ""
-
 #: ../service/realm-kerberos.c:268
-msgid "Joining this realm using a credential cache is not supported"
-msgstr ""
+msgid "Joining this realm without credentials is not supported"
+msgstr "Bergabung ke realm ini tanpa kredensial tak didukung"
 
 #: ../service/realm-kerberos.c:269
-msgid "Leaving this realm using a credential cache is not supported"
-msgstr ""
+msgid "Leaving this realm without credentials is not supported"
+msgstr "Meninggalkan realm ini tanpa kredensial tak didukung"
 
 #: ../service/realm-kerberos.c:272
-msgid "Joining this realm using a secret is not supported"
-msgstr ""
+msgid "Joining this realm using a credential cache is not supported"
+msgstr "Bergabung ke realm ini memakai singgahan kredensial tak didukung"
 
 #: ../service/realm-kerberos.c:273
+msgid "Leaving this realm using a credential cache is not supported"
+msgstr "Meninggalkan realm ini memakai singgahan kredensial tak didukung"
+
+#: ../service/realm-kerberos.c:276
+msgid "Joining this realm using a secret is not supported"
+msgstr "Bergabung ke realm ini memakai suatu rahasia tak didukung"
+
+#: ../service/realm-kerberos.c:277
 msgid "Unenrolling this realm using a secret is not supported"
 msgstr "Membatalkan pendaftaran ke realm ini memakai suatu rahasia tak didukung"
 
-#: ../service/realm-kerberos.c:276
+#: ../service/realm-kerberos.c:280
 msgid "Enrolling this realm using a password is not supported"
 msgstr "Mendaftar ke realm ini memakai suatu sandi tak didukung"
 
-#: ../service/realm-kerberos.c:277
+#: ../service/realm-kerberos.c:281
 msgid "Unenrolling this realm using a password is not supported"
 msgstr "Membatalkan pendaftaran ke realm ini memakai suatu sandi tak didukung"
 
-#: ../service/realm-kerberos.c:302
+#: ../service/realm-kerberos.c:306
 msgid "Joining this realm is not supported"
-msgstr ""
+msgstr "Bergabung ke realm ini tak didukung"
 
-#: ../service/realm-kerberos.c:303
+#: ../service/realm-kerberos.c:307
 msgid "Leaving this realm is not supported"
-msgstr ""
+msgstr "Meninggalkan realm ini tak didukung"
 
-#: ../service/realm-kerberos.c:323 ../service/realm-kerberos.c:497
+#: ../service/realm-kerberos.c:327 ../service/realm-kerberos.c:501
 msgid "Already running another action"
 msgstr "Tengah menjalankan aksi lain"
 
-#: ../service/realm-kerberos.c:368
+#: ../service/realm-kerberos.c:372
 #, c-format
 msgid "Already joined to another domain: %s"
-msgstr ""
+msgstr "Telah bergabung ke domain lain: %s"
 
-#: ../service/realm-kerberos.c:439
+#: ../service/realm-kerberos.c:443
 msgid "Failed to change permitted logins. See diagnostics."
 msgstr "Gagal mengubah log masuk yang diijinkan. Lihat diagnostik."
 
-#: ../service/realm-kerberos.c:738
+#: ../service/realm-kerberos.c:742
 #, c-format
 msgid "The realm does not allow specifying logins"
 msgstr "Realm ini tak mengijinkan menyatakan log masuk"
 
-#: ../service/realm-kerberos.c:746
+#: ../service/realm-kerberos.c:750
 #, c-format
 msgid "Invalid login argument%s%s%s does not match the login format."
 msgstr "Argumen%s%s%s log masuk yang tak valid tak cocok dengan format log masuk"
 
-#: ../service/realm-packages.c:177
+#: ../service/realm-packages.c:179
 #, c-format
 msgid "The following packages are not available for installation: %s"
-msgstr ""
+msgstr "Paket berikut tak tersedia untuk pemasangan: %s"
 
-#: ../service/realm-packages.c:235 ../service/realm-packages.c:269
+#: ../service/realm-packages.c:237 ../service/realm-packages.c:271
 #, c-format
 msgid "Necessary packages are not installed: %s"
-msgstr ""
+msgstr "Paket yang dibutuhkan tak terpasang: %s"
 
 #. * Various people have been worried by installing packages
 #. * quietly, so notify about what's going on.
@@ -213,20 +213,20 @@ msgstr ""
 #. * to configure, enable and start stuff. So if you're properly
 #. * worried, remove realmd and do stuff manually.
 #. 
-#: ../service/realm-packages.c:240 ../tools/realm-client.c:146
+#: ../service/realm-packages.c:242 ../tools/realm-client.c:143
 msgid "Installing necessary packages"
-msgstr ""
+msgstr "Memasang paket yang diperlukan"
 
 #: ../service/realm-provider.c:161
 msgid "Failed to discover realm. See diagnostics."
 msgstr "Gagal menemukan realm. Lihat diagnostik."
 
-#: ../service/realm-samba.c:441
+#: ../service/realm-samba.c:440
 #, c-format
 msgid "Not joined to this domain"
 msgstr "Tak bergabung ke domain ini"
 
-#: ../service/realm-samba.c:451 ../service/realm-samba.c:493
+#: ../service/realm-samba.c:450 ../service/realm-samba.c:492
 #, c-format
 msgid "The Samba provider cannot restrict permitted logins."
 msgstr "Penyedia Samba tak bisa membatasi log masuk yang diijinkan."
@@ -234,7 +234,7 @@ msgstr "Penyedia Samba tak bisa membatasi log masuk yang diijinkan."
 #: ../service/realm-sssd.c:130
 #, c-format
 msgid "Invalid login argument '%s' contains unsupported characters."
-msgstr ""
+msgstr "Argumen log masuk '%s' tak valid karena memuat karakter yang tak didukung."
 
 #: ../service/realm-sssd-ad.c:126 ../service/realm-sssd-ipa.c:124
 #, c-format
@@ -286,11 +286,11 @@ msgstr "Tak punya domain %s dalam berkas konfig sssd.conf"
 
 #: ../service/realm-sssd-ipa.c:312
 msgid "The computer-ou argument is not supported when joining an IPA domain."
-msgstr ""
+msgstr "Argumen computer-ou tak didukung ketika bergabung dengan suatu domain IPA."
 
 #: ../service/realm-sssd-ipa.c:463
 msgid "Not currently joined to this realm"
-msgstr ""
+msgstr "Saat ini tidak sedang bergabung ke realm ini"
 
 #: ../tools/realm.c:42
 msgid "Discover available realm"
@@ -326,104 +326,104 @@ msgstr "Keluaran terinci"
 
 #: ../tools/realm.c:194
 msgid "Do not prompt for input"
-msgstr ""
+msgstr "Jangan minta masukan"
 
-#: ../tools/realm-client.c:196 ../tools/realm-client.c:206
+#: ../tools/realm-client.c:193 ../tools/realm-client.c:203
 msgid "Couldn't connect to realm service"
 msgstr "Tak bisa menyambung ke layanan realm"
 
-#: ../tools/realm-client.c:235
+#: ../tools/realm-client.c:232
 msgid "Couldn't load the realm service"
 msgstr "Tak bisa memuat layanan realm"
 
-#: ../tools/realm-client.c:252
+#: ../tools/realm-client.c:249
 msgid "Couldn't connect to system bus"
 msgstr "Tak bisa menyambung ke bus sistem"
 
-#: ../tools/realm-client.c:282
+#: ../tools/realm-client.c:279
 #, c-format
 msgid "Couldn't create socket pair: %s"
 msgstr "Tak bisa membuat pasangan soket: %s"
 
-#: ../tools/realm-client.c:290 ../tools/realm-client.c:322
+#: ../tools/realm-client.c:287 ../tools/realm-client.c:319
 msgid "Couldn't create socket"
 msgstr "Tak bisa membuat soket"
 
-#: ../tools/realm-client.c:303
+#: ../tools/realm-client.c:300
 msgid "Couldn't run realmd"
 msgstr "Tak bisa menjalankan realmd"
 
-#: ../tools/realm-client.c:568
+#: ../tools/realm-client.c:565
 #, c-format
 msgid "Couldn't create runtime directory: %s: %s"
-msgstr ""
+msgstr "Tak bisa membuat direktori runtime: %s: %s"
 
-#: ../tools/realm-client.c:578
+#: ../tools/realm-client.c:575
 #, c-format
 msgid "Couldn't create credential cache file: %s: %s"
-msgstr ""
+msgstr "Tak bisa membuat berkas singgahan kredensial: %s: %s"
 
-#: ../tools/realm-client.c:588
+#: ../tools/realm-client.c:585
 msgid "Couldn't resolve credential cache"
 msgstr "Tak bisa meresolve singgahan kredensial"
 
-#: ../tools/realm-client.c:678
+#: ../tools/realm-client.c:675
 #, c-format
 msgid "Invalid password for %s"
 msgstr "Sandi tak valid bagi %s"
 
-#: ../tools/realm-client.c:682
+#: ../tools/realm-client.c:679
 #, c-format
 msgid "Couldn't authenticate as %s"
 msgstr "Tak bisa mengotentikasi sebagai %s"
 
-#: ../tools/realm-client.c:707
+#: ../tools/realm-client.c:704
 #, c-format
 msgid "Couldn't parse user name: %s"
 msgstr "Tak bisa mengurai nama pengguna: %s"
 
-#: ../tools/realm-client.c:731
+#: ../tools/realm-client.c:728
 msgid "Couldn't read credential cache"
 msgstr "Tak bisa baca singgahan kredensial"
 
-#: ../tools/realm-client.c:757 ../tools/realm-client.c:966
+#: ../tools/realm-client.c:754 ../tools/realm-client.c:963
 msgid "Couldn't initialize kerberos"
 msgstr "Tak bisa menginisialisasi kerberos"
 
-#: ../tools/realm-client.c:822
+#: ../tools/realm-client.c:819
 #, c-format
 msgid "Cannot prompt for a password when running in unattended mode"
-msgstr ""
+msgstr "Tak bisa meminta sandi ketika berjalan dalam mode tak interaktif"
 
-#: ../tools/realm-client.c:826
+#: ../tools/realm-client.c:823
 #, c-format
 msgid "Password for %s: "
 msgstr "Sandi bagi %s:"
 
-#: ../tools/realm-client.c:844
+#: ../tools/realm-client.c:841
 #, c-format
 msgid "Couldn't prompt for password: %s"
 msgstr "Tak bisa menanyakan sandi: %s"
 
-#: ../tools/realm-client.c:879
+#: ../tools/realm-client.c:876
 #, c-format
 msgid "Realm does not support membership using a password"
 msgstr "Realm tak mendukung keanggotaan memakai suatu sandi"
 
-#: ../tools/realm-client.c:918
+#: ../tools/realm-client.c:915
 #, c-format
 msgid "Realm does not support membership using a one time password"
 msgstr "Realm tak mendukung keanggotaan memakai suatu sandi satu waktu"
 
-#: ../tools/realm-client.c:986
+#: ../tools/realm-client.c:983
 msgid "Couldn't select kerberos credentials"
-msgstr ""
+msgstr "Tak bisa memilih kredensial kerberos"
 
-#: ../tools/realm-client.c:1000
+#: ../tools/realm-client.c:997
 msgid "Couldn't read kerberos credentials"
-msgstr ""
+msgstr "Tak bisa membaca kredensial kerberos"
 
-#: ../tools/realm-client.c:1050
+#: ../tools/realm-client.c:1047
 #, c-format
 msgid "Realm does not support automatic membership"
 msgstr "Realm tak mendukung keanggotaan otomatis"
@@ -474,7 +474,7 @@ msgstr "Tak bisa gabung realm"
 
 #: ../tools/realm-join.c:203
 msgid "Cannot join this realm"
-msgstr ""
+msgstr "Tak bisa bergabung ke realm ini"
 
 #: ../tools/realm-join.c:205
 msgid "No such realm found"
@@ -498,7 +498,7 @@ msgstr "Bergabung memakai sandi sekali waktu yang dipratata"
 
 #: ../tools/realm-join.c:269
 msgid "Set the user principal for the computer account"
-msgstr ""
+msgstr "Menata pengguna utama bagi akun komputer"
 
 #: ../tools/realm-join.c:286
 msgid "Specify one realm to join"
@@ -527,23 +527,23 @@ msgstr "Nama pengguna yang dipakai untuk penghapusan"
 
 #: ../tools/realm-logins.c:129 ../tools/realm-logins.c:175
 msgid "Couldn't change permitted logins"
-msgstr ""
+msgstr "Tak bisa mengubah log masuk yang diijinkan"
 
 #: ../tools/realm-logins.c:200
 msgid "Permit any realm account login"
-msgstr ""
+msgstr "Ijinkan log masuk akun realm manapun"
 
 #: ../tools/realm-logins.c:200
 msgid "Deny any realm account login"
-msgstr ""
+msgstr "Tolak log masuk akun realm manapun"
 
 #: ../tools/realm-logins.c:202
 msgid "Withdraw permit for a realm account to login"
-msgstr ""
+msgstr "Cabut ijin bagi suatu akun realm untuk log masuk"
 
 #: ../tools/realm-logins.c:204
 msgid "Treat names as groups which to permit"
-msgstr ""
+msgstr "Perlakukan nama sebagai grup yang diijinkan"
 
 #: ../tools/realm-logins.c:205
 msgid "Realm to permit/deny logins for"
@@ -551,29 +551,29 @@ msgstr "Realm yang akan diijinkan/ditolak log masuknya"
 
 #: ../tools/realm-logins.c:219
 msgid "No logins should be specified with -a or --all"
-msgstr ""
+msgstr "Tak ada log masuk yang mesti dinyatakan dengan -a atau --all"
 
 #: ../tools/realm-logins.c:222
 msgid "The --withdraw or -x arguments cannot be used when denying logins"
-msgstr ""
+msgstr "Argumen --withdraw atau -x tak bisa dipakai ketika menolak log masuk"
 
 #: ../tools/realm-logins.c:225
 msgid "Specific logins must be specified with --withdraw"
-msgstr ""
+msgstr "Log masuk tertentu mesti dinyatakan dengan --withdraw"
 
 #: ../tools/realm-logins.c:228
 msgid "Groups may not be specified with -a or --all"
-msgstr ""
+msgstr "Grup tak boleh dinyatakan dengan -a atau --all"
 
 #: ../tools/realm-logins.c:235
 msgid "Use --all to deny all logins"
-msgstr ""
+msgstr "Pakai --all untuk menolak semua log masuk"
 
 #: ../tools/realm-logins.c:237
 msgid "Specify specific users to add or remove from the permitted list"
-msgstr ""
+msgstr "Nyatakan pengguna tertentu untuk menambah atau menghapus dari daftar yang diijinkan"
 
 #: ../tools/realm-logins.c:241
 msgid ""
 "Specifying deny without --all is deprecated. Use realm permit --withdraw"
-msgstr ""
+msgstr "Menyatakan penolakan tanpa --all tak berlaku lagi. Gunakan realm permit --withdraw"

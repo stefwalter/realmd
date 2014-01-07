@@ -3,15 +3,17 @@
 # This file is distributed under the same license as the PACKAGE package.
 # 
 # Translators:
+# Enrico Nicoletto <enrico.BR@gmx.co.uk>, 2013
+# Enrico Nicoletto <liverig@gmail.com>, 2013
 # Rafael Ferreira <rafael.f.f1@gmail.com>, 2013
 # ufa <ufa@technotroll.org>, 2013
 msgid ""
 msgstr ""
 "Project-Id-Version: realmd\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2013-09-09 16:14+0200\n"
-"PO-Revision-Date: 2013-09-09 14:16+0000\n"
-"Last-Translator: stef0x77 <stefw@gnome.org>\n"
+"POT-Creation-Date: 2014-01-07 18:08+0100\n"
+"PO-Revision-Date: 2013-11-20 09:15+0000\n"
+"Last-Translator: Enrico Nicoletto <enrico.BR@gmx.co.uk>\n"
 "Language-Team: Portuguese (Brazil) (http://www.transifex.com/projects/p/freedesktop/language/pt_BR/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -46,7 +48,7 @@ msgstr "Autenticação é necessária para remover este computador de um domíni
 
 #: ../service/org.freedesktop.realmd.policy.in.h:7
 msgid "Change login policy"
-msgstr "Alterar política de login"
+msgstr "Alterar política de início de sessão"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:8
 msgid ""
@@ -59,7 +61,7 @@ msgstr "Autenticação é necessária para alterara a política de quem pode se 
 msgid "Process was terminated with signal: %d"
 msgstr "Processo foi terminado c om sinal: %d"
 
-#: ../service/realm-command.c:396 ../service/realm-ldap.c:350
+#: ../service/realm-command.c:396 ../service/realm-ldap.c:349
 #, c-format
 msgid "The operation was cancelled"
 msgstr "A operação foi cancelada"
@@ -79,132 +81,132 @@ msgstr "Comando ignorado: %s"
 msgid "Configured command invalid: %s"
 msgstr "Comando configurado inválido: %s"
 
-#: ../service/realm-disco-mscldap.c:193
+#: ../service/realm-disco-mscldap.c:192
 #, c-format
 msgid "Received invalid or unsupported Netlogon data from server"
-msgstr ""
+msgstr "Foram recebidos dados inválidos ou sem suporte a Netlogon do servidor"
 
-#: ../service/realm-disco-mscldap.c:341
+#: ../service/realm-disco-mscldap.c:340
 msgid "LDAP on this system does not support UDP connections"
-msgstr ""
+msgstr "O LDAP neste sistema não possui suporte a conexões UDP"
 
-#: ../service/realm-example.c:83 ../service/realm-samba.c:248
+#: ../service/realm-example.c:82 ../service/realm-samba.c:247
 #: ../service/realm-sssd-ad.c:309 ../service/realm-sssd-ipa.c:318
 #, c-format
 msgid "Unsupported or unknown membership software '%s'"
 msgstr "Software de participação \"%s\" desconhecido ou sem suporte"
 
-#: ../service/realm-example.c:171 ../service/realm-samba.c:283
+#: ../service/realm-example.c:170 ../service/realm-samba.c:282
 msgid "Already joined to a domain"
 msgstr "Já associada a um domínio"
 
-#: ../service/realm-example.c:179 ../service/realm-example.c:261
+#: ../service/realm-example.c:178 ../service/realm-example.c:260
 msgid "Admin name or password is not valid"
 msgstr "Nome de administrador ou senha inválida"
 
-#: ../service/realm-example.c:232 ../service/realm-samba.c:409
+#: ../service/realm-example.c:231 ../service/realm-samba.c:408
 #: ../service/realm-sssd-ad.c:493
 msgid "Not currently joined to this domain"
 msgstr "Não associada a este domínio"
 
-#: ../service/realm-example.c:291
+#: ../service/realm-example.c:290
 msgid "Need credentials for leaving this domain"
 msgstr "Requer credenciais para deixar este domínio"
 
 #: ../service/realm-ini-config.c:736
 #, c-format
 msgid "Couldn't write out config: %s"
-msgstr ""
+msgstr "Não foi possível gravar a configuração: %s"
 
 #: ../service/realm-invocation.c:536
 msgid "Not authorized to perform this action"
 msgstr "Não autorizado a realizar esta ação"
 
-#: ../service/realm-kerberos.c:126 ../service/realm-kerberos.c:204
+#: ../service/realm-kerberos.c:130 ../service/realm-kerberos.c:208
 #: ../service/realm-provider.c:156
 msgid "Operation was cancelled."
 msgstr "A operação foi cancelada."
 
-#: ../service/realm-kerberos.c:131
+#: ../service/realm-kerberos.c:135
 msgid "Failed to enroll machine in realm. See diagnostics."
 msgstr "Falha ao registrar a máquina no domínio. Veja o diagnóstico."
 
-#: ../service/realm-kerberos.c:209
+#: ../service/realm-kerberos.c:213
 msgid "Failed to unenroll machine from domain. See diagnostics."
 msgstr "Falha ao desregistrar a máquina do domínio. Veja diagnóstico."
 
-#: ../service/realm-kerberos.c:264
-msgid "Joining this realm without credentials is not supported"
-msgstr ""
-
-#: ../service/realm-kerberos.c:265
-msgid "Leaving this realm without credentials is not supported"
-msgstr ""
-
 #: ../service/realm-kerberos.c:268
-msgid "Joining this realm using a credential cache is not supported"
-msgstr ""
+msgid "Joining this realm without credentials is not supported"
+msgstr "Não é possível ingressar neste domínio sem credenciais"
 
 #: ../service/realm-kerberos.c:269
-msgid "Leaving this realm using a credential cache is not supported"
-msgstr ""
+msgid "Leaving this realm without credentials is not supported"
+msgstr "Não é possível deixar este domínio sem credenciais"
 
 #: ../service/realm-kerberos.c:272
-msgid "Joining this realm using a secret is not supported"
-msgstr ""
+msgid "Joining this realm using a credential cache is not supported"
+msgstr "Não é possível ingressar neste domínio usando um cache de credenciais"
 
 #: ../service/realm-kerberos.c:273
+msgid "Leaving this realm using a credential cache is not supported"
+msgstr "Não é possível deixar este domínio sem um cache de credenciais"
+
+#: ../service/realm-kerberos.c:276
+msgid "Joining this realm using a secret is not supported"
+msgstr "Não é possível ingressar neste domínio usando um segredo"
+
+#: ../service/realm-kerberos.c:277
 msgid "Unenrolling this realm using a secret is not supported"
 msgstr "Não há suporte a desregistrar este domínio usando um segredo"
 
-#: ../service/realm-kerberos.c:276
+#: ../service/realm-kerberos.c:280
 msgid "Enrolling this realm using a password is not supported"
 msgstr "Não há suporte a registrar este domínio usando uma senha"
 
-#: ../service/realm-kerberos.c:277
+#: ../service/realm-kerberos.c:281
 msgid "Unenrolling this realm using a password is not supported"
 msgstr "Não há suporte a desregistrar este domínio usando uma senha"
 
-#: ../service/realm-kerberos.c:302
+#: ../service/realm-kerberos.c:306
 msgid "Joining this realm is not supported"
-msgstr ""
+msgstr "Não é possível ingressar neste domínio"
 
-#: ../service/realm-kerberos.c:303
+#: ../service/realm-kerberos.c:307
 msgid "Leaving this realm is not supported"
-msgstr ""
+msgstr "Não é possível deixar este domínio"
 
-#: ../service/realm-kerberos.c:323 ../service/realm-kerberos.c:497
+#: ../service/realm-kerberos.c:327 ../service/realm-kerberos.c:501
 msgid "Already running another action"
 msgstr "Já executando outra ação"
 
-#: ../service/realm-kerberos.c:368
+#: ../service/realm-kerberos.c:372
 #, c-format
 msgid "Already joined to another domain: %s"
-msgstr ""
+msgstr "Já associada a outro domínio: %s"
 
-#: ../service/realm-kerberos.c:439
+#: ../service/realm-kerberos.c:443
 msgid "Failed to change permitted logins. See diagnostics."
-msgstr "Falha ao alterar logins permitidos. Veja o diagnóstico."
+msgstr "Falha ao alterar inícios de sessões permitidas. Veja o diagnóstico."
 
-#: ../service/realm-kerberos.c:738
+#: ../service/realm-kerberos.c:742
 #, c-format
 msgid "The realm does not allow specifying logins"
-msgstr "Este domínio não permite especificar logins"
+msgstr "Este domínio não permite especificar inícios de sessões"
 
-#: ../service/realm-kerberos.c:746
+#: ../service/realm-kerberos.c:750
 #, c-format
 msgid "Invalid login argument%s%s%s does not match the login format."
-msgstr "Argumento de login %s%s%s inválido não coincide com o formato login."
+msgstr "Argumento de início de sessão %s%s%s é inválido e não coincide com o formato de início de sessão."
 
-#: ../service/realm-packages.c:177
+#: ../service/realm-packages.c:179
 #, c-format
 msgid "The following packages are not available for installation: %s"
-msgstr ""
+msgstr "Os seguintes pacotes não estão disponíveis para instalação: %s"
 
-#: ../service/realm-packages.c:235 ../service/realm-packages.c:269
+#: ../service/realm-packages.c:237 ../service/realm-packages.c:271
 #, c-format
 msgid "Necessary packages are not installed: %s"
-msgstr ""
+msgstr "Os pacotes necessários não estão instalados: %s"
 
 #. * Various people have been worried by installing packages
 #. * quietly, so notify about what's going on.
@@ -214,28 +216,28 @@ msgstr ""
 #. * to configure, enable and start stuff. So if you're properly
 #. * worried, remove realmd and do stuff manually.
 #. 
-#: ../service/realm-packages.c:240 ../tools/realm-client.c:146
+#: ../service/realm-packages.c:242 ../tools/realm-client.c:143
 msgid "Installing necessary packages"
-msgstr ""
+msgstr "Instalando pacotes necessários"
 
 #: ../service/realm-provider.c:161
 msgid "Failed to discover realm. See diagnostics."
 msgstr "Falha ao descobrir o domínio. Veja o diagnóstico."
 
-#: ../service/realm-samba.c:441
+#: ../service/realm-samba.c:440
 #, c-format
 msgid "Not joined to this domain"
 msgstr "Não associado a este domínio"
 
-#: ../service/realm-samba.c:451 ../service/realm-samba.c:493
+#: ../service/realm-samba.c:450 ../service/realm-samba.c:492
 #, c-format
 msgid "The Samba provider cannot restrict permitted logins."
-msgstr "O provedor Samba não pode restringir logins permitidos."
+msgstr "O provedor Samba não pode restringir inícios de sessões permitidos."
 
 #: ../service/realm-sssd.c:130
 #, c-format
 msgid "Invalid login argument '%s' contains unsupported characters."
-msgstr ""
+msgstr "O argumento '%s' de início de sessão é inválido e contém caracteres não suportados."
 
 #: ../service/realm-sssd-ad.c:126 ../service/realm-sssd-ipa.c:124
 #, c-format
@@ -287,11 +289,11 @@ msgstr "Não há domínio %s no arquivo de configuração sssd.conf"
 
 #: ../service/realm-sssd-ipa.c:312
 msgid "The computer-ou argument is not supported when joining an IPA domain."
-msgstr ""
+msgstr "Não há suporte ao argumento -ou do computador ao ingressar em um domínio IPA."
 
 #: ../service/realm-sssd-ipa.c:463
 msgid "Not currently joined to this realm"
-msgstr ""
+msgstr "Não associada a este domínio"
 
 #: ../tools/realm.c:42
 msgid "Discover available realm"
@@ -311,11 +313,11 @@ msgstr "Listar domínios conhecidos"
 
 #: ../tools/realm.c:46
 msgid "Permit user logins"
-msgstr "Permite logins de usuários"
+msgstr "Permite a usuários iniciarem sessões."
 
 #: ../tools/realm.c:47
 msgid "Deny user logins"
-msgstr "Nega logins de usuários"
+msgstr "Nega a usuários iniciarem sessões."
 
 #: ../tools/realm.c:192
 msgid "Install mode to a specific prefix"
@@ -327,104 +329,104 @@ msgstr "Saída detalhada"
 
 #: ../tools/realm.c:194
 msgid "Do not prompt for input"
-msgstr ""
+msgstr "Não solicitar entradas"
 
-#: ../tools/realm-client.c:196 ../tools/realm-client.c:206
+#: ../tools/realm-client.c:193 ../tools/realm-client.c:203
 msgid "Couldn't connect to realm service"
 msgstr "Não foi possível conectar ao serviço de domínio"
 
-#: ../tools/realm-client.c:235
+#: ../tools/realm-client.c:232
 msgid "Couldn't load the realm service"
 msgstr "Não foi possível carregar o serviço de domínio"
 
-#: ../tools/realm-client.c:252
+#: ../tools/realm-client.c:249
 msgid "Couldn't connect to system bus"
 msgstr "Não foi possível conectar ao barramento do sistema"
 
-#: ../tools/realm-client.c:282
+#: ../tools/realm-client.c:279
 #, c-format
 msgid "Couldn't create socket pair: %s"
 msgstr "Não foi possível criar par de sockets: %s"
 
-#: ../tools/realm-client.c:290 ../tools/realm-client.c:322
+#: ../tools/realm-client.c:287 ../tools/realm-client.c:319
 msgid "Couldn't create socket"
 msgstr "Não foi possível criar socket"
 
-#: ../tools/realm-client.c:303
+#: ../tools/realm-client.c:300
 msgid "Couldn't run realmd"
 msgstr "Não foi possível executar realmd"
 
-#: ../tools/realm-client.c:568
+#: ../tools/realm-client.c:565
 #, c-format
 msgid "Couldn't create runtime directory: %s: %s"
-msgstr ""
+msgstr "Não foi possível criar diretório de tempo de execução: %s: %s"
 
-#: ../tools/realm-client.c:578
+#: ../tools/realm-client.c:575
 #, c-format
 msgid "Couldn't create credential cache file: %s: %s"
-msgstr ""
+msgstr "Não foi possível criar o arquivo de cache de credenciais: %s: %s"
 
-#: ../tools/realm-client.c:588
+#: ../tools/realm-client.c:585
 msgid "Couldn't resolve credential cache"
 msgstr "Não foi possível resolver cache de credenciais"
 
-#: ../tools/realm-client.c:678
+#: ../tools/realm-client.c:675
 #, c-format
 msgid "Invalid password for %s"
 msgstr "Senha inválida para %s"
 
-#: ../tools/realm-client.c:682
+#: ../tools/realm-client.c:679
 #, c-format
 msgid "Couldn't authenticate as %s"
 msgstr "Não foi possível autenticar como %s"
 
-#: ../tools/realm-client.c:707
+#: ../tools/realm-client.c:704
 #, c-format
 msgid "Couldn't parse user name: %s"
 msgstr "Não foi possível analisar o nome de usuário: %s"
 
-#: ../tools/realm-client.c:731
+#: ../tools/realm-client.c:728
 msgid "Couldn't read credential cache"
 msgstr "Não foi possível ler o cache de credenciais"
 
-#: ../tools/realm-client.c:757 ../tools/realm-client.c:966
+#: ../tools/realm-client.c:754 ../tools/realm-client.c:963
 msgid "Couldn't initialize kerberos"
 msgstr "Não foi possível inicializar kerberos"
 
-#: ../tools/realm-client.c:822
+#: ../tools/realm-client.c:819
 #, c-format
 msgid "Cannot prompt for a password when running in unattended mode"
-msgstr ""
+msgstr "Não é possível solicitar uma senha ao ser executado em modo não assistido"
 
-#: ../tools/realm-client.c:826
+#: ../tools/realm-client.c:823
 #, c-format
 msgid "Password for %s: "
 msgstr "Senha para %s:"
 
-#: ../tools/realm-client.c:844
+#: ../tools/realm-client.c:841
 #, c-format
 msgid "Couldn't prompt for password: %s"
 msgstr "Não foi possível perguntar por uma senha: %s"
 
-#: ../tools/realm-client.c:879
+#: ../tools/realm-client.c:876
 #, c-format
 msgid "Realm does not support membership using a password"
 msgstr "Domínio não tem suporte a participação usando uma senha"
 
-#: ../tools/realm-client.c:918
+#: ../tools/realm-client.c:915
 #, c-format
 msgid "Realm does not support membership using a one time password"
 msgstr "Domínio não tem suporte a participação usando uma senha de uso único"
 
-#: ../tools/realm-client.c:986
+#: ../tools/realm-client.c:983
 msgid "Couldn't select kerberos credentials"
-msgstr ""
+msgstr "Não foi possível selecionar as credenciais do kerberos"
 
-#: ../tools/realm-client.c:1000
+#: ../tools/realm-client.c:997
 msgid "Couldn't read kerberos credentials"
-msgstr ""
+msgstr "Não foi possível ler as credenciais do kerberos"
 
-#: ../tools/realm-client.c:1050
+#: ../tools/realm-client.c:1047
 #, c-format
 msgid "Realm does not support automatic membership"
 msgstr "Domínio não tem suporte a participação automática"
@@ -475,7 +477,7 @@ msgstr "Não foi possível associar ao domínio"
 
 #: ../tools/realm-join.c:203
 msgid "Cannot join this realm"
-msgstr ""
+msgstr "Não foi possível ingressar neste domínio"
 
 #: ../tools/realm-join.c:205
 msgid "No such realm found"
@@ -499,7 +501,7 @@ msgstr "Associa usando uma senha predefinida de uso único"
 
 #: ../tools/realm-join.c:269
 msgid "Set the user principal for the computer account"
-msgstr ""
+msgstr "Definir o usuário principal para a conta do computador"
 
 #: ../tools/realm-join.c:286
 msgid "Specify one realm to join"
@@ -528,53 +530,53 @@ msgstr "Nome de usuário para usar na remoção"
 
 #: ../tools/realm-logins.c:129 ../tools/realm-logins.c:175
 msgid "Couldn't change permitted logins"
-msgstr ""
+msgstr "Não foi possível alterar inícios de sessões permitidos"
 
 #: ../tools/realm-logins.c:200
 msgid "Permit any realm account login"
-msgstr ""
+msgstr "Permitir qualquer início de sessão de conta de domínio"
 
 #: ../tools/realm-logins.c:200
 msgid "Deny any realm account login"
-msgstr ""
+msgstr "Proibir qualquer início de sessão de conta de domínio"
 
 #: ../tools/realm-logins.c:202
 msgid "Withdraw permit for a realm account to login"
-msgstr ""
+msgstr "Retirar permissão para uma conta de domínio iniciar sessão"
 
 #: ../tools/realm-logins.c:204
 msgid "Treat names as groups which to permit"
-msgstr ""
+msgstr "Tratar nomes como grupos a regular permissões"
 
 #: ../tools/realm-logins.c:205
 msgid "Realm to permit/deny logins for"
-msgstr "Domínio parao qual permitir/negar logins"
+msgstr "Domínio padrão o qual permitir/negar inícios de sessões"
 
 #: ../tools/realm-logins.c:219
 msgid "No logins should be specified with -a or --all"
-msgstr ""
+msgstr "Nenhum início de sessão deve ser especificado com -a ou --all"
 
 #: ../tools/realm-logins.c:222
 msgid "The --withdraw or -x arguments cannot be used when denying logins"
-msgstr ""
+msgstr "Os argumentos --withdraw ou -x não podem ser usados ​​ao proibir inícios de sessões"
 
 #: ../tools/realm-logins.c:225
 msgid "Specific logins must be specified with --withdraw"
-msgstr ""
+msgstr "Inícios de sessões específicos devem ser especificados com --withdraw"
 
 #: ../tools/realm-logins.c:228
 msgid "Groups may not be specified with -a or --all"
-msgstr ""
+msgstr "Grupos não podem ser especificados com -a ou --all"
 
 #: ../tools/realm-logins.c:235
 msgid "Use --all to deny all logins"
-msgstr ""
+msgstr "Use --all para proibir todos os inícios de sessões"
 
 #: ../tools/realm-logins.c:237
 msgid "Specify specific users to add or remove from the permitted list"
-msgstr ""
+msgstr "Especifique usuários específicos para serem adicionaddos ou removidos da lista de usuários permitidos"
 
 #: ../tools/realm-logins.c:241
 msgid ""
 "Specifying deny without --all is deprecated. Use realm permit --withdraw"
-msgstr ""
+msgstr "Especificar proibição sem usar --all tornou-se obsoleto. Use a permissão de domínio --withdraw"

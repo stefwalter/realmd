@@ -1,6 +1,6 @@
 include $(top_srcdir)/Makefile.decl
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	-I$(top_srcdir) \
 	-DTESTFILE_DIR="\"@abs_srcdir@/files\"" \
 	-DSYSCONF_DIR="\"/tmp/realmd-etc\"" \

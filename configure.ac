@@ -1,8 +1,17 @@
 AC_PREREQ(2.63)
 
-AC_INIT([realmd], [0.14.6],
+AC_INIT([realmd], [0.15.0],
         [http://bugs.freedesktop.org/enter_bug.cgi?product=realmd],
         [realmd])
+
+# -----------------------------------------------------------------------------
+# Versions
+
+GLIB_REQ=2.36.0
+GLIB_MIN=GLIB_VERSION_2_36
+GLIB_MAX=GLIB_VERSION_2_36
+
+INTLTOOL_REQ=0.35.0
 
 # -----------------------------------------------------------------------------
 
@@ -52,7 +61,7 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_RANLIB
-IT_PROG_INTLTOOL([0.35.0])
+IT_PROG_INTLTOOL($INTLTOOL_REQ)
 AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
 
 GETTEXT_PACKAGE=realmd
@@ -64,9 +73,10 @@ AM_GLIB_GNU_GETTEXT
 # GLib
 
 PKG_CHECK_MODULES(GLIB,
-	glib-2.0 >= 2.38.0
-	gio-2.0 >= 2.38.0
+	glib-2.0 >= $GLIB_REQ
+	gio-2.0
 	gio-unix-2.0)
+GLIB_CFLAGS="$GLIB_CFLAGS -DGLIB_VERSION_MIN_REQUIRED=$GLIB_MIN -DGLIB_VERSION_MAX_ALLOWED=$GLIB_MAX"
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
 

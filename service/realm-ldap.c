@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "egg-task.h"
 #include "realm-ldap.h"
 
 #include <glib/gi18n.h>

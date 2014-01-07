@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "egg-task.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
@@ -83,7 +82,7 @@ fallback_workgroup (const gchar *realm)
 }
 
 static JoinClosure *
-join_closure_init (EggTask *task,
+join_closure_init (GTask *task,
                    RealmDisco *disco,
                    GDBusMethodInvocation *invocation)
 {
@@ -95,7 +94,7 @@ join_closure_init (EggTask *task,
 	join = g_new0 (JoinClosure, 1);
 	join->disco = realm_disco_ref (disco);
 	join->invocation = invocation ? g_object_ref (invocation) : NULL;
-	egg_task_set_task_data (task, join, join_closure_free);
+	g_task_set_task_data (task, join, join_closure_free);
 
 	join->config = realm_ini_config_new (REALM_INI_NO_WATCH | REALM_INI_PRIVATE);
 	realm_ini_config_set (join->config, REALM_SAMBA_CONFIG_GLOBAL,
@@ -213,7 +212,7 @@ on_keytab_do_finish (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
+	GTask *task = G_TASK (user_data);
 	GError *error = NULL;
 	gint status;
 
@@ -223,9 +222,9 @@ on_keytab_do_finish (GObject *source,
 		             "Extracting host keytab failed");
 
 	if (error != NULL)
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	else
-		egg_task_return_boolean (task, TRUE);
+		g_task_return_boolean (task, TRUE);
 	g_object_unref (task);
 }
 
@@ -234,8 +233,8 @@ on_join_do_keytab (GObject *source,
                    GAsyncResult *result,
                    gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	JoinClosure *join = egg_task_get_task_data (task);
+	GTask *task = G_TASK (user_data);
+	JoinClosure *join = g_task_get_task_data (task);
 	GError *error = NULL;
 	GString *output = NULL;
 	gint status;
@@ -283,7 +282,7 @@ on_join_do_keytab (GObject *source,
 		g_string_free (output, TRUE);
 
 	if (error != NULL) {
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 
 	/* Do keytab with a user name */
 	} else if (join->user_name != NULL) {
@@ -302,7 +301,7 @@ on_join_do_keytab (GObject *source,
 }
 
 static void
-begin_join (EggTask *task,
+begin_join (GTask *task,
             JoinClosure *join,
             GVariant *options)
 {
@@ -346,7 +345,7 @@ begin_join (EggTask *task,
 	g_assert (at < G_N_ELEMENTS (join->join_args));
 
 	if (error != NULL) {
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 
 	/* Do join with a user name */
 	} else if (join->user_name) {
@@ -376,13 +375,13 @@ realm_samba_enroll_join_async (RealmDisco *disco,
                                GAsyncReadyCallback callback,
                                gpointer user_data)
 {
-	EggTask *task;
+	GTask *task;
 	JoinClosure *join;
 
 	g_return_if_fail (disco != NULL);
 	g_return_if_fail (cred != NULL);
 
-	task = egg_task_new (NULL, NULL, callback, user_data);
+	task = g_task_new (NULL, NULL, callback, user_data);
 	join = join_closure_init (task, disco, invocation);
 
 	if (disco->explicit_netbios) {
@@ -411,8 +410,8 @@ gboolean
 realm_samba_enroll_join_finish (GAsyncResult *result,
                                 GError **error)
 {
-	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
-	return egg_task_propagate_boolean (EGG_TASK (result), error);
+	g_return_val_if_fail (g_task_is_valid (result, NULL), FALSE);
+	return g_task_propagate_boolean (G_TASK (result), error);
 }
 
 static void
@@ -420,8 +419,8 @@ on_leave_complete (GObject *source,
                    GAsyncResult *result,
                    gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	JoinClosure *join = egg_task_get_task_data (task);
+	GTask *task = G_TASK (user_data);
+	JoinClosure *join = g_task_get_task_data (task);
 	GError *error = NULL;
 	gint status;
 
@@ -431,9 +430,9 @@ on_leave_complete (GObject *source,
 		             "Leaving the domain %s failed", join->disco->domain_name);
 
 	if (error != NULL)
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	else
-		egg_task_return_boolean (task, TRUE);
+		g_task_return_boolean (task, TRUE);
 	g_object_unref (task);
 }
 
@@ -445,10 +444,10 @@ realm_samba_enroll_leave_async (RealmDisco *disco,
                                 GAsyncReadyCallback callback,
                                 gpointer user_data)
 {
-	EggTask *task;
+	GTask *task;
 	JoinClosure *join;
 
-	task = egg_task_new (NULL, NULL, callback, user_data);
+	task = g_task_new (NULL, NULL, callback, user_data);
 	join = join_closure_init (task, disco, invocation);
 
 	switch (cred->type) {
@@ -477,6 +476,6 @@ gboolean
 realm_samba_enroll_leave_finish (GAsyncResult *result,
                                  GError **error)
 {
-	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
-	return egg_task_propagate_boolean (EGG_TASK (result), error);
+	g_return_val_if_fail (g_task_is_valid (result, NULL), FALSE);
+	return g_task_propagate_boolean (G_TASK (result), error);
 }

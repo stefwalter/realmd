@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "egg-task.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-diagnostics.h"
@@ -34,7 +33,7 @@ on_nss_complete (GObject *source,
                  GAsyncResult *result,
                  gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
+	GTask *task = G_TASK (user_data);
 	GError *error = NULL;
 	gint status;
 
@@ -43,9 +42,9 @@ on_nss_complete (GObject *source,
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             "Enabling winbind in nsswitch.conf and pam failed");
 	if (error != NULL)
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	else
-		egg_task_return_boolean (task, TRUE);
+		g_task_return_boolean (task, TRUE);
 	g_object_unref (task);
 }
 
@@ -54,8 +53,8 @@ on_enable_do_nss (GObject *source,
                   GAsyncResult *result,
                   gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	GDBusMethodInvocation *invocation = egg_task_get_task_data (task);
+	GTask *task = G_TASK (user_data);
+	GDBusMethodInvocation *invocation = g_task_get_task_data (task);
 	GError *error = NULL;
 
 	realm_service_enable_and_restart_finish (result, &error);
@@ -64,7 +63,7 @@ on_enable_do_nss (GObject *source,
 		                               on_nss_complete, g_object_ref (task));
 
 	} else {
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	}
 
 	g_object_unref (task);
@@ -78,15 +77,15 @@ realm_samba_winbind_configure_async (RealmIniConfig *config,
                                      gpointer user_data)
 {
 	RealmIniConfig *pwc;
-	EggTask *task;
+	GTask *task;
 	GError *error = NULL;
 
 	g_return_if_fail (config != NULL);
 	g_return_if_fail (invocation != NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
-	task = egg_task_new (NULL, NULL, callback, user_data);
+	task = g_task_new (NULL, NULL, callback, user_data);
 	if (invocation != NULL)
-		egg_task_set_task_data (task, g_object_ref (invocation), g_object_unref);
+		g_task_set_task_data (task, g_object_ref (invocation), g_object_unref);
 
 	/* TODO: need to use autorid mapping */
 
@@ -135,7 +134,7 @@ realm_samba_winbind_configure_async (RealmIniConfig *config,
 		realm_service_enable_and_restart ("winbind", invocation,
 		                                  on_enable_do_nss, g_object_ref (task));
 	} else {
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	}
 
 	g_object_unref (task);
@@ -145,8 +144,8 @@ gboolean
 realm_samba_winbind_configure_finish (GAsyncResult *result,
                                       GError **error)
 {
-	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
-	return egg_task_propagate_boolean (EGG_TASK (result), error);
+	g_return_val_if_fail (g_task_is_valid (result, NULL), FALSE);
+	return g_task_propagate_boolean (G_TASK (result), error);
 }
 
 static void
@@ -154,14 +153,14 @@ on_disable_complete (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
+	GTask *task = G_TASK (user_data);
 	GError *error = NULL;
 
 	realm_service_disable_and_stop_finish (result, &error);
 	if (error != NULL)
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	else
-		egg_task_return_boolean (task, TRUE);
+		g_task_return_boolean (task, TRUE);
 	g_object_unref (task);
 }
 
@@ -170,8 +169,8 @@ on_nss_do_disable (GObject *source,
                    GAsyncResult *result,
                    gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	GDBusMethodInvocation *invocation = egg_task_get_task_data (task);
+	GTask *task = G_TASK (user_data);
+	GDBusMethodInvocation *invocation = g_task_get_task_data (task);
 	GError *error = NULL;
 	gint status;
 
@@ -183,7 +182,7 @@ on_nss_do_disable (GObject *source,
 		realm_service_disable_and_stop ("winbind", invocation,
 		                                on_disable_complete, g_object_ref (task));
 	} else {
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	}
 
 	g_object_unref (task);
@@ -195,14 +194,14 @@ realm_samba_winbind_deconfigure_async (RealmIniConfig *config,
                                        GAsyncReadyCallback callback,
                                        gpointer user_data)
 {
-	EggTask *task;
+	GTask *task;
 
 	g_return_if_fail (config != NULL);
 	g_return_if_fail (invocation != NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
-	task = egg_task_new (NULL, NULL, callback, user_data);
+	task = g_task_new (NULL, NULL, callback, user_data);
 	if (invocation != NULL)
-		egg_task_set_task_data (task, g_object_ref (invocation), g_object_unref);
+		g_task_set_task_data (task, g_object_ref (invocation), g_object_unref);
 
 	realm_command_run_known_async ("winbind-disable-logins", NULL, invocation,
 	                               on_nss_do_disable, g_object_ref (task));
@@ -214,7 +213,7 @@ gboolean
 realm_samba_winbind_deconfigure_finish (GAsyncResult *result,
                                         GError **error)
 {
-	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
-	return egg_task_propagate_boolean (EGG_TASK (result), error);
+	g_return_val_if_fail (g_task_is_valid (result, NULL), FALSE);
+	return g_task_propagate_boolean (G_TASK (result), error);
 
 }

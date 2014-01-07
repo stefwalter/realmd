@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "egg-task.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
 #include "realm-disco-mscldap.h"
@@ -35,11 +34,11 @@ struct _Closure {
 	gchar *default_naming_context;
 	gint msgid;
 
-	gboolean (* request) (EggTask *task,
+	gboolean (* request) (GTask *task,
 	                      Closure *clo,
 	                      LDAP *ldap);
 
-	gboolean (* result) (EggTask *task,
+	gboolean (* result) (GTask *task,
 	                     Closure *clo,
 	                     LDAP *ldap,
 	                     LDAPMessage *msg);
@@ -107,7 +106,7 @@ entry_get_attribute (LDAP *ldap,
 }
 
 static gboolean
-search_ldap (EggTask *task,
+search_ldap (GTask *task,
              Closure *clo,
              LDAP *ldap,
              const gchar *base,
@@ -127,7 +126,7 @@ search_ldap (EggTask *task,
 
 	if (rc != 0) {
 		realm_ldap_set_error (&error, ldap, rc);
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 		return FALSE;
 	}
 
@@ -135,7 +134,7 @@ search_ldap (EggTask *task,
 }
 
 static gboolean
-result_krb_realm (EggTask *task,
+result_krb_realm (GTask *task,
                   Closure *clo,
                   LDAP *ldap,
                   LDAPMessage *message)
@@ -150,12 +149,12 @@ result_krb_realm (EggTask *task,
 	g_debug ("Found realm: %s", clo->disco->kerberos_realm);
 
 	/* All done */
-	egg_task_return_boolean (task, TRUE);
+	g_task_return_boolean (task, TRUE);
 	return FALSE;
 }
 
 static gboolean
-request_krb_realm (EggTask *task,
+request_krb_realm (GTask *task,
                    Closure *clo,
                    LDAP *ldap)
 {
@@ -169,7 +168,7 @@ request_krb_realm (EggTask *task,
 }
 
 static gboolean
-result_domain_info (EggTask *task,
+result_domain_info (GTask *task,
                     Closure *clo,
                     LDAP *ldap,
                     LDAPMessage *message)
@@ -182,8 +181,8 @@ result_domain_info (EggTask *task,
 	/* If we can't retrieve this, then nothing more to do */
 	if (entry == NULL) {
 		g_debug ("Couldn't read default naming context");
-		egg_task_return_new_error (task, REALM_LDAP_ERROR, LDAP_NO_SUCH_OBJECT,
-		                           "Couldn't lookup domain name on LDAP server");
+		g_task_return_new_error (task, REALM_LDAP_ERROR, LDAP_NO_SUCH_OBJECT,
+		                         "Couldn't lookup domain name on LDAP server");
 		return FALSE;
 	}
 
@@ -212,7 +211,7 @@ result_domain_info (EggTask *task,
 }
 
 static gboolean
-request_domain_info (EggTask *task,
+request_domain_info (GTask *task,
                      Closure *clo,
                      LDAP *ldap)
 {
@@ -230,8 +229,8 @@ on_udp_mscldap_complete (GObject *source,
                          GAsyncResult *result,
                          gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	Closure *clo = egg_task_get_task_data (task);
+	GTask *task = G_TASK (user_data);
+	Closure *clo = g_task_get_task_data (task);
 	GError *error = NULL;
 
 	realm_disco_unref (clo->disco);
@@ -239,17 +238,17 @@ on_udp_mscldap_complete (GObject *source,
 
 	if (error != NULL) {
 		g_debug ("Failed UDP Netlogon response: %s", error->message);
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	} else {
 		g_debug ("Received UDP Netlogon response");
-		egg_task_return_boolean (task, TRUE);
+		g_task_return_boolean (task, TRUE);
 	}
 
 	g_object_unref (task);
 }
 
 static gboolean
-result_netlogon (EggTask *task,
+result_netlogon (GTask *task,
                  Closure *clo,
                  LDAP *ldap,
                  LDAPMessage *message)
@@ -258,10 +257,10 @@ result_netlogon (EggTask *task,
 
 	if (realm_disco_mscldap_result (ldap, message, clo->disco, &error)) {
 		g_debug ("Received TCP Netlogon response");
-		egg_task_return_boolean (task, TRUE);
+		g_task_return_boolean (task, TRUE);
 	} else {
 		g_debug ("Failed TCP Netlogon response: %s", error->message);
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	}
 
 	/* All done */
@@ -269,7 +268,7 @@ result_netlogon (EggTask *task,
 }
 
 static gboolean
-request_netlogon (EggTask *task,
+request_netlogon (GTask *task,
                   Closure *clo,
                   LDAP *ldap)
 {
@@ -278,7 +277,7 @@ request_netlogon (EggTask *task,
 	g_debug ("Sending TCP Netlogon request");
 
 	if (!realm_disco_mscldap_request (ldap, &clo->msgid, &error)) {
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 		return FALSE;
 	}
 
@@ -288,7 +287,7 @@ request_netlogon (EggTask *task,
 }
 
 static gboolean
-result_root_dse (EggTask *task,
+result_root_dse (GTask *task,
                  Closure *clo,
                  LDAP *ldap,
                  LDAPMessage *message)
@@ -328,7 +327,7 @@ result_root_dse (EggTask *task,
 			g_free (string);
 
 			realm_disco_mscldap_async (clo->disco->server_address, G_SOCKET_PROTOCOL_UDP,
-			                           clo->disco->explicit_server, egg_task_get_cancellable (task),
+			                           clo->disco->explicit_server, g_task_get_cancellable (task),
 			                           on_udp_mscldap_complete, g_object_ref (task));
 
 			/* Disconnect from TCP at this point */
@@ -339,8 +338,8 @@ result_root_dse (EggTask *task,
 	} else {
 
 		if (clo->default_naming_context == NULL) {
-			egg_task_return_new_error (task, REALM_LDAP_ERROR, LDAP_NO_SUCH_OBJECT,
-			                           "Couldn't find default naming context on LDAP server");
+			g_task_return_new_error (task, REALM_LDAP_ERROR, LDAP_NO_SUCH_OBJECT,
+			                         "Couldn't find default naming context on LDAP server");
 			return FALSE;
 		}
 
@@ -352,7 +351,7 @@ result_root_dse (EggTask *task,
 }
 
 static gboolean
-request_root_dse (EggTask *task,
+request_root_dse (GTask *task,
                   Closure *clo,
                   LDAP *ldap)
 {
@@ -369,8 +368,8 @@ on_ldap_io (LDAP *ldap,
             GIOCondition cond,
             gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	Closure *clo = egg_task_get_task_data (task);
+	GTask *task = G_TASK (user_data);
+	Closure *clo = g_task_get_task_data (task);
 	struct timeval tvpoll = { 0, 0 };
 	LDAPMessage *message;
 	GError *error = NULL;
@@ -379,7 +378,7 @@ on_ldap_io (LDAP *ldap,
 	/* Some failure */
 	if (cond & G_IO_ERR) {
 		realm_ldap_set_error (&error, ldap, 0);
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 		return G_IO_NVAL;
 	}
 
@@ -392,7 +391,7 @@ on_ldap_io (LDAP *ldap,
 			break;
 		case -1:
 			realm_ldap_set_error (&error, ldap, -1);
-			egg_task_return_error (task, error);
+			g_task_return_error (task, error);
 			ret = FALSE;
 			break;
 		case 0:
@@ -425,12 +424,12 @@ realm_disco_rootdse_async (GSocketAddress *address,
                            GAsyncReadyCallback callback,
                            gpointer user_data)
 {
-	EggTask *task;
+	GTask *task;
 	Closure *clo;
 
 	g_return_if_fail (address != NULL);
 
-	task = egg_task_new (NULL, cancellable, callback, user_data);
+	task = g_task_new (NULL, cancellable, callback, user_data);
 	clo = g_new0 (Closure, 1);
 	clo->disco = realm_disco_new (NULL);
 	clo->disco->explicit_server = g_strdup (explicit_server);
@@ -438,13 +437,13 @@ realm_disco_rootdse_async (GSocketAddress *address,
 
 	clo->invocation = invocation ? g_object_ref (invocation) : NULL;
 	clo->request = request_root_dse;
-	egg_task_set_task_data (task, clo, closure_free);
+	g_task_set_task_data (task, clo, closure_free);
 
 	clo->source = realm_ldap_connect_anonymous (address, G_SOCKET_PROTOCOL_TCP,
 	                                            cancellable);
 	g_source_set_callback (clo->source, (GSourceFunc)on_ldap_io,
 	                       g_object_ref (task), g_object_unref);
-	g_source_attach (clo->source, egg_task_get_context (task));
+	g_source_attach (clo->source, g_task_get_context (task));
 
 	g_object_unref (task);
 }
@@ -456,13 +455,13 @@ realm_disco_rootdse_finish (GAsyncResult *result,
 	Closure *clo;
 	RealmDisco *disco;
 
-	g_return_val_if_fail (egg_task_is_valid (result, NULL), NULL);
+	g_return_val_if_fail (g_task_is_valid (result, NULL), NULL);
 	g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
-	if (!egg_task_propagate_boolean (EGG_TASK (result), error))
+	if (!g_task_propagate_boolean (G_TASK (result), error))
 		return FALSE;
 
-	clo = egg_task_get_task_data (EGG_TASK (result));
+	clo = g_task_get_task_data (G_TASK (result));
 	disco = clo->disco;
 	clo->disco = NULL;
 

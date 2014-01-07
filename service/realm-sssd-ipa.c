@@ -114,7 +114,7 @@ on_enable_nss_done (GObject *source,
                     GAsyncResult *result,
                     gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
+	GTask *task = G_TASK (user_data);
 	GError *error = NULL;
 	gint status;
 
@@ -123,9 +123,9 @@ on_enable_nss_done (GObject *source,
 		g_set_error (&error, REALM_ERROR, REALM_ERROR_INTERNAL,
 		             _("Enabling SSSD in nsswitch.conf and PAM failed."));
 	if (error != NULL)
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	else
-		egg_task_return_boolean (task, TRUE);
+		g_task_return_boolean (task, TRUE);
 	g_object_unref (task);
 }
 
@@ -134,9 +134,9 @@ on_restart_done (GObject *source,
                  GAsyncResult *result,
                  gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	EnrollClosure *enroll = egg_task_get_task_data (task);
-	RealmSssd *sssd = egg_task_get_source_object (task);
+	GTask *task = G_TASK (user_data);
+	EnrollClosure *enroll = g_task_get_task_data (task);
+	RealmSssd *sssd = g_task_get_source_object (task);
 	GError *error = NULL;
 
 	realm_service_enable_and_restart_finish (result, &error);
@@ -145,7 +145,7 @@ on_restart_done (GObject *source,
 		realm_command_run_known_async ("sssd-enable-logins", NULL, enroll->invocation,
 		                               on_enable_nss_done, g_object_ref (task));
 	} else {
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	}
 
 	g_object_unref (task);
@@ -156,9 +156,9 @@ on_ipa_client_do_restart (GObject *source,
                           GAsyncResult *result,
                           gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	EnrollClosure *enroll = egg_task_get_task_data (task);
-	RealmSssd *sssd = egg_task_get_source_object (task);
+	GTask *task = G_TASK (user_data);
+	EnrollClosure *enroll = g_task_get_task_data (task);
+	RealmSssd *sssd = g_task_get_source_object (task);
 	RealmKerberos *realm = REALM_KERBEROS (sssd);
 	const gchar *access_provider;
 	const gchar *realmd_tags;
@@ -225,7 +225,7 @@ on_ipa_client_do_restart (GObject *source,
 		                                  on_restart_done, g_object_ref (task));
 
 	} else {
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	}
 
 	g_object_unref (task);
@@ -236,8 +236,8 @@ on_install_do_join (GObject *source,
                     GAsyncResult *result,
                     gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	EnrollClosure *enroll = egg_task_get_task_data (task);
+	GTask *task = G_TASK (user_data);
+	EnrollClosure *enroll = g_task_get_task_data (task);
 	GError *error = NULL;
 
 	const gchar *env[] = {
@@ -251,7 +251,7 @@ on_install_do_join (GObject *source,
 		                          enroll->input, enroll->invocation,
 		                          on_ipa_client_do_restart, g_object_ref (task));
 	} else {
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	}
 
 	g_object_unref (task);
@@ -291,7 +291,7 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 {
 	RealmKerberos *realm = REALM_KERBEROS (membership);
 	RealmSssd *sssd = REALM_SSSD (realm);
-	EggTask *task;
+	GTask *task;
 	EnrollClosure *enroll;
 	RealmDisco *disco;
 	const gchar *domain_name;
@@ -301,29 +301,29 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 
 	domain_name = realm_kerberos_get_name (realm);
 
-	task = egg_task_new (realm, NULL, callback, user_data);
+	task = g_task_new (realm, NULL, callback, user_data);
 	enroll = g_new0 (EnrollClosure, 1);
 	enroll->invocation = g_object_ref (invocation);
 	enroll->options = g_variant_ref (options);
-	egg_task_set_task_data (task, enroll, enroll_closure_free);
+	g_task_set_task_data (task, enroll, enroll_closure_free);
 
 	if (g_variant_lookup (options, REALM_DBUS_OPTION_COMPUTER_OU, "&s", &computer_ou)) {
-		egg_task_return_new_error (task, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-		                           _("The computer-ou argument is not supported when joining an IPA domain."));
+		g_task_return_new_error (task, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+		                         _("The computer-ou argument is not supported when joining an IPA domain."));
 
 	} else if (g_variant_lookup (options, REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, "&s", &software) &&
 	           !g_str_equal (software, REALM_DBUS_IDENTIFIER_FREEIPA) &&
 	           !g_str_equal (software, REALM_DBUS_IDENTIFIER_IPA)) {
-		egg_task_return_new_error (task, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-		                           _("Unsupported or unknown membership software '%s'"), software);
+		g_task_return_new_error (task, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+		                         _("Unsupported or unknown membership software '%s'"), software);
 
 	} else if (realm_sssd_get_config_section (sssd) != NULL) {
-		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
-		                           _("Already joined to this domain"));
+		g_task_return_new_error (task, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
+		                         _("Already joined to this domain"));
 
 	} else if (realm_sssd_config_have_domain (realm_sssd_get_config (sssd), domain_name)) {
-		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
-		                           _("A domain with this name is already configured"));
+		g_task_return_new_error (task, REALM_ERROR, REALM_ERROR_ALREADY_CONFIGURED,
+		                         _("A domain with this name is already configured"));
 
 	} else {
 		disco = realm_kerberos_get_disco (realm);
@@ -395,9 +395,9 @@ on_ipa_client_do_disable (GObject *source,
                           GAsyncResult *result,
                           gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	EnrollClosure *enroll = egg_task_get_task_data (task);
-	RealmSssd *sssd = egg_task_get_source_object (task);
+	GTask *task = G_TASK (user_data);
+	EnrollClosure *enroll = g_task_get_task_data (task);
+	RealmSssd *sssd = g_task_get_source_object (task);
 	GError *error = NULL;
 	gint status;
 
@@ -411,7 +411,7 @@ on_ipa_client_do_disable (GObject *source,
 	if (error == NULL)
 		realm_sssd_deconfigure_domain_tail (sssd, task, enroll->invocation);
 	else
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	g_object_unref (task);
 }
 
@@ -425,7 +425,7 @@ realm_sssd_ipa_leave_async (RealmKerberosMembership *membership,
 {
 	RealmKerberos *realm = REALM_KERBEROS (membership);
 	RealmSssd *sssd = REALM_SSSD (realm);
-	EggTask *task;
+	GTask *task;
 	EnrollClosure *enroll;
 	const gchar *computer_ou;
 	GBytes *input = NULL;
@@ -452,19 +452,19 @@ realm_sssd_ipa_leave_async (RealmKerberosMembership *membership,
 		NULL
 	};
 
-	task = egg_task_new (realm, NULL, callback, user_data);
+	task = g_task_new (realm, NULL, callback, user_data);
 	enroll = g_new0 (EnrollClosure, 1);
 	enroll->invocation = g_object_ref (invocation);
 	enroll->options = g_variant_ref (options);
-	egg_task_set_task_data (task, enroll, enroll_closure_free);
+	g_task_set_task_data (task, enroll, enroll_closure_free);
 
 	if (realm_sssd_get_config_section (sssd) == NULL) {
-		egg_task_return_new_error (task, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
-		                           _("Not currently joined to this realm"));
+		g_task_return_new_error (task, REALM_ERROR, REALM_ERROR_NOT_CONFIGURED,
+		                         _("Not currently joined to this realm"));
 
 	} else if (g_variant_lookup (options, REALM_DBUS_OPTION_COMPUTER_OU, "&s", &computer_ou)) {
-		egg_task_return_new_error (task, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-		                           "The computer-ou argument is not supported when leaving an IPA domain.");
+		g_task_return_new_error (task, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+		                         "The computer-ou argument is not supported when leaving an IPA domain.");
 
 	} else {
 		switch (cred->type) {
@@ -494,7 +494,7 @@ realm_sssd_ipa_generic_finish (RealmKerberosMembership *realm,
                                GAsyncResult *result,
                                GError **error)
 {
-	return egg_task_propagate_boolean (EGG_TASK (result), error);
+	return g_task_propagate_boolean (G_TASK (result), error);
 }
 
 static void

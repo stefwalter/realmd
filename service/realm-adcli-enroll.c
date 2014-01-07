@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "egg-task.h"
 #include "realm-adcli-enroll.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
@@ -29,7 +28,7 @@ on_join_process (GObject *source,
                  GAsyncResult *result,
                  gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
+	GTask *task = G_TASK (user_data);
 	GError *error = NULL;
 	GString *output = NULL;
 	gint status;
@@ -53,10 +52,10 @@ on_join_process (GObject *source,
 	}
 
 	if (error == NULL) {
-		egg_task_return_boolean (task, TRUE);
+		g_task_return_boolean (task, TRUE);
 
 	} else {
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	}
 
 	if (output)
@@ -75,7 +74,7 @@ realm_adcli_enroll_join_async (RealmDisco *disco,
 	gchar *environ[] = { "LANG=C", NULL };
 	GInetAddress *address;
 	const gchar *computer_ou;
-	EggTask *task;
+	GTask *task;
 	GBytes *input = NULL;
 	const gchar *upn;
 	GPtrArray *args;
@@ -88,7 +87,7 @@ realm_adcli_enroll_join_async (RealmDisco *disco,
 	g_return_if_fail (disco != NULL);
 	g_return_if_fail (invocation != NULL);
 
-	task = egg_task_new (NULL, NULL, callback, user_data);
+	task = g_task_new (NULL, NULL, callback, user_data);
 	args = g_ptr_array_new ();
 
 	/* Use our custom smb.conf */
@@ -197,8 +196,8 @@ gboolean
 realm_adcli_enroll_join_finish (GAsyncResult *result,
                                 GError **error)
 {
-	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
-	return egg_task_propagate_boolean (EGG_TASK (result), error);
+	g_return_val_if_fail (g_task_is_valid (result, NULL), FALSE);
+	return g_task_propagate_boolean (G_TASK (result), error);
 }
 
 void
@@ -211,7 +210,7 @@ realm_adcli_enroll_delete_async (RealmDisco *disco,
 {
 	gchar *environ[] = { "LANG=C", NULL };
 	GInetAddress *address;
-	EggTask *task;
+	GTask *task;
 	GBytes *input = NULL;
 	GPtrArray *args;
 	gchar *ccache_arg = NULL;
@@ -221,7 +220,7 @@ realm_adcli_enroll_delete_async (RealmDisco *disco,
 	g_return_if_fail (disco != NULL);
 	g_return_if_fail (invocation != NULL);
 
-	task = egg_task_new (NULL, NULL, callback, user_data);
+	task = g_task_new (NULL, NULL, callback, user_data);
 	args = g_ptr_array_new ();
 
 	/* Use our custom smb.conf */
@@ -283,6 +282,6 @@ gboolean
 realm_adcli_enroll_delete_finish (GAsyncResult *result,
                                   GError **error)
 {
-	g_return_val_if_fail (egg_task_is_valid (result, NULL), FALSE);
-	return egg_task_propagate_boolean (EGG_TASK (result), error);
+	g_return_val_if_fail (g_task_is_valid (result, NULL), FALSE);
+	return g_task_propagate_boolean (G_TASK (result), error);
 }

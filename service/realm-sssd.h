@@ -19,7 +19,6 @@
 
 #include <gio/gio.h>
 
-#include "egg-task.h"
 #include "realm-kerberos.h"
 #include "realm-ini-config.h"
 
@@ -64,7 +63,7 @@ const gchar *       realm_sssd_get_config_domain   (RealmSssd *self);
 gchar *             realm_sssd_build_default_home  (const gchar *value);
 
 void                realm_sssd_deconfigure_domain_tail  (RealmSssd *self,
-                                                         EggTask *task,
+                                                         GTask *task,
                                                          GDBusMethodInvocation *invocation);
 
 gboolean            realm_sssd_set_login_policy         (RealmIniConfig *config,

@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "egg-task.h"
 #include "realm-diagnostics.h"
 #include "realm-daemon.h"
 #include "realm-errors.h"
@@ -189,17 +188,17 @@ on_install_installed (GObject *source,
                       GAsyncResult *result,
                       gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	InstallClosure *install = egg_task_get_task_data (task);
+	GTask *task = G_TASK (user_data);
+	InstallClosure *install = g_task_get_task_data (task);
 	GError *error = NULL;
 	PkResults *results;
 
 	results = pk_task_generic_finish (install->task, result, &error);
 	if (error == NULL) {
 		g_object_unref (results);
-		egg_task_return_boolean (task, TRUE);
+		g_task_return_boolean (task, TRUE);
 	} else {
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	}
 
 	g_object_unref (task);
@@ -210,8 +209,8 @@ on_install_resolved (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	InstallClosure *install = egg_task_get_task_data (task);
+	GTask *task = G_TASK (user_data);
+	InstallClosure *install = g_task_get_task_data (task);
 	gchar **package_ids = NULL;
 	GHashTable *names;
 	GCancellable *cancellable;
@@ -231,7 +230,7 @@ on_install_resolved (GObject *source,
 	if (error == NULL) {
 		missing = package_names_to_list (names);
 		if (package_ids == NULL || *package_ids == NULL) {
-			egg_task_return_boolean (task, TRUE);
+			g_task_return_boolean (task, TRUE);
 
 		} else if (!install->automatic) {
 			g_set_error (&error, REALM_ERROR, REALM_ERROR_FAILED,
@@ -275,7 +274,7 @@ on_install_resolved (GObject *source,
 			g_free (remote);
 		}
 
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	}
 
 	g_hash_table_unref (names);
@@ -365,7 +364,7 @@ realm_packages_install_async (const gchar **package_sets,
                               GAsyncReadyCallback callback,
                               gpointer user_data)
 {
-	EggTask *task;
+	GTask *task;
 	InstallClosure *install;
 	gboolean unconditional;
 	gchar **required_files;
@@ -379,14 +378,14 @@ realm_packages_install_async (const gchar **package_sets,
 
 	lookup_required_files_and_packages (package_sets, &packages, &required_files, &unconditional);
 
-	task = egg_task_new (NULL, NULL, callback, user_data);
+	task = g_task_new (NULL, NULL, callback, user_data);
 	install = g_new0 (InstallClosure, 1);
 	install->task = pk_task_new ();
 	install->automatic = realm_options_automatic_install (options);
 	pk_task_set_interactive (install->task, FALSE);
 	pk_client_set_background (PK_CLIENT (install->task), FALSE);
 	install->invocation = invocation ? g_object_ref (invocation) : NULL;
-	egg_task_set_task_data (task, install, install_closure_free);
+	g_task_set_task_data (task, install, install_closure_free);
 
 	if (realm_daemon_is_install_mode ()) {
 		have = TRUE;
@@ -408,7 +407,7 @@ realm_packages_install_async (const gchar **package_sets,
 	g_strfreev (required_files);
 
 	if (have) {
-		egg_task_return_boolean (task, TRUE);
+		g_task_return_boolean (task, TRUE);
 
 	} else {
 		realm_diagnostics_info (invocation, "Resolving required packages");
@@ -439,7 +438,7 @@ gboolean
 realm_packages_install_finish (GAsyncResult *result,
                                GError **error)
 {
-	if (egg_task_propagate_boolean (EGG_TASK (result), error))
+	if (g_task_propagate_boolean (G_TASK (result), error))
 		return FALSE;
 
 	return TRUE;

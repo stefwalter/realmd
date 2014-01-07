@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "egg-task.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
@@ -94,13 +93,13 @@ on_discover_sleep_done (GObject *source,
                         GAsyncResult *res,
                         gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
+	GTask *task = G_TASK (user_data);
 	GError *error = NULL;
 
 	if (!realm_usleep_finish (res, &error))
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	else
-		egg_task_return_boolean (task, TRUE);
+		g_task_return_boolean (task, TRUE);
 	g_object_unref (task);
 }
 
@@ -154,15 +153,15 @@ realm_example_provider_discover_async (RealmProvider *provider,
                                        GAsyncReadyCallback callback,
                                        gpointer user_data)
 {
-	EggTask *task;
+	GTask *task;
 
-	task = egg_task_new (provider, NULL, callback, user_data);
+	task = g_task_new (provider, NULL, callback, user_data);
 
 	if (!realm_provider_match_software (options,
 	                                    REALM_DBUS_IDENTIFIER_EXAMPLE,
 	                                    REALM_DBUS_IDENTIFIER_EXAMPLE,
 	                                    REALM_DBUS_IDENTIFIER_EXAMPLE)) {
-		egg_task_return_boolean (task, TRUE);
+		g_task_return_boolean (task, TRUE);
 
 	/* A valid example domain name */
 	} else {
@@ -202,9 +201,9 @@ realm_example_provider_discover_finish (RealmProvider *provider,
 	RealmKerberos *realm = NULL;
 	gchar *domain;
 
-	g_return_val_if_fail (egg_task_is_valid (result, provider), NULL);
+	g_return_val_if_fail (g_task_is_valid (result, provider), NULL);
 
-	if (!egg_task_propagate_boolean (EGG_TASK (result), error))
+	if (!g_task_propagate_boolean (G_TASK (result), error))
 		return NULL;
 
 	domain = g_object_get_data (G_OBJECT (result), "the-domain");

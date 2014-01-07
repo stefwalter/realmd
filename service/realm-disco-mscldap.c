@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "egg-task.h"
 #include "realm-dbus-constants.h"
 #include "realm-disco-mscldap.h"
 #include "realm-ldap.h"
@@ -252,8 +251,8 @@ on_ldap_io (LDAP *ldap,
             GIOCondition cond,
             gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	Closure *clo = egg_task_get_task_data (task);
+	GTask *task = G_TASK (user_data);
+	Closure *clo = g_task_get_task_data (task);
 	struct timeval tvpoll = { 0, 0 };
 	LDAPMessage *message;
 	GError *error = NULL;
@@ -263,7 +262,7 @@ on_ldap_io (LDAP *ldap,
 	/* Cancelled */
 	if (cond & G_IO_ERR) {
 		realm_ldap_set_error (&error, ldap, 0);
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 		return G_IO_NVAL;
 	}
 
@@ -271,7 +270,7 @@ on_ldap_io (LDAP *ldap,
 	if (cond & G_IO_OUT) {
 		g_debug ("Sending NetLogon ping");
 		if (!realm_disco_mscldap_request (ldap, &msgid, &error)) {
-			egg_task_return_error (task, error);
+			g_task_return_error (task, error);
 			return G_IO_NVAL;
 		}
 
@@ -292,16 +291,16 @@ on_ldap_io (LDAP *ldap,
 			disco->server_address = g_object_ref (clo->address);
 			if (realm_disco_mscldap_result (ldap, message, disco, &error)) {
 				disco->explicit_server = g_strdup (clo->explicit_server);
-				egg_task_return_pointer (task, disco, realm_disco_unref);
+				g_task_return_pointer (task, disco, realm_disco_unref);
 			} else {
 				realm_disco_unref (disco);
-				egg_task_return_error (task, error);
+				g_task_return_error (task, error);
 			}
 			ldap_msgfree (message);
 			return G_IO_NVAL;
 		case -1:
 			realm_ldap_set_error (&error, ldap, -1);
-			egg_task_return_error (task, error);
+			g_task_return_error (task, error);
 			return G_IO_NVAL;
 		case 0:
 			break;
@@ -324,21 +323,21 @@ realm_disco_mscldap_async (GSocketAddress *address,
                            GAsyncReadyCallback callback,
                            gpointer user_data)
 {
-	EggTask *task;
+	GTask *task;
 	Closure *clo;
 
 	g_return_if_fail (address != NULL);
 
-	task = egg_task_new (NULL, cancellable, callback, user_data);
+	task = g_task_new (NULL, cancellable, callback, user_data);
 	clo = g_new0 (Closure, 1);
 	clo->explicit_server = g_strdup (explicit_server);
 	clo->address = g_object_ref (address);
-	egg_task_set_task_data (task, clo, closure_free);
+	g_task_set_task_data (task, clo, closure_free);
 
 	if (protocol == G_SOCKET_PROTOCOL_UDP &&
 	    !ldap_is_ldap_url ("cldap://hostname")) {
-		egg_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-		                           _("LDAP on this system does not support UDP connections"));
+		g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+		                         _("LDAP on this system does not support UDP connections"));
 		g_object_unref (task);
 		return;
 	}
@@ -346,7 +345,7 @@ realm_disco_mscldap_async (GSocketAddress *address,
 	clo->source = realm_ldap_connect_anonymous (address, protocol, cancellable);
 	g_source_set_callback (clo->source, (GSourceFunc)on_ldap_io,
 	                       g_object_ref (task), g_object_unref);
-	g_source_attach (clo->source, egg_task_get_context (task));
+	g_source_attach (clo->source, g_task_get_context (task));
 
 	if (protocol == G_SOCKET_PROTOCOL_UDP) {
 		clo->fever_id = g_timeout_add (100, on_resend, clo->source);
@@ -360,7 +359,7 @@ RealmDisco *
 realm_disco_mscldap_finish (GAsyncResult *result,
                             GError **error)
 {
-	g_return_val_if_fail (egg_task_is_valid (result, NULL), NULL);
+	g_return_val_if_fail (g_task_is_valid (result, NULL), NULL);
 	g_return_val_if_fail (error == NULL || *error == NULL, NULL);
-	return egg_task_propagate_pointer (EGG_TASK (result), error);
+	return g_task_propagate_pointer (G_TASK (result), error);
 }

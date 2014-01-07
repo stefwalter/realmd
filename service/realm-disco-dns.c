@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "egg-task.h"
 #include "realm-diagnostics.h"
 #include "realm-disco-dns.h"
 
@@ -47,7 +46,7 @@ typedef struct {
 #define REALM_DISCO_DNS(inst)     (G_TYPE_CHECK_INSTANCE_CAST ((inst), REALM_TYPE_DISCO_DNS, RealmDiscoDns))
 #define REALM_IS_DISCO_DNS(inst)  (G_TYPE_CHECK_INSTANCE_TYPE ((inst), REALM_TYPE_DISCO_DNS))
 
-static void return_or_resolve (RealmDiscoDns *self, EggTask *task);
+static void return_or_resolve (RealmDiscoDns *self, GTask *task);
 
 GType realm_disco_dns_get_type (void) G_GNUC_CONST;
 
@@ -101,8 +100,8 @@ on_name_resolved (GObject *source,
                   GAsyncResult *result,
                   gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	RealmDiscoDns *self = egg_task_get_source_object (task);
+	GTask *task = G_TASK (user_data);
+	RealmDiscoDns *self = g_task_get_source_object (task);
 	GError *error = NULL;
 	GList *addrs;
 	GList *l;
@@ -118,7 +117,7 @@ on_name_resolved (GObject *source,
 		g_clear_error (&error);
 
 	if (error) {
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 
 	} else {
 		for (l = addrs; l != NULL; l = g_list_next (l))
@@ -136,8 +135,8 @@ on_service_resolved (GObject *source,
                      GAsyncResult *result,
                      gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
-	RealmDiscoDns *self = egg_task_get_source_object (task);
+	GTask *task = G_TASK (user_data);
+	RealmDiscoDns *self = g_task_get_source_object (task);
 	GError *error = NULL;
 	GList *targets;
 	GList *l;
@@ -153,7 +152,7 @@ on_service_resolved (GObject *source,
 		g_clear_error (&error);
 
 	if (error) {
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 
 	} else {
 		for (l = targets; l != NULL; l = g_list_next (l))
@@ -167,7 +166,7 @@ on_service_resolved (GObject *source,
 
 static void
 return_or_resolve (RealmDiscoDns *self,
-                   EggTask *task)
+                   GTask *task)
 {
 	GSocketAddress *address;
 	GSrvTarget *target;
@@ -175,7 +174,7 @@ return_or_resolve (RealmDiscoDns *self,
 	address = g_queue_pop_head (&self->addresses);
 	if (address) {
 		self->returned++;
-		egg_task_return_pointer (task, address, g_object_unref);
+		g_task_return_pointer (task, address, g_object_unref);
 		return;
 	}
 
@@ -183,7 +182,7 @@ return_or_resolve (RealmDiscoDns *self,
 	if (target) {
 		self->current_port = g_srv_target_get_port (target);
 		g_resolver_lookup_by_name_async (self->resolver, g_srv_target_get_hostname (target),
-		                                 egg_task_get_cancellable (task), on_name_resolved,
+		                                 g_task_get_cancellable (task), on_name_resolved,
 		                                 g_object_ref (task));
 		g_srv_target_free (target);
 		return;
@@ -193,14 +192,14 @@ return_or_resolve (RealmDiscoDns *self,
 	case PHASE_NONE:
 		realm_diagnostics_info (self->invocation, "Resolving: _ldap._tcp.%s", self->name);
 		g_resolver_lookup_service_async (self->resolver, "ldap", "tcp", self->name,
-		                                 egg_task_get_cancellable (task),
+		                                 g_task_get_cancellable (task),
 		                                 on_service_resolved, g_object_ref (task));
 		self->phase = PHASE_SRV;
 		break;
 	case PHASE_SRV:
 		realm_diagnostics_info (self->invocation, "Resolving: %s", self->name);
 		g_resolver_lookup_by_name_async (self->resolver, self->name,
-		                                 egg_task_get_cancellable (task), on_name_resolved,
+		                                 g_task_get_cancellable (task), on_name_resolved,
 		                                 g_object_ref (task));
 		self->current_port = 389;
 		self->phase = PHASE_HOST;
@@ -210,7 +209,7 @@ return_or_resolve (RealmDiscoDns *self,
 		self->phase = PHASE_DONE;
 		/* fall through */
 	case PHASE_DONE:
-		egg_task_return_pointer (task, NULL, NULL);
+		g_task_return_pointer (task, NULL, NULL);
 		break;
 	}
 }
@@ -222,9 +221,9 @@ realm_disco_dns_next_async (GSocketAddressEnumerator *enumerator,
                             gpointer user_data)
 {
 	RealmDiscoDns *self = REALM_DISCO_DNS (enumerator);
-	EggTask *task;
+	GTask *task;
 
-	task = egg_task_new (enumerator, cancellable, callback, user_data);
+	task = g_task_new (enumerator, cancellable, callback, user_data);
 	return_or_resolve (self, task);
 	g_object_unref (task);
 }
@@ -234,7 +233,7 @@ realm_disco_dns_next_finish (GSocketAddressEnumerator *enumerator,
                              GAsyncResult *result,
                              GError **error)
 {
-	return egg_task_propagate_pointer (EGG_TASK (result), error);
+	return g_task_propagate_pointer (G_TASK (result), error);
 }
 
 static void

@@ -14,7 +14,6 @@
 
 #include "config.h"
 
-#include "egg-task.h"
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
@@ -91,15 +90,15 @@ on_ad_discover (GObject *source,
                 GAsyncResult *result,
                 gpointer user_data)
 {
-	EggTask *task = EGG_TASK (user_data);
+	GTask *task = G_TASK (user_data);
 	RealmDisco *disco;
 	GError *error = NULL;
 
 	disco = realm_disco_domain_finish (result, &error);
 	if (error)
-		egg_task_return_error (task, error);
+		g_task_return_error (task, error);
 	else
-		egg_task_return_pointer (task, disco, realm_disco_unref);
+		g_task_return_pointer (task, disco, realm_disco_unref);
 	g_object_unref (task);
 }
 
@@ -111,15 +110,15 @@ realm_samba_provider_discover_async (RealmProvider *provider,
                                      GAsyncReadyCallback callback,
                                      gpointer user_data)
 {
-	EggTask *task;
+	GTask *task;
 
-	task = egg_task_new (provider, NULL, callback, user_data);
+	task = g_task_new (provider, NULL, callback, user_data);
 
 	if (!realm_provider_match_software (options,
 	                                    REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY,
 	                                    REALM_DBUS_IDENTIFIER_WINBIND,
 	                                    REALM_DBUS_IDENTIFIER_SAMBA)) {
-		egg_task_return_pointer (task, NULL, NULL);
+		g_task_return_pointer (task, NULL, NULL);
 
 	} else {
 		realm_disco_domain_async (string, invocation,
@@ -138,7 +137,7 @@ realm_samba_provider_discover_finish (RealmProvider *provider,
 	RealmKerberos *realm = NULL;
 	RealmDisco *disco;
 
-	disco = egg_task_propagate_pointer (EGG_TASK (result), error);
+	disco = g_task_propagate_pointer (G_TASK (result), error);
 	if (disco == NULL)
 		return NULL;
 

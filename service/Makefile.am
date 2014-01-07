@@ -19,7 +19,6 @@ polkit_policy_DATA = $(polkit_policy_in_files:.policy.in=.policy)
 @INTLTOOL_POLICY_RULE@
 
 realmd_SOURCES = \
-	egg-task.c egg-task.h \
 	realm-adcli-enroll.c realm-adcli-enroll.h \
 	realm-all-provider.c realm-all-provider.h \
 	realm-command.c realm-command.h \

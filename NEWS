@@ -1,3 +1,9 @@
+0.15.0
+ * Depend on Glib 2.36 or later
+ * Use safe printf when formatting sssd.conf full_name_format
+ * Fix logic issue when testing for EAGAIN [#71774]
+ * Build fixes
+
 0.14.6
  * Set 'kerberos method = system keytab' in smb.conf properly [#69037]
  * Limit Netbios name to 15 chars when joining AD domain [#69016]

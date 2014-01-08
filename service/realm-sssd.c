@@ -24,7 +24,7 @@
 #include "realm-service.h"
 #include "realm-sssd.h"
 #include "realm-sssd-config.h"
-#include "safe-printf.h"
+#include "safe-format-string.h"
 
 #include <glib/gstdio.h>
 #include <glib/gi18n.h>
@@ -316,10 +316,20 @@ update_domain (RealmSssd *self)
 }
 
 static void
+format_string_piece (void *data,
+                     const char *piece,
+                     size_t len)
+{
+	g_string_append_len (data, piece, len);
+}
+
+static void
 update_login_formats (RealmSssd *self)
 {
 	RealmKerberos *kerberos = REALM_KERBEROS (self);
 	gchar *login_formats[2] = { NULL, NULL };
+	const gchar *args[3];
+	GString *formatted;
 	gchar *format = NULL;
 	gchar *domain_name;
 	gboolean qualify;
@@ -359,9 +369,16 @@ update_login_formats (RealmSssd *self)
 	 * other non-field printf replacements.
 	 */
 
-	if (safe_asprintf (login_formats, format, "%U", domain_name ? domain_name : "", self->pv->domain, NULL) >= 0)
+	formatted = g_string_new ("");
+	args[0] = "%U";
+	args[1] = domain_name ? domain_name : "";
+	args[2] = self->pv->domain;
+
+	if (safe_format_string_cb (format_string_piece, formatted, format, args, 3) >= 0) {
+		login_formats[0] = formatted->str;
 		realm_kerberos_set_login_formats (kerberos, (const gchar **)login_formats);
-	g_free (login_formats[0]);
+	}
+	g_string_free (formatted, TRUE);
 	g_free (domain_name);
 	g_free (format);
 }

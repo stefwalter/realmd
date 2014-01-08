@@ -14,7 +14,7 @@
 
 #include "config.h"
 
-#include "service/safe-printf.h"
+#include "service/safe-format-string.h"
 
 #include <glib.h>
 
@@ -35,7 +35,7 @@ callback (void *data,
 }
 
 static void
-test_safe_printf (gconstpointer user_data)
+test_safe_format_string_cb (gconstpointer user_data)
 {
 	const Fixture *fixture = user_data;
 	GString *out;
@@ -46,7 +46,7 @@ test_safe_printf (gconstpointer user_data)
 		num_args++;
 
 	out = g_string_new ("");
-	ret = safe_printf_cb (callback, out, fixture->format, (const gchar **)fixture->args, num_args);
+	ret = safe_format_string_cb (callback, out, fixture->format, (const gchar **)fixture->args, num_args);
 	if (fixture->result) {
 		g_assert_cmpint (ret, >=, 0);
 		g_assert_cmpstr (out->str, ==, fixture->result);
@@ -156,54 +156,24 @@ static const Fixture fixtures[] = {
 };
 
 static void
-test_safe_snprintf (void)
+test_safe_format_string (void)
 {
 	char buffer[8];
 	int ret;
 
-	ret = safe_snprintf (buffer, 8, "%s", "space", "man", NULL);
+	ret = safe_format_string (buffer, 8, "%s", "space", "man", NULL);
 	g_assert_cmpint (ret, ==, 5);
 	g_assert_cmpstr (buffer, ==, "space");
 
-	ret = safe_snprintf (buffer, 8, "", "space", "man", NULL);
+	ret = safe_format_string (buffer, 8, "", "space", "man", NULL);
 	g_assert_cmpint (ret, ==, 0);
 	g_assert_cmpstr (buffer, ==, "");
 
-	ret = safe_snprintf (buffer, 8, "the %s %s dances away", "space", "man", NULL);
+	ret = safe_format_string (buffer, 8, "the %s %s dances away", "space", "man", NULL);
 	g_assert_cmpint (ret, ==, 25);
 	g_assert_cmpstr (buffer, ==, "the spa");
 
-	ret = safe_snprintf (buffer, 8, "%5$s", NULL);
-	g_assert_cmpint (ret, <, 0);
-}
-
-static void
-test_safe_asprintf (void)
-{
-	char *buffer;
-	int ret;
-
-	ret = safe_asprintf (&buffer, "%s", "space", "man", NULL);
-	g_assert_cmpint (ret, ==, 5);
-	g_assert_cmpstr (buffer, ==, "space");
-	free (buffer);
-
-	ret = safe_asprintf (&buffer, "", "space", "man", NULL);
-	g_assert_cmpint (ret, ==, 0);
-	g_assert_cmpstr (buffer, ==, "");
-	free (buffer);
-
-	ret = safe_asprintf (&buffer, "the %s %s dances away", "space", "man", NULL);
-	g_assert_cmpint (ret, ==, 25);
-	g_assert_cmpstr (buffer, ==, "the space man dances away");
-	free (buffer);
-
-	ret = safe_asprintf (&buffer, "%1$s %1$s %1$s %1$s %1$s %1$s", "space man", NULL);
-	g_assert_cmpint (ret, ==, 59);
-	g_assert_cmpstr (buffer, ==, "space man space man space man space man space man space man");
-	free (buffer);
-
-	ret = safe_asprintf (&buffer, "%5$s", NULL);
+	ret = safe_format_string (buffer, 8, "%5$s", NULL);
 	g_assert_cmpint (ret, <, 0);
 }
 
@@ -216,7 +186,7 @@ main (int argc,
 	gint i;
 
 	g_test_init (&argc, &argv, NULL);
-	g_set_prgname ("test-safe-printf");
+	g_set_prgname ("test-safe-format");
 
 	for (i = 0; i < G_N_ELEMENTS (fixtures); i++) {
 		if (g_str_equal (fixtures[i].format, ""))
@@ -224,15 +194,14 @@ main (int argc,
 		else
 			escaped = g_strdup (fixtures[i].format);
 		g_strdelimit (escaped, " =\\/", '_');
-		name = g_strdup_printf ("/realmd/safe-printf/%s", escaped);
+		name = g_strdup_printf ("/realmd/safe-format/%s", escaped);
 		g_free (escaped);
 
-		g_test_add_data_func (name, fixtures + i, test_safe_printf);
+		g_test_add_data_func (name, fixtures + i, test_safe_format_string_cb);
 		g_free (name);
 	}
 
-	g_test_add_func ("/realmd/safe-snprintf", test_safe_snprintf);
-	g_test_add_func ("/realmd/safe-asprintf", test_safe_asprintf);
+	g_test_add_func ("/realmd/safe-format-string", test_safe_format_string);
 
 	return g_test_run ();
 }

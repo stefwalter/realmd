@@ -58,7 +58,7 @@ realmd_SOURCES = \
 	realm-sssd-config.c realm-sssd-config.h \
 	realm-sssd-ipa.c realm-sssd-ipa.h \
 	realm-usleep-async.c realm-usleep-async.h \
-	safe-printf.c safe-printf.h \
+	safe-format-string.c safe-format-string.h \
 	$(NULL)
 
 realmd_CFLAGS = \

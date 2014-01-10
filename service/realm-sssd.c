@@ -350,6 +350,10 @@ update_login_formats (RealmSssd *self)
 
 	/* Setup the login formats */
 	format = realm_ini_config_get (self->pv->config, self->pv->section, "full_name_format");
+	if (format == NULL)
+		format = realm_ini_config_get (self->pv->config, "sssd", "full_name_format");
+	if (format == NULL)
+		format = g_strdup ("%1$s@%2$s");
 
 	/* The full domain name */
 	domain_name = calc_domain (self);

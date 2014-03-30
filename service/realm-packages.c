@@ -382,7 +382,7 @@ realm_packages_install_async (const gchar **package_sets,
 	install = g_new0 (InstallClosure, 1);
 	install->task = pk_task_new ();
 	install->automatic = realm_options_automatic_install (options);
-	pk_task_set_interactive (install->task, FALSE);
+	pk_client_set_interactive (PK_CLIENT(install->task), FALSE);
 	pk_client_set_background (PK_CLIENT (install->task), FALSE);
 	install->invocation = invocation ? g_object_ref (invocation) : NULL;
 	g_task_set_task_data (task, install, install_closure_free);

@@ -121,7 +121,7 @@ test_resolve (void)
 	gint i;
 
 	task = pk_task_new ();
-	pk_task_set_interactive (task, FALSE);
+	pk_client_set_interactive (PK_CLIENT(task), FALSE);
 
 	filter = pk_filter_bitfield_from_string ("arch");
 

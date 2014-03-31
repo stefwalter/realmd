@@ -1,17 +1,14 @@
-include $(top_srcdir)/Makefile.decl
 
-AM_CPPFLAGS = \
+TEST_CFLAGS = \
 	-I$(top_srcdir) \
-	-DTESTFILE_DIR="\"@abs_srcdir@/files\"" \
+	-DTESTFILE_DIR="\"@abs_srcdir@/tests/files\"" \
 	-DSYSCONF_DIR="\"/tmp/realmd-etc\"" \
-	-DPRIVATE_DIR="\"@abs_srcdir@/files\"" \
+	-DPRIVATE_DIR="\"@abs_srcdir@/tests/files\"" \
+	$(GLIB_CFLAGS) \
+	$(POLKIT_CFLAGS) \
 	$(NULL)
 
-AM_CFLAGS = \
-	$(GLIB_CFLAGS) \
-	$(POLKIT_CFLAGS)
-
-LDADD = \
+TEST_LIBS = \
 	$(GLIB_LIBS)
 
 TEST_PROGS = \
@@ -23,87 +20,71 @@ TEST_PROGS = \
 	test-settings \
 	$(NULL)
 
-check_PROGRAMS = \
-	$(TEST_PROGS)
+TESTS += $(TEST_PROGS)
+check_PROGRAMS += $(TEST_PROGS)
 
-noinst_PROGRAMS =  \
+noinst_PROGRAMS +=  \
 	frob-install-packages \
 	$(NULL)
 
 test_ini_config_SOURCES = \
-	test-ini-config.c \
-	$(top_srcdir)/service/realm-ini-config.c \
-	$(top_srcdir)/service/realm-samba-config.c \
-	$(top_srcdir)/service/realm-settings.c \
+	tests/test-ini-config.c \
+	service/realm-ini-config.c \
+	service/realm-samba-config.c \
+	service/realm-settings.c \
 	$(NULL)
+test_ini_config_LDADD = $(TEST_LIBS)
+test_ini_config_CFLAGS = $(TEST_CFLAGS)
 
 test_sssd_config_SOURCES = \
-	test-sssd-config.c \
-	$(top_srcdir)/service/realm-ini-config.c \
-	$(top_srcdir)/service/realm-sssd-config.c \
-	$(top_srcdir)/service/realm-settings.c \
+	tests/test-sssd-config.c \
+	service/realm-ini-config.c \
+	service/realm-sssd-config.c \
+	service/realm-settings.c \
 	$(NULL)
+test_sssd_config_LDADD = $(TEST_LIBS)
+test_sssd_config_CFLAGS = $(TEST_CFLAGS)
 
 test_safe_format_SOURCES = \
-	test-safe-format.c \
-	$(top_srcdir)/service/safe-format-string.c \
+	tests/test-safe-format.c \
+	service/safe-format-string.c \
 	$(NULL)
+test_safe_format_LDADD = $(TEST_LIBS)
+test_safe_format_CFLAGS = $(TEST_CFLAGS)
 
 test_login_name_SOURCES = \
-	test-login-name.c \
-	$(top_srcdir)/service/realm-login-name.c \
+	tests/test-login-name.c \
+	service/realm-login-name.c \
 	$(NULL)
+test_login_name_LDADD = $(TEST_LIBS)
+test_login_name_CFLAGS = $(TEST_CFLAGS)
 
 test_samba_ou_format_SOURCES = \
-	test-samba-ou-format.c \
-	$(top_srcdir)/service/realm-samba-util.c \
+	tests/test-samba-ou-format.c \
+	service/realm-samba-util.c \
 	$(NULL)
+test_samba_ou_format_LDADD = $(TEST_LIBS)
+test_samba_ou_format_CFLAGS = $(TEST_CFLAGS)
 
 test_settings_SOURCES = \
-	test-settings.c \
-	$(top_srcdir)/service/realm-settings.c \
+	tests/test-settings.c \
+	service/realm-settings.c \
 	$(NULL)
+test_settings_LDADD = $(TEST_LIBS)
+test_settings_CFLAGS = $(TEST_CFLAGS)
 
+frob_install_packages_SOURCES = tests/frob-install-packages.c
 frob_install_packages_CFLAGS = \
+	$(TEST_CFLAGS) \
 	-DI_KNOW_THE_PACKAGEKIT_GLIB2_API_IS_SUBJECT_TO_CHANGE \
 	$(PACKAGEKIT_CFLAGS) \
 	$(NULL)
-
-frob_install_packages_LDADD = \
+frob_install_packages_LDADD  = \
+	$(TEST_LIBS) \
 	$(PACKAGEKIT_LIBS) \
 	$(NULL)
 
-PY_TESTS = \
-	$(NULL)
-
-PY_ENV = \
-	$(NULL)
-
-test-c: $(TEST_PROGS)
-	@gtester --verbose -m $(TEST_MODE) --g-fatal-warnings $(TEST_PROGS)
-
-test-py:
-	@for py in $(PY_TESTS); do echo "TEST: $$py"; $(PY_ENV) python $(srcdir)/$$py; done
-
-test: test-c test-py
-
-EXTRA_DIST = \
-	files \
+EXTRA_DIST += \
+	tests/files \
 	$(PY_TESTS) \
 	$(NULL)
-
-CLEANFILES = \
-	*.gcno \
-	*.gcda \
-	$(NULL)
-
-all-local: $(check_PROGRAMS)
-
-check-local: test
-
-memcheck:
-	@for test in $(TEST_PROGS); do \
-		valgrind --error-exitcode=80 --quiet --trace-children=yes ./$$test; \
-	done
-
-.PHONY: memcheck

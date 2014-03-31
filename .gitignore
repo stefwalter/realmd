@@ -41,6 +41,7 @@ temp.txt
 
 /build/coverage.info
 /build/coverage
+/build/test-driver
 
 /dbus/realm-dbus-generated.c
 /dbus/realm-dbus-generated.h

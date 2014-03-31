@@ -16,6 +16,7 @@ INTLTOOL_REQ=0.35.0
 # -----------------------------------------------------------------------------
 
 AC_CONFIG_MACRO_DIR([build/m4])
+AC_CONFIG_AUX_DIR([build])
 AM_INIT_AUTOMAKE([1.11 tar-ustar foreign -Wno-portability])
 AM_SANITY_CHECK
 AC_CONFIG_HEADERS(config.h)
@@ -384,18 +385,9 @@ AC_SUBST(cachedir)
 
 AC_CONFIG_FILES([
 	Makefile
-	build/Makefile
-	dbus/Makefile
-	doc/Makefile
-	doc/internals/Makefile
-	doc/manual/Makefile
-	doc/website/Makefile
 	doc/version.xml
 	po/Makefile.in
 	po/Makefile
-	service/Makefile
-	tests/Makefile
-	tools/Makefile
 ])
 AC_OUTPUT
 

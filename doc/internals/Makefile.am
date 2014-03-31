@@ -1,47 +1,37 @@
 
-NULL =
+INTERNAL_DOCBOOK = doc/internals/realmd-internals.xml
 
-DOCBOOK_FILE = realmd-internals.xml
+INTERNAL_PARAMS = doc/internals/docbook-params.xsl
 
-DOCBOOK_PARAMS = docbook-params.xsl
-
-STATIC_FILES = \
+INTERNAL_STATIC = \
 	$(NULL)
 
-CONTENT_INCLUDES = \
+INTERNAL_INCLUDES = \
 	$(NULL)
 
 SVG_IMAGES = \
-	discover-method.svg \
-	join-method.svg \
+	doc/internals/discover-method.svg \
+	doc/internals/join-method.svg \
 	$(NULL)
 
-EXTRA_DIST = \
-	$(DOCBOOK_FILE) \
-	$(DOCBOOK_PARAMS) \
-	$(CONTENT_INCLUDES) \
+EXTRA_DIST += \
+	$(INTERNAL_DOCBOOK) \
+	$(INTERNAL_PARAMS) \
+	$(INTERNAL_INCLUDES) \
 	$(SVG_IMAGES) \
-	$(XSLT_FILES) \
-	static \
+	doc/internals/static \
 	$(NULL)
 
-CLEANFILES = \
+CLEANFILES += \
+	internals/realmd-internals.html \
 	$(NULL)
 
-html/realmd-internals.html: $(DOCBOOK_FILE) $(CONTENT_INCLUDES) $(STATIC_FILES)
-	$(AM_V_GEN) mkdir -p html && cp $(srcdir)/static/* html/
-	$(AM_V_GEN) $(XMLTO) html-nochunks -m $(DOCBOOK_PARAMS) -o html \
-		--searchpath $(builddir):$(srcdir) $(srcdir)/$(DOCBOOK_FILE)
-
-all-local: html/realmd-internals.html
-
-clean-local:
-	@rm -rf *.tmp html
+internals/realmd-internals.html: $(INTERNAL_DOCBOOK) $(INTERNAL_INCLUDES) $(INTERNAL_STATIC)
+	$(AM_V_GEN) mkdir -p internals && cp $(srcdir)/doc/internals/static/* internals/ && \
+	$(XMLTO) html-nochunks -m $(srcdir)/$(INTERNAL_PARAMS) -o internals \
+		--searchpath $(abs_builddir):$(abs_srcdir) $(srcdir)/$(INTERNAL_DOCBOOK)
 
 render-images:
 	for i in $(SVG_IMAGES:.svg=); do \
 		inkscape --export-png=static/$$i.png $$i.svg; \
 	done
-
-upload: all
-	rsync -Hvax html/./ anarchy.freedesktop.org:/srv/www.freedesktop.org/www/software/realmd/internals/./

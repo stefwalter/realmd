@@ -1,70 +1,111 @@
-include $(top_srcdir)/Makefile.decl
-
-private_PROGRAMS = \
+private_PROGRAMS += \
 	realmd
 
 REALMD_CONFIGS = \
-	realmd-defaults.conf \
-	realmd-redhat.conf \
-	realmd-debian.conf \
-	realmd-suse.conf \
+	service/realmd-defaults.conf \
+	service/realmd-redhat.conf \
+	service/realmd-debian.conf \
+	service/realmd-suse.conf \
 	$(NULL)
 
-private_DATA = \
-	realmd-defaults.conf
+private_DATA += \
+	service/realmd-defaults.conf
 
 polkit_policydir = $(POLKIT_ACTION_DIR)
-polkit_policy_in_files = org.freedesktop.realmd.policy.in
+polkit_policy_in_files = service/org.freedesktop.realmd.policy.in
 polkit_policy_DATA = $(polkit_policy_in_files:.policy.in=.policy)
-@INTLTOOL_POLICY_RULE@
+service/%.policy: service/%.policy.in
+	$(INTLTOOL_V_MERGE) mkdir -p $(builddir)/service && \
+		LC_ALL=C $(INTLTOOL_MERGE) $(INTLTOOL_V_MERGE_OPTIONS) -x -u \
+			-c $(builddir)/po/.intltool-merge-cache \
+			$(srcdir)/po $< $@
 
 realmd_SOURCES = \
-	realm-adcli-enroll.c realm-adcli-enroll.h \
-	realm-all-provider.c realm-all-provider.h \
-	realm-command.c realm-command.h \
-	realm-credential.c realm-credential.h \
-	realm-daemon.c realm-daemon.h \
-	realm-diagnostics.c realm-diagnostics.h \
-	realm-disco.c realm-disco.h \
-	realm-disco-dns.c realm-disco-dns.h \
-	realm-disco-domain.c realm-disco-domain.h \
-	realm-disco-mscldap.c realm-disco-mscldap.h \
-	realm-disco-rootdse.c realm-disco-rootdse.h \
-	realm-errors.c realm-errors.h \
-	realm-example.c realm-example.h \
-	realm-example-provider.c realm-example-provider.h \
-	realm-ini-config.c realm-ini-config.h \
-	realm-invocation.c realm-invocation.h \
-	realm-kerberos.c realm-kerberos.h \
-	realm-kerberos-membership.c realm-kerberos-membership.h \
-	realm-kerberos-provider.c realm-kerberos-provider.h \
-	realm-ldap.c realm-ldap.h \
-	realm-login-name.c realm-login-name.h \
-	realm-network.c realm-network.h \
-	realm-options.c realm-options.h \
-	realm-packages.c realm-packages.h \
-	realm-provider.c realm-provider.h \
-	realm-samba.c realm-samba.h \
-	realm-samba-config.c realm-samba-config.h \
-	realm-samba-enroll.c realm-samba-enroll.h \
-	realm-samba-provider.c realm-samba-provider.h \
-	realm-samba-util.c realm-samba-util.h \
-	realm-samba-winbind.c realm-samba-winbind.h \
-	realm-service.c realm-service.h \
-	realm-settings.c realm-settings.h \
-	realm-sssd.c realm-sssd.h \
-	realm-sssd-ad.c realm-sssd-ad.h \
-	realm-sssd-provider.c realm-sssd-provider.h \
-	realm-sssd-config.c realm-sssd-config.h \
-	realm-sssd-ipa.c realm-sssd-ipa.h \
-	realm-usleep-async.c realm-usleep-async.h \
-	safe-format-string.c safe-format-string.h \
+	service/realm-adcli-enroll.c \
+	service/realm-adcli-enroll.h \
+	service/realm-all-provider.c \
+	service/realm-all-provider.h \
+	service/realm-command.c \
+	service/realm-command.h \
+	service/realm-credential.c \
+	service/realm-credential.h \
+	service/realm-daemon.c \
+	service/realm-daemon.h \
+	service/realm-diagnostics.c \
+	service/realm-diagnostics.h \
+	service/realm-disco.c \
+	service/realm-disco.h \
+	service/realm-disco-dns.c \
+	service/realm-disco-dns.h \
+	service/realm-disco-domain.c \
+	service/realm-disco-domain.h \
+	service/realm-disco-mscldap.c \
+	service/realm-disco-mscldap.h \
+	service/realm-disco-rootdse.c \
+	service/realm-disco-rootdse.h \
+	service/realm-errors.c \
+	service/realm-errors.h \
+	service/realm-example.c \
+	service/realm-example.h \
+	service/realm-example-provider.c \
+	service/realm-example-provider.h \
+	service/realm-ini-config.c \
+	service/realm-ini-config.h \
+	service/realm-invocation.c \
+	service/realm-invocation.h \
+	service/realm-kerberos.c \
+	service/realm-kerberos.h \
+	service/realm-kerberos-membership.c \
+	service/realm-kerberos-membership.h \
+	service/realm-kerberos-provider.c \
+	service/realm-kerberos-provider.h \
+	service/realm-ldap.c \
+	service/realm-ldap.h \
+	service/realm-login-name.c \
+	service/realm-login-name.h \
+	service/realm-network.c \
+	service/realm-network.h \
+	service/realm-options.c \
+	service/realm-options.h \
+	service/realm-packages.c \
+	service/realm-packages.h \
+	service/realm-provider.c \
+	service/realm-provider.h \
+	service/realm-samba.c \
+	service/realm-samba.h \
+	service/realm-samba-config.c \
+	service/realm-samba-config.h \
+	service/realm-samba-enroll.c \
+	service/realm-samba-enroll.h \
+	service/realm-samba-provider.c \
+	service/realm-samba-provider.h \
+	service/realm-samba-util.c \
+	service/realm-samba-util.h \
+	service/realm-samba-winbind.c \
+	service/realm-samba-winbind.h \
+	service/realm-service.c \
+	service/realm-service.h \
+	service/realm-settings.c \
+	service/realm-settings.h \
+	service/realm-sssd.c \
+	service/realm-sssd.h \
+	service/realm-sssd-ad.c \
+	service/realm-sssd-ad.h \
+	service/realm-sssd-provider.c \
+	service/realm-sssd-provider.h \
+	service/realm-sssd-config.c \
+	service/realm-sssd-config.h \
+	service/realm-sssd-ipa.c \
+	service/realm-sssd-ipa.h \
+	service/realm-usleep-async.c \
+	service/realm-usleep-async.h \
+	service/safe-format-string.c \
+	service/safe-format-string.h \
 	$(NULL)
 
 realmd_CFLAGS = \
 	-I$(top_srcdir)/dbus \
 	-I$(top_srcdir)/build \
-	-I$(top_builddir)/dbus \
 	-DPRIVATE_DIR="\"$(privatedir)\"" \
 	-DSYSCONF_DIR="\"$(sysconfdir)\"" \
 	-DPROVIDER_DIR="\"$(privatedir)/provider.d\"" \
@@ -80,7 +121,7 @@ realmd_CFLAGS = \
 	$(NULL)
 
 realmd_LDADD = \
-	$(top_builddir)/dbus/librealm-dbus.a \
+	librealm-dbus.a \
 	$(PACKAGEKIT_LIBS) \
 	$(POLKIT_LIBS) \
 	$(SYSTEMD_JOURNAL_LIBS) \
@@ -90,29 +131,23 @@ realmd_LDADD = \
 	$(NULL)
 
 # Install and uninstall the config for this distro
-install-data-local:
+install-service:
 	$(INSTALL_PROGRAM) -d $(DESTDIR)$(privatedir)
 	$(INSTALL_PROGRAM) -d $(DESTDIR)$(localstatedir)/lib/realmd
 	$(INSTALL_PROGRAM) -d $(DESTDIR)$(cachedir)
-	$(INSTALL_DATA) $(srcdir)/realmd-$(DISTRO).conf $(DESTDIR)$(privatedir)/realmd-distro.conf
-uninstall-local:
+	$(INSTALL_DATA) $(srcdir)/service/realmd-$(DISTRO).conf $(DESTDIR)$(privatedir)/realmd-distro.conf
+uninstall-service:
 	rm -f $(DESTDIR)$(privatedir)/realmd-distro.conf
 
 # ------------------------------------------------------------------
 
-EXTRA_DIST = \
+EXTRA_DIST += \
 	$(polkit_policy_in_files) \
 	$(REALMD_CONFIGS) \
 	$(private_DATA) \
 	$(provider_DATA) \
 	$(NULL)
 
-CLEANFILES = \
+CLEANFILES += \
 	$(polkit_policy_DATA) \
-	*.gcno \
-	*.gcda \
-	$(NULL)
-
-DISTCLEANFILES = \
-	$(BUILT_SOURCES) \
 	$(NULL)

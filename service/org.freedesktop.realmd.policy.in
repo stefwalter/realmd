@@ -24,7 +24,7 @@
 		<_description>Join machine to realm</_description>
 		<_message>Authentication is required to join this machine to a realm or domain</_message>
 		<defaults>
-			<allow_any>no</allow_any>
+			<allow_any>auth_admin</allow_any>
 			<allow_inactive>auth_admin</allow_inactive>
 			<allow_active>auth_admin_keep</allow_active>
 		</defaults>
@@ -38,7 +38,7 @@
 		<_description>Remove machine from realm</_description>
 		<_message>Authentication is required to remove this computer from a realm or domain.</_message>
 		<defaults>
-			<allow_any>no</allow_any>
+			<allow_any>auth_admin</allow_any>
 			<allow_inactive>auth_admin</allow_inactive>
 			<allow_active>auth_admin_keep</allow_active>
 		</defaults>
@@ -48,7 +48,7 @@
 		<_description>Change login policy</_description>
 		<_message>Authentication is required to change the policy of who can log in on this computer.</_message>
 		<defaults>
-			<allow_any>no</allow_any>
+			<allow_any>auth_admin</allow_any>
 			<allow_inactive>auth_admin</allow_inactive>
 			<allow_active>auth_admin_keep</allow_active>
 		</defaults>

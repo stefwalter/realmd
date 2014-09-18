@@ -81,9 +81,7 @@ sbin_PROGRAMS =
 
 CLEANFILES = $(BUILT_SOURCES)
 
-EXTRA_DIST = \
-	build/valgrind \
-	$(NULL)
+EXTRA_DIST =
 
 include dbus/Makefile.am
 include service/Makefile.am

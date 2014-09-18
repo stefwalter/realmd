@@ -27,8 +27,6 @@
 #include "realm-settings.h"
 #include "realm-sssd-provider.h"
 
-#include "valgrind/valgrind.h"
-
 #include <glib.h>
 #include <glib-unix.h>
 #include <glib/gi18n.h>

@@ -17,8 +17,6 @@
 #include "realm.h"
 #include "realm-dbus-constants.h"
 
-#include "valgrind/valgrind.h"
-
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <glib-object.h>

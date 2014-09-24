@@ -129,6 +129,28 @@ package_names_to_list (GHashTable *packages)
 	return g_string_free (string, FALSE);
 }
 
+static gboolean
+is_package_installed (GPtrArray *packages,
+                      const gchar *name)
+{
+	guint i;
+
+	/*
+	 * Packages can be in the array multiple times each with a different
+	 * info field. So we have to enumerate the entire array looking whether
+	 * this one is installed or not.
+	 */
+
+	for (i = 0; i < packages->len; i++) {
+		if (g_strcmp0 (pk_package_get_name (packages->pdata[i]), name) == 0 &&
+		    pk_package_get_info (packages->pdata[i]) == PK_INFO_ENUM_INSTALLED)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+
 static gchar **
 extract_results (InstallClosure *install,
                  PkResults *results,
@@ -160,7 +182,7 @@ extract_results (InstallClosure *install,
 		package = PK_PACKAGE (packages->pdata[i]);
 		name = pk_package_get_name (package);
 		g_hash_table_remove (install->check, name);
-		if (pk_package_get_info (package) != PK_INFO_ENUM_INSTALLED) {
+		if (!is_package_installed (packages, name)) {
 			g_ptr_array_add (ids, g_strdup (pk_package_get_id (package)));
 			g_hash_table_add (names, g_strdup (name));
 		}

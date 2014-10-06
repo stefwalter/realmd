@@ -1,3 +1,8 @@
+0.15.2
+ * Fix PackageKit installation issue
+ * Remove our copy of valgrind.h
+ * Build fixes and tweaks
+
 0.15.1
  * Build fixes for PackageKit changes [#76800
  * Correct the polkit policy for non-desktop users [#78273]

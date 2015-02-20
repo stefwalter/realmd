@@ -160,9 +160,8 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
 	must have a supported mechanism for joining from a client machine, such
 	as Active Directory or IPA.</para>
 
-	<para>Unless a <literal>--user</literal> is explicitly specified, an
-	automatic join is attempted first. Automatic joins require pre-configuration
-	on the domain side, and may not be supported by all domains.</para>
+	<para>If the domain has been preconfigured, and unless <literal>--user</literal>
+	is explicitly specified, an automatic join is attempted first.</para>
 
 	<para>Note that the <literal>--user </literal>, <literal>--no-password</literal>,
 	and <literal>--one-time-password </literal> options are mutually exclusive.

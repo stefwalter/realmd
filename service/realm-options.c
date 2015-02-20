@@ -96,6 +96,19 @@ realm_options_automatic_mapping (const gchar *realm_name)
 }
 
 gboolean
+realm_options_automatic_join (const gchar *realm_name)
+{
+	gchar *section;
+	gboolean mapping;
+
+	section = g_utf8_casefold (realm_name, -1);
+	mapping = realm_settings_boolean (realm_name, "automatic-join", FALSE);
+	g_free (section);
+
+	return mapping;
+}
+
+gboolean
 realm_options_qualify_names (const gchar *realm_name)
 {
 	gchar *section;

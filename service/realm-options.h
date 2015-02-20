@@ -26,6 +26,8 @@ gboolean       realm_options_manage_system            (GVariant *options,
 
 gboolean       realm_options_automatic_install        (GVariant *options);
 
+gboolean       realm_options_automatic_join           (const gchar *realm_name);
+
 const gchar *  realm_options_computer_ou              (GVariant *options,
                                                        const gchar *realm_name);
 

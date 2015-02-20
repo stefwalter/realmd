@@ -139,7 +139,6 @@ $ <command>realm join --verbose domain.example.com</command>
 		<itemizedlist>
 			<listitem><para>Discovers information about the domain.</para></listitem>
 			<listitem><para>Installs the necessary software to join the domain, such as SSSD or Winbind.</para></listitem>
-			<listitem><para>Tries to join the domain automatically, without administrative credentials.</para></listitem>
 			<listitem><para>If administrative credentials are required, a password will be prompted for.</para></listitem>
 			<listitem><para>A computer account in the domain will be created, and or updated.</para></listitem>
 			<listitem><para>A host keytab file at <filename>/etc/krb5.keytab</filename> is created.</para></listitem>

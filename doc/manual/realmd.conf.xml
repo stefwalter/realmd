@@ -339,6 +339,26 @@ user-principal = yes
 	</varlistentry>
 
 	<varlistentry>
+	<term><option>automatic-join</option></term>
+	<listitem>
+		<para>This option only applies to Active Directory realms. This option
+		is off by default. In Active Directory domains, a computer account can
+		be preset with a known computer account password. This can be used for
+		automatic joins without authentication.</para>
+
+		<para>When automatic joins are used there is no mutual authentication
+		between the machine and the domain during the join process.</para>
+
+		<informalexample>
+<programlisting>
+[domain.example.com]
+automatic-join = yes
+</programlisting>
+		</informalexample>
+	</listitem>
+	</varlistentry>
+
+	<varlistentry>
 	<term><option>automatic-id-mapping</option></term>
 	<listitem>
 		<para>This option is on by default for Active Directory realms.

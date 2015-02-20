@@ -445,7 +445,18 @@ realm_sssd_ad_join_creds (RealmKerberosMembership *membership)
 		{ 0, },
 	};
 
-	return creds;
+	static const RealmCredential creds_no_auto[] = {
+		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN, },
+		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_USER, },
+		{ REALM_CREDENTIAL_CCACHE, REALM_CREDENTIAL_OWNER_ADMIN, },
+		{ REALM_CREDENTIAL_SECRET, REALM_CREDENTIAL_OWNER_NONE, },
+		{ 0, }
+	};
+
+	const gchar *name;
+
+	name = realm_kerberos_get_name (REALM_KERBEROS (membership));
+	return realm_options_automatic_join (name) ? creds : creds_no_auto;
 }
 
 typedef struct {

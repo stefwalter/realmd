@@ -48,7 +48,7 @@ struct _RealmKerberosMembershipIface {
 	                                         GAsyncResult *result,
 	                                         GError **error);
 
-	const RealmCredential *join_creds_supported;
+	const RealmCredential * (* join_creds)  (RealmKerberosMembership *realm);
 
 	void       (* leave_async)              (RealmKerberosMembership *realm,
 	                                         RealmCredential *cred,
@@ -61,7 +61,7 @@ struct _RealmKerberosMembershipIface {
 	                                         GAsyncResult *result,
 	                                         GError **error);
 
-	const RealmCredential *leave_creds_supported;
+	const RealmCredential * (* leave_creds) (RealmKerberosMembership *realm);
 };
 
 GType               realm_kerberos_membership_get_type        (void) G_GNUC_CONST;

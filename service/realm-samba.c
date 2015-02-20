@@ -293,6 +293,19 @@ realm_samba_join_async (RealmKerberosMembership *membership,
 	g_object_unref (task);
 }
 
+static const RealmCredential *
+realm_samba_join_creds (RealmKerberosMembership *self)
+{
+	static const RealmCredential creds[] = {
+		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN },
+		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_USER },
+		{ REALM_CREDENTIAL_CCACHE, REALM_CREDENTIAL_OWNER_ADMIN },
+		{ 0, },
+	};
+
+	return creds;
+}
+
 typedef struct {
 	GDBusMethodInvocation *invocation;
 	RealmDisco *disco;
@@ -423,6 +436,19 @@ realm_samba_leave_async (RealmKerberosMembership *membership,
 	}
 
 	g_object_unref (task);
+}
+
+static const RealmCredential *
+realm_samba_leave_creds (RealmKerberosMembership *self)
+{
+	static const RealmCredential creds[] = {
+		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN },
+		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_USER },
+		{ REALM_CREDENTIAL_AUTOMATIC, REALM_CREDENTIAL_OWNER_NONE },
+		{ 0, },
+	};
+
+	return creds;
 }
 
 static gboolean
@@ -674,33 +700,13 @@ realm_samba_class_init (RealmSambaClass *klass)
 static void
 realm_samba_kerberos_membership_iface (RealmKerberosMembershipIface *iface)
 {
-	/*
-	 * Each line is a combination of owner and what kind of credentials are supported,
-	 * same for enroll/leave. We can't accept a ccache, because samba3 needs
-	 * to have credentials limited to RC4.
-	 */
-
-	static const RealmCredential join_supported[] = {
-		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN },
-		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_USER },
-		{ REALM_CREDENTIAL_CCACHE, REALM_CREDENTIAL_OWNER_ADMIN },
-		{ 0, },
-	};
-
-	static const RealmCredential leave_supported[] = {
-		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN },
-		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_USER },
-		{ REALM_CREDENTIAL_AUTOMATIC, REALM_CREDENTIAL_OWNER_NONE },
-		{ 0, },
-	};
-
 	iface->join_async = realm_samba_join_async;
 	iface->join_finish = realm_samba_membership_generic_finish;
-	iface->join_creds_supported = join_supported;
+	iface->join_creds = realm_samba_join_creds;
 
 	iface->leave_async = realm_samba_leave_async;
 	iface->leave_finish = realm_samba_membership_generic_finish;
-	iface->leave_creds_supported = leave_supported;
+	iface->leave_creds = realm_samba_leave_creds;
 }
 
 RealmKerberos *

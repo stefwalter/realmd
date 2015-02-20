@@ -186,6 +186,17 @@ realm_example_join_async (RealmKerberosMembership *membership,
 	g_object_unref (task);
 }
 
+static const RealmCredential *
+realm_example_join_creds (RealmKerberosMembership *membership)
+{
+	static const RealmCredential creds[] = {
+		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN },
+		{ 0, }
+	};
+
+	return creds;
+}
+
 static void
 on_leave_sleep_done (GObject *source,
                      GAsyncResult *res,
@@ -317,6 +328,18 @@ realm_example_leave_async (RealmKerberosMembership *membership,
 	default:
 		g_return_if_reached ();
 	}
+}
+
+static const RealmCredential *
+realm_example_leave_creds (RealmKerberosMembership *membership)
+{
+	static const RealmCredential creds[] = {
+		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN },
+		{ REALM_CREDENTIAL_AUTOMATIC, REALM_CREDENTIAL_OWNER_NONE },
+		{ 0, }
+	};
+
+	return creds;
 }
 
 static void
@@ -496,24 +519,13 @@ realm_example_class_init (RealmExampleClass *klass)
 static void
 realm_example_kerberos_membership_iface (RealmKerberosMembershipIface *iface)
 {
-	static const RealmCredential join_creds[] = {
-		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN },
-		{ 0, }
-	};
-
-	static const RealmCredential leave_creds[] = {
-		{ REALM_CREDENTIAL_PASSWORD, REALM_CREDENTIAL_OWNER_ADMIN },
-		{ REALM_CREDENTIAL_AUTOMATIC, REALM_CREDENTIAL_OWNER_NONE },
-		{ 0, }
-	};
-
 	iface->join_async = realm_example_join_async;
 	iface->join_finish = realm_example_membership_generic_finish;
-	iface->join_creds_supported = join_creds;
+	iface->join_creds = realm_example_join_creds;
 
 	iface->leave_async = realm_example_leave_async;
 	iface->leave_finish = realm_example_membership_generic_finish;
-	iface->leave_creds_supported = leave_creds;
+	iface->leave_creds = realm_example_leave_creds;
 }
 
 RealmKerberos *

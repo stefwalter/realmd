@@ -241,6 +241,7 @@ on_unenroll_complete (GObject *source,
 
 static gboolean
 is_credential_supported (RealmKerberosMembershipIface *iface,
+                         RealmKerberosMembership *membership,
                          RealmCredential *cred,
                          gboolean join,
                          GError **error)
@@ -250,7 +251,10 @@ is_credential_supported (RealmKerberosMembershipIface *iface,
 	gboolean found = FALSE;
 	gint i;
 
-	supported = join ? iface->join_creds_supported : iface->leave_creds_supported;
+	g_assert (iface->join_creds != NULL);
+	g_assert (iface->leave_creds != NULL);
+
+	supported = (join ? iface->join_creds (membership) : iface->leave_creds (membership));
 	if (supported) {
 		for (i = 0; supported[i].type != 0; i++) {
 			if (cred->type == supported[i].type) {
@@ -294,6 +298,7 @@ join_or_leave (RealmKerberos *self,
                gboolean join)
 {
 	RealmKerberosMembershipIface *iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (self);
+	RealmKerberosMembership *membership = REALM_KERBEROS_MEMBERSHIP (self);
 	RealmCredential *cred;
 	MethodClosure *method;
 	GError *error = NULL;
@@ -315,7 +320,7 @@ join_or_leave (RealmKerberos *self,
 		return;
 	}
 
-	if (!is_credential_supported (iface, cred, join, &error)) {
+	if (!is_credential_supported (iface, membership, cred, join, &error)) {
 		g_dbus_method_invocation_return_gerror (invocation, error);
 		realm_credential_unref (cred);
 		g_error_free (error);
@@ -333,12 +338,10 @@ join_or_leave (RealmKerberos *self,
 
 	if (join) {
 		g_return_if_fail (iface->join_finish != NULL);
-		(iface->join_async) (REALM_KERBEROS_MEMBERSHIP (self), cred,
-		                     options, invocation, on_enroll_complete, method);
+		(iface->join_async) (membership, cred, options, invocation, on_enroll_complete, method);
 	} else {
 		g_return_if_fail (iface->leave_finish != NULL);
-		(iface->leave_async) (REALM_KERBEROS_MEMBERSHIP (self), cred,
-		                      options, invocation, on_unenroll_complete, method);
+		(iface->leave_async) (membership, cred, options, invocation, on_unenroll_complete, method);
 	}
 }
 
@@ -543,6 +546,7 @@ static void
 realm_kerberos_constructed (GObject *obj)
 {
 	RealmKerberosMembershipIface *iface;
+	RealmKerberosMembership *membership;
 	RealmKerberos *self = REALM_KERBEROS (obj);
 	const gchar *supported_interfaces[3];
 	GVariant *supported;
@@ -561,11 +565,12 @@ realm_kerberos_constructed (GObject *obj)
 		                                      G_DBUS_INTERFACE_SKELETON (self->pv->membership_iface));
 
 		iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (self);
-		supported = realm_credential_build_supported (iface->join_creds_supported);
+		membership = REALM_KERBEROS_MEMBERSHIP (self);
+
+		supported = realm_credential_build_supported (iface->join_creds (membership));
 		realm_dbus_kerberos_membership_set_supported_join_credentials (self->pv->membership_iface, supported);
 
-		iface = REALM_KERBEROS_MEMBERSHIP_GET_IFACE (self);
-		supported = realm_credential_build_supported (iface->leave_creds_supported);
+		supported = realm_credential_build_supported (iface->leave_creds (membership));
 		realm_dbus_kerberos_membership_set_supported_leave_credentials (self->pv->membership_iface, supported);
 	}
 

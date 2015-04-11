@@ -343,25 +343,12 @@ parse_join_options (JoinClosure *join,
 		}
 
 	/*
-	 * If we are enrolling with a ccache, then prefer to use adcli over samba.
-	 * There have been some strange corner case problems when using samba with
-	 * a ccache.
+	 * For other valid types of credentials we prefer adcli.
 	 */
-	} else if (cred->type == REALM_CREDENTIAL_CCACHE) {
+	} else if (cred->type == REALM_CREDENTIAL_CCACHE ||
+	           (cred->type == REALM_CREDENTIAL_PASSWORD && cred->owner == REALM_CREDENTIAL_OWNER_ADMIN)) {
 		if (!software)
 			software = REALM_DBUS_IDENTIFIER_ADCLI;
-
-	/*
-	 * For other supported enrolling credentials, we support either adcli or
-	 * samba. But since adcli is pretty immature at this point, we use samba
-	 * by default. Samba falls over with hostnames that are not perfectly
-	 * specified, so use adcli there.
-	 */
-	} else if (cred->type == REALM_CREDENTIAL_PASSWORD && cred->owner == REALM_CREDENTIAL_OWNER_ADMIN) {
-		if (!software && join->disco->explicit_server)
-			software = REALM_DBUS_IDENTIFIER_ADCLI;
-		else if (!software)
-			software = REALM_DBUS_IDENTIFIER_SAMBA;
 
 	/* It would be odd to get here */
 	} else {

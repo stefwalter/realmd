@@ -40,6 +40,8 @@ typedef struct {
 #define HOST_NAME_MAX 255
 #endif
 
+#define DOMAIN_NAME_VALID "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-."
+
 static void
 closure_free (gpointer data)
 {
@@ -98,14 +100,21 @@ get_string (guchar *beg,
             guchar **at)
 {
 	gchar buffer[HOST_NAME_MAX];
+	gsize len;
 	int n;
 
 	n = dn_expand (beg, end, *at, buffer, sizeof (buffer));
 	if (n < 0)
 		return NULL;
 
+	len = strlen (buffer);
+	if (strspn (buffer, DOMAIN_NAME_VALID) != len) {
+		g_message ("received invalid NetLogon string characters");
+		return NULL;
+	}
+
 	(*at) += n;
-	return g_strdup (buffer);
+	return g_strndup (buffer, len);
 }
 
 static gboolean

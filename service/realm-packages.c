@@ -24,13 +24,192 @@
 
 #include <glib/gi18n.h>
 
-#define I_KNOW_THE_PACKAGEKIT_GLIB2_API_IS_SUBJECT_TO_CHANGE
-#include <packagekit-glib2/packagekit.h>
+typedef struct {
+    GDBusConnection *connection;
+    gchar *transaction_path;
+    GVariant *install_args;
+    GVariant *error_code;
+} PackagesInstall;
+
+void
+on_install_signal (GDBusConnection *connection,
+                   const gchar *sender_name,
+                   const gchar *object_path,
+                   const gchar *interface_name,
+                   const gchar *signal_name,
+                   GVariant *parameters,
+                   gpointer user_data)
+{
+	GTask *task = G_TASK (user_data);
+	PackagesInstall *pi = g_task_get_task_data (task);
+
+	if (g_str_equal (signal_name, "ErrorCode")) {
+		if (pi->error_code)
+			g_variant_unref (pi->error_code);
+		pi->error_code = g_variant_ref (parameters);
+
+	} else if (g_str_equal (signal_name, "Finished")) {
+		g_dbus_connection_signal_unsubscribe (connection, pi->subscription);
+		if (pi->error_code) {
+			g_variant_get ("(u&s)", &code, &message);
+			g_task_return_new_error (task, G_XXXX, G_XXXX, "%s", message);
+		} else {
+			g_task_return_boolean (task, TRUE);
+		}
+		g_object_unref (task);
+
+	} else if (g_str_equal (signal_name, "ItemProgress")) {
+		xxxx;
+	}
+}
+
+static void
+g_dbus_connection_signal_subscribe (
+static void
+on_install_packages (GObject *source,
+                     GAsyncResult *result,
+                     gpointer user_data)
+{
+	GTask *task = G_TASK (user_data);
+	GError *error = NULL;
+	GVariant *retval;
+
+	retval = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source),
+	                                        result, &error);
+
+	if (error != NULL)
+		g_task_return_error (task, error);
+	else
+		g_variant_unref (retval);
+
+	g_object_unref (task);
+}
+
+static void
+on_set_hints (GObject *source,
+              GAsyncResult *result,
+              gpointer user_data)
+{
+	GTask *task = G_TASK (user_data);
+	GError *error = NULL;
+	GVariant *retval;
+	PackagesInstall *pi;
+
+	retval = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source),
+	                                        result, &error);
+
+	if (error != NULL) {
+		g_task_return_error (task, error);
+
+	} else {
+		g_variant_unref (retval);
+
+		g_dbus_connection_call (connection, "org.freedesktop.PackageKit",
+		                        pi->transaction_path,
+		                        "org.freedesktop.PackageKit.Transaction",
+		                        "InstallPackages",
+		                        pi->install_args,
+		                        G_VARIANT_TYPE ("()"),
+		                        G_DBUS_CALL_FLAGS_NO_AUTO_START,
+		                        -1, g_task_get_cancellable (task),
+		                        on_install_packages, g_object_ref (task));
+
+	}
+
+	g_object_unref (task);
+}
+
+static void
+on_create_transaction (GObject *source,
+                       GAsyncResult *result,
+                       gpointer user_data)
+{
+	GTask *task = G_TASK (user_data);
+	GError *error = NULL;
+	GVariant *retval;
+	PackagesInstall *pi;
+
+	const gchar **hints = { "interactive=false", "background=false", NULL };
+
+	retval = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source),
+	                                        result, &error);
+
+	if (error != NULL) {
+		g_task_return_error (task, error);
+
+	} else {
+		pi = g_task_get_task_data (task);
+		g_variant_get (retval, "(o)", &pi->transaction_path);
+		g_variant_unref (retval);
+
+		g_dbus_connection_call (connection, "org.freedesktop.PackageKit",
+		                        pi->transaction_path,
+		                        "org.freedesktop.PackageKit.Transaction",
+		                        "SetHints",
+		                        g_variant_new ("(^as)", hints),
+		                        G_VARIANT_TYPE ("()"),
+		                        G_DBUS_CALL_FLAGS_NO_AUTO_START,
+		                        -1, g_task_get_cancellable (task),
+		                        on_set_hints, g_object_ref (task));
+	}
+
+
+	g_object_unref (task);
+}
+
+static void
+packages_install_async (GDBusConnection *connection,
+                        const gchar **package_ids,
+                        GCancellable *cancellable,
+                        GAsyncReadyCallback callback,
+                        gpointer user_data)
+{
+	GTask *task;
+
+
+	g_dbus_connection_call (connection, "org.freedesktop.PackageKit",
+	                        "/org/freedesktop/PackageKit",
+	                        "org.freedesktop.PackageKit",
+	                        "CreateTransaction",
+	                        g_variant_new ("()"),
+	                        G_VARIANT_TYPE ("(o)"),
+	                        G_DBUS_CALL_FLAGS_NONE,
+	                        -1, cancellable, on_create_transaction,
+	                        g_object_ref (task);
+}
+
+static gboolean
+packages_install_finish (GAsyncResult *result,
+                         GError **error)
+{
+
+}
+
+static void
+packages_resolve_async (install->packages, cancellable,
+                        on_install_resolved, g_object_ref (task));
+
+static gchar **
+packages_resolve_finish (GAsyncResult *result,
+                         GError **error);
+
+#if 0
+		/*
+		 * In an unexpected move, pk_task_resolve_async() does not fail or provide
+		 * any feedback when a requested package does not exist.
+		 *
+		 * So we make a note of the ones we requested here, to compare against
+		 * what we get back.
+		 */
+		install->check = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+		for (i = 0; packages[i] != NULL; i++)
+			g_hash_table_add (install->check, g_strdup (packages[i]));
+xxxx;
+#endif
 
 typedef struct {
-	PkTask *task;
-	GHashTable *check;
 	GDBusMethodInvocation *invocation;
+	gchar **packages;
 	gboolean automatic;
 } InstallClosure;
 
@@ -38,97 +217,31 @@ static void
 install_closure_free (gpointer data)
 {
 	InstallClosure *install = data;
-	g_object_ref (install->task);
 	g_clear_object (&install->invocation);
-	if (install->check)
-		g_hash_table_destroy (install->check);
+	g_strfreev (install->packages);
 	g_free (install);
 }
 
-static void
-on_install_progress (PkProgress *progress,
-                     PkProgressType type,
-                     gpointer user_data)
-{
-	gchar *string;
-	guint unumber;
-	gint number;
-
-	if (type == PK_PROGRESS_TYPE_STATUS) {
-#ifdef TODO
-		PkStatusEnum status;
-		g_object_get (progress, "status", &status, NULL);
-		switch (status) {
-		case PK_STATUS_WAIT:
-			realm_status (install->invocation, "Waiting for package system");
-			break;
-		case PK_STATUS_ENUM_WAITING_FOR_AUTH:
-			pk_status_enum_to_localised_text ();
-		};
-#endif
-	}
-
-	switch (type) {
-	case PK_PROGRESS_TYPE_PACKAGE_ID:
-		g_object_get (progress, "package-id", &string, NULL);
-		g_debug ("package-id: %s", string);
-		g_free (string);
-		break;
-	case PK_PROGRESS_TYPE_TRANSACTION_ID:
-		g_object_get (progress, "transaction-id", &string, NULL);
-		g_debug ("transaction-id: %s", string);
-		g_free (string);
-		break;
-	case PK_PROGRESS_TYPE_PERCENTAGE:
-		g_object_get (progress, "percentage", &number, NULL);
-		g_debug ("percentage: %d", number);
-		break;
-	case PK_PROGRESS_TYPE_STATUS:
-		g_object_get (progress, "status", &unumber, NULL);
-		g_debug ("status: %s", pk_status_enum_to_string (unumber));
-		break;
-	case PK_PROGRESS_TYPE_ELAPSED_TIME:
-		g_object_get (progress, "elapsed-time", &unumber, NULL);
-		g_debug ("elapsed-time: %u", unumber);
-		break;
-	case PK_PROGRESS_TYPE_REMAINING_TIME:
-		g_object_get (progress, "remaining-time", &unumber, NULL);
-		g_debug ("remaining-time: %u", unumber);
-		break;
-	case PK_PROGRESS_TYPE_SPEED:
-		g_object_get (progress, "speed", &unumber, NULL);
-		g_debug ("speed: %u", unumber);
-		break;
-	case PK_PROGRESS_TYPE_INVALID:
-	case PK_PROGRESS_TYPE_ALLOW_CANCEL:
-	case PK_PROGRESS_TYPE_CALLER_ACTIVE:
-	case PK_PROGRESS_TYPE_ROLE:
-	case PK_PROGRESS_TYPE_UID:
-	case PK_PROGRESS_TYPE_PACKAGE:
-	case PK_PROGRESS_TYPE_ITEM_PROGRESS:
-	default:
-		break;
-	}
-}
-
 static gchar *
-package_names_to_list (GHashTable *packages)
+packages_to_list (gchar **package_ids)
 {
 	GString *string;
-	GHashTableIter iter;
-	const gchar *name;
+	gchar **parts;
+	gint i;
 
 	string = g_string_new ("");
-	g_hash_table_iter_init (&iter, packages);
-	while (g_hash_table_iter_next (&iter, (void **)&name, NULL)) {
+	for (i = 0; package_ids != NULL && package_ids[i] != NULL; i++) {
+		parts = g_strsplit (package_ids[i], ";", 2);
 		if (string->len)
 			g_string_append (string, ", ");
-		g_string_append (string, name);
+		g_string_append (string, parts[0]);
+		g_strfreev (parts);
 	}
 
 	return g_string_free (string, FALSE);
 }
 
+#if 0
 static gboolean
 is_package_installed (GPtrArray *packages,
                       const gchar *name)
@@ -204,6 +317,7 @@ extract_results (InstallClosure *install,
 		return NULL;
 	}
 }
+#endif
 
 static void
 on_install_installed (GObject *source,
@@ -211,13 +325,10 @@ on_install_installed (GObject *source,
                       gpointer user_data)
 {
 	GTask *task = G_TASK (user_data);
-	InstallClosure *install = g_task_get_task_data (task);
 	GError *error = NULL;
-	PkResults *results;
 
-	results = pk_task_generic_finish (install->task, result, &error);
+	packages_install_finish (result, &error);
 	if (error == NULL) {
-		g_object_unref (results);
 		g_task_return_boolean (task, TRUE);
 	} else {
 		g_task_return_error (task, error);
@@ -237,20 +348,15 @@ on_install_resolved (GObject *source,
 	GHashTable *names;
 	GCancellable *cancellable;
 	GError *error = NULL;
-	PkResults *results;
 	gchar *remote;
 	gchar *missing;
 
 	names = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
-	results = pk_task_generic_finish (install->task, result, &error);
-	if (error == NULL) {
-		package_ids = extract_results (install, results, names, &error);
-		g_object_unref (results);
-	}
+	package_ids = packages_resolve_finish (result, &error);
 
 	if (error == NULL) {
-		missing = package_names_to_list (names);
+		missing = packages_to_list (package_ids);
 		if (package_ids == NULL || *package_ids == NULL) {
 			g_task_return_boolean (task, TRUE);
 
@@ -259,13 +365,13 @@ on_install_resolved (GObject *source,
 			             _("Necessary packages are not installed: %s"), missing);
 
 		} else {
+
 			/* String should match that in realm-client.c */
 			realm_diagnostics_info (install->invocation, "%s: %s",
 			                        _("Installing necessary packages"), missing);
 			cancellable = realm_invocation_get_cancellable (install->invocation);
-			pk_task_install_packages_async (install->task, package_ids, cancellable,
-			                                on_install_progress, install,
-			                                on_install_installed, g_object_ref (task));
+			packages_install_async ((const gchar **)package_ids, cancellable,
+			                        on_install_installed, g_object_ref (task));
 		}
 
 		g_free (missing);
@@ -282,13 +388,13 @@ on_install_resolved (GObject *source,
 		 * distro or administrator wants to take full control over the
 		 * installation of packages.
 		 */
-		if (error->domain == PK_CONTROL_ERROR) {
+		if (error->domain == G_DBUS_ERROR) {
 			remote = g_dbus_error_get_remote_error (error);
 			if (remote && g_str_equal (remote, "org.freedesktop.DBus.Error.ServiceUnknown")) {
 				g_dbus_error_strip_remote_error (error);
 				realm_diagnostics_error (install->invocation, error, "PackageKit not available");
 				g_clear_error (&error);
-				missing = package_names_to_list (install->check);
+				missing = packages_to_list (install->packages);
 				g_set_error (&error, REALM_ERROR, REALM_ERROR_FAILED,
 				             _("Necessary packages are not installed: %s"), missing);
 				g_free (missing);
@@ -390,7 +496,7 @@ realm_packages_install_async (const gchar **package_sets,
 	InstallClosure *install;
 	gboolean unconditional;
 	gchar **required_files;
-	gchar **packages;
+	GCancellable *cancellable;
 	gchar *string;
 	gboolean have;
 	gint i;
@@ -398,16 +504,14 @@ realm_packages_install_async (const gchar **package_sets,
 	g_return_if_fail (package_sets != NULL);
 	g_return_if_fail (invocation == NULL || G_IS_DBUS_METHOD_INVOCATION (invocation));
 
-	lookup_required_files_and_packages (package_sets, &packages, &required_files, &unconditional);
 
 	task = g_task_new (NULL, NULL, callback, user_data);
 	install = g_new0 (InstallClosure, 1);
-	install->task = pk_task_new ();
 	install->automatic = realm_options_automatic_install (options);
-	pk_client_set_interactive (PK_CLIENT(install->task), FALSE);
-	pk_client_set_background (PK_CLIENT (install->task), FALSE);
 	install->invocation = invocation ? g_object_ref (invocation) : NULL;
 	g_task_set_task_data (task, install, install_closure_free);
+
+	lookup_required_files_and_packages (package_sets, &install->packages, &required_files, &unconditional);
 
 	if (realm_daemon_is_install_mode ()) {
 		have = TRUE;
@@ -434,25 +538,12 @@ realm_packages_install_async (const gchar **package_sets,
 	} else {
 		realm_diagnostics_info (invocation, "Resolving required packages");
 
-		/*
-		 * In an unexpected move, pk_task_resolve_async() does not fail or provide
-		 * any feedback when a requested package does not exist.
-		 *
-		 * So we make a note of the ones we requested here, to compare against
-		 * what we get back.
-		 */
-		install->check = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-		for (i = 0; packages[i] != NULL; i++)
-			g_hash_table_add (install->check, g_strdup (packages[i]));
-
-		pk_task_resolve_async (install->task,
-		                       pk_filter_bitfield_from_string ("arch"),
-		                       packages, NULL,
-		                       on_install_progress, install,
-		                       on_install_resolved, g_object_ref (task));
+		cancellable = realm_invocation_get_cancellable (install->invocation);
+		packages_resolve_async (install->packages, cancellable,
+		                        on_install_resolved, g_object_ref (task));
+		g_object_unref (cancellable);
 	}
 
-	g_strfreev (packages);
 	g_object_unref (task);
 }
 

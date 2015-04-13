@@ -285,7 +285,8 @@ realm_samba_join_async (RealmKerberosMembership *membership,
 		g_task_return_error (task, error);
 
 	} else {
-		realm_packages_install_async (SAMBA_PACKAGES, enroll->invocation, options,
+		realm_packages_install_async (SAMBA_PACKAGES, enroll->invocation,
+		                              g_dbus_method_invocation_get_connection (enroll->invocation),
 		                              on_install_do_join, g_object_ref (task));
 	}
 

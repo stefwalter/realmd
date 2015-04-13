@@ -383,7 +383,8 @@ realm_sssd_ipa_join_async (RealmKerberosMembership *membership,
 		g_ptr_array_add (argv, NULL);
 		enroll->argv = argv;
 
-		realm_packages_install_async (IPA_PACKAGES, invocation, options,
+		realm_packages_install_async (IPA_PACKAGES, invocation,
+		                              g_dbus_method_invocation_get_connection (invocation),
 		                              on_install_do_join, g_object_ref (task));
 	}
 

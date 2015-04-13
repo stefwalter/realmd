@@ -82,13 +82,6 @@ AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
 
 # --------------------------------------------------------------------
-# PackageKit
-
-PKG_CHECK_MODULES(PACKAGEKIT, packagekit-glib2)
-AC_SUBST(PACKAGEKIT_CFLAGS)
-AC_SUBST(PACKAGEKIT_LIBS)
-
-# --------------------------------------------------------------------
 # PolicyKit
 
 PKG_CHECK_MODULES(POLKIT, polkit-gobject-1)

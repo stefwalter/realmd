@@ -406,7 +406,8 @@ realm_sssd_ad_join_async (RealmKerberosMembership *membership,
 
 	/* Prepared successfully without an error */
 	} else {
-		realm_packages_install_async (join->packages, join->invocation, options,
+		realm_packages_install_async (join->packages, join->invocation,
+		                              g_dbus_method_invocation_get_connection (join->invocation),
 		                              on_install_do_join, g_object_ref (task));
 	}
 

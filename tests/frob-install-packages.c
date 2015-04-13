@@ -14,86 +14,17 @@
 
 #include "config.h"
 
-#include <stdlib.h>
+#include "service/realm-packages.h"
 
-#include <packagekit-glib2/packagekit.h>
+#include "service/realm-daemon.h"
+#include "service/realm-diagnostics.h"
+#include "service/realm-invocation.h"
+#include "service/realm-options.h"
+#include "service/realm-settings.h"
+
+#include <stdio.h>
 
 static GMainLoop *loop;
-
-static void
-on_progress_callback (PkProgress *progress,
-                      PkProgressType type,
-                      gpointer user_data)
-{
-	PkPackage *package;
-	gboolean boolean;
-	gchar *string;
-	guint unumber;
-	gint number;
-
-	switch (type) {
-	case PK_PROGRESS_TYPE_PACKAGE_ID:
-		g_object_get (progress, "package-id", &string, NULL);
-		g_printerr ("progress: package-id: %s\n", string);
-		g_free (string);
-		break;
-	case PK_PROGRESS_TYPE_TRANSACTION_ID:
-		g_object_get (progress, "transaction-id", &string, NULL);
-		g_printerr ("progress: percentage: %s\n", string);
-		g_free (string);
-		break;
-	case PK_PROGRESS_TYPE_PERCENTAGE:
-		g_object_get (progress, "percentage", &number, NULL);
-		g_printerr ("progress: percentage: %d\n", number);
-		break;
-	case PK_PROGRESS_TYPE_ALLOW_CANCEL:
-		g_object_get (progress, "allow-cancel", &boolean, NULL);
-		g_printerr ("progress: allow-cancel: %s\n", boolean ? "TRUE" : "FALSE");
-		break;
-	case PK_PROGRESS_TYPE_STATUS:
-		g_object_get (progress, "status", &unumber, NULL);
-		g_printerr ("progress: status: %u %s\n", unumber, pk_status_enum_to_string (unumber));
-		break;
-	case PK_PROGRESS_TYPE_ROLE:
-		g_object_get (progress, "role", &unumber, NULL);
-		g_printerr ("progress: role: %u %s\n", unumber, pk_role_enum_to_string (unumber));
-		break;
-	case PK_PROGRESS_TYPE_CALLER_ACTIVE:
-		g_object_get (progress, "caller-active", &boolean, NULL);
-		g_printerr ("progress: caller-active: %s\n", boolean ? "TRUE" : "FALSE");
-		break;
-	case PK_PROGRESS_TYPE_ELAPSED_TIME:
-		g_object_get (progress, "elapsed-time", &unumber, NULL);
-		g_printerr ("progress: elapsed-time: %u\n", unumber);
-		break;
-	case PK_PROGRESS_TYPE_REMAINING_TIME:
-		g_object_get (progress, "remaining-time", &unumber, NULL);
-		g_printerr ("progress: remaining-time: %u\n", unumber);
-		break;
-	case PK_PROGRESS_TYPE_SPEED:
-		g_object_get (progress, "speed", &unumber, NULL);
-		g_printerr ("progress: speed: %u\n", unumber);
-		break;
-	case PK_PROGRESS_TYPE_UID:
-		g_object_get (progress, "uid", &unumber, NULL);
-		g_printerr ("progress: uid: %u\n", unumber);
-		break;
-	case PK_PROGRESS_TYPE_PACKAGE:
-		g_object_get (progress, "package", &package, NULL);
-		g_printerr ("progress: package: %p\n", package);
-		g_object_unref (package);
-		break;
-	case PK_PROGRESS_TYPE_ITEM_PROGRESS:
-		g_object_get (progress, "item-progress-id", &string, "item-progress-value", &unumber, NULL);
-		g_printerr ("progress: package: %s %u\n", string, unumber);
-		g_free (string);
-		break;
-	case PK_PROGRESS_TYPE_INVALID:
-	default:
-		g_warn_if_reached ();
-		break;
-	}
-}
 
 static void
 on_ready_get_result (GObject *source,
@@ -105,103 +36,105 @@ on_ready_get_result (GObject *source,
 	g_main_loop_quit (loop);
 }
 
-static void
-test_resolve (void)
+static gint
+test_install (const gchar **package_sets)
 {
+	GDBusConnection *connection;
 	GAsyncResult *result = NULL;
-	PkTask *task;
 	GError *error = NULL;
-	gchar *packages[] = { "sssd", "samba-client", "samba-common", "freeipa-client" };
-	PkBitfield filter;
-	PkResults *results;
-	PkPackage *package;
-	GPtrArray *array;
-	GPtrArray *ids;
-	const gchar *id;
-	gint i;
 
-	task = pk_task_new ();
-	pk_client_set_interactive (PK_CLIENT(task), FALSE);
+	connection = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, &error);
+	if (connection == NULL) {
+		g_message ("Couldn't open DBus connection: %s", error->message);
+		g_clear_error (&error);
+		return 1;
+	}
 
-	filter = pk_filter_bitfield_from_string ("arch");
+	realm_packages_install_async (package_sets, NULL, connection, on_ready_get_result, &result);
+	g_object_unref (connection);
 
-	pk_task_refresh_cache_async (task, FALSE, NULL,
-	                             on_progress_callback, NULL,
-	                             on_ready_get_result, &result);
 	g_main_loop_run (loop);
-	results = pk_task_generic_finish (task, result, &error);
+
+	realm_packages_install_finish (result, &error);
 	g_object_unref (result);
 
 	if (error != NULL) {
-		g_printerr ("%s\n", error->message);
-		exit (1);
+		g_message ("Couldn't install packages: %s", error->message);
+		g_clear_error (&error);
+		return 1;
 	}
 
-	g_object_unref (results);
-
-	g_printerr ("REFRESHED\n");
-
-	pk_task_resolve_async (task, filter, packages, NULL,
-	                       on_progress_callback, NULL,
-	                       on_ready_get_result, &result);
-	g_main_loop_run (loop);
-	results = pk_task_generic_finish (task, result, &error);
-	g_object_unref (result);
-
-	if (error != NULL) {
-		g_printerr ("%s\n", error->message);;
-		exit (1);
-	}
-
-	ids = g_ptr_array_new_with_free_func (g_free);
-	array = pk_results_get_package_array (results);
-	for (i = 0; i < array->len; i++) {
-		package = PK_PACKAGE (array->pdata[i]);
-		if (pk_package_get_info (package) != PK_INFO_ENUM_INSTALLED) {
-			id = pk_package_get_id (package);
-			g_print ("%s\n", id);
-			g_ptr_array_add (ids, g_strdup (id));
-		}
-	}
-
-	g_ptr_array_free (array, TRUE);
-	g_object_unref (results);
-
-	g_printerr ("RESOLVED\n");
-
-	if (ids->len > 0) {
-		g_ptr_array_add (ids, NULL);
-		pk_task_install_packages_async (task, (gchar **)ids->pdata,
-		                                NULL, on_progress_callback, NULL,
-		                                on_ready_get_result, &result);
-		g_ptr_array_free (ids, TRUE);
-		g_main_loop_run (loop);
-		results = pk_task_generic_finish (task, result, &error);
-		g_object_unref (result);
-
-		if (error != NULL) {
-			g_printerr ("%s\n", error->message);;
-			exit (1);
-		}
-
-		g_object_unref (results);
-	}
-
-	g_object_unref (task);
-
+	return 0;
 }
 
 int
 main(int argc,
      char *argv[])
 {
+	const gchar *package_sets[] = { "sssd", "samba", "adcli", NULL };
+
 #if !GLIB_CHECK_VERSION(2, 36, 0)
 	g_type_init ();
 #endif
 
+	realm_settings_init ();
+
 	loop = g_main_loop_new (NULL, FALSE);
-	test_resolve ();
+	test_install (package_sets);
 	g_main_loop_unref (loop);
 
 	return 0;
+}
+
+/* Dummy functions */
+
+GCancellable *
+realm_invocation_get_cancellable (GDBusMethodInvocation *invocation)
+{
+	return g_cancellable_new ();
+}
+
+const gchar *
+realm_invocation_get_operation (GDBusMethodInvocation *invocation)
+{
+	return NULL;
+}
+
+gboolean
+realm_daemon_is_install_mode (void)
+{
+	return FALSE;
+}
+
+void
+realm_diagnostics_info (GDBusMethodInvocation *invocation,
+                        const gchar *format,
+                        ...)
+{
+	va_list va;
+
+	va_start (va, format);
+	vfprintf (stderr, format, va);
+	fputc ('\n', stderr);
+	va_end (va);
+}
+
+void
+realm_diagnostics_error (GDBusMethodInvocation *invocation,
+                         GError *unused,
+                         const gchar *format,
+                         ...)
+{
+	va_list va;
+
+	va_start (va, format);
+	vfprintf (stderr, format, va);
+	fputc ('\n', stderr);
+	va_end (va);
+}
+
+gboolean
+realm_options_automatic_install (void)
+{
+	return TRUE;
 }

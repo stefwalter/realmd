@@ -73,15 +73,18 @@ test_settings_SOURCES = \
 test_settings_LDADD = $(TEST_LIBS)
 test_settings_CFLAGS = $(TEST_CFLAGS)
 
-frob_install_packages_SOURCES = tests/frob-install-packages.c
+frob_install_packages_SOURCES = \
+	tests/frob-install-packages.c \
+	service/realm-packages.c \
+	service/realm-settings.c \
+	service/realm-errors.c \
+	$(NULL)
 frob_install_packages_CFLAGS = \
+	-I$(srcdir)/dbus \
 	$(TEST_CFLAGS) \
-	-DI_KNOW_THE_PACKAGEKIT_GLIB2_API_IS_SUBJECT_TO_CHANGE \
-	$(PACKAGEKIT_CFLAGS) \
 	$(NULL)
 frob_install_packages_LDADD  = \
 	$(TEST_LIBS) \
-	$(PACKAGEKIT_LIBS) \
 	$(NULL)
 
 EXTRA_DIST += \

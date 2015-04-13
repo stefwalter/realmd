@@ -23,12 +23,9 @@ G_BEGIN_DECLS
 
 gchar **          realm_packages_expand_sets             (const gchar **package_sets);
 
-gboolean          realm_packages_check_paths             (const gchar **paths,
-                                                          GDBusMethodInvocation *invocation);
-
 void              realm_packages_install_async           (const gchar **package_sets,
-                                                          GDBusMethodInvocation *invocation,
-                                                          GVariant *options,
+							  GDBusMethodInvocation *invocation,
+							  GDBusConnection *connection,
                                                           GAsyncReadyCallback callback,
                                                           gpointer user_data);
 

@@ -19,7 +19,7 @@
 #include "realm-settings.h"
 
 gboolean
-realm_options_automatic_install (GVariant *options)
+realm_options_automatic_install (void)
 {
 	return realm_settings_boolean ("service", "automatic-install", TRUE);
 }

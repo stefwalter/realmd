@@ -787,10 +787,8 @@ prompt_stdin (const gchar *prompt)
 	fflush (stdout);
 
 	password = malloc (pass_max);
-	if (!fgets (password, pass_max, stdin)) {
-		free (password);
-		password = NULL;
-	}
+	if (!fgets (password, pass_max, stdin))
+		password[0] = '\0';
 
 	g_printf ("\n");
 

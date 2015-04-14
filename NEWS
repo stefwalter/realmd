@@ -1,3 +1,10 @@
+0.16.0
+ * Disable automatic AD joins by default [#89205]
+ * Validate text we receive from LDAP
+ * Prefer adcli for AD joins
+ * Remove hard dependency on PackageKit
+ * Fix crash when empty password is used with realm client
+
 0.15.2
  * Fix PackageKit installation issue
  * Remove our copy of valgrind.h

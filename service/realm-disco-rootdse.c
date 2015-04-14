@@ -24,6 +24,8 @@
 
 #include <resolv.h>
 
+#define DOMAIN_NAME_VALID "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-."
+
 typedef struct _Closure Closure;
 
 struct _Closure {
@@ -89,7 +91,8 @@ entry_has_attribute (LDAP *ldap,
 static gchar *
 entry_get_attribute (LDAP *ldap,
                      LDAPMessage *entry,
-                     const gchar *field)
+                     const gchar *field,
+                     const gchar *valid)
 {
 	struct berval **bvs = NULL;
 	gchar *value = NULL;
@@ -97,8 +100,16 @@ entry_get_attribute (LDAP *ldap,
 	if (entry != NULL)
 		bvs = ldap_get_values_len (ldap, entry, field);
 
-	if (bvs && bvs[0])
+	if (bvs && bvs[0]) {
 		value = g_strndup (bvs[0]->bv_val, bvs[0]->bv_len);
+		if (valid) {
+		       if (strspn (value, valid) != bvs[0]->bv_len) {
+			       g_free (value);
+			       g_message ("Invalid value in LDAP %s field", field);
+			       value = NULL;
+		       }
+		}
+	}
 
 	ldap_value_free_len (bvs);
 
@@ -144,7 +155,7 @@ result_krb_realm (GTask *task,
 	entry = ldap_first_entry (ldap, message);
 
 	g_free (clo->disco->kerberos_realm);
-	clo->disco->kerberos_realm = entry_get_attribute (ldap, entry, "cn");
+	clo->disco->kerberos_realm = entry_get_attribute (ldap, entry, "cn", DOMAIN_NAME_VALID);
 
 	g_debug ("Found realm: %s", clo->disco->kerberos_realm);
 
@@ -200,7 +211,7 @@ result_domain_info (GTask *task,
 
 	/* What is the domain name? */
 	g_free (clo->disco->domain_name);
-	clo->disco->domain_name = entry_get_attribute (ldap, entry, "associatedDomain");
+	clo->disco->domain_name = entry_get_attribute (ldap, entry, "associatedDomain", DOMAIN_NAME_VALID);
 
 	g_debug ("Got associatedDomain: %s", clo->disco->domain_name);
 
@@ -299,7 +310,7 @@ result_root_dse (GTask *task,
 	entry = ldap_first_entry (ldap, message);
 
 	/* Parse out the default naming context */
-	clo->default_naming_context = entry_get_attribute (ldap, entry, "defaultNamingContext");
+	clo->default_naming_context = entry_get_attribute (ldap, entry, "defaultNamingContext", NULL);
 
 	g_debug ("Got defaultNamingContext: %s", clo->default_naming_context);
 

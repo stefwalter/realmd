@@ -118,7 +118,8 @@ AC_ARG_WITH(systemd-journal,
 
 if test "$with_systemd_journal" != "no"; then
 	AC_DEFINE_UNQUOTED(WITH_JOURNAL, 1, [Use systemd's journal])
-	PKG_CHECK_MODULES(SYSTEMD_JOURNAL, libsystemd-journal)
+	PKG_CHECK_MODULES(SYSTEMD_JOURNAL, [libsystemd],,
+	                  [PKG_CHECK_MODULES(SYSTEMD_JOURNAL, [libsystemd-journal])])
 	with_systemd_journal="yes"
 fi
 

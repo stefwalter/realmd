@@ -208,13 +208,14 @@ automatic-install = no
 		<informalexample>
 <programlisting language="js">
 [users]
-default-home = /home/%D/%U
+default-home = /home/%U@%D
 # default-home = /nfs/home/%D-%U
+# default-home = /home/%D/%U
 
 </programlisting>
 		</informalexample>
 
-		<para>The default setting for this is <option>/home/%D/%U</option>. The
+		<para>The default setting for this is <option>/home/%U@%D</option>. The
 		<option>%D</option> format is replaced by the domain name. The <option>%U</option>
 		format is replaced by the user name.</para>
 

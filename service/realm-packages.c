@@ -54,7 +54,7 @@ packages_to_list (gchar **package_ids)
 	for (i = 0; package_ids != NULL && package_ids[i] != NULL; i++) {
 		parts = g_strsplit (package_ids[i], ";", 2);
 		if (string->len)
-			g_string_append (string, ", ");
+			g_string_append (string, " ");
 		g_string_append (string, parts[0]);
 		g_strfreev (parts);
 	}

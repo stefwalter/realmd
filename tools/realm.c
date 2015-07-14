@@ -83,7 +83,7 @@ realm_handle_error (GError *error,
 
 #ifdef WITH_JOURNAL
 	remote = error ? g_dbus_error_get_remote_error (error) : NULL;
-	if (diag_hint && realm_operation_id && !realm_verbose &&
+	if (error && diag_hint && realm_operation_id && !realm_verbose &&
 	    g_strcmp0 (remote, REALM_DBUS_ERROR_NOT_AUTHORIZED) != 0) {
 		g_printerr ("See: journalctl REALMD_OPERATION=%s\n",
 		            realm_operation_id);

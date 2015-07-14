@@ -11,7 +11,7 @@ except ImportError:
 	print >> sys.stderr, "python-jinja2 must be installed in order to build the website"
 
 SRCDIR = os.path.abspath(os.environ.get("SRCDIR", "."))
-INDIR = os.path.join(SRCDIR, "content")
+INDIR = os.path.join(SRCDIR, "doc/website/content")
 BUILDDIR = os.path.abspath(os.environ.get("BUILDDIR", SRCDIR))
 OUTDIR = os.path.join(BUILDDIR, "html")
 
@@ -20,11 +20,11 @@ jinja_env = None
 def main(args):
 	global jinja_env
 
-	os.chdir(SRCDIR)
-
 	args = {
-		"version": open("../version.xml").read().strip()
+		"version": open(BUILDDIR + "/doc/version.xml").read().strip()
 	}
+
+	os.chdir(SRCDIR)
 
 	loader = jinja2.FileSystemLoader(INDIR)
 	jinja_env = jinja2.Environment(loader=loader, autoescape=True,

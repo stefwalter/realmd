@@ -103,21 +103,20 @@ if ENABLE_DOC
 
 include doc/manual/Makefile.am
 include doc/internals/Makefile.am
+include doc/website/Makefile.am
 
 EXTRA_DIST += \
 	doc/version.xml.in \
 	doc/version.xml
 
 DISTCLEANFILES += \
-	website/Makefile
+	doc/website/Makefile
 
-website:
-	make -C website all
-
-upload-website: manual/index.html internals/realmd-internals.html
-	make -C website upload
+upload-website: website manual/index.html internals/realmd-internals.html
 	rsync -Hvax manual/./ anarchy.freedesktop.org:/srv/www.freedesktop.org/www/software/realmd/docs/./
 	rsync -Hvax internals/./ anarchy.freedesktop.org:/srv/www.freedesktop.org/www/software/realmd/internals/./
+	rsync -Hvax --exclude docs --exclude internals --exclude releases \
+		html/* anarchy.freedesktop.org:/srv/www.freedesktop.org/www/software/realmd/
 
 dist-doc-hook: manual/index.html
 	@mkdir $(distdir)/manual

@@ -618,6 +618,10 @@
 
 		  @options can contain, but is not limited to, the following values:
 		  <itemizedlist>
+                    <listitem><para><literal>automatic-id-mapping</literal>: a boolean
+                      value whether to turn on automatic UID/GID mapping. If not
+		      specified the default will come from realmd.conf
+                      configuration.</para></listitem>
 		    <listitem><para><literal>operation</literal>: a string
 		      identifier chosen by the client, which can then later be
 		      passed to org.freedesktop.realmd.Service.Cancel() in order

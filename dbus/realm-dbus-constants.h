@@ -60,6 +60,7 @@ G_BEGIN_DECLS
 
 #define   REALM_DBUS_OPTION_OPERATION              "operation"
 #define   REALM_DBUS_OPTION_COMPUTER_OU            "computer-ou"
+#define   REALM_DBUS_OPTION_AUTOMATIC_ID_MAPPING   "automatic-id-mapping"
 #define   REALM_DBUS_OPTION_SERVER_SOFTWARE        "server-software"
 #define   REALM_DBUS_OPTION_CLIENT_SOFTWARE        "client-software"
 #define   REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE    "membership-software"

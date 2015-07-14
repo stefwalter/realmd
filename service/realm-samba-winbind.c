@@ -72,6 +72,7 @@ on_enable_do_nss (GObject *source,
 void
 realm_samba_winbind_configure_async (RealmIniConfig *config,
                                      const gchar *domain_name,
+                                     GVariant *options,
                                      GDBusMethodInvocation *invocation,
                                      GAsyncReadyCallback callback,
                                      gpointer user_data)
@@ -99,7 +100,7 @@ realm_samba_winbind_configure_async (RealmIniConfig *config,
 		                      "template shell", realm_settings_string ("users", "default-shell"),
 		                      NULL);
 
-		if (realm_options_automatic_mapping (domain_name)) {
+		if (realm_options_automatic_mapping (options, domain_name)) {
 			realm_ini_config_set (config, REALM_SAMBA_CONFIG_GLOBAL,
 			                      "idmap uid", "10000-2000000",
 			                      "idmap gid", "10000-2000000",

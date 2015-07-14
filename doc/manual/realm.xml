@@ -196,6 +196,12 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
 			Directory specific option.</para></listitem>
 		</varlistentry>
 		<varlistentry>
+			<term><option>--no-id-mapping</option></term>
+			<listitem><para>Do not perform UID/GID mapping for users
+			and groups, but expect these identifiers to be present
+			in the domain already.</para></listitem>
+		</varlistentry>
+		<varlistentry>
 			<term><option>--no-password</option></term>
 			<listitem><para>Perform the join automatically without
 			a password.</para></listitem>

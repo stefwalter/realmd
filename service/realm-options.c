@@ -83,14 +83,22 @@ realm_options_computer_ou (GVariant *options,
 }
 
 gboolean
-realm_options_automatic_mapping (const gchar *realm_name)
+realm_options_automatic_mapping (GVariant *options,
+                                 const gchar *realm_name)
 {
+	gboolean mapping = FALSE;
+	gboolean option = FALSE;
 	gchar *section;
-	gboolean mapping;
 
-	section = g_utf8_casefold (realm_name, -1);
-	mapping = realm_settings_boolean (realm_name, "automatic-id-mapping", TRUE);
-	g_free (section);
+	if (options) {
+		option = g_variant_lookup (options, REALM_DBUS_OPTION_AUTOMATIC_ID_MAPPING, "b", &mapping);
+	}
+
+	if (realm_name && !option) {
+		section = g_utf8_casefold (realm_name, -1);
+		mapping = realm_settings_boolean (realm_name, REALM_DBUS_OPTION_AUTOMATIC_ID_MAPPING, TRUE);
+		g_free (section);
+	}
 
 	return mapping;
 }

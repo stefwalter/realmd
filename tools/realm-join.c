@@ -174,7 +174,31 @@ typedef struct {
 	gboolean no_password;
 	gchar *one_time_password;
 	gchar *user_principal;
+	gboolean automatic_id_mapping_set;
+	gboolean automatic_id_mapping;
 } RealmJoinArgs;
+
+static void
+realm_join_args_clear (gpointer data)
+{
+	RealmJoinArgs *args = data;
+	g_free (args->user);
+	g_free (args->computer_ou);
+	g_free (args->client_software);
+	g_free (args->server_software);
+	g_free (args->user_principal);
+}
+
+static gboolean
+realm_join_arg_id_mapping (const gchar *option_name,
+                           const gchar *value,
+                           gpointer data,
+                           GError **error)
+{
+	RealmJoinArgs *args = data;
+	args->automatic_id_mapping_set = TRUE;
+	return realm_parse_boolean (option_name, value, TRUE, &args->automatic_id_mapping, error);
+}
 
 static int
 perform_join (RealmClient *client,
@@ -213,9 +237,13 @@ perform_join (RealmClient *client,
 		return 1;
 	}
 
+g_printerr ("id mapping %d %d\n", args->automatic_id_mapping_set, args->automatic_id_mapping);
 	options = realm_build_options (REALM_DBUS_OPTION_COMPUTER_OU, args->computer_ou,
 	                               REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, args->membership_software,
 	                               REALM_DBUS_OPTION_USER_PRINCIPAL, args->user_principal,
+	                               args->automatic_id_mapping_set ?
+	                                   REALM_DBUS_OPTION_AUTOMATIC_ID_MAPPING : NULL,
+	                                   args->automatic_id_mapping,
 	                               NULL);
 	g_variant_ref_sink (options);
 
@@ -248,6 +276,7 @@ realm_join (RealmClient *client,
 	GError *error = NULL;
 	const gchar *realm_name;
 	RealmJoinArgs args;
+	GOptionGroup *group;
 	gint ret = 0;
 
 	GOptionEntry option_entries[] = {
@@ -265,6 +294,8 @@ realm_join (RealmClient *client,
 		  N_("Join automatically without a password"), NULL },
 		{ "one-time-password", 0, 0, G_OPTION_ARG_STRING, &args.one_time_password,
 		  N_("Join using a preset one time password"), NULL },
+		{ "automatic-id-mapping", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK,
+		  realm_join_arg_id_mapping, N_("Turn off automatic id mapping"), "no" },
 		{ "user-principal", 0, 0, G_OPTION_ARG_STRING, &args.user_principal,
 		  N_("Set the user principal for the computer account"), NULL },
 		{ NULL, }
@@ -274,8 +305,11 @@ realm_join (RealmClient *client,
 
 	context = g_option_context_new ("realm");
 	g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
-	g_option_context_add_main_entries (context, option_entries, NULL);
-	g_option_context_add_main_entries (context, realm_global_options, NULL);
+
+	group = g_option_group_new (NULL, NULL, NULL, &args, realm_join_args_clear);
+	g_option_group_add_entries (group, option_entries);
+	g_option_group_add_entries (group, realm_global_options);
+	g_option_context_set_main_group (context, group);
 
 	if (!g_option_context_parse (context, &argc, &argv, &error)) {
 		g_printerr ("%s: %s\n", g_get_prgname (), error->message);
@@ -301,11 +335,6 @@ realm_join (RealmClient *client,
 		ret = perform_join (client, realm_name, &args);
 	}
 
-	g_free (args.user);
-	g_free (args.computer_ou);
-	g_free (args.client_software);
-	g_free (args.server_software);
-	g_free (args.user_principal);
 	g_option_context_free (context);
 	return ret;
 }

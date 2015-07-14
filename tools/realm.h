@@ -67,6 +67,12 @@ void                  realm_handle_error           (GError *error,
                                                     const gchar *format,
                                                     ...) G_GNUC_PRINTF (2, 3);
 
+gboolean              realm_parse_boolean          (const gchar *option,
+						    const gchar *value,
+						    gboolean defalt,
+						    gboolean *result,
+						    GError **error);
+
 GVariant *            realm_kinit_to_kerberos_cache     (const gchar *name,
                                                          const gchar *realm,
                                                          const gchar *password,

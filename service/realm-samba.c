@@ -200,7 +200,7 @@ on_join_do_winbind (GObject *source,
 
 	if (error == NULL) {
 		name = realm_kerberos_get_name (REALM_KERBEROS (self));
-		realm_samba_winbind_configure_async (self->config, name,
+		realm_samba_winbind_configure_async (self->config, name, enroll->options,
 		                                     enroll->invocation,
 		                                     on_winbind_done, g_object_ref (task));
 	} else {

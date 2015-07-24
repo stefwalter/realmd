@@ -24,6 +24,8 @@
 
 #include <glib/gi18n.h>
 
+#define CALL_TIMEOUT (24 * 60 * 60 * 1000)
+
 static gboolean
 packages_check_paths (const gchar **paths,
                             GDBusMethodInvocation *invocation)
@@ -226,7 +228,7 @@ on_set_hints (GObject *source,
 		                        transaction->parameters,
 		                        G_VARIANT_TYPE ("()"),
 		                        G_DBUS_CALL_FLAGS_NO_AUTO_START,
-		                        -1, g_task_get_cancellable (task),
+		                        CALL_TIMEOUT, g_task_get_cancellable (task),
 		                        on_method_done, g_object_ref (task));
 	}
 
@@ -276,7 +278,7 @@ on_create_transaction (GObject *source,
 		                        g_variant_new ("(^as)", hints),
 		                        G_VARIANT_TYPE ("()"),
 		                        G_DBUS_CALL_FLAGS_NO_AUTO_START,
-		                        -1, g_task_get_cancellable (task),
+		                        CALL_TIMEOUT, g_task_get_cancellable (task),
 		                        on_set_hints, g_object_ref (task));
 	}
 
@@ -310,7 +312,7 @@ package_transaction_create (const gchar *method,
 	                        g_variant_new ("()"),
 	                        G_VARIANT_TYPE ("(o)"),
 	                        G_DBUS_CALL_FLAGS_NONE,
-	                        -1, cancellable,
+	                        CALL_TIMEOUT, cancellable,
 	                        on_create_transaction, g_object_ref (task));
 }
 

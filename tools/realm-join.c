@@ -237,7 +237,6 @@ perform_join (RealmClient *client,
 		return 1;
 	}
 
-g_printerr ("id mapping %d %d\n", args->automatic_id_mapping_set, args->automatic_id_mapping);
 	options = realm_build_options (REALM_DBUS_OPTION_COMPUTER_OU, args->computer_ou,
 	                               REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, args->membership_software,
 	                               REALM_DBUS_OPTION_USER_PRINCIPAL, args->user_principal,

@@ -18,6 +18,8 @@
 #include "realm-options.h"
 #include "realm-settings.h"
 
+#include <string.h>
+
 gboolean
 realm_options_automatic_install (void)
 {
@@ -127,4 +129,33 @@ realm_options_qualify_names (const gchar *realm_name)
 	g_free (section);
 
 	return qualify;
+}
+
+gboolean
+realm_options_check_domain_name (const gchar *name)
+{
+	/*
+	 * DNS Domain names are pretty liberal (internet domain names
+	 * are more restrictive) See RFC 2181 section 11
+	 *
+	 * http://www.ietf.org/rfc/rfc2181.txt
+	 *
+	 * However we cannot consume names with whitespace and problematic
+	 * punctuation, due to the various programs that parse the
+	 * configuration files we set up.
+	 */
+
+	gsize i, len;
+	static const gchar *invalid = "=[]:";
+
+	g_return_val_if_fail (name != NULL, FALSE);
+
+	for (i = 0, len = strlen (name); i < len; i++) {
+		if (name[i] <= ' ')
+			return FALSE;
+		if (strchr (invalid, name[i]))
+			return FALSE;
+	}
+
+	return TRUE;
 }

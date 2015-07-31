@@ -17,6 +17,7 @@
 #include "realm-dbus-constants.h"
 #include "realm-disco-mscldap.h"
 #include "realm-ldap.h"
+#include "realm-options.h"
 
 #include <glib/gi18n.h>
 
@@ -39,8 +40,6 @@ typedef struct {
 #ifndef HOST_NAME_MAX
 #define HOST_NAME_MAX 255
 #endif
-
-#define DOMAIN_NAME_VALID "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-."
 
 static void
 closure_free (gpointer data)
@@ -100,21 +99,19 @@ get_string (guchar *beg,
             guchar **at)
 {
 	gchar buffer[HOST_NAME_MAX];
-	gsize len;
 	int n;
 
 	n = dn_expand (beg, end, *at, buffer, sizeof (buffer));
 	if (n < 0)
 		return NULL;
 
-	len = strlen (buffer);
-	if (strspn (buffer, DOMAIN_NAME_VALID) != len) {
+	if (!realm_options_check_domain_name (buffer)) {
 		g_message ("received invalid NetLogon string characters");
 		return NULL;
 	}
 
 	(*at) += n;
-	return g_strndup (buffer, len);
+	return g_strdup (buffer);
 }
 
 static gboolean

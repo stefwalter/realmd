@@ -19,12 +19,11 @@
 #include "realm-disco-mscldap.h"
 #include "realm-disco-rootdse.h"
 #include "realm-ldap.h"
+#include "realm-options.h"
 
 #include <glib/gi18n.h>
 
 #include <resolv.h>
-
-#define DOMAIN_NAME_VALID "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-."
 
 typedef struct _Closure Closure;
 
@@ -92,7 +91,7 @@ static gchar *
 entry_get_attribute (LDAP *ldap,
                      LDAPMessage *entry,
                      const gchar *field,
-                     const gchar *valid)
+                     gboolean domain_name)
 {
 	struct berval **bvs = NULL;
 	gchar *value = NULL;
@@ -102,8 +101,8 @@ entry_get_attribute (LDAP *ldap,
 
 	if (bvs && bvs[0]) {
 		value = g_strndup (bvs[0]->bv_val, bvs[0]->bv_len);
-		if (valid) {
-		       if (strspn (value, valid) != bvs[0]->bv_len) {
+		if (domain_name) {
+		       if (!realm_options_check_domain_name (value)) {
 			       g_free (value);
 			       g_message ("Invalid value in LDAP %s field", field);
 			       value = NULL;
@@ -155,7 +154,7 @@ result_krb_realm (GTask *task,
 	entry = ldap_first_entry (ldap, message);
 
 	g_free (clo->disco->kerberos_realm);
-	clo->disco->kerberos_realm = entry_get_attribute (ldap, entry, "cn", DOMAIN_NAME_VALID);
+	clo->disco->kerberos_realm = entry_get_attribute (ldap, entry, "cn", TRUE);
 
 	g_debug ("Found realm: %s", clo->disco->kerberos_realm);
 
@@ -211,7 +210,7 @@ result_domain_info (GTask *task,
 
 	/* What is the domain name? */
 	g_free (clo->disco->domain_name);
-	clo->disco->domain_name = entry_get_attribute (ldap, entry, "associatedDomain", DOMAIN_NAME_VALID);
+	clo->disco->domain_name = entry_get_attribute (ldap, entry, "associatedDomain", TRUE);
 
 	g_debug ("Got associatedDomain: %s", clo->disco->domain_name);
 
@@ -310,7 +309,7 @@ result_root_dse (GTask *task,
 	entry = ldap_first_entry (ldap, message);
 
 	/* Parse out the default naming context */
-	clo->default_naming_context = entry_get_attribute (ldap, entry, "defaultNamingContext", NULL);
+	clo->default_naming_context = entry_get_attribute (ldap, entry, "defaultNamingContext", FALSE);
 
 	g_debug ("Got defaultNamingContext: %s", clo->default_naming_context);
 

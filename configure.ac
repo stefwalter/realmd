@@ -371,7 +371,7 @@ AC_SUBST(TEST_MODE)
 # ------------------------------------------------------------------------------
 # Results
 
-privatedir='${libdir}/realmd'
+privatedir='${prefix}/lib/realmd'
 AC_SUBST(privatedir)
 
 cachedir='${localstatedir}/cache/realmd'

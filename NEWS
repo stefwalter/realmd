@@ -1,3 +1,9 @@
+0.16.2
+ * Be more liberal with domain name chars
+ * Increase timeout when calling PackageKit
+ * List package names with spaces between them [#89464]
+ * Install to $prefix/lib instead of $libdir
+
 0.16.1
  * libsystemd build fix [#90519]
  * Change default home directory to /home/%U@%D

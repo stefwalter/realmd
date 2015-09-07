@@ -14,7 +14,7 @@
 
 #include "config.h"
 
-#include "realm-samba-util.h"
+#include "realm-dn-util.h"
 
 #include <glib.h>
 
@@ -40,21 +40,16 @@ berval_case_equals (const struct berval *v1,
 
 static gboolean
 dn_equals_domain (LDAPDN dn,
+                  const gchar *domain_dn_str,
                   const gchar *domain)
 {
 	LDAPDN domain_dn;
-	gchar *domain_dn_str;
 	gboolean ret;
 	int rc;
 	gint i, j;
 
-	rc = ldap_domain2dn (domain, &domain_dn_str);
-	g_return_val_if_fail (rc == LDAP_SUCCESS, FALSE);
-
 	rc = ldap_str2dn (domain_dn_str, &domain_dn, LDAP_DN_FORMAT_LDAPV3);
 	g_return_val_if_fail (rc == LDAP_SUCCESS, FALSE);
-
-	ldap_memfree (domain_dn_str);
 
 	for (i = 0; dn[i] != NULL && domain_dn[i] != NULL; i++) {
 		for (j = 0; dn[i][j] != NULL && domain_dn[i][j] != NULL; j++) {
@@ -76,9 +71,10 @@ dn_equals_domain (LDAPDN dn,
 }
 
 gchar *
-realm_samba_util_build_strange_ou (const gchar *ldap_dn,
-                                   const gchar *domain)
+realm_dn_util_build_samba_ou (const gchar *ldap_dn,
+                              const gchar *domain)
 {
+	gchar *domain_dn_str = NULL;
 	GArray *parts;
 	GString *part;
 	gchar **strv;
@@ -128,7 +124,11 @@ realm_samba_util_build_strange_ou (const gchar *ldap_dn,
 
 		/* A DC, remainder must match the domain */
 		} else if (berval_is_string (&ava->la_attr, "DC", 2)) {
-			ret = dn_equals_domain (dn + i, domain);
+			rc = ldap_domain2dn (domain, &domain_dn_str);
+			if (rc != LDAP_SUCCESS)
+				ret = FALSE;
+			else
+				ret = dn_equals_domain (dn + i, domain_dn_str, domain);
 			break;
 
 		/* An OU, include */
@@ -158,6 +158,8 @@ realm_samba_util_build_strange_ou (const gchar *ldap_dn,
 	}
 
 	ldap_dnfree (dn);
+	if (domain_dn_str)
+		ldap_memfree (domain_dn_str);
 
 	strv = (gchar **)g_array_free (parts, FALSE);
 	str = NULL;
@@ -168,5 +170,70 @@ realm_samba_util_build_strange_ou (const gchar *ldap_dn,
 
 	g_strfreev (strv);
 
+	return str;
+}
+
+gchar *
+realm_dn_util_build_qualified (const gchar *ldap_dn,
+                               const gchar *domain)
+{
+	gchar *domain_dn_str = NULL;
+	gboolean had_dc = FALSE;
+	gchar *str;
+	LDAPAVA* ava;
+	gboolean ret;
+	LDAPDN dn;
+	int rc;
+	gint i;
+
+	/* ldap_str2dn doesn't like empty strings */
+	while (g_ascii_isspace (ldap_dn[0]))
+		ldap_dn++;
+	if (g_str_equal (ldap_dn, ""))
+		return NULL;
+
+	rc = ldap_str2dn (ldap_dn, &dn, LDAP_DN_FORMAT_LDAPV3);
+	if (rc != LDAP_SUCCESS)
+		return NULL;
+
+	rc = ldap_domain2dn (domain, &domain_dn_str);
+	if (rc != LDAP_SUCCESS) {
+		ldap_dnfree (dn);
+		return NULL;
+	}
+
+	ret = TRUE;
+
+	for (i = 0; dn[i] != NULL; i++) {
+		ava = dn[i][0];
+
+		/*
+		 * Make sure this is a valid DN, we only support one value per
+		 * RDN, string values. DC values are allowed but only at the end of the DN.
+		 */
+
+		if (ava == NULL || dn[i][1] != NULL || !(ava->la_flags & LDAP_AVA_STRING)) {
+			ret = FALSE;
+			break;
+
+		/* A DC, remainder must match the domain */
+		} else if (berval_is_string (&ava->la_attr, "DC", 2)) {
+			had_dc = TRUE;
+			ret = dn_equals_domain (dn + i, domain_dn_str, domain);
+			break;
+		}
+	}
+
+	ldap_dnfree (dn);
+
+	if (!ret)
+		return NULL;
+
+	if (had_dc)
+		str = g_strdup (ldap_dn);
+	else
+		str = g_strdup_printf ("%s,%s", ldap_dn, domain_dn_str);
+
+	ldap_memfree (domain_dn_str);
 	return str;
 }

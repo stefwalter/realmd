@@ -18,12 +18,12 @@
 #include "realm-daemon.h"
 #include "realm-dbus-constants.h"
 #include "realm-diagnostics.h"
+#include "realm-dn-util.h"
 #include "realm-errors.h"
 #include "realm-options.h"
 #include "realm-samba-config.h"
 #include "realm-samba-enroll.h"
 #include "realm-samba-provider.h"
-#include "realm-samba-util.h"
 #include "realm-settings.h"
 
 #include <glib/gstdio.h>
@@ -314,7 +314,7 @@ begin_join (GTask *task,
 
 	computer_ou = realm_options_computer_ou (options, join->disco->domain_name);
 	if (computer_ou != NULL) {
-		strange_ou = realm_samba_util_build_strange_ou (computer_ou, join->disco->domain_name);
+		strange_ou = realm_dn_util_build_samba_ou (computer_ou, join->disco->domain_name);
 		if (strange_ou) {
 			if (!g_str_equal (strange_ou, ""))
 				join->join_args[at++] = g_strdup_printf ("createcomputer=%s", strange_ou);

@@ -43,6 +43,8 @@ realmd_SOURCES = \
 	service/realm-disco-mscldap.h \
 	service/realm-disco-rootdse.c \
 	service/realm-disco-rootdse.h \
+	service/realm-dn-util.c \
+	service/realm-dn-util.h \
 	service/realm-errors.c \
 	service/realm-errors.h \
 	service/realm-example.c \
@@ -79,8 +81,6 @@ realmd_SOURCES = \
 	service/realm-samba-enroll.h \
 	service/realm-samba-provider.c \
 	service/realm-samba-provider.h \
-	service/realm-samba-util.c \
-	service/realm-samba-util.h \
 	service/realm-samba-winbind.c \
 	service/realm-samba-winbind.h \
 	service/realm-service.c \

@@ -76,12 +76,12 @@ temp.txt
 
 /tests/frob-install-packages
 /tests/frob-package-set
+/tests/test-dn-util
 /tests/test-ini-config
 /tests/test-samba-config
 /tests/test-login-name
 /tests/test-safe-format
 /tests/test-sssd-config
-/tests/test-samba-ou-format
 /tests/test-settings
 
 /tools/realm

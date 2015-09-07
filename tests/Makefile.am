@@ -12,11 +12,11 @@ TEST_LIBS = \
 	$(GLIB_LIBS)
 
 TEST_PROGS = \
+	test-dn-util \
 	test-ini-config \
 	test-sssd-config \
 	test-safe-format \
 	test-login-name \
-	test-samba-ou-format \
 	test-settings \
 	$(NULL)
 
@@ -26,6 +26,13 @@ check_PROGRAMS += $(TEST_PROGS)
 noinst_PROGRAMS +=  \
 	frob-install-packages \
 	$(NULL)
+
+test_dn_util_SOURCES = \
+	tests/test-dn-util.c \
+	service/realm-dn-util.c \
+	$(NULL)
+test_dn_util_LDADD = $(TEST_LIBS)
+test_dn_util_CFLAGS = $(TEST_CFLAGS)
 
 test_ini_config_SOURCES = \
 	tests/test-ini-config.c \
@@ -58,13 +65,6 @@ test_login_name_SOURCES = \
 	$(NULL)
 test_login_name_LDADD = $(TEST_LIBS)
 test_login_name_CFLAGS = $(TEST_CFLAGS)
-
-test_samba_ou_format_SOURCES = \
-	tests/test-samba-ou-format.c \
-	service/realm-samba-util.c \
-	$(NULL)
-test_samba_ou_format_LDADD = $(TEST_LIBS)
-test_samba_ou_format_CFLAGS = $(TEST_CFLAGS)
 
 test_settings_SOURCES = \
 	tests/test-settings.c \

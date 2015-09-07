@@ -18,6 +18,7 @@
 #include "realm-command.h"
 #include "realm-daemon.h"
 #include "realm-diagnostics.h"
+#include "realm-dn-util.h"
 #include "realm-errors.h"
 #include "realm-ini-config.h"
 #include "realm-options.h"
@@ -82,6 +83,7 @@ realm_adcli_enroll_join_async (RealmDisco *disco,
 	gchar *ccache_arg = NULL;
 	gchar *upn_arg = NULL;
 	gchar *server_arg = NULL;
+	gchar *ou_arg = NULL;
 
 	g_return_if_fail (cred != NULL);
 	g_return_if_fail (disco != NULL);
@@ -120,9 +122,13 @@ realm_adcli_enroll_join_async (RealmDisco *disco,
 	}
 
 	computer_ou = realm_options_computer_ou (options, disco->domain_name);
-	if (computer_ou) {
+	if (computer_ou != NULL) {
+		ou_arg = realm_dn_util_build_qualified (computer_ou, disco->domain_name);
 		g_ptr_array_add (args, "--computer-ou");
-		g_ptr_array_add (args, (gpointer)computer_ou);
+		if (ou_arg)
+			g_ptr_array_add (args, ou_arg);
+		else
+			g_ptr_array_add (args, (gpointer)computer_ou);
 	}
 
 	os = realm_settings_value ("active-directory", "os-name");
@@ -190,6 +196,7 @@ realm_adcli_enroll_join_async (RealmDisco *disco,
 	free (ccache_arg);
 	free (upn_arg);
 	free (server_arg);
+	free (ou_arg);
 }
 
 gboolean

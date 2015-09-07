@@ -615,6 +615,7 @@ realm_packages_install_async (const gchar **package_sets,
 	task = g_task_new (NULL, NULL, callback, user_data);
 	install = g_new0 (InstallClosure, 1);
 	install->automatic = realm_options_automatic_install ();
+	install->invocation = invocation ? g_object_ref (invocation) : NULL;
 	install->connection = g_object_ref (connection);
 	g_task_set_task_data (task, install, install_closure_free);
 

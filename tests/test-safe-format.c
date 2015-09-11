@@ -194,7 +194,7 @@ main (int argc,
 		else
 			escaped = g_strdup (fixtures[i].format);
 		g_strdelimit (escaped, " =\\/", '_');
-		name = g_strdup_printf ("/realmd/safe-format/%s", escaped);
+		name = g_strdup_printf ("/realmd/safe-format/%d-%s", i, escaped);
 		g_free (escaped);
 
 		g_test_add_data_func (name, fixtures + i, test_safe_format_string_cb);

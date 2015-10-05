@@ -21,6 +21,7 @@
 #include <string.h>
 
 typedef struct {
+	const gchar *name;
 	const gchar *format;
 	const gchar *args[8];
 	const gchar *result;
@@ -61,71 +62,85 @@ test_safe_format_string_cb (gconstpointer user_data)
 static const Fixture fixtures[] = {
 	{
 	  /* Just a bog standard string */
+	  "standard_string",
 	  "%s", { "blah", NULL, },
 	  "blah"
 	},
 	{
 	  /* Empty to print */
+	  "empty_string",
 	  "%s", { "", NULL, },
 	  ""
 	},
 	{
 	  /* Nothing to print */
+	  "empty_format",
 	  "", { "blah", NULL, },
 	  ""
 	},
 	{
 	  /* Width right aligned */
+	  "right_aligned",
 	  "%8s", { "blah", NULL, },
 	  "    blah"
 	},
 	{
 	  /* Width left aligned */
+	  "left_aligned",
 	  "whoop %-8s doo", { "dee", NULL, },
 	  "whoop dee      doo"
 	},
 	{
-	  /* Width space aligned (ignored) */
+	  /* Width right space aligned (ignored) */
+	  "width_right_aligned_space",
 	  "whoop % 8s doo", { "dee", NULL, },
 	  "whoop      dee doo"
 	},
 	{
 	  /* Width left space aligned (ignored) */
+	  "width_left_aligned_space",
 	  "whoop % -8s doo", { "dee", NULL, },
 	  "whoop dee      doo"
 	},
 	{
 	  /* Precision 1 digit */
+	  "precision_1_digit",
 	  "whoop %.3s doo", { "deedle-dee", NULL, },
 	  "whoop dee doo"
 	},
 	{
 	  /* Precision, N digits */
+	  "precision_n_digits",
 	  "whoop %.10s doo", { "deedle-dee-deedle-do-deedle-dum", NULL, },
 	  "whoop deedle-dee doo"
 	},
 	{
 	  /* Precision, zero digits */
+	  "precision_0_digits",
 	  "whoop %.s doo", { "deedle", NULL, },
 	  "whoop  doo"
 	},
 	{
 	  /* Multiple simple arguments */
+	  "multiple_simple_args",
 	  "space %s %s", { "man", "dances", NULL, },
 	  "space man dances"
 	},
 	{
 	  /* Literal percent */
+	  "literal_percent",
 	  "100%% of space folk dance", { NULL, },
 	  "100% of space folk dance"
 	},
 	{
-	  /* Multiple simple arguments */
+	  /* Multiple positional arguments */
+	  "multiple_positional_args",
 	  "space %2$s %1$s", { "dances", "man", NULL, },
 	  "space man dances"
 	},
 	{
 	  /* Skipping an argument (not supported by standard printf) */
+	  "skipping_arg",
 	  "space %2$s dances", { "dances", "man", NULL, },
 	  "space man dances"
 	},
@@ -134,21 +149,25 @@ static const Fixture fixtures[] = {
 
 	{
 	  /* Unsupported conversion */
+	  "unsupported_conversion",
 	  "%x", { "blah", NULL, },
 	  NULL
 	},
 	{
 	  /* Bad positional argument */
+	  "bad_positional_arg",
 	  "space %55$s dances", { "dances", "man", NULL, },
 	  NULL
 	},
 	{
 	  /* Zero positional argument */
+	  "zero_positional_arg",
 	  "space %0$s dances", { "dances", "man", NULL, },
 	  NULL
 	},
 	{
 	  /* Too many args used */
+	  "too_many_args",
 	  "%s %s dances", { "space", NULL, },
 	  NULL
 	},
@@ -181,7 +200,6 @@ int
 main (int argc,
       char **argv)
 {
-	gchar *escaped;
 	gchar *name;
 	gint i;
 
@@ -189,14 +207,7 @@ main (int argc,
 	g_set_prgname ("test-safe-format");
 
 	for (i = 0; i < G_N_ELEMENTS (fixtures); i++) {
-		if (g_str_equal (fixtures[i].format, ""))
-			escaped = g_strdup ("_empty_");
-		else
-			escaped = g_strdup (fixtures[i].format);
-		g_strdelimit (escaped, " =\\/", '_');
-		name = g_strdup_printf ("/realmd/safe-format/%d-%s", i, escaped);
-		g_free (escaped);
-
+		name = g_strdup_printf ("/realmd/safe-format/%s", fixtures[i].name);
 		g_test_add_data_func (name, fixtures + i, test_safe_format_string_cb);
 		g_free (name);
 	}

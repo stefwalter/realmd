@@ -3,14 +3,15 @@
 # This file is distributed under the same license as the PACKAGE package.
 # 
 # Translators:
+# Josef Andersson <josef.andersson@fripost.org>, 2015
 msgid ""
 msgstr ""
 "Project-Id-Version: realmd\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2014-01-07 18:08+0100\n"
-"PO-Revision-Date: 2013-01-14 15:31+0000\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: Swedish (http://www.transifex.com/projects/p/freedesktop/language/sv/)\n"
+"POT-Creation-Date: 2015-10-19 11:43+0200\n"
+"PO-Revision-Date: 2015-10-20 19:12+0000\n"
+"Last-Translator: Stef Walter <stefw@gnome.org>\n"
+"Language-Team: Swedish (http://www.transifex.com/freedesktop/realmd/language/sv/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -19,190 +20,190 @@ msgstr ""
 
 #: ../service/org.freedesktop.realmd.policy.in.h:1
 msgid "Discover realm"
-msgstr ""
+msgstr "Upptäck sfär"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:2
 msgid "Authentication is required to discover a kerberos realm"
-msgstr ""
+msgstr "Autentisering krävs för att upptäcka en kerberos-sfär"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:3
 msgid "Join machine to realm"
-msgstr ""
+msgstr "Anslut maskin till sfär"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:4
 msgid "Authentication is required to join this machine to a realm or domain"
-msgstr ""
+msgstr "Autentisering krävs för att ansluta denna maskin till en sfär eller domän"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:5
 msgid "Remove machine from realm"
-msgstr ""
+msgstr "Ta bort maskin från sfär"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:6
 msgid ""
 "Authentication is required to remove this computer from a realm or domain."
-msgstr ""
+msgstr "Autentisering krävs för att ta bort denna dator från en sfär eller domän."
 
 #: ../service/org.freedesktop.realmd.policy.in.h:7
 msgid "Change login policy"
-msgstr ""
+msgstr "Ändra inloggningspolicy"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:8
 msgid ""
 "Authentication is required to change the policy of who can log in on this "
 "computer."
-msgstr ""
+msgstr "Autentisering krävs för att ändra policy för vem som kan logga in på denna dator."
 
 #: ../service/realm-command.c:347
 #, c-format
 msgid "Process was terminated with signal: %d"
-msgstr ""
+msgstr "Processen avslutades med signalen: %d"
 
 #: ../service/realm-command.c:396 ../service/realm-ldap.c:349
 #, c-format
 msgid "The operation was cancelled"
-msgstr ""
+msgstr "Åtgärden avbröts"
 
 #: ../service/realm-command.c:573
 #, c-format
 msgid "Configured command not found: %s"
-msgstr ""
+msgstr "Konfigurerat kommando hittades inte: %s"
 
 #: ../service/realm-command.c:578
 #, c-format
 msgid "Skipped command: %s"
-msgstr ""
+msgstr "Överhoppat kommando: %s"
 
 #: ../service/realm-command.c:584
 #, c-format
 msgid "Configured command invalid: %s"
-msgstr ""
+msgstr "Konfigurerat kommando ogiltigt: %s"
 
-#: ../service/realm-disco-mscldap.c:192
+#: ../service/realm-disco-mscldap.c:198
 #, c-format
 msgid "Received invalid or unsupported Netlogon data from server"
-msgstr ""
+msgstr "Tog emot ogiltigt eller Netlogon-data som inte stöds från server"
 
-#: ../service/realm-disco-mscldap.c:340
+#: ../service/realm-disco-mscldap.c:346
 msgid "LDAP on this system does not support UDP connections"
-msgstr ""
+msgstr "LDAP på detta system stödjer inte UDP-anslutningar"
 
 #: ../service/realm-example.c:82 ../service/realm-samba.c:247
 #: ../service/realm-sssd-ad.c:309 ../service/realm-sssd-ipa.c:318
 #, c-format
 msgid "Unsupported or unknown membership software '%s'"
-msgstr ""
+msgstr "Medlemskapsprogramvaran ”%s” är okänd eller stöds ej"
 
 #: ../service/realm-example.c:170 ../service/realm-samba.c:282
 msgid "Already joined to a domain"
-msgstr ""
+msgstr "Redan anslutit till en domän"
 
-#: ../service/realm-example.c:178 ../service/realm-example.c:260
+#: ../service/realm-example.c:178 ../service/realm-example.c:271
 msgid "Admin name or password is not valid"
-msgstr ""
+msgstr "Admin-namn eller lösenord ogiltigt"
 
-#: ../service/realm-example.c:231 ../service/realm-samba.c:408
-#: ../service/realm-sssd-ad.c:493
+#: ../service/realm-example.c:242 ../service/realm-samba.c:422
+#: ../service/realm-sssd-ad.c:514
 msgid "Not currently joined to this domain"
-msgstr ""
+msgstr "Ej ansluten till denna domän för tillfället"
 
-#: ../service/realm-example.c:290
+#: ../service/realm-example.c:301
 msgid "Need credentials for leaving this domain"
-msgstr ""
+msgstr "Behöver autentiseringsuppgifter för att lämna denna domän"
 
 #: ../service/realm-ini-config.c:736
 #, c-format
 msgid "Couldn't write out config: %s"
-msgstr ""
+msgstr "Kunde inte skriva ut konfigurationen: %s"
 
 #: ../service/realm-invocation.c:536
 msgid "Not authorized to perform this action"
-msgstr ""
+msgstr "Ej behörig till att utföra denna åtgärd"
 
 #: ../service/realm-kerberos.c:130 ../service/realm-kerberos.c:208
 #: ../service/realm-provider.c:156
 msgid "Operation was cancelled."
-msgstr ""
+msgstr "Åtgärden avbröts."
 
 #: ../service/realm-kerberos.c:135
 msgid "Failed to enroll machine in realm. See diagnostics."
-msgstr ""
+msgstr "Misslyckades med att registrera maskin i sfär. Se diagnostik."
 
 #: ../service/realm-kerberos.c:213
 msgid "Failed to unenroll machine from domain. See diagnostics."
-msgstr ""
-
-#: ../service/realm-kerberos.c:268
-msgid "Joining this realm without credentials is not supported"
-msgstr ""
-
-#: ../service/realm-kerberos.c:269
-msgid "Leaving this realm without credentials is not supported"
-msgstr ""
+msgstr "Misslyckades med att avregistrera maskin från domän. Se diagnostik."
 
 #: ../service/realm-kerberos.c:272
-msgid "Joining this realm using a credential cache is not supported"
-msgstr ""
+msgid "Joining this realm without credentials is not supported"
+msgstr "Att ansluta till denna sfär utan autentiseringsuppgifter stöds ej"
 
 #: ../service/realm-kerberos.c:273
-msgid "Leaving this realm using a credential cache is not supported"
-msgstr ""
+msgid "Leaving this realm without credentials is not supported"
+msgstr "Att lämna denna sfär utan autentiseringsuppgifter stöds ej"
 
 #: ../service/realm-kerberos.c:276
-msgid "Joining this realm using a secret is not supported"
-msgstr ""
+msgid "Joining this realm using a credential cache is not supported"
+msgstr "Att ansluta till denna sfär med en autentiseringscache stöds ej"
 
 #: ../service/realm-kerberos.c:277
-msgid "Unenrolling this realm using a secret is not supported"
-msgstr ""
+msgid "Leaving this realm using a credential cache is not supported"
+msgstr "Att lämna denna sfär med en autentiseringscache stöds ej"
 
 #: ../service/realm-kerberos.c:280
-msgid "Enrolling this realm using a password is not supported"
-msgstr ""
+msgid "Joining this realm using a secret is not supported"
+msgstr "Att ansluta till denna sfär med en hemlighet stöds ej"
 
 #: ../service/realm-kerberos.c:281
+msgid "Unenrolling this realm using a secret is not supported"
+msgstr "Att avregistrera denna sfär med en hemlighet stöds ej"
+
+#: ../service/realm-kerberos.c:284
+msgid "Enrolling this realm using a password is not supported"
+msgstr "Att registrera denna sfär med ett lösenord stöds ej"
+
+#: ../service/realm-kerberos.c:285
 msgid "Unenrolling this realm using a password is not supported"
-msgstr ""
+msgstr "Att avregistrera denna sfär med ett lösenord stöds ej"
 
-#: ../service/realm-kerberos.c:306
+#: ../service/realm-kerberos.c:311
 msgid "Joining this realm is not supported"
-msgstr ""
+msgstr "Att ansluta till denna sfär stöds ej"
 
-#: ../service/realm-kerberos.c:307
+#: ../service/realm-kerberos.c:312
 msgid "Leaving this realm is not supported"
-msgstr ""
+msgstr "Att lämna denna sfär stöds ej"
 
-#: ../service/realm-kerberos.c:327 ../service/realm-kerberos.c:501
+#: ../service/realm-kerberos.c:332 ../service/realm-kerberos.c:504
 msgid "Already running another action"
-msgstr ""
+msgstr "Kör redan en annan åtgärd"
 
-#: ../service/realm-kerberos.c:372
+#: ../service/realm-kerberos.c:375
 #, c-format
 msgid "Already joined to another domain: %s"
-msgstr ""
+msgstr "Redan anslutit till en domän: %s"
 
-#: ../service/realm-kerberos.c:443
+#: ../service/realm-kerberos.c:446
 msgid "Failed to change permitted logins. See diagnostics."
-msgstr ""
+msgstr "Misslyckades med att ändra tillåtna inloggningar. Se diagnostik."
 
-#: ../service/realm-kerberos.c:742
+#: ../service/realm-kerberos.c:747
 #, c-format
 msgid "The realm does not allow specifying logins"
-msgstr ""
+msgstr "Sfären tillåter inte att ange inloggningar"
 
-#: ../service/realm-kerberos.c:750
+#: ../service/realm-kerberos.c:755
 #, c-format
 msgid "Invalid login argument%s%s%s does not match the login format."
-msgstr ""
+msgstr "Ogiltigt inloggningsargument%s%s%s matchar inte inloggningsformatet."
 
-#: ../service/realm-packages.c:179
+#: ../service/realm-packages.c:389
 #, c-format
 msgid "The following packages are not available for installation: %s"
-msgstr ""
+msgstr "Följande paket är inte tillgängliga för installation: %s"
 
-#: ../service/realm-packages.c:237 ../service/realm-packages.c:271
+#: ../service/realm-packages.c:471 ../service/realm-packages.c:508
 #, c-format
 msgid "Necessary packages are not installed: %s"
-msgstr ""
+msgstr "Nödvändiga paket är inte installerade: %s"
 
 #. * Various people have been worried by installing packages
 #. * quietly, so notify about what's going on.
@@ -211,368 +212,376 @@ msgstr ""
 #. * more worrisome than the installation. It's realmd's job
 #. * to configure, enable and start stuff. So if you're properly
 #. * worried, remove realmd and do stuff manually.
-#. 
-#: ../service/realm-packages.c:242 ../tools/realm-client.c:143
+#: ../service/realm-packages.c:477 ../tools/realm-client.c:143
 msgid "Installing necessary packages"
-msgstr ""
+msgstr "Installera nödvändiga paket"
 
 #: ../service/realm-provider.c:161
 msgid "Failed to discover realm. See diagnostics."
-msgstr ""
+msgstr "Misslyckades med att upptäcka sfär. Se diagnostik."
 
-#: ../service/realm-samba.c:440
+#: ../service/realm-samba.c:467
 #, c-format
 msgid "Not joined to this domain"
-msgstr ""
+msgstr "Ej ansluten till denna domän"
 
-#: ../service/realm-samba.c:450 ../service/realm-samba.c:492
+#: ../service/realm-samba.c:477 ../service/realm-samba.c:519
 #, c-format
 msgid "The Samba provider cannot restrict permitted logins."
-msgstr ""
+msgstr "Sambaleverantören kan inte hindra tillåtna inloggningar."
 
 #: ../service/realm-sssd.c:130
 #, c-format
 msgid "Invalid login argument '%s' contains unsupported characters."
-msgstr ""
+msgstr "Ogiltigt inloggningsargument ”%s” innehåller tecken som inte stöds."
 
 #: ../service/realm-sssd-ad.c:126 ../service/realm-sssd-ipa.c:124
 #, c-format
 msgid "Enabling SSSD in nsswitch.conf and PAM failed."
-msgstr ""
+msgstr "Misslyckades med aktivering av SSSD i nsswitch.conf och PAM."
 
 #: ../service/realm-sssd-ad.c:240
 #, c-format
 msgid "Unable to automatically join the domain"
-msgstr ""
+msgstr "Kunde inte ansluta till domänen automatiskt"
 
 #: ../service/realm-sssd-ad.c:326
 #, c-format
 msgid ""
 "Joining a domain with a one time password is only supported with the '%s' "
 "membership software"
-msgstr ""
+msgstr "Att ansluta till en domän med ett engångslösenord stöds bara med medlemskapsprogramvaran ”%s”"
 
 #: ../service/realm-sssd-ad.c:340
 #, c-format
 msgid ""
 "Joining a domain with a user password is only supported with the '%s' "
 "membership software"
-msgstr ""
+msgstr "Att ansluta till en domän med ett användarlösenord stöds bara med medlemskapsprogramvaran ”%s”"
 
-#: ../service/realm-sssd-ad.c:369
+#: ../service/realm-sssd-ad.c:356
 #, c-format
 msgid "Unsupported credentials for joining a domain"
-msgstr ""
+msgstr "Ej stödda autentiseringsuppgifter för att ansluta till en domän"
 
-#: ../service/realm-sssd-ad.c:411 ../service/realm-sssd-ipa.c:322
-#: ../tools/realm-join.c:212
+#: ../service/realm-sssd-ad.c:398 ../service/realm-sssd-ipa.c:322
+#: ../tools/realm-join.c:236
 msgid "Already joined to this domain"
-msgstr ""
+msgstr "Redan anslutit till denna domän"
 
-#: ../service/realm-sssd-ad.c:415 ../service/realm-sssd-ipa.c:326
+#: ../service/realm-sssd-ad.c:402 ../service/realm-sssd-ipa.c:326
 msgid "A domain with this name is already configured"
-msgstr ""
+msgstr "En domän med detta namn är redan konfigurerad"
 
 #: ../service/realm-sssd-config.c:145
 #, c-format
 msgid "Already have domain %s in sssd.conf config file"
-msgstr ""
+msgstr "Domänen %s finns redan i konfigurationsfilen sssd.conf"
 
 #: ../service/realm-sssd-config.c:190
 #, c-format
 msgid "Don't have domain %s in sssd.conf config file"
-msgstr ""
+msgstr "Domänen %s finns inte i konfigurationsfilen sssd.conf"
 
 #: ../service/realm-sssd-ipa.c:312
 msgid "The computer-ou argument is not supported when joining an IPA domain."
-msgstr ""
+msgstr "Argumentet computer-ou stöds ej vid anslutning till en IPA-domän."
 
-#: ../service/realm-sssd-ipa.c:463
+#: ../service/realm-sssd-ipa.c:480
 msgid "Not currently joined to this realm"
-msgstr ""
+msgstr "Ej ansluten till denna sfär för tillfället"
+
+#: ../tools/realm.c:40
+msgid "Discover available realm"
+msgstr "Upptäck tillgänglig sfär"
+
+#: ../tools/realm.c:41
+msgid "Enroll this machine in a realm"
+msgstr "Registrera denna maskin i en sfär"
 
 #: ../tools/realm.c:42
-msgid "Discover available realm"
-msgstr ""
+msgid "Unenroll this machine from a realm"
+msgstr "Avregistrera denna maskin från en sfär"
 
 #: ../tools/realm.c:43
-msgid "Enroll this machine in a realm"
-msgstr ""
+msgid "List known realms"
+msgstr "Lista kända sfärer"
 
 #: ../tools/realm.c:44
-msgid "Unenroll this machine from a realm"
-msgstr ""
+msgid "Permit user logins"
+msgstr "Tillåt användarinloggningar"
 
 #: ../tools/realm.c:45
-msgid "List known realms"
-msgstr ""
-
-#: ../tools/realm.c:46
-msgid "Permit user logins"
-msgstr ""
-
-#: ../tools/realm.c:47
 msgid "Deny user logins"
+msgstr "Neka användarinloggningar"
+
+#: ../tools/realm.c:184
+#, c-format
+msgid "Invalid value for %s option: %s"
 msgstr ""
 
-#: ../tools/realm.c:192
+#: ../tools/realm.c:216
 msgid "Install mode to a specific prefix"
-msgstr ""
+msgstr "Installera läge till ett specifikt prefix"
 
-#: ../tools/realm.c:193
+#: ../tools/realm.c:217
 msgid "Verbose output"
-msgstr ""
+msgstr "Detaljerad utskrift"
 
-#: ../tools/realm.c:194
+#: ../tools/realm.c:218
 msgid "Do not prompt for input"
-msgstr ""
+msgstr "Fråga inte efter inmatning"
 
 #: ../tools/realm-client.c:193 ../tools/realm-client.c:203
 msgid "Couldn't connect to realm service"
-msgstr ""
+msgstr "Kunde inte ansluta till en sfärtjänst"
 
 #: ../tools/realm-client.c:232
 msgid "Couldn't load the realm service"
-msgstr ""
+msgstr "Kunde inte läsa in sfärtjänsten"
 
 #: ../tools/realm-client.c:249
 msgid "Couldn't connect to system bus"
-msgstr ""
+msgstr "Kunde inte ansluta till systembuss"
 
 #: ../tools/realm-client.c:279
 #, c-format
 msgid "Couldn't create socket pair: %s"
-msgstr ""
+msgstr "Kunde inte skapa uttagspar (socket pair): %s"
 
 #: ../tools/realm-client.c:287 ../tools/realm-client.c:319
 msgid "Couldn't create socket"
-msgstr ""
+msgstr "Kunde inte skapa uttag (socket)"
 
 #: ../tools/realm-client.c:300
 msgid "Couldn't run realmd"
-msgstr ""
+msgstr "Kunde inte köra realmd"
 
 #: ../tools/realm-client.c:565
 #, c-format
 msgid "Couldn't create runtime directory: %s: %s"
-msgstr ""
+msgstr "Kunde inte skapa körtidskatalogen: %s: %s"
 
 #: ../tools/realm-client.c:575
 #, c-format
 msgid "Couldn't create credential cache file: %s: %s"
-msgstr ""
+msgstr "Kunde inte skapa autentiseringscachefilen: %s: %s"
 
 #: ../tools/realm-client.c:585
 msgid "Couldn't resolve credential cache"
-msgstr ""
+msgstr "Kunde inte lösa autentiseringscache"
 
 #: ../tools/realm-client.c:675
 #, c-format
 msgid "Invalid password for %s"
-msgstr ""
+msgstr "Ogiltigt lösenord för %s"
 
 #: ../tools/realm-client.c:679
 #, c-format
 msgid "Couldn't authenticate as %s"
-msgstr ""
+msgstr "Kunde inte autentisera som %s"
 
 #: ../tools/realm-client.c:704
 #, c-format
 msgid "Couldn't parse user name: %s"
-msgstr ""
+msgstr "Kunde inte tolka användarnamnet: %s"
 
 #: ../tools/realm-client.c:728
 msgid "Couldn't read credential cache"
-msgstr ""
+msgstr "Kunde inte läsa autentiseringscache"
 
-#: ../tools/realm-client.c:754 ../tools/realm-client.c:963
+#: ../tools/realm-client.c:754 ../tools/realm-client.c:961
 msgid "Couldn't initialize kerberos"
-msgstr ""
+msgstr "Kunde inte initiera kerberos"
 
-#: ../tools/realm-client.c:819
+#: ../tools/realm-client.c:817
 #, c-format
 msgid "Cannot prompt for a password when running in unattended mode"
-msgstr ""
+msgstr "Kan inte fråga efter lösenord vid körning i obevakat läge"
 
-#: ../tools/realm-client.c:823
+#: ../tools/realm-client.c:821
 #, c-format
 msgid "Password for %s: "
-msgstr ""
+msgstr "Lösenord för %s: "
 
-#: ../tools/realm-client.c:841
+#: ../tools/realm-client.c:839
 #, c-format
 msgid "Couldn't prompt for password: %s"
-msgstr ""
+msgstr "Kunde inte fråga efter lösenord: %s"
 
-#: ../tools/realm-client.c:876
+#: ../tools/realm-client.c:874
 #, c-format
 msgid "Realm does not support membership using a password"
-msgstr ""
+msgstr "Sfär stödjer inte medlemskap med lösenord"
 
-#: ../tools/realm-client.c:915
+#: ../tools/realm-client.c:913
 #, c-format
 msgid "Realm does not support membership using a one time password"
-msgstr ""
+msgstr "Sfär stödjer inte medlemskap med ett engångslösenord"
 
-#: ../tools/realm-client.c:983
+#: ../tools/realm-client.c:981
 msgid "Couldn't select kerberos credentials"
-msgstr ""
+msgstr "Kunde inte välja autentiseringsuppgifter för kerberos"
 
-#: ../tools/realm-client.c:997
+#: ../tools/realm-client.c:995
 msgid "Couldn't read kerberos credentials"
-msgstr ""
+msgstr "Kunde inte läsa autentiseringsuppgifter för kerberos"
 
-#: ../tools/realm-client.c:1047
+#: ../tools/realm-client.c:1045
 #, c-format
 msgid "Realm does not support automatic membership"
-msgstr ""
+msgstr "Sfär stödjer inte automatiskt medlemskap"
 
 #: ../tools/realm-discover.c:135
 msgid "Couldn't discover realms"
-msgstr ""
+msgstr "Kunde inte upptäcka sfär"
 
 #: ../tools/realm-discover.c:155
 msgid "No default realm discovered"
-msgstr ""
+msgstr "Ingen standardsfär upptäckt"
 
 #: ../tools/realm-discover.c:157
 #, c-format
 msgid "No such realm found: %s"
-msgstr ""
+msgstr "Hittade ingen sådan sfär: %s"
 
 #: ../tools/realm-discover.c:181
 msgid "Show all discovered realms"
-msgstr ""
+msgstr "Visa alla upptäckta sfärer"
 
 #: ../tools/realm-discover.c:182 ../tools/realm-discover.c:273
 msgid "Show only the names"
-msgstr ""
+msgstr "Visa bara namnen"
 
-#: ../tools/realm-discover.c:183 ../tools/realm-join.c:259
+#: ../tools/realm-discover.c:183 ../tools/realm-join.c:287
 #: ../tools/realm-leave.c:266
 msgid "Use specific client software"
-msgstr ""
+msgstr "Använd specifik klientprogramvara"
 
-#: ../tools/realm-discover.c:184 ../tools/realm-join.c:263
+#: ../tools/realm-discover.c:184 ../tools/realm-join.c:291
 msgid "Use specific membership software"
-msgstr ""
+msgstr "Använd specifik medlemskapsprogramvara"
 
-#: ../tools/realm-discover.c:185 ../tools/realm-join.c:261
+#: ../tools/realm-discover.c:185 ../tools/realm-join.c:289
 #: ../tools/realm-leave.c:269
 msgid "Use specific server software"
-msgstr ""
+msgstr "Använd specifik serverprogramvara"
 
 #: ../tools/realm-discover.c:272
 msgid "Show all realms"
-msgstr ""
+msgstr "Visa alla sfärer"
 
 #: ../tools/realm-join.c:92 ../tools/realm-join.c:132
 #: ../tools/realm-join.c:163
 msgid "Couldn't join realm"
-msgstr ""
+msgstr "Kunde inte ansluta till sfär"
 
-#: ../tools/realm-join.c:203
+#: ../tools/realm-join.c:227
 msgid "Cannot join this realm"
-msgstr ""
+msgstr "Kan inte ansluta till denna sfär"
 
-#: ../tools/realm-join.c:205
+#: ../tools/realm-join.c:229
 msgid "No such realm found"
-msgstr ""
+msgstr "Ingen sådan sfär hittades"
 
-#: ../tools/realm-join.c:255
+#: ../tools/realm-join.c:283
 msgid "User name to use for enrollment"
-msgstr ""
+msgstr "Användarnamn att använda vid registrering"
 
-#: ../tools/realm-join.c:257
+#: ../tools/realm-join.c:285
 msgid "Computer OU DN to join"
-msgstr ""
+msgstr "Computer OU DN att ansluta till"
 
-#: ../tools/realm-join.c:265
+#: ../tools/realm-join.c:293
 msgid "Join automatically without a password"
-msgstr ""
+msgstr "Anslut automatiskt utan ett lösenord"
 
-#: ../tools/realm-join.c:267
+#: ../tools/realm-join.c:295
 msgid "Join using a preset one time password"
+msgstr "Anslut med ett förinställt engångslösenord"
+
+#: ../tools/realm-join.c:297
+msgid "Turn off automatic id mapping"
 msgstr ""
 
-#: ../tools/realm-join.c:269
+#: ../tools/realm-join.c:299
 msgid "Set the user principal for the computer account"
-msgstr ""
+msgstr "Ange användarens huvudnamn för datorkontot"
 
-#: ../tools/realm-join.c:286
+#: ../tools/realm-join.c:319
 msgid "Specify one realm to join"
-msgstr ""
+msgstr "Ange en sfär att ansluta till"
 
-#: ../tools/realm-join.c:291
+#: ../tools/realm-join.c:324
 msgid ""
 "The --no-password argument cannot be used with --one-time-password or --user"
-msgstr ""
+msgstr "Argumentet--no-password argument kan inte användas med --one-time-password eller --user"
 
-#: ../tools/realm-join.c:296
+#: ../tools/realm-join.c:329
 msgid "The --one-time-password argument cannot be used with --user"
-msgstr ""
+msgstr "Argumentet --one-time-password kan inte användas med --user"
 
 #: ../tools/realm-leave.c:181 ../tools/realm-leave.c:208
 msgid "Couldn't leave realm"
-msgstr ""
+msgstr "Kunde inte lämna sfär"
 
 #: ../tools/realm-leave.c:267
 msgid "Remove computer from realm"
-msgstr ""
+msgstr "Ta bort dator från sfär"
 
 #: ../tools/realm-leave.c:270
 msgid "User name to use for removal"
-msgstr ""
+msgstr "Användarnamn att använda för borttagning"
 
 #: ../tools/realm-logins.c:129 ../tools/realm-logins.c:175
 msgid "Couldn't change permitted logins"
-msgstr ""
+msgstr "Kunde inte ändra tillåtna inloggningar"
 
 #: ../tools/realm-logins.c:200
 msgid "Permit any realm account login"
-msgstr ""
+msgstr "Tillåt alla sfärkontoinloggningar"
 
 #: ../tools/realm-logins.c:200
 msgid "Deny any realm account login"
-msgstr ""
+msgstr "Neka alla sfärkontoinloggningar"
 
 #: ../tools/realm-logins.c:202
 msgid "Withdraw permit for a realm account to login"
-msgstr ""
+msgstr "Dra in tillståndet att logga in för ett sfärkonto"
 
 #: ../tools/realm-logins.c:204
 msgid "Treat names as groups which to permit"
-msgstr ""
+msgstr "Behandla namn som grupper att tillåta"
 
 #: ../tools/realm-logins.c:205
 msgid "Realm to permit/deny logins for"
-msgstr ""
+msgstr "Sfär att tillåta/neka inloggningar för"
 
 #: ../tools/realm-logins.c:219
 msgid "No logins should be specified with -a or --all"
-msgstr ""
+msgstr "Inga inloggningar bör anges med -a eller --all"
 
 #: ../tools/realm-logins.c:222
 msgid "The --withdraw or -x arguments cannot be used when denying logins"
-msgstr ""
+msgstr "Argumenten --withdraw eller -x kan inte användas när inloggningar nekas"
 
 #: ../tools/realm-logins.c:225
 msgid "Specific logins must be specified with --withdraw"
-msgstr ""
+msgstr "Specifika inloggningar måste anges med --withdraw"
 
 #: ../tools/realm-logins.c:228
 msgid "Groups may not be specified with -a or --all"
-msgstr ""
+msgstr "Grupper får inte anges med -a eller --all"
 
 #: ../tools/realm-logins.c:235
 msgid "Use --all to deny all logins"
-msgstr ""
+msgstr "Använd --all för att neka alla inloggningar"
 
 #: ../tools/realm-logins.c:237
 msgid "Specify specific users to add or remove from the permitted list"
-msgstr ""
+msgstr "Ange specifika användare att lägga till eller ta bort från listan över tillåtna"
 
 #: ../tools/realm-logins.c:241
 msgid ""
 "Specifying deny without --all is deprecated. Use realm permit --withdraw"
-msgstr ""
+msgstr "Att ange deny utan --all är föråldrat. Använd realm permit --withdraw"

@@ -3,206 +3,207 @@
 # This file is distributed under the same license as the PACKAGE package.
 # 
 # Translators:
+# Serge Vylekzhanin <vylekzhanin@mail.ru>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: realmd\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2014-01-07 18:08+0100\n"
-"PO-Revision-Date: 2013-01-14 15:31+0000\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: Russian (http://www.transifex.com/projects/p/freedesktop/language/ru/)\n"
+"POT-Creation-Date: 2015-10-19 11:43+0200\n"
+"PO-Revision-Date: 2015-10-20 19:12+0000\n"
+"Last-Translator: Stef Walter <stefw@gnome.org>\n"
+"Language-Team: Russian (http://www.transifex.com/freedesktop/realmd/language/ru/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: ru\n"
-"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n%100>=11 && n%100<=14)? 2 : 3);\n"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:1
 msgid "Discover realm"
-msgstr ""
+msgstr "Обнаружение области"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:2
 msgid "Authentication is required to discover a kerberos realm"
-msgstr ""
+msgstr "Для обнаружения области Керберос требуется аутентификация"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:3
 msgid "Join machine to realm"
-msgstr ""
+msgstr "Присоединить машину к области"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:4
 msgid "Authentication is required to join this machine to a realm or domain"
-msgstr ""
+msgstr "Для присоединения машины к области или домену требуется аутентификация"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:5
 msgid "Remove machine from realm"
-msgstr ""
+msgstr "Удалить машину из области"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:6
 msgid ""
 "Authentication is required to remove this computer from a realm or domain."
-msgstr ""
+msgstr "Для удаления этого компьютера из области или домена требуется аутентификация."
 
 #: ../service/org.freedesktop.realmd.policy.in.h:7
 msgid "Change login policy"
-msgstr ""
+msgstr "Изменить политику входа"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:8
 msgid ""
 "Authentication is required to change the policy of who can log in on this "
 "computer."
-msgstr ""
+msgstr "Для изменения политики входа на этот компьютер требуется аутентификация."
 
 #: ../service/realm-command.c:347
 #, c-format
 msgid "Process was terminated with signal: %d"
-msgstr ""
+msgstr "Процесс был прерван сигналом: %d"
 
 #: ../service/realm-command.c:396 ../service/realm-ldap.c:349
 #, c-format
 msgid "The operation was cancelled"
-msgstr ""
+msgstr "Операция была отменена"
 
 #: ../service/realm-command.c:573
 #, c-format
 msgid "Configured command not found: %s"
-msgstr ""
+msgstr "Настроенная команда не найдена: %s"
 
 #: ../service/realm-command.c:578
 #, c-format
 msgid "Skipped command: %s"
-msgstr ""
+msgstr "Пропущенная команда: %s"
 
 #: ../service/realm-command.c:584
 #, c-format
 msgid "Configured command invalid: %s"
-msgstr ""
+msgstr "Настроенная команда неверна: %s"
 
-#: ../service/realm-disco-mscldap.c:192
+#: ../service/realm-disco-mscldap.c:198
 #, c-format
 msgid "Received invalid or unsupported Netlogon data from server"
-msgstr ""
+msgstr "Получены неверные или неподдерживаемые данные входа в сеть с сервера"
 
-#: ../service/realm-disco-mscldap.c:340
+#: ../service/realm-disco-mscldap.c:346
 msgid "LDAP on this system does not support UDP connections"
-msgstr ""
+msgstr "LDAP на этом компьютере не поддерживает UDP соединения"
 
 #: ../service/realm-example.c:82 ../service/realm-samba.c:247
 #: ../service/realm-sssd-ad.c:309 ../service/realm-sssd-ipa.c:318
 #, c-format
 msgid "Unsupported or unknown membership software '%s'"
-msgstr ""
+msgstr "Неподдерживаемое или неизвестное ПО для членства '%s'"
 
 #: ../service/realm-example.c:170 ../service/realm-samba.c:282
 msgid "Already joined to a domain"
-msgstr ""
+msgstr "Уже присоединены к домену"
 
-#: ../service/realm-example.c:178 ../service/realm-example.c:260
+#: ../service/realm-example.c:178 ../service/realm-example.c:271
 msgid "Admin name or password is not valid"
-msgstr ""
+msgstr "Имя или пароль администратора недействительны"
 
-#: ../service/realm-example.c:231 ../service/realm-samba.c:408
-#: ../service/realm-sssd-ad.c:493
+#: ../service/realm-example.c:242 ../service/realm-samba.c:422
+#: ../service/realm-sssd-ad.c:514
 msgid "Not currently joined to this domain"
-msgstr ""
+msgstr "В настоящее время не присоединены к этому домену"
 
-#: ../service/realm-example.c:290
+#: ../service/realm-example.c:301
 msgid "Need credentials for leaving this domain"
-msgstr ""
+msgstr "Необходимы учетные данные для покидания этого домена"
 
 #: ../service/realm-ini-config.c:736
 #, c-format
 msgid "Couldn't write out config: %s"
-msgstr ""
+msgstr "Не удалось записать конфигурацию: %s"
 
 #: ../service/realm-invocation.c:536
 msgid "Not authorized to perform this action"
-msgstr ""
+msgstr "Не авторизованы для выполнения этого действия"
 
 #: ../service/realm-kerberos.c:130 ../service/realm-kerberos.c:208
 #: ../service/realm-provider.c:156
 msgid "Operation was cancelled."
-msgstr ""
+msgstr "Операция была отменена."
 
 #: ../service/realm-kerberos.c:135
 msgid "Failed to enroll machine in realm. See diagnostics."
-msgstr ""
+msgstr "Не удалось внести машину в область. Смотрите диагностические сообщения."
 
 #: ../service/realm-kerberos.c:213
 msgid "Failed to unenroll machine from domain. See diagnostics."
-msgstr ""
-
-#: ../service/realm-kerberos.c:268
-msgid "Joining this realm without credentials is not supported"
-msgstr ""
-
-#: ../service/realm-kerberos.c:269
-msgid "Leaving this realm without credentials is not supported"
-msgstr ""
+msgstr "Не удалось вывести машину из домена. Смотрите диагностические сообщения."
 
 #: ../service/realm-kerberos.c:272
-msgid "Joining this realm using a credential cache is not supported"
-msgstr ""
+msgid "Joining this realm without credentials is not supported"
+msgstr "Присоединение к этой области без учетных данных не поддерживается"
 
 #: ../service/realm-kerberos.c:273
-msgid "Leaving this realm using a credential cache is not supported"
-msgstr ""
+msgid "Leaving this realm without credentials is not supported"
+msgstr "Отсоединение от этой области без учетных данных не поддерживается"
 
 #: ../service/realm-kerberos.c:276
-msgid "Joining this realm using a secret is not supported"
-msgstr ""
+msgid "Joining this realm using a credential cache is not supported"
+msgstr "Присоединение к этой области с помощью кэша учетных данных не поддерживается"
 
 #: ../service/realm-kerberos.c:277
-msgid "Unenrolling this realm using a secret is not supported"
-msgstr ""
+msgid "Leaving this realm using a credential cache is not supported"
+msgstr "Отсоединение от этой области с помощью кэша учетных данных не поддерживается"
 
 #: ../service/realm-kerberos.c:280
-msgid "Enrolling this realm using a password is not supported"
-msgstr ""
+msgid "Joining this realm using a secret is not supported"
+msgstr "Присоединение к этой области с помощью секретного кода не поддерживается"
 
 #: ../service/realm-kerberos.c:281
+msgid "Unenrolling this realm using a secret is not supported"
+msgstr "Покидание этой области с помощью секретного кода не поддерживается"
+
+#: ../service/realm-kerberos.c:284
+msgid "Enrolling this realm using a password is not supported"
+msgstr "Вступление в эту область с помощью пароля не поддерживается"
+
+#: ../service/realm-kerberos.c:285
 msgid "Unenrolling this realm using a password is not supported"
-msgstr ""
+msgstr "Покидание этой области с помощью пароля не поддерживается"
 
-#: ../service/realm-kerberos.c:306
+#: ../service/realm-kerberos.c:311
 msgid "Joining this realm is not supported"
-msgstr ""
+msgstr "Присоединение к этой области не поддерживается"
 
-#: ../service/realm-kerberos.c:307
+#: ../service/realm-kerberos.c:312
 msgid "Leaving this realm is not supported"
-msgstr ""
+msgstr "Отсоединение от этой области не поддерживается"
 
-#: ../service/realm-kerberos.c:327 ../service/realm-kerberos.c:501
+#: ../service/realm-kerberos.c:332 ../service/realm-kerberos.c:504
 msgid "Already running another action"
-msgstr ""
+msgstr "Уже запущено другое действие"
 
-#: ../service/realm-kerberos.c:372
+#: ../service/realm-kerberos.c:375
 #, c-format
 msgid "Already joined to another domain: %s"
-msgstr ""
+msgstr "Уже присоединены к другому домену: %s"
 
-#: ../service/realm-kerberos.c:443
+#: ../service/realm-kerberos.c:446
 msgid "Failed to change permitted logins. See diagnostics."
-msgstr ""
+msgstr "Не удалось изменить разрешённые учётные записи. Смотрите диагностические сообщения."
 
-#: ../service/realm-kerberos.c:742
+#: ../service/realm-kerberos.c:747
 #, c-format
 msgid "The realm does not allow specifying logins"
-msgstr ""
+msgstr "Область не позволяет определять логины"
 
-#: ../service/realm-kerberos.c:750
+#: ../service/realm-kerberos.c:755
 #, c-format
 msgid "Invalid login argument%s%s%s does not match the login format."
-msgstr ""
+msgstr "Неверный аргумент учётной записи %s%s%s не соответствует формату входа в систему."
 
-#: ../service/realm-packages.c:179
+#: ../service/realm-packages.c:389
 #, c-format
 msgid "The following packages are not available for installation: %s"
-msgstr ""
+msgstr "Следующие пакеты не доступны для установки: %s"
 
-#: ../service/realm-packages.c:237 ../service/realm-packages.c:271
+#: ../service/realm-packages.c:471 ../service/realm-packages.c:508
 #, c-format
 msgid "Necessary packages are not installed: %s"
-msgstr ""
+msgstr "Необходимые пакеты не установлены: %s"
 
 #. * Various people have been worried by installing packages
 #. * quietly, so notify about what's going on.
@@ -211,368 +212,376 @@ msgstr ""
 #. * more worrisome than the installation. It's realmd's job
 #. * to configure, enable and start stuff. So if you're properly
 #. * worried, remove realmd and do stuff manually.
-#. 
-#: ../service/realm-packages.c:242 ../tools/realm-client.c:143
+#: ../service/realm-packages.c:477 ../tools/realm-client.c:143
 msgid "Installing necessary packages"
-msgstr ""
+msgstr "Установка необходимых пакетов"
 
 #: ../service/realm-provider.c:161
 msgid "Failed to discover realm. See diagnostics."
-msgstr ""
+msgstr "Не удалось обнаружить область. Смотрите диагностические сообщения."
 
-#: ../service/realm-samba.c:440
+#: ../service/realm-samba.c:467
 #, c-format
 msgid "Not joined to this domain"
-msgstr ""
+msgstr "Не присоединены к этому домену"
 
-#: ../service/realm-samba.c:450 ../service/realm-samba.c:492
+#: ../service/realm-samba.c:477 ../service/realm-samba.c:519
 #, c-format
 msgid "The Samba provider cannot restrict permitted logins."
-msgstr ""
+msgstr "Провайдер Samba не может ограничить разрешенные учётные записи."
 
 #: ../service/realm-sssd.c:130
 #, c-format
 msgid "Invalid login argument '%s' contains unsupported characters."
-msgstr ""
+msgstr "Неверный аргумент учётной записи '%s' содержит неподдерживаемые символы."
 
 #: ../service/realm-sssd-ad.c:126 ../service/realm-sssd-ipa.c:124
 #, c-format
 msgid "Enabling SSSD in nsswitch.conf and PAM failed."
-msgstr ""
+msgstr "Включение SSSD в nsswitch.conf и PAM не удалось."
 
 #: ../service/realm-sssd-ad.c:240
 #, c-format
 msgid "Unable to automatically join the domain"
-msgstr ""
+msgstr "Невозможно автоматически присоединиться к домену"
 
 #: ../service/realm-sssd-ad.c:326
 #, c-format
 msgid ""
 "Joining a domain with a one time password is only supported with the '%s' "
 "membership software"
-msgstr ""
+msgstr "Присоединение к домену с одноразовым паролем поддерживается только с ПО для членства '%s'"
 
 #: ../service/realm-sssd-ad.c:340
 #, c-format
 msgid ""
 "Joining a domain with a user password is only supported with the '%s' "
 "membership software"
-msgstr ""
+msgstr "Присоединение к домену с пользовательским паролем поддерживается только с ПО для членства '%s'"
 
-#: ../service/realm-sssd-ad.c:369
+#: ../service/realm-sssd-ad.c:356
 #, c-format
 msgid "Unsupported credentials for joining a domain"
-msgstr ""
+msgstr "Неподдерживаемые учетные данные для присоединения к домену"
 
-#: ../service/realm-sssd-ad.c:411 ../service/realm-sssd-ipa.c:322
-#: ../tools/realm-join.c:212
+#: ../service/realm-sssd-ad.c:398 ../service/realm-sssd-ipa.c:322
+#: ../tools/realm-join.c:236
 msgid "Already joined to this domain"
-msgstr ""
+msgstr "Уже присоединены к этому домену"
 
-#: ../service/realm-sssd-ad.c:415 ../service/realm-sssd-ipa.c:326
+#: ../service/realm-sssd-ad.c:402 ../service/realm-sssd-ipa.c:326
 msgid "A domain with this name is already configured"
-msgstr ""
+msgstr "Домен с таким именем уже настроен"
 
 #: ../service/realm-sssd-config.c:145
 #, c-format
 msgid "Already have domain %s in sssd.conf config file"
-msgstr ""
+msgstr "Уже есть домен %s в конфигурационном файле sssd.conf"
 
 #: ../service/realm-sssd-config.c:190
 #, c-format
 msgid "Don't have domain %s in sssd.conf config file"
-msgstr ""
+msgstr "Отсутствует домен %s в конфигурационном файле sssd.conf"
 
 #: ../service/realm-sssd-ipa.c:312
 msgid "The computer-ou argument is not supported when joining an IPA domain."
-msgstr ""
+msgstr "Аргумент «computer-ou» не поддерживается при присоединении к домену IPA."
 
-#: ../service/realm-sssd-ipa.c:463
+#: ../service/realm-sssd-ipa.c:480
 msgid "Not currently joined to this realm"
-msgstr ""
+msgstr "В настоящее время не присоединены к этой области"
+
+#: ../tools/realm.c:40
+msgid "Discover available realm"
+msgstr "Обнаружение доступной области"
+
+#: ../tools/realm.c:41
+msgid "Enroll this machine in a realm"
+msgstr "Внести эту машину в область"
 
 #: ../tools/realm.c:42
-msgid "Discover available realm"
-msgstr ""
+msgid "Unenroll this machine from a realm"
+msgstr "Вывести эту машину из области"
 
 #: ../tools/realm.c:43
-msgid "Enroll this machine in a realm"
-msgstr ""
+msgid "List known realms"
+msgstr "Список известных областей"
 
 #: ../tools/realm.c:44
-msgid "Unenroll this machine from a realm"
-msgstr ""
+msgid "Permit user logins"
+msgstr "Позволять пользовательские учётные записи"
 
 #: ../tools/realm.c:45
-msgid "List known realms"
-msgstr ""
-
-#: ../tools/realm.c:46
-msgid "Permit user logins"
-msgstr ""
-
-#: ../tools/realm.c:47
 msgid "Deny user logins"
+msgstr "Запрещать пользовательские учётные записи"
+
+#: ../tools/realm.c:184
+#, c-format
+msgid "Invalid value for %s option: %s"
 msgstr ""
 
-#: ../tools/realm.c:192
+#: ../tools/realm.c:216
 msgid "Install mode to a specific prefix"
-msgstr ""
+msgstr "Установить режим в определённый префикс"
 
-#: ../tools/realm.c:193
+#: ../tools/realm.c:217
 msgid "Verbose output"
-msgstr ""
+msgstr "Подробный вывод"
 
-#: ../tools/realm.c:194
+#: ../tools/realm.c:218
 msgid "Do not prompt for input"
-msgstr ""
+msgstr "Не выводить подсказки при вводе"
 
 #: ../tools/realm-client.c:193 ../tools/realm-client.c:203
 msgid "Couldn't connect to realm service"
-msgstr ""
+msgstr "Не удалось подключиться к службе области"
 
 #: ../tools/realm-client.c:232
 msgid "Couldn't load the realm service"
-msgstr ""
+msgstr "Не удалось загрузить службу области"
 
 #: ../tools/realm-client.c:249
 msgid "Couldn't connect to system bus"
-msgstr ""
+msgstr "Не удалось подключиться к системной шине"
 
 #: ../tools/realm-client.c:279
 #, c-format
 msgid "Couldn't create socket pair: %s"
-msgstr ""
+msgstr "Не удалось создать пару сокетов: %s"
 
 #: ../tools/realm-client.c:287 ../tools/realm-client.c:319
 msgid "Couldn't create socket"
-msgstr ""
+msgstr "Не удалось создать сокет"
 
 #: ../tools/realm-client.c:300
 msgid "Couldn't run realmd"
-msgstr ""
+msgstr "Не удалось запустить realmd"
 
 #: ../tools/realm-client.c:565
 #, c-format
 msgid "Couldn't create runtime directory: %s: %s"
-msgstr ""
+msgstr "Не удалось создать каталог во время выполнения: %s: %s"
 
 #: ../tools/realm-client.c:575
 #, c-format
 msgid "Couldn't create credential cache file: %s: %s"
-msgstr ""
+msgstr "Не удалось создать кэш-файл учётных данных: %s: %s"
 
 #: ../tools/realm-client.c:585
 msgid "Couldn't resolve credential cache"
-msgstr ""
+msgstr "Не удалось определить кэш учётных данных"
 
 #: ../tools/realm-client.c:675
 #, c-format
 msgid "Invalid password for %s"
-msgstr ""
+msgstr "Неверный пароль %s"
 
 #: ../tools/realm-client.c:679
 #, c-format
 msgid "Couldn't authenticate as %s"
-msgstr ""
+msgstr "Невозможно проверить подлинность %s"
 
 #: ../tools/realm-client.c:704
 #, c-format
 msgid "Couldn't parse user name: %s"
-msgstr ""
+msgstr "Не удалось разобрать имя пользователя: %s"
 
 #: ../tools/realm-client.c:728
 msgid "Couldn't read credential cache"
-msgstr ""
+msgstr "Не удалось прочитать кэш учётных данных"
 
-#: ../tools/realm-client.c:754 ../tools/realm-client.c:963
+#: ../tools/realm-client.c:754 ../tools/realm-client.c:961
 msgid "Couldn't initialize kerberos"
-msgstr ""
+msgstr "Не удалось инициализировать Kerberos"
 
-#: ../tools/realm-client.c:819
+#: ../tools/realm-client.c:817
 #, c-format
 msgid "Cannot prompt for a password when running in unattended mode"
-msgstr ""
+msgstr "Нельзя выводить запрос на ввод пароля при работе в автоматическом режиме"
 
-#: ../tools/realm-client.c:823
+#: ../tools/realm-client.c:821
 #, c-format
 msgid "Password for %s: "
-msgstr ""
+msgstr "Пароль для %s:"
 
-#: ../tools/realm-client.c:841
+#: ../tools/realm-client.c:839
 #, c-format
 msgid "Couldn't prompt for password: %s"
-msgstr ""
+msgstr "Не удалось запросить пароль: %s"
 
-#: ../tools/realm-client.c:876
+#: ../tools/realm-client.c:874
 #, c-format
 msgid "Realm does not support membership using a password"
-msgstr ""
+msgstr "Область не поддерживает членство при помощи пароля"
 
-#: ../tools/realm-client.c:915
+#: ../tools/realm-client.c:913
 #, c-format
 msgid "Realm does not support membership using a one time password"
-msgstr ""
+msgstr "Область не поддерживает членство при помощи одноразового пароля"
 
-#: ../tools/realm-client.c:983
+#: ../tools/realm-client.c:981
 msgid "Couldn't select kerberos credentials"
-msgstr ""
+msgstr "Невозможно выбрать учётные данные Kerberos"
 
-#: ../tools/realm-client.c:997
+#: ../tools/realm-client.c:995
 msgid "Couldn't read kerberos credentials"
-msgstr ""
+msgstr "Невозможно прочитать учётные данные Kerberos"
 
-#: ../tools/realm-client.c:1047
+#: ../tools/realm-client.c:1045
 #, c-format
 msgid "Realm does not support automatic membership"
-msgstr ""
+msgstr "Область не поддерживает автоматическое членство"
 
 #: ../tools/realm-discover.c:135
 msgid "Couldn't discover realms"
-msgstr ""
+msgstr "Не удалось обнаружить области"
 
 #: ../tools/realm-discover.c:155
 msgid "No default realm discovered"
-msgstr ""
+msgstr "Область по умолчанию не обнаружена"
 
 #: ../tools/realm-discover.c:157
 #, c-format
 msgid "No such realm found: %s"
-msgstr ""
+msgstr "Таких областей не найдено: %s"
 
 #: ../tools/realm-discover.c:181
 msgid "Show all discovered realms"
-msgstr ""
+msgstr "Показать все обнаруженные области"
 
 #: ../tools/realm-discover.c:182 ../tools/realm-discover.c:273
 msgid "Show only the names"
-msgstr ""
+msgstr "Показать только имена"
 
-#: ../tools/realm-discover.c:183 ../tools/realm-join.c:259
+#: ../tools/realm-discover.c:183 ../tools/realm-join.c:287
 #: ../tools/realm-leave.c:266
 msgid "Use specific client software"
-msgstr ""
+msgstr "Использовать определённый клиент ПО"
 
-#: ../tools/realm-discover.c:184 ../tools/realm-join.c:263
+#: ../tools/realm-discover.c:184 ../tools/realm-join.c:291
 msgid "Use specific membership software"
-msgstr ""
+msgstr "Использовать определённое ПО для членства"
 
-#: ../tools/realm-discover.c:185 ../tools/realm-join.c:261
+#: ../tools/realm-discover.c:185 ../tools/realm-join.c:289
 #: ../tools/realm-leave.c:269
 msgid "Use specific server software"
-msgstr ""
+msgstr "Использовать определённое серверное ПО"
 
 #: ../tools/realm-discover.c:272
 msgid "Show all realms"
-msgstr ""
+msgstr "Показать все области"
 
 #: ../tools/realm-join.c:92 ../tools/realm-join.c:132
 #: ../tools/realm-join.c:163
 msgid "Couldn't join realm"
-msgstr ""
+msgstr "Не удалось присоединиться к области"
 
-#: ../tools/realm-join.c:203
+#: ../tools/realm-join.c:227
 msgid "Cannot join this realm"
-msgstr ""
+msgstr "Не могу присоединиться к этой области"
 
-#: ../tools/realm-join.c:205
+#: ../tools/realm-join.c:229
 msgid "No such realm found"
-msgstr ""
+msgstr "Такая область не найдена"
 
-#: ../tools/realm-join.c:255
+#: ../tools/realm-join.c:283
 msgid "User name to use for enrollment"
-msgstr ""
+msgstr "Имя пользователя для использования при вступлении"
 
-#: ../tools/realm-join.c:257
+#: ../tools/realm-join.c:285
 msgid "Computer OU DN to join"
-msgstr ""
+msgstr "Компьютерные «OU DN» для присоединения"
 
-#: ../tools/realm-join.c:265
+#: ../tools/realm-join.c:293
 msgid "Join automatically without a password"
-msgstr ""
+msgstr "Присоединяться автоматически, без ввода пароля"
 
-#: ../tools/realm-join.c:267
+#: ../tools/realm-join.c:295
 msgid "Join using a preset one time password"
+msgstr "Присоединяться, используя предустановленный одноразовый пароль"
+
+#: ../tools/realm-join.c:297
+msgid "Turn off automatic id mapping"
 msgstr ""
 
-#: ../tools/realm-join.c:269
+#: ../tools/realm-join.c:299
 msgid "Set the user principal for the computer account"
-msgstr ""
+msgstr "Установить главного пользователя для учетной записи компьютера"
 
-#: ../tools/realm-join.c:286
+#: ../tools/realm-join.c:319
 msgid "Specify one realm to join"
-msgstr ""
+msgstr "Определите одну область для присоединения"
 
-#: ../tools/realm-join.c:291
+#: ../tools/realm-join.c:324
 msgid ""
 "The --no-password argument cannot be used with --one-time-password or --user"
-msgstr ""
+msgstr "Аргумент «--no-password» не может быть использован с «--one-time-password» или «--user»"
 
-#: ../tools/realm-join.c:296
+#: ../tools/realm-join.c:329
 msgid "The --one-time-password argument cannot be used with --user"
-msgstr ""
+msgstr "Аргумент «--one-time-password» не может быть использован с «--user»"
 
 #: ../tools/realm-leave.c:181 ../tools/realm-leave.c:208
 msgid "Couldn't leave realm"
-msgstr ""
+msgstr "Не удалось покинуть область"
 
 #: ../tools/realm-leave.c:267
 msgid "Remove computer from realm"
-msgstr ""
+msgstr "Удалить компьютер из области"
 
 #: ../tools/realm-leave.c:270
 msgid "User name to use for removal"
-msgstr ""
+msgstr "Имя пользователя для использования при удалении"
 
 #: ../tools/realm-logins.c:129 ../tools/realm-logins.c:175
 msgid "Couldn't change permitted logins"
-msgstr ""
+msgstr "Невозможно изменить разрешённые учётные записи"
 
 #: ../tools/realm-logins.c:200
 msgid "Permit any realm account login"
-msgstr ""
+msgstr "Разрешить регистрацию любой учётной записи области"
 
 #: ../tools/realm-logins.c:200
 msgid "Deny any realm account login"
-msgstr ""
+msgstr "Запретить регистрацию любой учётной записи области"
 
 #: ../tools/realm-logins.c:202
 msgid "Withdraw permit for a realm account to login"
-msgstr ""
+msgstr "Отозвать разрешение учётной записи области на регистрацию."
 
 #: ../tools/realm-logins.c:204
 msgid "Treat names as groups which to permit"
-msgstr ""
+msgstr "Трактовать имена как группы, которые разрешены"
 
 #: ../tools/realm-logins.c:205
 msgid "Realm to permit/deny logins for"
-msgstr ""
+msgstr "Область для разрешения/запрещения учётных записей"
 
 #: ../tools/realm-logins.c:219
 msgid "No logins should be specified with -a or --all"
-msgstr ""
+msgstr "Учётные записи не должны быть указаны с «-a» или «--all»"
 
 #: ../tools/realm-logins.c:222
 msgid "The --withdraw or -x arguments cannot be used when denying logins"
-msgstr ""
+msgstr "Аргументы «--withdraw» или «-x» не могут быть использованы при запрете учётных записей"
 
 #: ../tools/realm-logins.c:225
 msgid "Specific logins must be specified with --withdraw"
-msgstr ""
+msgstr "Определённые учётные записи должны быть определены с «--withdraw»"
 
 #: ../tools/realm-logins.c:228
 msgid "Groups may not be specified with -a or --all"
-msgstr ""
+msgstr "Группы не могут быть указаны с «-a» или «--all»"
 
 #: ../tools/realm-logins.c:235
 msgid "Use --all to deny all logins"
-msgstr ""
+msgstr "Использовать «--all» для запрещения всех учётных записей"
 
 #: ../tools/realm-logins.c:237
 msgid "Specify specific users to add or remove from the permitted list"
-msgstr ""
+msgstr "Указать определённых пользователей для добавления или удаления в/из разрешённого списка"
 
 #: ../tools/realm-logins.c:241
 msgid ""
 "Specifying deny without --all is deprecated. Use realm permit --withdraw"
-msgstr ""
+msgstr "Указание запрещения без «--all» не рекомендуется. Используйте разрешение области «--withdraw»"

@@ -3,7 +3,6 @@
 # This file is distributed under the same license as the PACKAGE package.
 # 
 # Translators:
-# Piotr Drąg <piotrdrag@gmail.com>, 2013,2015
 msgid ""
 msgstr ""
 "Project-Id-Version: realmd\n"
@@ -11,199 +10,199 @@ msgstr ""
 "POT-Creation-Date: 2015-10-19 11:43+0200\n"
 "PO-Revision-Date: 2015-10-20 19:12+0000\n"
 "Last-Translator: Stef Walter <stefw@gnome.org>\n"
-"Language-Team: Polish (http://www.transifex.com/freedesktop/realmd/language/pl/)\n"
+"Language-Team: Estonian (http://www.transifex.com/freedesktop/realmd/language/et/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: pl\n"
-"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Language: et\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:1
 msgid "Discover realm"
-msgstr "Wykrywanie obszaru"
+msgstr ""
 
 #: ../service/org.freedesktop.realmd.policy.in.h:2
 msgid "Authentication is required to discover a kerberos realm"
-msgstr "Wymagane jest uwierzytelnienie, aby wykryć obszar Kerberos"
+msgstr ""
 
 #: ../service/org.freedesktop.realmd.policy.in.h:3
 msgid "Join machine to realm"
-msgstr "Dołączenie komputera do obszaru"
+msgstr ""
 
 #: ../service/org.freedesktop.realmd.policy.in.h:4
 msgid "Authentication is required to join this machine to a realm or domain"
-msgstr "Wymagane jest uwierzytelnienie, aby dołączyć ten komputer do obszaru lub domeny"
+msgstr ""
 
 #: ../service/org.freedesktop.realmd.policy.in.h:5
 msgid "Remove machine from realm"
-msgstr "Usunięcie komputera z obszaru"
+msgstr ""
 
 #: ../service/org.freedesktop.realmd.policy.in.h:6
 msgid ""
 "Authentication is required to remove this computer from a realm or domain."
-msgstr "Wymagane jest uwierzytelnienie, aby usunąć ten komputer z obszaru lub domeny."
+msgstr ""
 
 #: ../service/org.freedesktop.realmd.policy.in.h:7
 msgid "Change login policy"
-msgstr "Zmiana polityki logowania"
+msgstr ""
 
 #: ../service/org.freedesktop.realmd.policy.in.h:8
 msgid ""
 "Authentication is required to change the policy of who can log in on this "
 "computer."
-msgstr "Wymagane jest uwierzytelnienie, aby zmienić politykę zezwalania na logowanie na tym komputerze."
+msgstr ""
 
 #: ../service/realm-command.c:347
 #, c-format
 msgid "Process was terminated with signal: %d"
-msgstr "Proces został zakończony z sygnałem: %d"
+msgstr ""
 
 #: ../service/realm-command.c:396 ../service/realm-ldap.c:349
 #, c-format
 msgid "The operation was cancelled"
-msgstr "Działanie zostało anulowane"
+msgstr ""
 
 #: ../service/realm-command.c:573
 #, c-format
 msgid "Configured command not found: %s"
-msgstr "Nie odnaleziono skonfigurowanego polecenia: %s"
+msgstr ""
 
 #: ../service/realm-command.c:578
 #, c-format
 msgid "Skipped command: %s"
-msgstr "Pominięto polecenie: %s"
+msgstr ""
 
 #: ../service/realm-command.c:584
 #, c-format
 msgid "Configured command invalid: %s"
-msgstr "Skonfigurowane polecenie jest nieprawidłowe: %s"
+msgstr ""
 
 #: ../service/realm-disco-mscldap.c:198
 #, c-format
 msgid "Received invalid or unsupported Netlogon data from server"
-msgstr "Otrzymano nieprawidłowe lub nieobsługiwane dane Netlogon od serwera"
+msgstr ""
 
 #: ../service/realm-disco-mscldap.c:346
 msgid "LDAP on this system does not support UDP connections"
-msgstr "LDAP w tym systemie nie obsługuje połączeń UDP"
+msgstr ""
 
 #: ../service/realm-example.c:82 ../service/realm-samba.c:247
 #: ../service/realm-sssd-ad.c:309 ../service/realm-sssd-ipa.c:318
 #, c-format
 msgid "Unsupported or unknown membership software '%s'"
-msgstr "Nieobsługiwane lub nieznane oprogramowania członkostwa „%s”"
+msgstr ""
 
 #: ../service/realm-example.c:170 ../service/realm-samba.c:282
 msgid "Already joined to a domain"
-msgstr "Już dołączono do domeny"
+msgstr ""
 
 #: ../service/realm-example.c:178 ../service/realm-example.c:271
 msgid "Admin name or password is not valid"
-msgstr "Nazwa administratora lub hasło jest nieprawidłowe"
+msgstr ""
 
 #: ../service/realm-example.c:242 ../service/realm-samba.c:422
 #: ../service/realm-sssd-ad.c:514
 msgid "Not currently joined to this domain"
-msgstr "Obecnie nie dołączono do tej domeny"
+msgstr ""
 
 #: ../service/realm-example.c:301
 msgid "Need credentials for leaving this domain"
-msgstr "Wymagane są dane uwierzytelnienia, aby opuścić tę domenę"
+msgstr ""
 
 #: ../service/realm-ini-config.c:736
 #, c-format
 msgid "Couldn't write out config: %s"
-msgstr "Nie można zapisać konfiguracji: %s"
+msgstr ""
 
 #: ../service/realm-invocation.c:536
 msgid "Not authorized to perform this action"
-msgstr "Brak upoważnienia do wykonania tej czynności"
+msgstr ""
 
 #: ../service/realm-kerberos.c:130 ../service/realm-kerberos.c:208
 #: ../service/realm-provider.c:156
 msgid "Operation was cancelled."
-msgstr "Anulowano działanie."
+msgstr ""
 
 #: ../service/realm-kerberos.c:135
 msgid "Failed to enroll machine in realm. See diagnostics."
-msgstr "Zapisanie komputera do obszaru się nie powiodło. Proszę zobaczyć wyjście diagnostyczne."
+msgstr ""
 
 #: ../service/realm-kerberos.c:213
 msgid "Failed to unenroll machine from domain. See diagnostics."
-msgstr "Wypisanie komputera z domeny się nie powiodło. Proszę zobaczyć wyjście diagnostyczne."
+msgstr ""
 
 #: ../service/realm-kerberos.c:272
 msgid "Joining this realm without credentials is not supported"
-msgstr "Dołączenie do tego obszaru bez danych uwierzytelniających jest nieobsługiwane"
+msgstr ""
 
 #: ../service/realm-kerberos.c:273
 msgid "Leaving this realm without credentials is not supported"
-msgstr "Opuszczenie tego obszaru bez danych uwierzytelniających jest nieobsługiwane"
+msgstr ""
 
 #: ../service/realm-kerberos.c:276
 msgid "Joining this realm using a credential cache is not supported"
-msgstr "Dołączenie do tego obszaru używając pamięci podręcznej danych uwierzytelniających jest nieobsługiwane"
+msgstr ""
 
 #: ../service/realm-kerberos.c:277
 msgid "Leaving this realm using a credential cache is not supported"
-msgstr "Opuszczenie obszaru używając pamięci podręcznej danych uwierzytelniających jest nieobsługiwane"
+msgstr ""
 
 #: ../service/realm-kerberos.c:280
 msgid "Joining this realm using a secret is not supported"
-msgstr "Dołączenie do tego obszaru używając sekretu jest nieobsługiwane"
+msgstr ""
 
 #: ../service/realm-kerberos.c:281
 msgid "Unenrolling this realm using a secret is not supported"
-msgstr "Wypisywanie z tego obszaru używając sekretu jest nieobsługiwane"
+msgstr ""
 
 #: ../service/realm-kerberos.c:284
 msgid "Enrolling this realm using a password is not supported"
-msgstr "Zapisywanie do tego obszaru używając hasła jest nieobsługiwane"
+msgstr ""
 
 #: ../service/realm-kerberos.c:285
 msgid "Unenrolling this realm using a password is not supported"
-msgstr "Wypisywanie z tego obszaru używając hasła jest nieobsługiwane"
+msgstr ""
 
 #: ../service/realm-kerberos.c:311
 msgid "Joining this realm is not supported"
-msgstr "Dołączenie do tego obszaru jest nieobsługiwane"
+msgstr ""
 
 #: ../service/realm-kerberos.c:312
 msgid "Leaving this realm is not supported"
-msgstr "Opuszczenie tego obszaru jest nieobsługiwane"
+msgstr ""
 
 #: ../service/realm-kerberos.c:332 ../service/realm-kerberos.c:504
 msgid "Already running another action"
-msgstr "Inne działanie jest już uruchomione"
+msgstr ""
 
 #: ../service/realm-kerberos.c:375
 #, c-format
 msgid "Already joined to another domain: %s"
-msgstr "Już dołączono do innej domeny: %s"
+msgstr ""
 
 #: ../service/realm-kerberos.c:446
 msgid "Failed to change permitted logins. See diagnostics."
-msgstr "Zmiana dozwolonych loginów się nie powiodła. Proszę zobaczyć wyjście diagnostyczne."
+msgstr ""
 
 #: ../service/realm-kerberos.c:747
 #, c-format
 msgid "The realm does not allow specifying logins"
-msgstr "Obszar nie zezwala na określanie loginów"
+msgstr ""
 
 #: ../service/realm-kerberos.c:755
 #, c-format
 msgid "Invalid login argument%s%s%s does not match the login format."
-msgstr "Nieprawidłowy parametr logowania%s%s%s nie pasuje do formatu logowania."
+msgstr ""
 
 #: ../service/realm-packages.c:389
 #, c-format
 msgid "The following packages are not available for installation: %s"
-msgstr "Następujące pakiety nie są dostępne do instalacji: %s"
+msgstr ""
 
 #: ../service/realm-packages.c:471 ../service/realm-packages.c:508
 #, c-format
 msgid "Necessary packages are not installed: %s"
-msgstr "Wymagane pakiety nie są zainstalowane: %s"
+msgstr ""
 
 #. * Various people have been worried by installing packages
 #. * quietly, so notify about what's going on.
@@ -214,106 +213,106 @@ msgstr "Wymagane pakiety nie są zainstalowane: %s"
 #. * worried, remove realmd and do stuff manually.
 #: ../service/realm-packages.c:477 ../tools/realm-client.c:143
 msgid "Installing necessary packages"
-msgstr "Instalowanie wymaganych pakietów"
+msgstr ""
 
 #: ../service/realm-provider.c:161
 msgid "Failed to discover realm. See diagnostics."
-msgstr "Wykrycie obszaru się nie powiodło. Proszę zobaczyć wyjście diagnostyczne."
+msgstr ""
 
 #: ../service/realm-samba.c:467
 #, c-format
 msgid "Not joined to this domain"
-msgstr "Nie dołączono do tej domeny"
+msgstr ""
 
 #: ../service/realm-samba.c:477 ../service/realm-samba.c:519
 #, c-format
 msgid "The Samba provider cannot restrict permitted logins."
-msgstr "Dostawca Samby nie może ograniczać dozwolonych loginów."
+msgstr ""
 
 #: ../service/realm-sssd.c:130
 #, c-format
 msgid "Invalid login argument '%s' contains unsupported characters."
-msgstr "Nieprawidłowy parametr logowania „%s” zawiera nieobsługiwane znaki."
+msgstr ""
 
 #: ../service/realm-sssd-ad.c:126 ../service/realm-sssd-ipa.c:124
 #, c-format
 msgid "Enabling SSSD in nsswitch.conf and PAM failed."
-msgstr "Włączenie SSSD w pliku nsswitch.conf i w PAM się nie powiodło."
+msgstr ""
 
 #: ../service/realm-sssd-ad.c:240
 #, c-format
 msgid "Unable to automatically join the domain"
-msgstr "Nie można automatycznie dołączyć do domeny"
+msgstr ""
 
 #: ../service/realm-sssd-ad.c:326
 #, c-format
 msgid ""
 "Joining a domain with a one time password is only supported with the '%s' "
 "membership software"
-msgstr "Dołączenie do domeny za pomocą jednorazowego hasła jest obsługiwane tylko za pomocą oprogramowania członkostwa „%s”"
+msgstr ""
 
 #: ../service/realm-sssd-ad.c:340
 #, c-format
 msgid ""
 "Joining a domain with a user password is only supported with the '%s' "
 "membership software"
-msgstr "Dołączenie do domeny za pomocą hasła użytkownika jest obsługiwane tylko za pomocą oprogramowania członkostwa „%s”"
+msgstr ""
 
 #: ../service/realm-sssd-ad.c:356
 #, c-format
 msgid "Unsupported credentials for joining a domain"
-msgstr "Nieobsługiwane dane uwierzytelniające do dołączenia do domeny"
+msgstr ""
 
 #: ../service/realm-sssd-ad.c:398 ../service/realm-sssd-ipa.c:322
 #: ../tools/realm-join.c:236
 msgid "Already joined to this domain"
-msgstr "Już dołączono do tej domeny"
+msgstr ""
 
 #: ../service/realm-sssd-ad.c:402 ../service/realm-sssd-ipa.c:326
 msgid "A domain with this name is already configured"
-msgstr "Domena o tej nazwie jest już skonfigurowana"
+msgstr ""
 
 #: ../service/realm-sssd-config.c:145
 #, c-format
 msgid "Already have domain %s in sssd.conf config file"
-msgstr "Domena %s już istnieje w pliku konfiguracji sssd.conf"
+msgstr ""
 
 #: ../service/realm-sssd-config.c:190
 #, c-format
 msgid "Don't have domain %s in sssd.conf config file"
-msgstr "Brak domeny %s w pliku konfiguracji sssd.conf"
+msgstr ""
 
 #: ../service/realm-sssd-ipa.c:312
 msgid "The computer-ou argument is not supported when joining an IPA domain."
-msgstr "Parametr computer-ou nie jest obsługiwany podczas dołączania do domeny IPA."
+msgstr ""
 
 #: ../service/realm-sssd-ipa.c:480
 msgid "Not currently joined to this realm"
-msgstr "Obecnie nie dołączono do tego obszaru"
+msgstr ""
 
 #: ../tools/realm.c:40
 msgid "Discover available realm"
-msgstr "Wykrywa dostępny obszar"
+msgstr ""
 
 #: ../tools/realm.c:41
 msgid "Enroll this machine in a realm"
-msgstr "Zapisuje ten komputer do obszaru"
+msgstr ""
 
 #: ../tools/realm.c:42
 msgid "Unenroll this machine from a realm"
-msgstr "Wypisuje ten komputer z obszaru"
+msgstr ""
 
 #: ../tools/realm.c:43
 msgid "List known realms"
-msgstr "Wyświetla listę znanych obszarów"
+msgstr ""
 
 #: ../tools/realm.c:44
 msgid "Permit user logins"
-msgstr "Zezwala na loginy użytkowników"
+msgstr ""
 
 #: ../tools/realm.c:45
 msgid "Deny user logins"
-msgstr "Odmawia loginy użytkownika"
+msgstr ""
 
 #: ../tools/realm.c:184
 #, c-format
@@ -322,183 +321,183 @@ msgstr ""
 
 #: ../tools/realm.c:216
 msgid "Install mode to a specific prefix"
-msgstr "Tryb instalacji do podanego przedrostka"
+msgstr ""
 
 #: ../tools/realm.c:217
 msgid "Verbose output"
-msgstr "Więcej informacji"
+msgstr ""
 
 #: ../tools/realm.c:218
 msgid "Do not prompt for input"
-msgstr "Bez pytania użytkownika"
+msgstr ""
 
 #: ../tools/realm-client.c:193 ../tools/realm-client.c:203
 msgid "Couldn't connect to realm service"
-msgstr "Nie można połączyć z usługą obszarów"
+msgstr ""
 
 #: ../tools/realm-client.c:232
 msgid "Couldn't load the realm service"
-msgstr "Nie można wczytać usługi obszarów"
+msgstr ""
 
 #: ../tools/realm-client.c:249
 msgid "Couldn't connect to system bus"
-msgstr "Nie można połączyć z magistralą systemową"
+msgstr ""
 
 #: ../tools/realm-client.c:279
 #, c-format
 msgid "Couldn't create socket pair: %s"
-msgstr "Nie można utworzyć pary gniazd: %s"
+msgstr ""
 
 #: ../tools/realm-client.c:287 ../tools/realm-client.c:319
 msgid "Couldn't create socket"
-msgstr "Nie można utworzyć gniazda"
+msgstr ""
 
 #: ../tools/realm-client.c:300
 msgid "Couldn't run realmd"
-msgstr "Nie można uruchomić usługi realmd"
+msgstr ""
 
 #: ../tools/realm-client.c:565
 #, c-format
 msgid "Couldn't create runtime directory: %s: %s"
-msgstr "Nie można utworzyć katalogu czasu uruchamiania: %s: %s"
+msgstr ""
 
 #: ../tools/realm-client.c:575
 #, c-format
 msgid "Couldn't create credential cache file: %s: %s"
-msgstr "Nie można utworzyć pliku pamięci podręcznej danych uwierzytelniających: %s: %s"
+msgstr ""
 
 #: ../tools/realm-client.c:585
 msgid "Couldn't resolve credential cache"
-msgstr "Nie można rozwiązać pamięci podręcznej danych uwierzytelniających"
+msgstr ""
 
 #: ../tools/realm-client.c:675
 #, c-format
 msgid "Invalid password for %s"
-msgstr "Nieprawidłowe hasło dla %s"
+msgstr ""
 
 #: ../tools/realm-client.c:679
 #, c-format
 msgid "Couldn't authenticate as %s"
-msgstr "Nie można uwierzytelnić jako %s"
+msgstr ""
 
 #: ../tools/realm-client.c:704
 #, c-format
 msgid "Couldn't parse user name: %s"
-msgstr "Nie można przetworzyć nazwy użytkownika: %s"
+msgstr ""
 
 #: ../tools/realm-client.c:728
 msgid "Couldn't read credential cache"
-msgstr "Nie można odczytać pamięci podręcznej danych uwierzytelniających"
+msgstr ""
 
 #: ../tools/realm-client.c:754 ../tools/realm-client.c:961
 msgid "Couldn't initialize kerberos"
-msgstr "Nie można zainicjować oprogramowania Kerberos"
+msgstr ""
 
 #: ../tools/realm-client.c:817
 #, c-format
 msgid "Cannot prompt for a password when running in unattended mode"
-msgstr "Nie można zapytać o hasło podczas działania w trybie bezobsługowym"
+msgstr ""
 
 #: ../tools/realm-client.c:821
 #, c-format
 msgid "Password for %s: "
-msgstr "Hasło dla %s: "
+msgstr ""
 
 #: ../tools/realm-client.c:839
 #, c-format
 msgid "Couldn't prompt for password: %s"
-msgstr "Nie można zapytać o hasło: %s"
+msgstr ""
 
 #: ../tools/realm-client.c:874
 #, c-format
 msgid "Realm does not support membership using a password"
-msgstr "Obszar nie obsługuje członkostwa używając hasła"
+msgstr ""
 
 #: ../tools/realm-client.c:913
 #, c-format
 msgid "Realm does not support membership using a one time password"
-msgstr "Obszar nie obsługuje członkostwa używając hasła jednorazowego"
+msgstr ""
 
 #: ../tools/realm-client.c:981
 msgid "Couldn't select kerberos credentials"
-msgstr "Nie można wybrać danych uwierzytelniających Kerberos"
+msgstr ""
 
 #: ../tools/realm-client.c:995
 msgid "Couldn't read kerberos credentials"
-msgstr "Nie można odczytać danych uwierzytelniających Kerberos"
+msgstr ""
 
 #: ../tools/realm-client.c:1045
 #, c-format
 msgid "Realm does not support automatic membership"
-msgstr "Obszar nie obsługuje automatycznego członkostwa"
+msgstr ""
 
 #: ../tools/realm-discover.c:135
 msgid "Couldn't discover realms"
-msgstr "Nie można wykryć obszarów"
+msgstr ""
 
 #: ../tools/realm-discover.c:155
 msgid "No default realm discovered"
-msgstr "Nie wykryto domyślnego obszaru"
+msgstr ""
 
 #: ../tools/realm-discover.c:157
 #, c-format
 msgid "No such realm found: %s"
-msgstr "Nie odnaleziono takiego obszaru: %s"
+msgstr ""
 
 #: ../tools/realm-discover.c:181
 msgid "Show all discovered realms"
-msgstr "Wyświetla wszystkie wykryte obszary"
+msgstr ""
 
 #: ../tools/realm-discover.c:182 ../tools/realm-discover.c:273
 msgid "Show only the names"
-msgstr "Wyświetla tylko nazwy"
+msgstr ""
 
 #: ../tools/realm-discover.c:183 ../tools/realm-join.c:287
 #: ../tools/realm-leave.c:266
 msgid "Use specific client software"
-msgstr "Używa podanego oprogramowania klienta"
+msgstr ""
 
 #: ../tools/realm-discover.c:184 ../tools/realm-join.c:291
 msgid "Use specific membership software"
-msgstr "Używa podanego oprogramowania członkostwa"
+msgstr ""
 
 #: ../tools/realm-discover.c:185 ../tools/realm-join.c:289
 #: ../tools/realm-leave.c:269
 msgid "Use specific server software"
-msgstr "Używa podanego oprogramowania serwera"
+msgstr ""
 
 #: ../tools/realm-discover.c:272
 msgid "Show all realms"
-msgstr "Wyświetla wszystkie obszary"
+msgstr ""
 
 #: ../tools/realm-join.c:92 ../tools/realm-join.c:132
 #: ../tools/realm-join.c:163
 msgid "Couldn't join realm"
-msgstr "Nie można dołączyć do obszaru"
+msgstr ""
 
 #: ../tools/realm-join.c:227
 msgid "Cannot join this realm"
-msgstr "Nie można dołączyć do tego obszaru"
+msgstr ""
 
 #: ../tools/realm-join.c:229
 msgid "No such realm found"
-msgstr "Nie odnaleziono takiego obszaru"
+msgstr ""
 
 #: ../tools/realm-join.c:283
 msgid "User name to use for enrollment"
-msgstr "Nazwa użytkownika do użycia do zapisania"
+msgstr ""
 
 #: ../tools/realm-join.c:285
 msgid "Computer OU DN to join"
-msgstr "OU DN komputera do dołączenia"
+msgstr ""
 
 #: ../tools/realm-join.c:293
 msgid "Join automatically without a password"
-msgstr "Dołącza automatycznie bez hasła"
+msgstr ""
 
 #: ../tools/realm-join.c:295
 msgid "Join using a preset one time password"
-msgstr "Dołącza używając obecnego jednorazowego hasła"
+msgstr ""
 
 #: ../tools/realm-join.c:297
 msgid "Turn off automatic id mapping"
@@ -506,82 +505,82 @@ msgstr ""
 
 #: ../tools/realm-join.c:299
 msgid "Set the user principal for the computer account"
-msgstr "Ustawia naczelnika użytkownika dla konta komputera"
+msgstr ""
 
 #: ../tools/realm-join.c:319
 msgid "Specify one realm to join"
-msgstr "Podaje jeden obszar do dołączenia"
+msgstr ""
 
 #: ../tools/realm-join.c:324
 msgid ""
 "The --no-password argument cannot be used with --one-time-password or --user"
-msgstr "Parametr --no-password nie może być używany z --one-time-password lub --user"
+msgstr ""
 
 #: ../tools/realm-join.c:329
 msgid "The --one-time-password argument cannot be used with --user"
-msgstr "Parametr --one-time-password nie może być używany z --user"
+msgstr ""
 
 #: ../tools/realm-leave.c:181 ../tools/realm-leave.c:208
 msgid "Couldn't leave realm"
-msgstr "Nie można opuścić obszaru"
+msgstr ""
 
 #: ../tools/realm-leave.c:267
 msgid "Remove computer from realm"
-msgstr "Usuwa komputer z obszaru"
+msgstr ""
 
 #: ../tools/realm-leave.c:270
 msgid "User name to use for removal"
-msgstr "Nazwa użytkownika do użycia do usunięcia"
+msgstr ""
 
 #: ../tools/realm-logins.c:129 ../tools/realm-logins.c:175
 msgid "Couldn't change permitted logins"
-msgstr "Nie można zmienić dozwolonych loginów"
+msgstr ""
 
 #: ../tools/realm-logins.c:200
 msgid "Permit any realm account login"
-msgstr "Zezwolenie na loginy kont obszarów"
+msgstr ""
 
 #: ../tools/realm-logins.c:200
 msgid "Deny any realm account login"
-msgstr "Odmowa loginów kont obszarów"
+msgstr ""
 
 #: ../tools/realm-logins.c:202
 msgid "Withdraw permit for a realm account to login"
-msgstr "Wycofanie zezwolenia na loginy konta obszaru"
+msgstr ""
 
 #: ../tools/realm-logins.c:204
 msgid "Treat names as groups which to permit"
-msgstr "Traktuje nazwy jako grupy do zezwolenia"
+msgstr ""
 
 #: ../tools/realm-logins.c:205
 msgid "Realm to permit/deny logins for"
-msgstr "Obszar, do którego pozwolić/zabronić na logowanie"
+msgstr ""
 
 #: ../tools/realm-logins.c:219
 msgid "No logins should be specified with -a or --all"
-msgstr "Nie można podawać loginów z opcją -a lub --all"
+msgstr ""
 
 #: ../tools/realm-logins.c:222
 msgid "The --withdraw or -x arguments cannot be used when denying logins"
-msgstr "Parametry --withdraw i -x nie mogą być używane podczas odmawiania loginów"
+msgstr ""
 
 #: ../tools/realm-logins.c:225
 msgid "Specific logins must be specified with --withdraw"
-msgstr "Należy podać konkretne loginy podczas używania parametru --withdraw"
+msgstr ""
 
 #: ../tools/realm-logins.c:228
 msgid "Groups may not be specified with -a or --all"
-msgstr "Nie można podawać grup z opcją -a lub --all"
+msgstr ""
 
 #: ../tools/realm-logins.c:235
 msgid "Use --all to deny all logins"
-msgstr "Użycie --all odmówi wszystkie loginy"
+msgstr ""
 
 #: ../tools/realm-logins.c:237
 msgid "Specify specific users to add or remove from the permitted list"
-msgstr "Podaje konkretnych użytkowników do dodania lub usunięcia z listy dozwolonych"
+msgstr ""
 
 #: ../tools/realm-logins.c:241
 msgid ""
 "Specifying deny without --all is deprecated. Use realm permit --withdraw"
-msgstr "Podawanie odmowy bez --all jest przestarzałe. Należy użyć realm permit --withdraw"
+msgstr ""

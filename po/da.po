@@ -3,15 +3,15 @@
 # This file is distributed under the same license as the PACKAGE package.
 # 
 # Translators:
-# Joe Hansen <joedalton2@yahoo.dk>, 2013
+# Joe Hansen <joedalton2@yahoo.dk>, 2013-2015
 msgid ""
 msgstr ""
 "Project-Id-Version: realmd\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2014-01-07 18:08+0100\n"
-"PO-Revision-Date: 2013-12-25 18:22+0000\n"
-"Last-Translator: Joe Hansen <joedalton2@yahoo.dk>\n"
-"Language-Team: Danish (http://www.transifex.com/projects/p/freedesktop/language/da/)\n"
+"POT-Creation-Date: 2015-10-19 11:43+0200\n"
+"PO-Revision-Date: 2015-10-20 19:12+0000\n"
+"Last-Translator: Stef Walter <stefw@gnome.org>\n"
+"Language-Team: Danish (http://www.transifex.com/freedesktop/realmd/language/da/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -78,14 +78,14 @@ msgstr "Udeladt kommando: %s"
 msgid "Configured command invalid: %s"
 msgstr "Konfigureret kommando er ugyldig: %s"
 
-#: ../service/realm-disco-mscldap.c:192
+#: ../service/realm-disco-mscldap.c:198
 #, c-format
 msgid "Received invalid or unsupported Netlogon data from server"
-msgstr ""
+msgstr "Modtog ugyldig eller ej understøttet Netlogon-data fra server"
 
-#: ../service/realm-disco-mscldap.c:340
+#: ../service/realm-disco-mscldap.c:346
 msgid "LDAP on this system does not support UDP connections"
-msgstr ""
+msgstr "LDAP på dette system understøtter ikke UDP-forbindelser"
 
 #: ../service/realm-example.c:82 ../service/realm-samba.c:247
 #: ../service/realm-sssd-ad.c:309 ../service/realm-sssd-ipa.c:318
@@ -97,23 +97,23 @@ msgstr "Ikke understøttet eller ukendt medlemskabsprogram »%s«"
 msgid "Already joined to a domain"
 msgstr "Allerede sluttet til et domæne"
 
-#: ../service/realm-example.c:178 ../service/realm-example.c:260
+#: ../service/realm-example.c:178 ../service/realm-example.c:271
 msgid "Admin name or password is not valid"
 msgstr "Administratornavn eller adgangskode er ikke gyldig"
 
-#: ../service/realm-example.c:231 ../service/realm-samba.c:408
-#: ../service/realm-sssd-ad.c:493
+#: ../service/realm-example.c:242 ../service/realm-samba.c:422
+#: ../service/realm-sssd-ad.c:514
 msgid "Not currently joined to this domain"
 msgstr "Er i øjeblikket ikke sluttet til dette domæne"
 
-#: ../service/realm-example.c:290
+#: ../service/realm-example.c:301
 msgid "Need credentials for leaving this domain"
-msgstr ""
+msgstr "Skal bruge akkreditiver for at forlade dette domæne"
 
 #: ../service/realm-ini-config.c:736
 #, c-format
 msgid "Couldn't write out config: %s"
-msgstr ""
+msgstr "Kunne ikke skrive ud-konfiguration: %s"
 
 #: ../service/realm-invocation.c:536
 msgid "Not authorized to perform this action"
@@ -122,7 +122,7 @@ msgstr "Ikke godkendt til at udføre denne handling"
 #: ../service/realm-kerberos.c:130 ../service/realm-kerberos.c:208
 #: ../service/realm-provider.c:156
 msgid "Operation was cancelled."
-msgstr ""
+msgstr "Operation blev afbrudt."
 
 #: ../service/realm-kerberos.c:135
 msgid "Failed to enroll machine in realm. See diagnostics."
@@ -132,78 +132,78 @@ msgstr "Kunne ikke tilmelde maskine i område. Se diagnostik."
 msgid "Failed to unenroll machine from domain. See diagnostics."
 msgstr "Kunne ikke fjerne tilmelding af maskine fra domæne. Se diagnostik."
 
-#: ../service/realm-kerberos.c:268
-msgid "Joining this realm without credentials is not supported"
-msgstr ""
-
-#: ../service/realm-kerberos.c:269
-msgid "Leaving this realm without credentials is not supported"
-msgstr ""
-
 #: ../service/realm-kerberos.c:272
-msgid "Joining this realm using a credential cache is not supported"
-msgstr ""
+msgid "Joining this realm without credentials is not supported"
+msgstr "Tilslutning til dette område uden akkreditiver er ikke understøttet"
 
 #: ../service/realm-kerberos.c:273
-msgid "Leaving this realm using a credential cache is not supported"
-msgstr ""
+msgid "Leaving this realm without credentials is not supported"
+msgstr "At forlade dette område uden akkreditiver er ikke understøttet"
 
 #: ../service/realm-kerberos.c:276
-msgid "Joining this realm using a secret is not supported"
-msgstr ""
+msgid "Joining this realm using a credential cache is not supported"
+msgstr "Tilslutning til dette område med et akkreditiv-mellemlager er ikke understøttet"
 
 #: ../service/realm-kerberos.c:277
+msgid "Leaving this realm using a credential cache is not supported"
+msgstr "At forlade dette område via et akkreditiv-mellemlager er ikke understøttet"
+
+#: ../service/realm-kerberos.c:280
+msgid "Joining this realm using a secret is not supported"
+msgstr "Tilslutning til dette område via en hemmelighed (secret) er ikke understøttet"
+
+#: ../service/realm-kerberos.c:281
 msgid "Unenrolling this realm using a secret is not supported"
 msgstr "Fjernelse af tilmelding for dette område med en hemmelighed er ikke understøttet"
 
-#: ../service/realm-kerberos.c:280
+#: ../service/realm-kerberos.c:284
 msgid "Enrolling this realm using a password is not supported"
 msgstr "Tilmelding af dette område med brug af en adgangskode er ikke understøttet"
 
-#: ../service/realm-kerberos.c:281
+#: ../service/realm-kerberos.c:285
 msgid "Unenrolling this realm using a password is not supported"
 msgstr "Fjernelse af tilmelding for dette område med brug af en adgangskode er ikke understøttet"
 
-#: ../service/realm-kerberos.c:306
+#: ../service/realm-kerberos.c:311
 msgid "Joining this realm is not supported"
-msgstr ""
+msgstr "Tilslutning til dette område er ikke understøttet"
 
-#: ../service/realm-kerberos.c:307
+#: ../service/realm-kerberos.c:312
 msgid "Leaving this realm is not supported"
-msgstr ""
+msgstr "At forlade dette område er ikke understøttet"
 
-#: ../service/realm-kerberos.c:327 ../service/realm-kerberos.c:501
+#: ../service/realm-kerberos.c:332 ../service/realm-kerberos.c:504
 msgid "Already running another action"
 msgstr "Udfører allerede en anden handling"
 
-#: ../service/realm-kerberos.c:372
+#: ../service/realm-kerberos.c:375
 #, c-format
 msgid "Already joined to another domain: %s"
-msgstr ""
+msgstr "Allerede tilsluttet et andet domæne: %s"
 
-#: ../service/realm-kerberos.c:443
+#: ../service/realm-kerberos.c:446
 msgid "Failed to change permitted logins. See diagnostics."
 msgstr "Kunne ikke ændre tilladte logind. Se diagnostik."
 
-#: ../service/realm-kerberos.c:742
+#: ../service/realm-kerberos.c:747
 #, c-format
 msgid "The realm does not allow specifying logins"
 msgstr "Området tillader ikke specificering af logind"
 
-#: ../service/realm-kerberos.c:750
+#: ../service/realm-kerberos.c:755
 #, c-format
 msgid "Invalid login argument%s%s%s does not match the login format."
 msgstr "Ugyldigt logindparameter%s%s%s matcher ikke logindformatet."
 
-#: ../service/realm-packages.c:179
+#: ../service/realm-packages.c:389
 #, c-format
 msgid "The following packages are not available for installation: %s"
-msgstr ""
+msgstr "De følgende pakker er ikke tilgængelige for installation: %s"
 
-#: ../service/realm-packages.c:237 ../service/realm-packages.c:271
+#: ../service/realm-packages.c:471 ../service/realm-packages.c:508
 #, c-format
 msgid "Necessary packages are not installed: %s"
-msgstr ""
+msgstr "Nødvendige pakker er ikke installeret: %s"
 
 #. * Various people have been worried by installing packages
 #. * quietly, so notify about what's going on.
@@ -212,21 +212,20 @@ msgstr ""
 #. * more worrisome than the installation. It's realmd's job
 #. * to configure, enable and start stuff. So if you're properly
 #. * worried, remove realmd and do stuff manually.
-#. 
-#: ../service/realm-packages.c:242 ../tools/realm-client.c:143
+#: ../service/realm-packages.c:477 ../tools/realm-client.c:143
 msgid "Installing necessary packages"
-msgstr ""
+msgstr "Installerer nødvendige pakker"
 
 #: ../service/realm-provider.c:161
 msgid "Failed to discover realm. See diagnostics."
 msgstr "Kunne ikke registrere område. Se diagnostik."
 
-#: ../service/realm-samba.c:440
+#: ../service/realm-samba.c:467
 #, c-format
 msgid "Not joined to this domain"
 msgstr "Ikke sluttet til dette domæne"
 
-#: ../service/realm-samba.c:450 ../service/realm-samba.c:492
+#: ../service/realm-samba.c:477 ../service/realm-samba.c:519
 #, c-format
 msgid "The Samba provider cannot restrict permitted logins."
 msgstr "Sambaleverandøren kan ikke begrænse tilladte logind."
@@ -234,7 +233,7 @@ msgstr "Sambaleverandøren kan ikke begrænse tilladte logind."
 #: ../service/realm-sssd.c:130
 #, c-format
 msgid "Invalid login argument '%s' contains unsupported characters."
-msgstr ""
+msgstr "Ugyldig logindparameter »%s« indeholder tegn der ikke er understøttet."
 
 #: ../service/realm-sssd-ad.c:126 ../service/realm-sssd-ipa.c:124
 #, c-format
@@ -244,33 +243,33 @@ msgstr "Aktivering af SSSD i nsswitch.conf og PAM mislykkedes."
 #: ../service/realm-sssd-ad.c:240
 #, c-format
 msgid "Unable to automatically join the domain"
-msgstr ""
+msgstr "Kan ikke automatisk tilslutte til domænet"
 
 #: ../service/realm-sssd-ad.c:326
 #, c-format
 msgid ""
 "Joining a domain with a one time password is only supported with the '%s' "
 "membership software"
-msgstr ""
+msgstr "Tilslutning til et domæne med en engangs adgangskode er kun understøttet med »%s«-medlemsprogrammet"
 
 #: ../service/realm-sssd-ad.c:340
 #, c-format
 msgid ""
 "Joining a domain with a user password is only supported with the '%s' "
 "membership software"
-msgstr ""
+msgstr "Tilslutning til et domæne med en brugeradgangskode er kun understøttet med »%s«-medlemsprogrammet"
 
-#: ../service/realm-sssd-ad.c:369
+#: ../service/realm-sssd-ad.c:356
 #, c-format
 msgid "Unsupported credentials for joining a domain"
-msgstr ""
+msgstr "Ej understøttet akkreditiver for tilslutning til et domæne"
 
-#: ../service/realm-sssd-ad.c:411 ../service/realm-sssd-ipa.c:322
-#: ../tools/realm-join.c:212
+#: ../service/realm-sssd-ad.c:398 ../service/realm-sssd-ipa.c:322
+#: ../tools/realm-join.c:236
 msgid "Already joined to this domain"
 msgstr "Allerede sluttet til dette domæne"
 
-#: ../service/realm-sssd-ad.c:415 ../service/realm-sssd-ipa.c:326
+#: ../service/realm-sssd-ad.c:402 ../service/realm-sssd-ipa.c:326
 msgid "A domain with this name is already configured"
 msgstr "Et domæne med dette navn er allerede konfigureret"
 
@@ -282,51 +281,56 @@ msgstr "Har allerede domæne %s i sssd.conf-konfigurationsfilen"
 #: ../service/realm-sssd-config.c:190
 #, c-format
 msgid "Don't have domain %s in sssd.conf config file"
-msgstr ""
+msgstr "Har ikke domænet %s i sssd.conf-konfigurationsfilen"
 
 #: ../service/realm-sssd-ipa.c:312
 msgid "The computer-ou argument is not supported when joining an IPA domain."
-msgstr ""
+msgstr "Argumentet computer-ou er ikke understøttet, når der tilsluttes til et IPA-domæne."
 
-#: ../service/realm-sssd-ipa.c:463
+#: ../service/realm-sssd-ipa.c:480
 msgid "Not currently joined to this realm"
-msgstr ""
+msgstr "Er i øjeblikket ikke sluttet til dette realm"
 
-#: ../tools/realm.c:42
+#: ../tools/realm.c:40
 msgid "Discover available realm"
 msgstr "Registrer tilgængelig område"
 
-#: ../tools/realm.c:43
+#: ../tools/realm.c:41
 msgid "Enroll this machine in a realm"
 msgstr "Tilslut denne maskine i et område"
 
-#: ../tools/realm.c:44
+#: ../tools/realm.c:42
 msgid "Unenroll this machine from a realm"
 msgstr "Fjern tilslutning af denne maskine fra et område"
 
-#: ../tools/realm.c:45
+#: ../tools/realm.c:43
 msgid "List known realms"
 msgstr "Vis kendte områder"
 
-#: ../tools/realm.c:46
+#: ../tools/realm.c:44
 msgid "Permit user logins"
 msgstr "Tillad brugerlogind"
 
-#: ../tools/realm.c:47
+#: ../tools/realm.c:45
 msgid "Deny user logins"
 msgstr "Nægt brugerlogind"
 
-#: ../tools/realm.c:192
+#: ../tools/realm.c:184
+#, c-format
+msgid "Invalid value for %s option: %s"
+msgstr ""
+
+#: ../tools/realm.c:216
 msgid "Install mode to a specific prefix"
 msgstr "Installationstilstand for et specifikt præfiks"
 
-#: ../tools/realm.c:193
+#: ../tools/realm.c:217
 msgid "Verbose output"
 msgstr "Uddybende uddata"
 
-#: ../tools/realm.c:194
+#: ../tools/realm.c:218
 msgid "Do not prompt for input"
-msgstr ""
+msgstr "Spørg ikke efter inddata"
 
 #: ../tools/realm-client.c:193 ../tools/realm-client.c:203
 msgid "Couldn't connect to realm service"
@@ -347,21 +351,21 @@ msgstr "Kunne ikke oprette sokkepar: %s"
 
 #: ../tools/realm-client.c:287 ../tools/realm-client.c:319
 msgid "Couldn't create socket"
-msgstr ""
+msgstr "Kunne ikke oprette sokkel"
 
 #: ../tools/realm-client.c:300
 msgid "Couldn't run realmd"
-msgstr ""
+msgstr "Kunne ikke køre realmd"
 
 #: ../tools/realm-client.c:565
 #, c-format
 msgid "Couldn't create runtime directory: %s: %s"
-msgstr ""
+msgstr "Kunne ikke oprette kørselstidsmappe: %s: %s"
 
 #: ../tools/realm-client.c:575
 #, c-format
 msgid "Couldn't create credential cache file: %s: %s"
-msgstr ""
+msgstr "Kunne ikke oprette akkreditiv-mellemlagerfil: %s: %s"
 
 #: ../tools/realm-client.c:585
 msgid "Couldn't resolve credential cache"
@@ -386,130 +390,134 @@ msgstr "Kunne ikke fortolke brugernavn: %s"
 msgid "Couldn't read credential cache"
 msgstr "Kunne ikke læse akkreditiv-mellemlager"
 
-#: ../tools/realm-client.c:754 ../tools/realm-client.c:963
+#: ../tools/realm-client.c:754 ../tools/realm-client.c:961
 msgid "Couldn't initialize kerberos"
 msgstr "Kunne ikke initialisere kerberos"
 
-#: ../tools/realm-client.c:819
+#: ../tools/realm-client.c:817
 #, c-format
 msgid "Cannot prompt for a password when running in unattended mode"
-msgstr ""
+msgstr "Kan ikke anmode om adgangskode når tilstanden er unattended"
 
-#: ../tools/realm-client.c:823
+#: ../tools/realm-client.c:821
 #, c-format
 msgid "Password for %s: "
-msgstr ""
+msgstr "Adgangskode for %s:"
 
-#: ../tools/realm-client.c:841
+#: ../tools/realm-client.c:839
 #, c-format
 msgid "Couldn't prompt for password: %s"
-msgstr ""
+msgstr "Kunne ikke anmode om adgangskode: %s"
 
-#: ../tools/realm-client.c:876
+#: ../tools/realm-client.c:874
 #, c-format
 msgid "Realm does not support membership using a password"
-msgstr ""
+msgstr "Realm understøtter ikke medlemskab med brug af en adgangskode"
 
-#: ../tools/realm-client.c:915
+#: ../tools/realm-client.c:913
 #, c-format
 msgid "Realm does not support membership using a one time password"
-msgstr ""
+msgstr "Realm understøtter ikke medlemskab via brug af en engangsadgangskode"
 
-#: ../tools/realm-client.c:983
+#: ../tools/realm-client.c:981
 msgid "Couldn't select kerberos credentials"
-msgstr ""
+msgstr "Kunne ikke vælge Kerberosakkreditiver"
 
-#: ../tools/realm-client.c:997
+#: ../tools/realm-client.c:995
 msgid "Couldn't read kerberos credentials"
-msgstr ""
+msgstr "Kunne ikke læse Kerberosakkreditiver"
 
-#: ../tools/realm-client.c:1047
+#: ../tools/realm-client.c:1045
 #, c-format
 msgid "Realm does not support automatic membership"
-msgstr ""
+msgstr "Realm understøtter ikke automatisk medlemskab"
 
 #: ../tools/realm-discover.c:135
 msgid "Couldn't discover realms"
-msgstr ""
+msgstr "Kunne ikke registrere områder"
 
 #: ../tools/realm-discover.c:155
 msgid "No default realm discovered"
-msgstr ""
+msgstr "Intet standardområde registreret"
 
 #: ../tools/realm-discover.c:157
 #, c-format
 msgid "No such realm found: %s"
-msgstr ""
+msgstr "Intet sådant område fundet: %s"
 
 #: ../tools/realm-discover.c:181
 msgid "Show all discovered realms"
-msgstr ""
+msgstr "Vis alle registrerede områder"
 
 #: ../tools/realm-discover.c:182 ../tools/realm-discover.c:273
 msgid "Show only the names"
-msgstr ""
+msgstr "Vis kun navnene"
 
-#: ../tools/realm-discover.c:183 ../tools/realm-join.c:259
+#: ../tools/realm-discover.c:183 ../tools/realm-join.c:287
 #: ../tools/realm-leave.c:266
 msgid "Use specific client software"
-msgstr ""
+msgstr "Brug specifikt klientprogram"
 
-#: ../tools/realm-discover.c:184 ../tools/realm-join.c:263
+#: ../tools/realm-discover.c:184 ../tools/realm-join.c:291
 msgid "Use specific membership software"
-msgstr ""
+msgstr "Brug specifikt medlemskabsprogram"
 
-#: ../tools/realm-discover.c:185 ../tools/realm-join.c:261
+#: ../tools/realm-discover.c:185 ../tools/realm-join.c:289
 #: ../tools/realm-leave.c:269
 msgid "Use specific server software"
-msgstr ""
+msgstr "Brug specifikt serverprogram"
 
 #: ../tools/realm-discover.c:272
 msgid "Show all realms"
-msgstr ""
+msgstr "Vis alle områder"
 
 #: ../tools/realm-join.c:92 ../tools/realm-join.c:132
 #: ../tools/realm-join.c:163
 msgid "Couldn't join realm"
-msgstr ""
+msgstr "Kunne ikke sluttet til område"
 
-#: ../tools/realm-join.c:203
+#: ../tools/realm-join.c:227
 msgid "Cannot join this realm"
-msgstr ""
+msgstr "Kan ikke slutte sig til dette område"
 
-#: ../tools/realm-join.c:205
+#: ../tools/realm-join.c:229
 msgid "No such realm found"
-msgstr ""
+msgstr "Intet sådant område fundet"
 
-#: ../tools/realm-join.c:255
+#: ../tools/realm-join.c:283
 msgid "User name to use for enrollment"
-msgstr ""
+msgstr "Brugernavn at bruge for indskrivning"
 
-#: ../tools/realm-join.c:257
+#: ../tools/realm-join.c:285
 msgid "Computer OU DN to join"
-msgstr ""
+msgstr "Computer Ou DN at slutte til"
 
-#: ../tools/realm-join.c:265
+#: ../tools/realm-join.c:293
 msgid "Join automatically without a password"
 msgstr ""
 
-#: ../tools/realm-join.c:267
+#: ../tools/realm-join.c:295
 msgid "Join using a preset one time password"
 msgstr ""
 
-#: ../tools/realm-join.c:269
+#: ../tools/realm-join.c:297
+msgid "Turn off automatic id mapping"
+msgstr ""
+
+#: ../tools/realm-join.c:299
 msgid "Set the user principal for the computer account"
 msgstr ""
 
-#: ../tools/realm-join.c:286
+#: ../tools/realm-join.c:319
 msgid "Specify one realm to join"
 msgstr ""
 
-#: ../tools/realm-join.c:291
+#: ../tools/realm-join.c:324
 msgid ""
 "The --no-password argument cannot be used with --one-time-password or --user"
 msgstr ""
 
-#: ../tools/realm-join.c:296
+#: ../tools/realm-join.c:329
 msgid "The --one-time-password argument cannot be used with --user"
 msgstr ""
 
@@ -527,51 +535,51 @@ msgstr ""
 
 #: ../tools/realm-logins.c:129 ../tools/realm-logins.c:175
 msgid "Couldn't change permitted logins"
-msgstr ""
+msgstr "Kunne ikke ændre tilladte logind"
 
 #: ../tools/realm-logins.c:200
 msgid "Permit any realm account login"
-msgstr ""
+msgstr "Tillad alle område-kontologind"
 
 #: ../tools/realm-logins.c:200
 msgid "Deny any realm account login"
-msgstr ""
+msgstr "Nægt alle område-kontologind"
 
 #: ../tools/realm-logins.c:202
 msgid "Withdraw permit for a realm account to login"
-msgstr ""
+msgstr "Træk tilladelse tilbage for områdekonto til logind"
 
 #: ../tools/realm-logins.c:204
 msgid "Treat names as groups which to permit"
-msgstr ""
+msgstr "Opfat navne som grupper som at tillade"
 
 #: ../tools/realm-logins.c:205
 msgid "Realm to permit/deny logins for"
-msgstr ""
+msgstr "Område at tillade/nægte logind for"
 
 #: ../tools/realm-logins.c:219
 msgid "No logins should be specified with -a or --all"
-msgstr ""
+msgstr "Ingen logind skal angivet med -a eller -all"
 
 #: ../tools/realm-logins.c:222
 msgid "The --withdraw or -x arguments cannot be used when denying logins"
-msgstr ""
+msgstr "Parametrene --withdraw eller -x kan ikke bruges uden at nægte logind"
 
 #: ../tools/realm-logins.c:225
 msgid "Specific logins must be specified with --withdraw"
-msgstr ""
+msgstr "Specifikke logind skal angives med --withdraw"
 
 #: ../tools/realm-logins.c:228
 msgid "Groups may not be specified with -a or --all"
-msgstr ""
+msgstr "Grupper må ikke specificeres med -a eller --all"
 
 #: ../tools/realm-logins.c:235
 msgid "Use --all to deny all logins"
-msgstr ""
+msgstr "Brug --all til at nægte alle logind"
 
 #: ../tools/realm-logins.c:237
 msgid "Specify specific users to add or remove from the permitted list"
-msgstr ""
+msgstr "Specificer specifikke brugere at tilføje eller fjerne fra den tilladte liste"
 
 #: ../tools/realm-logins.c:241
 msgid ""

@@ -30,13 +30,21 @@ lingua_langs()
 	done
 }
 
+if [ $# -eq 1 ]; then
+	POT="$(realpath $1)"
+else
+	POT="po/$TX_PROJECT.pot"
+fi
+
+cd "$(dirname $0)/.."
+
 if [ ! -d po ]; then
-	fail "run this script in the top level project directory"
+	fail "could not find top level directory"
 fi
 
 if [ ! -d .tx ]; then
 	tx init --host=$TX_HOST
-	tx set --source -r $TX_RESOURCE -l en po/$TX_PROJECT.pot
+	tx set --source -r $TX_RESOURCE -l en $POT
 fi
 
 # Push source to server

@@ -29,8 +29,8 @@ upload-release: $(DIST_ARCHIVES)
 	gpg --detach-sign --local-user 'stef@thewalter.net' $(DIST_ARCHIVES)
 	scp $(DIST_ARCHIVES) $(DIST_ARCHIVES).sig anarchy.freedesktop.org:/srv/www.freedesktop.org/www/software/realmd/releases
 
-transifex:
-	sh build/tx-update
+transifex: po/realmd.pot
+	sh $(srcdir)/build/tx-update $<
 
 V_SED = $(V_SED_$(V))
 V_SED_ = $(V_SED_$(AM_DEFAULT_VERBOSITY))

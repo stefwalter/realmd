@@ -3,15 +3,15 @@
 # This file is distributed under the same license as the PACKAGE package.
 # 
 # Translators:
-# Fran Diéguez <frandieguez@ubuntu.com>, 2013
+# Fran Diéguez <frandieguez@ubuntu.com>, 2013-2014
 msgid ""
 msgstr ""
 "Project-Id-Version: realmd\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2014-01-07 18:08+0100\n"
-"PO-Revision-Date: 2013-11-20 09:15+0000\n"
-"Last-Translator: Fran Diéguez <frandieguez@ubuntu.com>\n"
-"Language-Team: Galician (http://www.transifex.com/projects/p/freedesktop/language/gl/)\n"
+"POT-Creation-Date: 2015-10-19 11:43+0200\n"
+"PO-Revision-Date: 2015-10-20 19:12+0000\n"
+"Last-Translator: Stef Walter <stefw@gnome.org>\n"
+"Language-Team: Galician (http://www.transifex.com/freedesktop/realmd/language/gl/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -78,12 +78,12 @@ msgstr "Orde omitida: %s"
 msgid "Configured command invalid: %s"
 msgstr "Orde configurada non válida: %s"
 
-#: ../service/realm-disco-mscldap.c:192
+#: ../service/realm-disco-mscldap.c:198
 #, c-format
 msgid "Received invalid or unsupported Netlogon data from server"
 msgstr "Recibironse datos de Netlogon non válidos ou non compatíbeis do servidor"
 
-#: ../service/realm-disco-mscldap.c:340
+#: ../service/realm-disco-mscldap.c:346
 msgid "LDAP on this system does not support UDP connections"
 msgstr "O LDAP deste sistema non admite as conexións UDP"
 
@@ -97,16 +97,16 @@ msgstr "Membresía de software non admitida ou descoñecida «%s»"
 msgid "Already joined to a domain"
 msgstr "Xa está unido ao dominio"
 
-#: ../service/realm-example.c:178 ../service/realm-example.c:260
+#: ../service/realm-example.c:178 ../service/realm-example.c:271
 msgid "Admin name or password is not valid"
 msgstr "O nome ou contrasinal do administrador non é válido"
 
-#: ../service/realm-example.c:231 ../service/realm-samba.c:408
-#: ../service/realm-sssd-ad.c:493
+#: ../service/realm-example.c:242 ../service/realm-samba.c:422
+#: ../service/realm-sssd-ad.c:514
 msgid "Not currently joined to this domain"
 msgstr "Non está actualmente neste dominio"
 
-#: ../service/realm-example.c:290
+#: ../service/realm-example.c:301
 msgid "Need credentials for leaving this domain"
 msgstr "Precisa credenciais para abandonar este dominio"
 
@@ -132,75 +132,75 @@ msgstr "Produciuse un fallo ao unir o computador ao reino. Vexa o diagnóstico."
 msgid "Failed to unenroll machine from domain. See diagnostics."
 msgstr "Produciuse un fallo ao quitar o computador do dominio. Vexa o diagnóstico."
 
-#: ../service/realm-kerberos.c:268
+#: ../service/realm-kerberos.c:272
 msgid "Joining this realm without credentials is not supported"
 msgstr "No se admite a unión a este dominio sen credenciais"
 
-#: ../service/realm-kerberos.c:269
+#: ../service/realm-kerberos.c:273
 msgid "Leaving this realm without credentials is not supported"
 msgstr "No se admite deixar a este dominio sen credenciais"
 
-#: ../service/realm-kerberos.c:272
+#: ../service/realm-kerberos.c:276
 msgid "Joining this realm using a credential cache is not supported"
 msgstr "Non se admite a unión a este reino usando unha caché de credencial."
 
-#: ../service/realm-kerberos.c:273
+#: ../service/realm-kerberos.c:277
 msgid "Leaving this realm using a credential cache is not supported"
 msgstr "Non se admite deixar a este reino usando unha caché de credencial."
 
-#: ../service/realm-kerberos.c:276
+#: ../service/realm-kerberos.c:280
 msgid "Joining this realm using a secret is not supported"
 msgstr "Non se admite a unión a este reino usando un segredo"
 
-#: ../service/realm-kerberos.c:277
+#: ../service/realm-kerberos.c:281
 msgid "Unenrolling this realm using a secret is not supported"
 msgstr "Non se admite quitarse deste reino sen usar un segredo"
 
-#: ../service/realm-kerberos.c:280
+#: ../service/realm-kerberos.c:284
 msgid "Enrolling this realm using a password is not supported"
 msgstr "Non se admite a unión a este reino usando un contrasinal"
 
-#: ../service/realm-kerberos.c:281
+#: ../service/realm-kerberos.c:285
 msgid "Unenrolling this realm using a password is not supported"
 msgstr "Non se admite abandonar este reino usando un contrasinal"
 
-#: ../service/realm-kerberos.c:306
+#: ../service/realm-kerberos.c:311
 msgid "Joining this realm is not supported"
 msgstr "Non se permite a unión a este reino"
 
-#: ../service/realm-kerberos.c:307
+#: ../service/realm-kerberos.c:312
 msgid "Leaving this realm is not supported"
 msgstr "Non se admite deixar este reino"
 
-#: ../service/realm-kerberos.c:327 ../service/realm-kerberos.c:501
+#: ../service/realm-kerberos.c:332 ../service/realm-kerberos.c:504
 msgid "Already running another action"
 msgstr "Esta executando outra acción"
 
-#: ../service/realm-kerberos.c:372
+#: ../service/realm-kerberos.c:375
 #, c-format
 msgid "Already joined to another domain: %s"
 msgstr "Xa está unido a outro dominio: %s"
 
-#: ../service/realm-kerberos.c:443
+#: ../service/realm-kerberos.c:446
 msgid "Failed to change permitted logins. See diagnostics."
 msgstr "Produciuse un fallo ao cambiar os inicios de sesión permitidos. Vexa o diagnóstico."
 
-#: ../service/realm-kerberos.c:742
+#: ../service/realm-kerberos.c:747
 #, c-format
 msgid "The realm does not allow specifying logins"
 msgstr "O reino non permite especificar inicios de sesión"
 
-#: ../service/realm-kerberos.c:750
+#: ../service/realm-kerberos.c:755
 #, c-format
 msgid "Invalid login argument%s%s%s does not match the login format."
-msgstr ""
+msgstr "O argumento de inicio de sesión non é válido %s%s%s non coincide co formato de inicio de sesión."
 
-#: ../service/realm-packages.c:179
+#: ../service/realm-packages.c:389
 #, c-format
 msgid "The following packages are not available for installation: %s"
 msgstr "Os seguintes paquetes non están dispoñíbeis para a súa instalación: %s"
 
-#: ../service/realm-packages.c:237 ../service/realm-packages.c:271
+#: ../service/realm-packages.c:471 ../service/realm-packages.c:508
 #, c-format
 msgid "Necessary packages are not installed: %s"
 msgstr "Os paquetes necesarios non están instalados: %s"
@@ -212,8 +212,7 @@ msgstr "Os paquetes necesarios non están instalados: %s"
 #. * more worrisome than the installation. It's realmd's job
 #. * to configure, enable and start stuff. So if you're properly
 #. * worried, remove realmd and do stuff manually.
-#. 
-#: ../service/realm-packages.c:242 ../tools/realm-client.c:143
+#: ../service/realm-packages.c:477 ../tools/realm-client.c:143
 msgid "Installing necessary packages"
 msgstr "Instalando os paquetes necesarios"
 
@@ -221,12 +220,12 @@ msgstr "Instalando os paquetes necesarios"
 msgid "Failed to discover realm. See diagnostics."
 msgstr "Produciuse un fallo ao descubrir o reino. Vexa o diagnóstico."
 
-#: ../service/realm-samba.c:440
+#: ../service/realm-samba.c:467
 #, c-format
 msgid "Not joined to this domain"
 msgstr "Non unido a este reino"
 
-#: ../service/realm-samba.c:450 ../service/realm-samba.c:492
+#: ../service/realm-samba.c:477 ../service/realm-samba.c:519
 #, c-format
 msgid "The Samba provider cannot restrict permitted logins."
 msgstr "O fornecedor Samba non pode restrinxir os inicios de sesión permitidos."
@@ -260,17 +259,17 @@ msgid ""
 "membership software"
 msgstr "A unión a un dominio con un contrasinal de usuario só se permite con software de membresía «%s»"
 
-#: ../service/realm-sssd-ad.c:369
+#: ../service/realm-sssd-ad.c:356
 #, c-format
 msgid "Unsupported credentials for joining a domain"
 msgstr "Credenciais non compatíbeis para a unión a un dominio"
 
-#: ../service/realm-sssd-ad.c:411 ../service/realm-sssd-ipa.c:322
-#: ../tools/realm-join.c:212
+#: ../service/realm-sssd-ad.c:398 ../service/realm-sssd-ipa.c:322
+#: ../tools/realm-join.c:236
 msgid "Already joined to this domain"
 msgstr "Xa se uniu a este dominio"
 
-#: ../service/realm-sssd-ad.c:415 ../service/realm-sssd-ipa.c:326
+#: ../service/realm-sssd-ad.c:402 ../service/realm-sssd-ipa.c:326
 msgid "A domain with this name is already configured"
 msgstr "Xa está configurado un dominio con este nome"
 
@@ -286,45 +285,50 @@ msgstr "Non ten o dominio %s no ficheiro de configuración sssd.conf"
 
 #: ../service/realm-sssd-ipa.c:312
 msgid "The computer-ou argument is not supported when joining an IPA domain."
-msgstr ""
+msgstr "O argumento de computador -ou non se admite ao unirse a un dominio IPA."
 
-#: ../service/realm-sssd-ipa.c:463
+#: ../service/realm-sssd-ipa.c:480
 msgid "Not currently joined to this realm"
 msgstr "Non unido a este reino actualmente"
 
-#: ../tools/realm.c:42
+#: ../tools/realm.c:40
 msgid "Discover available realm"
 msgstr "Descubrir reino dispoñíbel"
 
-#: ../tools/realm.c:43
+#: ../tools/realm.c:41
 msgid "Enroll this machine in a realm"
 msgstr "Unir este computador no reino"
 
-#: ../tools/realm.c:44
+#: ../tools/realm.c:42
 msgid "Unenroll this machine from a realm"
 msgstr "Quitar este computador do reino"
 
-#: ../tools/realm.c:45
+#: ../tools/realm.c:43
 msgid "List known realms"
 msgstr "Listar os reinos coñecidos"
 
-#: ../tools/realm.c:46
+#: ../tools/realm.c:44
 msgid "Permit user logins"
 msgstr "Permitir inicios de sesión de usuario"
 
-#: ../tools/realm.c:47
+#: ../tools/realm.c:45
 msgid "Deny user logins"
 msgstr "Denegar inicios de sesión de usuarios"
 
-#: ../tools/realm.c:192
+#: ../tools/realm.c:184
+#, c-format
+msgid "Invalid value for %s option: %s"
+msgstr ""
+
+#: ../tools/realm.c:216
 msgid "Install mode to a specific prefix"
 msgstr "Modo de instalación para un prefixo específico"
 
-#: ../tools/realm.c:193
+#: ../tools/realm.c:217
 msgid "Verbose output"
 msgstr "Saída estendida"
 
-#: ../tools/realm.c:194
+#: ../tools/realm.c:218
 msgid "Do not prompt for input"
 msgstr "Non preguntar por entrada"
 
@@ -386,44 +390,44 @@ msgstr "Non foi posíbel analizar o nome de usuario: %s"
 msgid "Couldn't read credential cache"
 msgstr "Non foi posíbel ler a caché das credenciais"
 
-#: ../tools/realm-client.c:754 ../tools/realm-client.c:963
+#: ../tools/realm-client.c:754 ../tools/realm-client.c:961
 msgid "Couldn't initialize kerberos"
 msgstr "Non foi posíbel inicializar kerberos"
 
-#: ../tools/realm-client.c:819
+#: ../tools/realm-client.c:817
 #, c-format
 msgid "Cannot prompt for a password when running in unattended mode"
 msgstr "Non é posíbel solicitar un contrasinal mentres se está executando en modo non atendido"
 
-#: ../tools/realm-client.c:823
+#: ../tools/realm-client.c:821
 #, c-format
 msgid "Password for %s: "
 msgstr "Contrasinal para %s:"
 
-#: ../tools/realm-client.c:841
+#: ../tools/realm-client.c:839
 #, c-format
 msgid "Couldn't prompt for password: %s"
 msgstr "Non foi posíbel solicitar o contrasinal: %s"
 
-#: ../tools/realm-client.c:876
+#: ../tools/realm-client.c:874
 #, c-format
 msgid "Realm does not support membership using a password"
 msgstr "Realm non admite a membresía usando un contrasinal"
 
-#: ../tools/realm-client.c:915
+#: ../tools/realm-client.c:913
 #, c-format
 msgid "Realm does not support membership using a one time password"
 msgstr "Realm non admite a membresía usando un contrasinal de un único uso"
 
-#: ../tools/realm-client.c:983
+#: ../tools/realm-client.c:981
 msgid "Couldn't select kerberos credentials"
 msgstr "Non foi posíbel seleccionar as credenciais de kerberos"
 
-#: ../tools/realm-client.c:997
+#: ../tools/realm-client.c:995
 msgid "Couldn't read kerberos credentials"
 msgstr "Non foi posíbel ler as credenciais de kerberos"
 
-#: ../tools/realm-client.c:1047
+#: ../tools/realm-client.c:1045
 #, c-format
 msgid "Realm does not support automatic membership"
 msgstr "Realm non admite a membresía automática"
@@ -449,16 +453,16 @@ msgstr "Mostrar todos os reinos descubertos"
 msgid "Show only the names"
 msgstr "Mostrar só os nomes"
 
-#: ../tools/realm-discover.c:183 ../tools/realm-join.c:259
+#: ../tools/realm-discover.c:183 ../tools/realm-join.c:287
 #: ../tools/realm-leave.c:266
 msgid "Use specific client software"
 msgstr "Usar un software de cliente específico"
 
-#: ../tools/realm-discover.c:184 ../tools/realm-join.c:263
+#: ../tools/realm-discover.c:184 ../tools/realm-join.c:291
 msgid "Use specific membership software"
 msgstr "Usar un software de membresía específico"
 
-#: ../tools/realm-discover.c:185 ../tools/realm-join.c:261
+#: ../tools/realm-discover.c:185 ../tools/realm-join.c:289
 #: ../tools/realm-leave.c:269
 msgid "Use specific server software"
 msgstr "Usar un software de servidor específico"
@@ -472,44 +476,48 @@ msgstr "Mostrar todos os reinos"
 msgid "Couldn't join realm"
 msgstr "Non foi posíbel unirse ao reino"
 
-#: ../tools/realm-join.c:203
+#: ../tools/realm-join.c:227
 msgid "Cannot join this realm"
 msgstr "Non é posíbel unirse a este reino"
 
-#: ../tools/realm-join.c:205
+#: ../tools/realm-join.c:229
 msgid "No such realm found"
 msgstr "Non se atopou o reino"
 
-#: ../tools/realm-join.c:255
+#: ../tools/realm-join.c:283
 msgid "User name to use for enrollment"
 msgstr "O nome de usuario a usar para a unión"
 
-#: ../tools/realm-join.c:257
+#: ../tools/realm-join.c:285
 msgid "Computer OU DN to join"
 msgstr "Computador ou DN ao que unirse"
 
-#: ../tools/realm-join.c:265
+#: ../tools/realm-join.c:293
 msgid "Join automatically without a password"
 msgstr "Unirse automaticamente sen un contrasinal"
 
-#: ../tools/realm-join.c:267
+#: ../tools/realm-join.c:295
 msgid "Join using a preset one time password"
 msgstr "Unirse usando un contrasinal dun só uso"
 
-#: ../tools/realm-join.c:269
+#: ../tools/realm-join.c:297
+msgid "Turn off automatic id mapping"
+msgstr ""
+
+#: ../tools/realm-join.c:299
 msgid "Set the user principal for the computer account"
 msgstr "Estabelecer o usuario principal para a conta do computador"
 
-#: ../tools/realm-join.c:286
+#: ../tools/realm-join.c:319
 msgid "Specify one realm to join"
 msgstr "Especifique un reino ao que unirse"
 
-#: ../tools/realm-join.c:291
+#: ../tools/realm-join.c:324
 msgid ""
 "The --no-password argument cannot be used with --one-time-password or --user"
 msgstr "O argumento --no-password non pode usarse con --one-time-password ou --user"
 
-#: ../tools/realm-join.c:296
+#: ../tools/realm-join.c:329
 msgid "The --one-time-password argument cannot be used with --user"
 msgstr "O argumento --one-time-password non pode usarse con --user"
 
@@ -539,7 +547,7 @@ msgstr "Denegar calquera inicio de sesión de contas do reino"
 
 #: ../tools/realm-logins.c:202
 msgid "Withdraw permit for a realm account to login"
-msgstr ""
+msgstr "Retirar o permiso para unha conta de inicio de sesión do reino"
 
 #: ../tools/realm-logins.c:204
 msgid "Treat names as groups which to permit"
@@ -576,4 +584,4 @@ msgstr "Especifice os usuarios específicos para engadir ou quitar da lista de p
 #: ../tools/realm-logins.c:241
 msgid ""
 "Specifying deny without --all is deprecated. Use realm permit --withdraw"
-msgstr ""
+msgstr "Especificando denegación sen --all xa non se admite. Use realm permit --withdraw"

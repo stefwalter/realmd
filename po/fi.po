@@ -7,10 +7,10 @@ msgid ""
 msgstr ""
 "Project-Id-Version: realmd\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2014-01-07 18:08+0100\n"
-"PO-Revision-Date: 2013-11-20 09:15+0000\n"
-"Last-Translator: stef0x77 <stefw@gnome.org>\n"
-"Language-Team: Finnish (http://www.transifex.com/projects/p/freedesktop/language/fi/)\n"
+"POT-Creation-Date: 2015-10-19 11:43+0200\n"
+"PO-Revision-Date: 2015-10-20 19:12+0000\n"
+"Last-Translator: Stef Walter <stefw@gnome.org>\n"
+"Language-Team: Finnish (http://www.transifex.com/freedesktop/realmd/language/fi/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -77,12 +77,12 @@ msgstr ""
 msgid "Configured command invalid: %s"
 msgstr ""
 
-#: ../service/realm-disco-mscldap.c:192
+#: ../service/realm-disco-mscldap.c:198
 #, c-format
 msgid "Received invalid or unsupported Netlogon data from server"
 msgstr ""
 
-#: ../service/realm-disco-mscldap.c:340
+#: ../service/realm-disco-mscldap.c:346
 msgid "LDAP on this system does not support UDP connections"
 msgstr ""
 
@@ -96,16 +96,16 @@ msgstr ""
 msgid "Already joined to a domain"
 msgstr ""
 
-#: ../service/realm-example.c:178 ../service/realm-example.c:260
+#: ../service/realm-example.c:178 ../service/realm-example.c:271
 msgid "Admin name or password is not valid"
 msgstr ""
 
-#: ../service/realm-example.c:231 ../service/realm-samba.c:408
-#: ../service/realm-sssd-ad.c:493
+#: ../service/realm-example.c:242 ../service/realm-samba.c:422
+#: ../service/realm-sssd-ad.c:514
 msgid "Not currently joined to this domain"
 msgstr ""
 
-#: ../service/realm-example.c:290
+#: ../service/realm-example.c:301
 msgid "Need credentials for leaving this domain"
 msgstr ""
 
@@ -131,75 +131,75 @@ msgstr ""
 msgid "Failed to unenroll machine from domain. See diagnostics."
 msgstr ""
 
-#: ../service/realm-kerberos.c:268
+#: ../service/realm-kerberos.c:272
 msgid "Joining this realm without credentials is not supported"
 msgstr ""
 
-#: ../service/realm-kerberos.c:269
+#: ../service/realm-kerberos.c:273
 msgid "Leaving this realm without credentials is not supported"
 msgstr ""
 
-#: ../service/realm-kerberos.c:272
+#: ../service/realm-kerberos.c:276
 msgid "Joining this realm using a credential cache is not supported"
 msgstr ""
 
-#: ../service/realm-kerberos.c:273
+#: ../service/realm-kerberos.c:277
 msgid "Leaving this realm using a credential cache is not supported"
 msgstr ""
 
-#: ../service/realm-kerberos.c:276
+#: ../service/realm-kerberos.c:280
 msgid "Joining this realm using a secret is not supported"
 msgstr ""
 
-#: ../service/realm-kerberos.c:277
+#: ../service/realm-kerberos.c:281
 msgid "Unenrolling this realm using a secret is not supported"
 msgstr ""
 
-#: ../service/realm-kerberos.c:280
+#: ../service/realm-kerberos.c:284
 msgid "Enrolling this realm using a password is not supported"
 msgstr ""
 
-#: ../service/realm-kerberos.c:281
+#: ../service/realm-kerberos.c:285
 msgid "Unenrolling this realm using a password is not supported"
 msgstr ""
 
-#: ../service/realm-kerberos.c:306
+#: ../service/realm-kerberos.c:311
 msgid "Joining this realm is not supported"
 msgstr ""
 
-#: ../service/realm-kerberos.c:307
+#: ../service/realm-kerberos.c:312
 msgid "Leaving this realm is not supported"
 msgstr ""
 
-#: ../service/realm-kerberos.c:327 ../service/realm-kerberos.c:501
+#: ../service/realm-kerberos.c:332 ../service/realm-kerberos.c:504
 msgid "Already running another action"
 msgstr ""
 
-#: ../service/realm-kerberos.c:372
+#: ../service/realm-kerberos.c:375
 #, c-format
 msgid "Already joined to another domain: %s"
 msgstr ""
 
-#: ../service/realm-kerberos.c:443
+#: ../service/realm-kerberos.c:446
 msgid "Failed to change permitted logins. See diagnostics."
 msgstr ""
 
-#: ../service/realm-kerberos.c:742
+#: ../service/realm-kerberos.c:747
 #, c-format
 msgid "The realm does not allow specifying logins"
 msgstr ""
 
-#: ../service/realm-kerberos.c:750
+#: ../service/realm-kerberos.c:755
 #, c-format
 msgid "Invalid login argument%s%s%s does not match the login format."
 msgstr ""
 
-#: ../service/realm-packages.c:179
+#: ../service/realm-packages.c:389
 #, c-format
 msgid "The following packages are not available for installation: %s"
 msgstr ""
 
-#: ../service/realm-packages.c:237 ../service/realm-packages.c:271
+#: ../service/realm-packages.c:471 ../service/realm-packages.c:508
 #, c-format
 msgid "Necessary packages are not installed: %s"
 msgstr ""
@@ -211,8 +211,7 @@ msgstr ""
 #. * more worrisome than the installation. It's realmd's job
 #. * to configure, enable and start stuff. So if you're properly
 #. * worried, remove realmd and do stuff manually.
-#. 
-#: ../service/realm-packages.c:242 ../tools/realm-client.c:143
+#: ../service/realm-packages.c:477 ../tools/realm-client.c:143
 msgid "Installing necessary packages"
 msgstr ""
 
@@ -220,12 +219,12 @@ msgstr ""
 msgid "Failed to discover realm. See diagnostics."
 msgstr ""
 
-#: ../service/realm-samba.c:440
+#: ../service/realm-samba.c:467
 #, c-format
 msgid "Not joined to this domain"
 msgstr ""
 
-#: ../service/realm-samba.c:450 ../service/realm-samba.c:492
+#: ../service/realm-samba.c:477 ../service/realm-samba.c:519
 #, c-format
 msgid "The Samba provider cannot restrict permitted logins."
 msgstr ""
@@ -259,17 +258,17 @@ msgid ""
 "membership software"
 msgstr ""
 
-#: ../service/realm-sssd-ad.c:369
+#: ../service/realm-sssd-ad.c:356
 #, c-format
 msgid "Unsupported credentials for joining a domain"
 msgstr ""
 
-#: ../service/realm-sssd-ad.c:411 ../service/realm-sssd-ipa.c:322
-#: ../tools/realm-join.c:212
+#: ../service/realm-sssd-ad.c:398 ../service/realm-sssd-ipa.c:322
+#: ../tools/realm-join.c:236
 msgid "Already joined to this domain"
 msgstr ""
 
-#: ../service/realm-sssd-ad.c:415 ../service/realm-sssd-ipa.c:326
+#: ../service/realm-sssd-ad.c:402 ../service/realm-sssd-ipa.c:326
 msgid "A domain with this name is already configured"
 msgstr ""
 
@@ -287,43 +286,48 @@ msgstr ""
 msgid "The computer-ou argument is not supported when joining an IPA domain."
 msgstr ""
 
-#: ../service/realm-sssd-ipa.c:463
+#: ../service/realm-sssd-ipa.c:480
 msgid "Not currently joined to this realm"
 msgstr ""
 
-#: ../tools/realm.c:42
+#: ../tools/realm.c:40
 msgid "Discover available realm"
 msgstr ""
 
-#: ../tools/realm.c:43
+#: ../tools/realm.c:41
 msgid "Enroll this machine in a realm"
 msgstr ""
 
-#: ../tools/realm.c:44
+#: ../tools/realm.c:42
 msgid "Unenroll this machine from a realm"
 msgstr ""
 
-#: ../tools/realm.c:45
+#: ../tools/realm.c:43
 msgid "List known realms"
 msgstr ""
 
-#: ../tools/realm.c:46
+#: ../tools/realm.c:44
 msgid "Permit user logins"
 msgstr ""
 
-#: ../tools/realm.c:47
+#: ../tools/realm.c:45
 msgid "Deny user logins"
 msgstr ""
 
-#: ../tools/realm.c:192
+#: ../tools/realm.c:184
+#, c-format
+msgid "Invalid value for %s option: %s"
+msgstr ""
+
+#: ../tools/realm.c:216
 msgid "Install mode to a specific prefix"
 msgstr ""
 
-#: ../tools/realm.c:193
+#: ../tools/realm.c:217
 msgid "Verbose output"
 msgstr ""
 
-#: ../tools/realm.c:194
+#: ../tools/realm.c:218
 msgid "Do not prompt for input"
 msgstr ""
 
@@ -385,44 +389,44 @@ msgstr ""
 msgid "Couldn't read credential cache"
 msgstr ""
 
-#: ../tools/realm-client.c:754 ../tools/realm-client.c:963
+#: ../tools/realm-client.c:754 ../tools/realm-client.c:961
 msgid "Couldn't initialize kerberos"
 msgstr ""
 
-#: ../tools/realm-client.c:819
+#: ../tools/realm-client.c:817
 #, c-format
 msgid "Cannot prompt for a password when running in unattended mode"
 msgstr ""
 
-#: ../tools/realm-client.c:823
+#: ../tools/realm-client.c:821
 #, c-format
 msgid "Password for %s: "
 msgstr ""
 
-#: ../tools/realm-client.c:841
+#: ../tools/realm-client.c:839
 #, c-format
 msgid "Couldn't prompt for password: %s"
 msgstr ""
 
-#: ../tools/realm-client.c:876
+#: ../tools/realm-client.c:874
 #, c-format
 msgid "Realm does not support membership using a password"
 msgstr ""
 
-#: ../tools/realm-client.c:915
+#: ../tools/realm-client.c:913
 #, c-format
 msgid "Realm does not support membership using a one time password"
 msgstr ""
 
-#: ../tools/realm-client.c:983
+#: ../tools/realm-client.c:981
 msgid "Couldn't select kerberos credentials"
 msgstr ""
 
-#: ../tools/realm-client.c:997
+#: ../tools/realm-client.c:995
 msgid "Couldn't read kerberos credentials"
 msgstr ""
 
-#: ../tools/realm-client.c:1047
+#: ../tools/realm-client.c:1045
 #, c-format
 msgid "Realm does not support automatic membership"
 msgstr ""
@@ -448,16 +452,16 @@ msgstr ""
 msgid "Show only the names"
 msgstr ""
 
-#: ../tools/realm-discover.c:183 ../tools/realm-join.c:259
+#: ../tools/realm-discover.c:183 ../tools/realm-join.c:287
 #: ../tools/realm-leave.c:266
 msgid "Use specific client software"
 msgstr ""
 
-#: ../tools/realm-discover.c:184 ../tools/realm-join.c:263
+#: ../tools/realm-discover.c:184 ../tools/realm-join.c:291
 msgid "Use specific membership software"
 msgstr ""
 
-#: ../tools/realm-discover.c:185 ../tools/realm-join.c:261
+#: ../tools/realm-discover.c:185 ../tools/realm-join.c:289
 #: ../tools/realm-leave.c:269
 msgid "Use specific server software"
 msgstr ""
@@ -471,44 +475,48 @@ msgstr ""
 msgid "Couldn't join realm"
 msgstr ""
 
-#: ../tools/realm-join.c:203
+#: ../tools/realm-join.c:227
 msgid "Cannot join this realm"
 msgstr ""
 
-#: ../tools/realm-join.c:205
+#: ../tools/realm-join.c:229
 msgid "No such realm found"
 msgstr ""
 
-#: ../tools/realm-join.c:255
+#: ../tools/realm-join.c:283
 msgid "User name to use for enrollment"
 msgstr ""
 
-#: ../tools/realm-join.c:257
+#: ../tools/realm-join.c:285
 msgid "Computer OU DN to join"
 msgstr ""
 
-#: ../tools/realm-join.c:265
+#: ../tools/realm-join.c:293
 msgid "Join automatically without a password"
 msgstr ""
 
-#: ../tools/realm-join.c:267
+#: ../tools/realm-join.c:295
 msgid "Join using a preset one time password"
 msgstr ""
 
-#: ../tools/realm-join.c:269
+#: ../tools/realm-join.c:297
+msgid "Turn off automatic id mapping"
+msgstr ""
+
+#: ../tools/realm-join.c:299
 msgid "Set the user principal for the computer account"
 msgstr ""
 
-#: ../tools/realm-join.c:286
+#: ../tools/realm-join.c:319
 msgid "Specify one realm to join"
 msgstr ""
 
-#: ../tools/realm-join.c:291
+#: ../tools/realm-join.c:324
 msgid ""
 "The --no-password argument cannot be used with --one-time-password or --user"
 msgstr ""
 
-#: ../tools/realm-join.c:296
+#: ../tools/realm-join.c:329
 msgid "The --one-time-password argument cannot be used with --user"
 msgstr ""
 

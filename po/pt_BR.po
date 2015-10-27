@@ -6,14 +6,15 @@
 # Enrico Nicoletto <enrico.BR@gmx.co.uk>, 2013
 # Enrico Nicoletto <liverig@gmail.com>, 2013
 # Rafael Fontenelle <rffontenelle@gmail.com>, 2013
+# Rafael Fontenelle <rffontenelle@gmail.com>, 2013,2015
 # ufa <ufa@technotroll.org>, 2013
 msgid ""
 msgstr ""
 "Project-Id-Version: realmd\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2015-10-19 11:43+0200\n"
-"PO-Revision-Date: 2015-10-20 19:12+0000\n"
-"Last-Translator: Stef Walter <stefw@gnome.org>\n"
+"PO-Revision-Date: 2015-10-24 21:40+0000\n"
+"Last-Translator: Rafael Fontenelle <rffontenelle@gmail.com>\n"
 "Language-Team: Portuguese (Brazil) (http://www.transifex.com/freedesktop/realmd/language/pt_BR/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -23,28 +24,28 @@ msgstr ""
 
 #: ../service/org.freedesktop.realmd.policy.in.h:1
 msgid "Discover realm"
-msgstr "Descobrir domínio"
+msgstr "Descobrir reino"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:2
 msgid "Authentication is required to discover a kerberos realm"
-msgstr "Autenticação é necessária para descobrir um domínio kerberos"
+msgstr "Autenticação é necessária para descobrir um reino em kerberos"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:3
 msgid "Join machine to realm"
-msgstr "Associar máquina a domínio"
+msgstr "Associar máquina ao reino"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:4
 msgid "Authentication is required to join this machine to a realm or domain"
-msgstr "Autenticação é necessária para associar esta máquina a um domínio"
+msgstr "Autenticação é necessária para associar esta máquina a um reino ou domínio"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:5
 msgid "Remove machine from realm"
-msgstr "Remover máquina de domínio"
+msgstr "Remover máquina do reino"
 
 #: ../service/org.freedesktop.realmd.policy.in.h:6
 msgid ""
 "Authentication is required to remove this computer from a realm or domain."
-msgstr "Autenticação é necessária para remover este computador de um domínio."
+msgstr "Autenticação é necessária para remover este computador de um reino ou domínio."
 
 #: ../service/org.freedesktop.realmd.policy.in.h:7
 msgid "Change login policy"
@@ -111,7 +112,7 @@ msgstr "Não associada a este domínio"
 
 #: ../service/realm-example.c:301
 msgid "Need credentials for leaving this domain"
-msgstr "Requer credenciais para deixar este domínio"
+msgstr "Requer credenciais para abandonar este domínio"
 
 #: ../service/realm-ini-config.c:736
 #, c-format
@@ -129,7 +130,7 @@ msgstr "A operação foi cancelada."
 
 #: ../service/realm-kerberos.c:135
 msgid "Failed to enroll machine in realm. See diagnostics."
-msgstr "Falha ao registrar a máquina no domínio. Veja o diagnóstico."
+msgstr "Falha ao registrar a máquina no reino. Veja o diagnóstico."
 
 #: ../service/realm-kerberos.c:213
 msgid "Failed to unenroll machine from domain. See diagnostics."
@@ -137,43 +138,43 @@ msgstr "Falha ao desregistrar a máquina do domínio. Veja diagnóstico."
 
 #: ../service/realm-kerberos.c:272
 msgid "Joining this realm without credentials is not supported"
-msgstr "Não é possível ingressar neste domínio sem credenciais"
+msgstr "Não há suporte a associar a este reino sem credenciais"
 
 #: ../service/realm-kerberos.c:273
 msgid "Leaving this realm without credentials is not supported"
-msgstr "Não é possível deixar este domínio sem credenciais"
+msgstr "Não há suporte a abandonar este reino sem credenciais"
 
 #: ../service/realm-kerberos.c:276
 msgid "Joining this realm using a credential cache is not supported"
-msgstr "Não é possível ingressar neste domínio usando um cache de credenciais"
+msgstr "Não há suporte a associar a este reino usando um cache de credenciais"
 
 #: ../service/realm-kerberos.c:277
 msgid "Leaving this realm using a credential cache is not supported"
-msgstr "Não é possível deixar este domínio sem um cache de credenciais"
+msgstr "Não há suporte a abandonar este reino sem um cache de credenciais"
 
 #: ../service/realm-kerberos.c:280
 msgid "Joining this realm using a secret is not supported"
-msgstr "Não é possível ingressar neste domínio usando um segredo"
+msgstr "Não há suporte a associar a este reino usando um segredo"
 
 #: ../service/realm-kerberos.c:281
 msgid "Unenrolling this realm using a secret is not supported"
-msgstr "Não há suporte a desregistrar este domínio usando um segredo"
+msgstr "Não há suporte a desregistrar deste reino usando um segredo"
 
 #: ../service/realm-kerberos.c:284
 msgid "Enrolling this realm using a password is not supported"
-msgstr "Não há suporte a registrar este domínio usando uma senha"
+msgstr "Não há suporte a registrar neste reino usando uma senha"
 
 #: ../service/realm-kerberos.c:285
 msgid "Unenrolling this realm using a password is not supported"
-msgstr "Não há suporte a desregistrar este domínio usando uma senha"
+msgstr "Não há suporte a desregistrar deste reino usando uma senha"
 
 #: ../service/realm-kerberos.c:311
 msgid "Joining this realm is not supported"
-msgstr "Não é possível ingressar neste domínio"
+msgstr "Não há suporte a associar a este reino"
 
 #: ../service/realm-kerberos.c:312
 msgid "Leaving this realm is not supported"
-msgstr "Não é possível deixar este domínio"
+msgstr "Não há suporte a abandonar este reino"
 
 #: ../service/realm-kerberos.c:332 ../service/realm-kerberos.c:504
 msgid "Already running another action"
@@ -186,12 +187,12 @@ msgstr "Já associada a outro domínio: %s"
 
 #: ../service/realm-kerberos.c:446
 msgid "Failed to change permitted logins. See diagnostics."
-msgstr "Falha ao alterar inícios de sessões permitidas. Veja o diagnóstico."
+msgstr "Falha ao alterar logins permitidas. Veja o diagnóstico."
 
 #: ../service/realm-kerberos.c:747
 #, c-format
 msgid "The realm does not allow specifying logins"
-msgstr "Este domínio não permite especificar inícios de sessões"
+msgstr "Este reino não permite especificar logins"
 
 #: ../service/realm-kerberos.c:755
 #, c-format
@@ -270,7 +271,7 @@ msgstr "Credenciais sem suporte para associar a um domínio"
 #: ../service/realm-sssd-ad.c:398 ../service/realm-sssd-ipa.c:322
 #: ../tools/realm-join.c:236
 msgid "Already joined to this domain"
-msgstr "Já associada a este domínio"
+msgstr "Já associado a este domínio"
 
 #: ../service/realm-sssd-ad.c:402 ../service/realm-sssd-ipa.c:326
 msgid "A domain with this name is already configured"
@@ -279,36 +280,36 @@ msgstr "Um domínio com este nome já está configurado"
 #: ../service/realm-sssd-config.c:145
 #, c-format
 msgid "Already have domain %s in sssd.conf config file"
-msgstr "Já possui domínio %s no arquivo de configuração sssd.conf"
+msgstr "Já existe O domínio %s no arquivo de configuração sssd.conf"
 
 #: ../service/realm-sssd-config.c:190
 #, c-format
 msgid "Don't have domain %s in sssd.conf config file"
-msgstr "Não há domínio %s no arquivo de configuração sssd.conf"
+msgstr "Não existe o domínio %s no arquivo de configuração sssd.conf"
 
 #: ../service/realm-sssd-ipa.c:312
 msgid "The computer-ou argument is not supported when joining an IPA domain."
-msgstr "Não há suporte ao argumento -ou do computador ao ingressar em um domínio IPA."
+msgstr "Não há suporte ao argumento --computer-ou ao associar a um domínio IPA."
 
 #: ../service/realm-sssd-ipa.c:480
 msgid "Not currently joined to this realm"
-msgstr "Não associada a este domínio"
+msgstr "Não associada a este reino"
 
 #: ../tools/realm.c:40
 msgid "Discover available realm"
-msgstr "Descobrir domínio disponível"
+msgstr "Descobrir reino disponível"
 
 #: ../tools/realm.c:41
 msgid "Enroll this machine in a realm"
-msgstr "Registrar esta máquina em um domínio"
+msgstr "Registrar esta máquina em um reino"
 
 #: ../tools/realm.c:42
 msgid "Unenroll this machine from a realm"
-msgstr "Desregistrar esta máquina de um domínio"
+msgstr "Desregistrar esta máquina de um reino"
 
 #: ../tools/realm.c:43
 msgid "List known realms"
-msgstr "Listar domínios conhecidos"
+msgstr "Listar reinos conhecidos"
 
 #: ../tools/realm.c:44
 msgid "Permit user logins"
@@ -321,7 +322,7 @@ msgstr "Nega a usuários iniciarem sessões."
 #: ../tools/realm.c:184
 #, c-format
 msgid "Invalid value for %s option: %s"
-msgstr ""
+msgstr "Valor inválido para a opção %s: %s"
 
 #: ../tools/realm.c:216
 msgid "Install mode to a specific prefix"
@@ -337,11 +338,11 @@ msgstr "Não solicitar entradas"
 
 #: ../tools/realm-client.c:193 ../tools/realm-client.c:203
 msgid "Couldn't connect to realm service"
-msgstr "Não foi possível conectar ao serviço de domínio"
+msgstr "Não foi possível conectar ao serviço de reino"
 
 #: ../tools/realm-client.c:232
 msgid "Couldn't load the realm service"
-msgstr "Não foi possível carregar o serviço de domínio"
+msgstr "Não foi possível carregar o serviço de reino"
 
 #: ../tools/realm-client.c:249
 msgid "Couldn't connect to system bus"
@@ -410,17 +411,17 @@ msgstr "Senha para %s:"
 #: ../tools/realm-client.c:839
 #, c-format
 msgid "Couldn't prompt for password: %s"
-msgstr "Não foi possível perguntar por uma senha: %s"
+msgstr "Não foi possível solicitar uma senha: %s"
 
 #: ../tools/realm-client.c:874
 #, c-format
 msgid "Realm does not support membership using a password"
-msgstr "Domínio não tem suporte a participação usando uma senha"
+msgstr "Reino não tem suporte a participação usando uma senha"
 
 #: ../tools/realm-client.c:913
 #, c-format
 msgid "Realm does not support membership using a one time password"
-msgstr "Domínio não tem suporte a participação usando uma senha de uso único"
+msgstr "Reino não tem suporte a participação usando uma senha de uso único"
 
 #: ../tools/realm-client.c:981
 msgid "Couldn't select kerberos credentials"
@@ -433,24 +434,24 @@ msgstr "Não foi possível ler as credenciais do kerberos"
 #: ../tools/realm-client.c:1045
 #, c-format
 msgid "Realm does not support automatic membership"
-msgstr "Domínio não tem suporte a participação automática"
+msgstr "O reino não tem suporte a participação automática"
 
 #: ../tools/realm-discover.c:135
 msgid "Couldn't discover realms"
-msgstr "Não foi possível descobrir domínios"
+msgstr "Não foi possível descobrir os reinos"
 
 #: ../tools/realm-discover.c:155
 msgid "No default realm discovered"
-msgstr "Nenhum domínio padrão descoberto"
+msgstr "Nenhum reino padrão descoberto"
 
 #: ../tools/realm-discover.c:157
 #, c-format
 msgid "No such realm found: %s"
-msgstr "domínio não encontrado: %s"
+msgstr "Reino não encontrado: %s"
 
 #: ../tools/realm-discover.c:181
 msgid "Show all discovered realms"
-msgstr "Mostra todos os domínios descobertos"
+msgstr "Mostra todos os reinos descobertos"
 
 #: ../tools/realm-discover.c:182 ../tools/realm-discover.c:273
 msgid "Show only the names"
@@ -472,20 +473,20 @@ msgstr "Usa software de servidor específico"
 
 #: ../tools/realm-discover.c:272
 msgid "Show all realms"
-msgstr "Mostra todos os domínios"
+msgstr "Mostra todos os reinos"
 
 #: ../tools/realm-join.c:92 ../tools/realm-join.c:132
 #: ../tools/realm-join.c:163
 msgid "Couldn't join realm"
-msgstr "Não foi possível associar ao domínio"
+msgstr "Não foi possível associar ao reino"
 
 #: ../tools/realm-join.c:227
 msgid "Cannot join this realm"
-msgstr "Não foi possível ingressar neste domínio"
+msgstr "Não foi possível associar a este reino"
 
 #: ../tools/realm-join.c:229
 msgid "No such realm found"
-msgstr "Domínio não encontrado"
+msgstr "Reino não encontrado"
 
 #: ../tools/realm-join.c:283
 msgid "User name to use for enrollment"
@@ -505,15 +506,15 @@ msgstr "Associa usando uma senha predefinida de uso único"
 
 #: ../tools/realm-join.c:297
 msgid "Turn off automatic id mapping"
-msgstr ""
+msgstr "Desativa mapeamento automático de ID"
 
 #: ../tools/realm-join.c:299
 msgid "Set the user principal for the computer account"
-msgstr "Definir o usuário principal para a conta do computador"
+msgstr "Define o usuário principal para a conta do computador"
 
 #: ../tools/realm-join.c:319
 msgid "Specify one realm to join"
-msgstr "Especifica um domínio para se associar"
+msgstr "Especifica um reino para se associar"
 
 #: ../tools/realm-join.c:324
 msgid ""
@@ -526,11 +527,11 @@ msgstr "O argumento --one-time-password não pode ser usado com --user"
 
 #: ../tools/realm-leave.c:181 ../tools/realm-leave.c:208
 msgid "Couldn't leave realm"
-msgstr "Não foi possível deixar o domínio"
+msgstr "Não foi possível abandonar o reino"
 
 #: ../tools/realm-leave.c:267
 msgid "Remove computer from realm"
-msgstr "Remove o computador do domínio"
+msgstr "Remove o computador do reino"
 
 #: ../tools/realm-leave.c:270
 msgid "User name to use for removal"
@@ -542,15 +543,15 @@ msgstr "Não foi possível alterar inícios de sessões permitidos"
 
 #: ../tools/realm-logins.c:200
 msgid "Permit any realm account login"
-msgstr "Permitir qualquer início de sessão de conta de domínio"
+msgstr "Permitir qualquer início de sessão de conta de reino"
 
 #: ../tools/realm-logins.c:200
 msgid "Deny any realm account login"
-msgstr "Proibir qualquer início de sessão de conta de domínio"
+msgstr "Proibir qualquer jogin de conta de reino"
 
 #: ../tools/realm-logins.c:202
 msgid "Withdraw permit for a realm account to login"
-msgstr "Retirar permissão para uma conta de domínio iniciar sessão"
+msgstr "Retirar permissão para uma conta de reino se conectar"
 
 #: ../tools/realm-logins.c:204
 msgid "Treat names as groups which to permit"
@@ -558,7 +559,7 @@ msgstr "Tratar nomes como grupos a regular permissões"
 
 #: ../tools/realm-logins.c:205
 msgid "Realm to permit/deny logins for"
-msgstr "Domínio padrão o qual permitir/negar inícios de sessões"
+msgstr "Reino padrão o qual permitir/negar logins"
 
 #: ../tools/realm-logins.c:219
 msgid "No logins should be specified with -a or --all"
@@ -587,4 +588,4 @@ msgstr "Especifique usuários específicos para serem adicionaddos ou removidos 
 #: ../tools/realm-logins.c:241
 msgid ""
 "Specifying deny without --all is deprecated. Use realm permit --withdraw"
-msgstr "Especificar proibição sem usar --all tornou-se obsoleto. Use a permissão de domínio --withdraw"
+msgstr "Especificar proibição sem usar --all tornou-se obsoleto. Use a permissão de reino --withdraw"

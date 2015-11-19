@@ -127,9 +127,11 @@ realm_sssd_config_add_domain (RealmIniConfig *config,
                               ...)
 {
 	const gchar *domains[2];
+	gchar **already;
 	gboolean ret;
 	gchar *section;
 	va_list va;
+	gint i;
 
 	g_return_val_if_fail (REALM_IS_INI_CONFIG (config), FALSE);
 	g_return_val_if_fail (domain != NULL, FALSE);
@@ -138,14 +140,18 @@ realm_sssd_config_add_domain (RealmIniConfig *config,
 	if (!realm_ini_config_begin_change (config, error))
 		return FALSE;
 
-	section = realm_sssd_config_domain_to_section (domain);
-	if (realm_ini_config_have_section (config, section)) {
-		realm_ini_config_abort_change (config);
-		g_set_error (error, G_FILE_ERROR, G_FILE_ERROR_EXIST,
-		             _("Already have domain %s in sssd.conf config file"), domain);
-		g_free (section);
-		return FALSE;
+	already = realm_sssd_config_get_domains (config);
+	for (i = 0; already && already[i] != NULL; i++) {
+		if (g_str_equal (domain, already[i])) {
+			realm_ini_config_abort_change (config);
+			g_set_error (error, G_FILE_ERROR, G_FILE_ERROR_EXIST,
+			             _("Already have domain %s in sssd.conf config file"), domain);
+			g_strfreev (already);
+			return FALSE;
+		}
 	}
+
+	g_strfreev (already);
 
 	/* Setup a default sssd section */
 	if (!realm_ini_config_have (config, "section", "services"))
@@ -156,6 +162,8 @@ realm_sssd_config_add_domain (RealmIniConfig *config,
 	domains[0] = domain;
 	domains[1] = NULL;
 	realm_ini_config_set_list_diff (config, "sssd", "domains", ", ", domains, NULL);
+
+	section = realm_sssd_config_domain_to_section (domain);
 
 	va_start (va, error);
 	ret = update_domain (config, section, va, error);

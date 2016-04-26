@@ -246,6 +246,8 @@ realm_client_new_system (gboolean verbose)
 
 	connection = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, &error);
 	if (error != NULL) {
+		if (verbose)
+			g_printerr (" ! To run without a DBus bus use the install mode: --install=/\n");
 		realm_handle_error (error, _("Couldn't connect to system bus"));
 		return NULL;
 	}
